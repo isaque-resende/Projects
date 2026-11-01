@@ -47,6 +47,22 @@ Status: **D** = decidido, **P** = proposta em discussão, **A** = em aberto (ret
 - **P** Trechos anotados clicáveis abrem a carta especial correspondente.
 - **A** Referências visuais que o usuário vai mandar.
 
+## Erros que ensinam (nota da rodada A)
+- **D** Nenhuma escolha errada é só "errou, tente de novo". Cada alternativa errada traz uma explicação de por que está errada: muitas vezes é uma interpretação comum, mas equivocada. O erro também é conteúdo.
+- **D** Confirmação em blocos (estilo *Obra Dinn*) para relatórios e puzzles de dedução.
+- **D** Retomada de sessão com repetição espaçada: na estrada, Cléopas pergunta onde pararam e o jogador responde com as cartas; as esquecidas voltam com mais frequência.
+
+## Bloco B — o estranho (Jesus)
+- **D** Capuz mais longo; o rosto em sombra com degradê que sobe a partir dos lábios. Dá para ver a boca, nariz e olhos não.
+- **D** O rosto só se revela em Emaús, depois do "puzzle chefão": a revisão completa usando os 5 fragmentos da chama (badges).
+  - **P** Nuance de Lc 24:30-31: o reconhecimento vem no partir do pão (os olhos "foram abertos"), não como prêmio de um teste. Sugestão: o puzzle final prepara a mesa, e é o gesto dele que levanta a sombra.
+- **D** Falas próprias, criadas para a narrativa, o mais próximas possível do texto bíblico, citando a Escritura.
+  - **P** Guia de estilo para a voz dele: pergunta mais do que afirma, cita mais do que inventa, nada de doutrina nova na boca dele; revisão teológica (amigo do hebraico/pastor); tom de referência: *O Desejado de Todas as Nações*, cap. "A caminho de Emaús".
+- **D** O nome nunca é dito antes de Emaús. Explorar a ironia de Lc 24:18 ("és tu o único... que não sabe?"): o único que de fato sabe o que aconteceu é ele.
+  - **P** Mecânica da ironia: na estrada, os discípulos "explicam" ao estranho usando as cartas-depoimento do prólogo; depois ele pega as mesmas cartas e as vira, revelando um segundo lado (o sentido profético). O prólogo de Jerusalém vira a primeira camada de cartas.
+- **D (nota)** Muita intertextualidade (AT↔NT, profeta citando profeta, citações de Moisés) + hebraico: criar recursos e minijogos para isso.
+  - **P** Ideias: quadro de ligações com fio vermelho; "ecos" (pegar uma palavra que reaparece em outro texto, ex.: semente/descendência Gn 3:15 → Gn 22:18 → Gl 3:16); árvore de raízes hebraicas de 3 letras; carta-chave do NT que encaixa na fechadura do AT; linha do tempo de "quem cita quem".
+
 ## Em aberto (retomar)
 - **A1** Os momentos "uau" de cada fase (o usuário traz ao desenvolver a fase 1).
 - **A2** Tradução bíblica: direitos autorais × legibilidade; possibilidade de tradução própria com o amigo estudante de hebraico.
