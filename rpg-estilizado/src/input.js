@@ -1,13 +1,14 @@
 // Entrada unificada: teclado + mouse no desktop; joystick virtual + botões + arrastar no celular.
 export function makeInput(canvas, touch) {
   const keys = new Set();
-  let jumpQ = false, kneelQ = false, runHeld = false;
+  let jumpQ = false, kneelQ = false, actQ = false, runHeld = false;
   const look = { x: 0, y: 0 }; let zoom = 0;
 
   addEventListener('keydown', (e) => {
     keys.add(e.code);
     if (e.code === 'Space') { jumpQ = true; e.preventDefault(); }
     if (e.code === 'KeyF' || e.code === 'KeyK') kneelQ = true;
+    if (e.code === 'KeyE' || e.code === 'Enter') actQ = true;
   });
   addEventListener('keyup', (e) => keys.delete(e.code));
   addEventListener('blur', () => keys.clear());
@@ -56,6 +57,7 @@ export function makeInput(canvas, touch) {
     };
     press('#bJump', () => { jumpQ = true; });
     press('#bKneel', () => { kneelQ = true; });
+    press('#bAct', () => { actQ = true; });
     let runToggle = false;
     press('#bRun', (el) => { runToggle = !runToggle; runHeld = runToggle; el.classList.toggle('on', runToggle); });
   }
@@ -70,10 +72,10 @@ export function makeInput(canvas, touch) {
       const out = {
         ix, iy,
         run: keys.has('ShiftLeft') || keys.has('ShiftRight') || runHeld,
-        jump: jumpQ, kneel: kneelQ,
+        jump: jumpQ, kneel: kneelQ, interact: actQ,
         look: { x: look.x, y: look.y }, zoom,
       };
-      jumpQ = kneelQ = false; look.x = look.y = 0; zoom = 0;
+      jumpQ = kneelQ = actQ = false; look.x = look.y = 0; zoom = 0;
       return out;
     },
   };

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { heightAt, fbm, ss } from './terrain.js';
-import { inCity, roadDist, GOLGOTHA, TOMB, LOOKOUT, GETHSEMANE, VILLAGE, TM } from './layout.js';
+import { inCity, roadDist, GOLGOTHA, TOMB, LOOKOUT, GETHSEMANE, VILLAGE, INTRO_HOUSE, TM } from './layout.js';
 
 // Vegetação instanciada a partir do Stylized Nature MegaKit (Quaternius), com cores refeitas para a Judeia:
 // oliveiras verde-prata, ciprestes, amendoeiras floridas, trigo, papoulas/anêmonas, capim de primavera.
@@ -148,7 +148,8 @@ export function makeFlora(scene, natureGltf, solids, extras, { lowQuality }) {
   let rs = 2024; const rnd = () => ((rs = (rs * 16807) % 2147483647) / 2147483647);
   const tmpQ = new THREE.Quaternion(), tmpE = new THREE.Euler(), tmpV = new THREE.Vector3(), tmpS = new THREE.Vector3();
 
-  const free = (x, z, h) => !solids.blocked(x, h + 0.6, z) && !solids.blocked(x + 1.2, h + 0.6, z) && !solids.blocked(x - 1.2, h + 0.6, z);
+  const reserved = extras.reserved || [];
+  const free = (x, z, h) => Math.hypot(x - INTRO_HOUSE.x, z - INTRO_HOUSE.z) > 5.5 && !reserved.some(([rx, rz, rr]) => Math.hypot(x - rx, z - rz) < rr + 1.5) && !solids.blocked(x, h + 0.6, z) && !solids.blocked(x + 1.2, h + 0.6, z) && !solids.blocked(x - 1.2, h + 0.6, z);
   function put(sp, x, z, s, { sy = 1, tilt = 0.05, y } = {}) {
     const S = SPECIES[sp], model = S.models[Math.floor(rnd() * S.models.length)];
     const h = y ?? heightAt(x, z);

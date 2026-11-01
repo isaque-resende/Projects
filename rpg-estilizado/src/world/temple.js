@@ -269,7 +269,10 @@ export function buildTemple(kit, extras) {
   kit.box('gold', BX1 + 0.1, ZC, 0.25, 8, PORCH, PORCH + 12, 0, { solid: false });
   kit.box('void', BX1 + 0.25, ZC, 0.1, 5.6, PORCH, PORCH + 10.5, 0, { solid: false });
   for (const s of [-1, 1]) kit.box('gold', BX1 + 1.4, ZC + s * 3.7, 2.6, 0.18, PORCH, PORCH + 10.5, s * 0.6, { solid: false });
-  kit.box('veil', BX1 + 0.4, ZC, 0.06, 5.4, PORCH, PORCH + 10.3, 0, { uv: [0, 0, 1, 1] });
+  // o véu, rasgado de alto a baixo (Mt 27:51): duas metades afastadas, mais abertas embaixo
+  for (const sd of [-1, 1]) kit.box('veil', BX1 + 0.42 + 0.12 * (sd + 1), ZC + sd * 1.55, 0.06, 2.55, PORCH, PORCH + 10.3, sd * 0.1, { uv: [sd < 0 ? 0 : 0.5, 0, 0.5, 1], solid: false });
+  kit.solids.add({ x: BX1 + 0.5, z: ZC, hx: 0.3, hz: 2.8, rot: 0, y0: PORCH, y1: PORCH + 10.3 });
+  extras.veil = [BX1 + 1.2, PORCH, ZC];
   // videira de ouro sobre a porta: ramos, folhas e cachos
   {
     const pts = []; for (let i = 0; i <= 40; i++) { const t = i / 40; pts.push(new THREE.Vector3(BX1 + 0.35, PORCH + 12.6 + Math.sin(t * Math.PI * 5) * 0.45, ZC - 6 + 12 * t)); }
