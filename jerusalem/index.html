@@ -10,6 +10,7 @@
     :root { --ink: #f6ead2; --gold: #e3b766; --shade: #1b1410cc; --sky: #e6cbbf; }
     html, body { margin: 0; height: 100%; overflow: hidden; background: var(--sky); color: var(--ink); font-family: 'Alegreya Sans', system-ui, sans-serif; touch-action: none; user-select: none; -webkit-user-select: none; }
     canvas { display: block; width: 100%; height: 100%; }
+    [hidden] { display: none !important; }
     #loading { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: radial-gradient(circle at 50% 40%, #3a2c48, #16101c 70%); color: var(--ink); z-index: 10; transition: opacity .8s; }
     #loading.done { opacity: 0; pointer-events: none; }
     #loading h1 { margin: 0; font-family: 'Cinzel', serif; font-weight: 700; letter-spacing: .14em; font-size: clamp(20px, 5vw, 34px); color: var(--gold); text-align: center; }
@@ -39,20 +40,58 @@
     #bKneel { right: max(100px, calc(env(safe-area-inset-right) + 78px)); bottom: max(78px, env(safe-area-inset-bottom)); }
     #bRun { right: max(22px, env(safe-area-inset-right)); bottom: max(114px, calc(env(safe-area-inset-bottom) + 80px)); }
     .btn.on { background: #e3b766aa; }
+    #bAct { right: max(100px, calc(env(safe-area-inset-right) + 78px)); bottom: max(170px, calc(env(safe-area-inset-bottom) + 136px)); width: 76px; height: 76px; background: #e3b766cc; color: #1b1410; text-shadow: none; font-size: 12.5px; border-color: #fff4dcaa; }
+    /* diálogo */
+    #talk { position: fixed; left: 50%; bottom: max(18px, env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(640px, calc(100vw - 32px)); box-sizing: border-box; z-index: 8; background: linear-gradient(#1b1410f2, #120d0af2); border: 1px solid #e3b76666; border-radius: 12px; padding: 14px 18px 16px; box-shadow: 0 12px 34px #000a; cursor: pointer; }
+    #talk b { display: block; font: 700 13px 'Cinzel', serif; letter-spacing: .12em; color: var(--gold); margin-bottom: 6px; text-transform: uppercase; }
+    #talkImg { display: block; width: min(380px, 100%); margin: 2px auto 10px; border-radius: 4px; box-shadow: 0 4px 14px #0008; }
+    #talk p { margin: 0; font-size: 17px; line-height: 1.45; color: #f6ead2; min-height: 2.9em; }
+    #talk i { position: absolute; right: 14px; bottom: 8px; font-style: normal; color: var(--gold); opacity: 0; font-size: 12px; }
+    #talk.ready i { opacity: .9; animation: pulse 1.2s infinite; }
+    @keyframes pulse { 50% { opacity: .3; } }
+    body.touch #talk { bottom: max(14px, env(safe-area-inset-bottom)); }
+    #prompt { position: fixed; left: 50%; bottom: max(26px, calc(env(safe-area-inset-bottom) + 12px)); transform: translateX(-50%); z-index: 6; background: #1b1410cc; border: 1px solid #e3b76655; border-radius: 20px; padding: 8px 16px; font-size: 15px; color: #f6ead2; white-space: nowrap; pointer-events: none; }
+    #prompt kbd { font: 700 12px 'Alegreya Sans', sans-serif; background: var(--gold); color: #1b1410; border-radius: 4px; padding: 1px 6px; margin-right: 4px; }
+    #prompt i { color: var(--gold); font-style: normal; }
+    body.touch #prompt { bottom: auto; top: max(64px, calc(env(safe-area-inset-top) + 54px)); }
+    #objective { position: fixed; left: max(14px, env(safe-area-inset-left)); top: max(14px, env(safe-area-inset-top)); z-index: 5; max-width: min(340px, calc(100vw - 130px)); background: #1b1410b8; border-left: 2px solid var(--gold); border-radius: 0 8px 8px 0; padding: 8px 12px; font-size: 13.5px; line-height: 1.35; color: #f6ead2; }
+    #objective b { display: block; font-weight: 500; }
+    #objective span { display: block; margin-top: 3px; font-size: 12px; color: var(--gold); letter-spacing: .03em; }
+    /* cinema */
+    #cine i { position: fixed; left: 0; right: 0; height: 0; background: #000; z-index: 7; transition: height .8s; }
+    #cine i:first-child { top: 0; } #cine i:last-child { bottom: 0; }
+    body.cine #cine i { height: 9vh; }
+    body.cine #mapBtn, body.cine #touch, body.cine #hint, body.cine #objective, body.cine #prompt, body.cine #place { display: none !important; }
+    #caption { position: fixed; left: 50%; bottom: calc(9vh + 26px); transform: translateX(-50%); width: min(720px, calc(100vw - 40px)); text-align: center; z-index: 9; font: italic 500 clamp(17px, 3.6vw, 24px) 'Alegreya Sans', serif; color: #fff1d6; text-shadow: 0 2px 12px #000; opacity: 0; transition: opacity .9s; pointer-events: none; }
+    #caption.on { opacity: 1; }
+    #wip { position: fixed; inset: 0; z-index: 11; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; padding: 0 max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left)); }
+    #wip small { font-size: 13px; letter-spacing: .2em; text-transform: uppercase; color: #e3b766aa; }
+    #wip h2 { margin: 0; font: 700 clamp(22px, 6vw, 40px) 'Cinzel', serif; letter-spacing: .12em; color: var(--gold); }
+    #wip p { margin: 0 0 14px; font-size: 16px; color: #f6ead2cc; }
+    #wip button { font: 500 15px 'Alegreya Sans', sans-serif; color: #1b1410; background: var(--gold); border: 0; border-radius: 22px; padding: 10px 20px; }
+    #skip { position: fixed; right: max(14px, env(safe-area-inset-right)); top: calc(9vh + 12px); z-index: 9; font: 500 13px 'Alegreya Sans', sans-serif; color: #f6ead2; background: #ffffff1a; border: 1px solid #ffffff44; border-radius: 16px; padding: 7px 14px; }
   </style>
-  <script type="module" crossorigin src="./assets/index-D5EjTZcR.js"></script>
+  <script type="module" crossorigin src="./assets/index-bMiVFULv.js"></script>
 </head>
 <body>
   <div id="loading"><h1>JERUSALÉM · ANO 30</h1><div id="bar"><i></i></div><p id="msg">carregando…</p></div>
   <div id="place"><b>Monte das Oliveiras</b><span></span></div>
   <button id="mapBtn" type="button">MAPA</button>
   <div id="menu" hidden><h2>IR PARA <button id="closeMenu" type="button" aria-label="Fechar">×</button></h2><div id="places"></div></div>
-  <div id="hint">WASD mover · Shift correr · Espaço pular · F ajoelhar · arraste para girar a câmera · roda para zoom</div>
+  <div id="hint">WASD mover · Shift correr · Espaço pular · E falar/examinar · F ajoelhar · arraste para girar a câmera · roda para zoom</div>
+  <div id="objective" hidden></div>
+  <div id="prompt" hidden></div>
+  <div id="talk" hidden><b id="talkName"></b><img id="talkImg" alt="Placa: Jesus Nazareno, Rei dos Judeus, em hebraico, grego e latim" hidden><p id="talkText"></p><i>▶ continuar</i></div>
+  <div id="cine"><i></i><i></i></div>
+  <div id="caption"></div>
+  <button id="skip" type="button" hidden>Pular introdução</button>
+  <div id="wip" hidden><small>Próxima fase</small><h2>A ESTRADA PARA EMAÚS</h2><p>Em construção. Aguarde as próximas fases.</p><button id="wipBtn" type="button">Voltar a explorar Jerusalém</button></div>
   <div id="touch">
     <div id="stick"><div id="knob"></div></div>
     <div class="btn" id="bRun">CORRER</div>
     <div class="btn" id="bKneel">AJOELHAR</div>
     <div class="btn" id="bJump">PULAR</div>
+    <div class="btn" id="bAct" hidden>FALAR</div>
   </div>
 </body>
 </html>

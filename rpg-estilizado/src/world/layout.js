@@ -9,7 +9,9 @@ export const GOLGOTHA = { x: -84, z: -132, r: 22, h: 10 };               // coli
 export const TOMB = { x: -40, z: -150 };                                 // colina do sepulcro no jardim
 export const LOOKOUT = { x: 180, z: -10 };                               // mirante no Monte das Oliveiras
 export const GETHSEMANE = { x: 128, z: -6 };
-export const VILLAGE = { x: 152, z: 176 };
+export const VILLAGE = { x: 262, z: 40 };   // Betânia: encosta leste do Monte das Oliveiras
+export const LAZARUS = { x: 292, z: 34 };   // túmulo de Lázaro, na saída leste de Betânia
+export const INTRO_HOUSE = { x: 250, z: 49, rot: -Math.PI / 2 };   // porta voltada para oeste (para Jerusalém)
 export const KIDRON = (z) => 114 + Math.sin(z * 0.018) * 7;              // leito do vale do Cedrom
 
 // muralha da cidade (polígono fechado; o trecho leste é a própria plataforma do Templo)
@@ -33,9 +35,9 @@ export const ROADS = [
   { w: 4.5, pts: [[-91, -80], [-92, -96], [-86, -110], [-70, -116], [-56, -122], [-44, -129]] },        // para o jardim e o Gólgota
   { w: 3.2, pts: [[-92, -100], [-104, -112], [-106, -128], [-98, -146], [-86, -150], [-80, -140]] },    // subida do Gólgota (pelos fundos)
   { w: 5, pts: [[57, 110], [78, 112], [100, 92], [112, 60], [116, 30], [124, 8], [140, -4], [156, -12], [168, -20], [176, -18], [180, -10]] }, // Cedrom e Oliveiras
-  { w: 4.5, pts: [[-6, 141], [10, 168], [60, 182], [110, 184], [152, 176]] },                           // aldeia
+  { w: 4.5, pts: [[-6, 141], [10, 168], [60, 182], [110, 184], [132, 176]] },                           // campos ao sul
   { w: 4.5, pts: [[-150, 3], [-190, 6], [-240, 0], [-300, -8]] },                                        // estrada de Jafa
-  { w: 4, pts: [[180, -10], [200, 18], [208, 46], [190, 70], [168, 116], [152, 176]] },                             // crista até a aldeia
+  { w: 4, pts: [[180, -10], [204, 2], [226, 20], [242, 40], [262, 40]] },                             // pela crista até Betânia
 ];
 export const STREETS = [
   { w: 6, pts: [[-150, 3], [-100, 2], [-60, 0], [-34, 2], [-28, 10]] },     // rua principal leste-oeste
@@ -57,7 +59,7 @@ export const PLACES = [
   { id: 'cedrom', name: 'Vale do Cedrom', x: 114, z: 40, r: 18 },
   { id: 'siloe', name: 'Tanque de Siloé', x: SILOAM.x, z: SILOAM.z, r: 14, spawn: [10, 108], look: [18, 124] },
   { id: 'palacio', name: 'Palácio de Herodes', x: -122, z: 30, r: 26 },
-  { id: 'aldeia', name: 'Aldeia de Betânia', x: VILLAGE.x, z: VILLAGE.z, r: 32, spawn: [128, 184], look: [152, 176] },
+  { id: 'betania', name: 'Betânia', x: VILLAGE.x, z: VILLAGE.z, r: 34, spawn: [244, 40], look: [262, 40] },
   { id: 'cidade', name: 'Cidade Alta', x: -80, z: 10, r: 60, spawn: [-78, 4], look: [30, -6] },
 ];
 

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { GOLGOTHA, TOMB, LOOKOUT, GETHSEMANE, VILLAGE, KIDRON, roadDist } from './layout.js';
+import { GOLGOTHA, TOMB, LOOKOUT, GETHSEMANE, VILLAGE, INTRO_HOUSE, LAZARUS, KIDRON, roadDist } from './layout.js';
 import { heightAt, fbm, tombFloor } from './terrain.js';
 import { toWorld } from './city.js';
 
@@ -58,9 +58,11 @@ function golgotha(kit, extras) {
     { x: 0, y: -4.2, rx: 5.5, ry: 0.7, depth: 1.2 },     // fenda da boca
   ]);
   // sombra escura dentro das órbitas
-  for (const [ox, oy] of [[-4.2, 1.4], [4.0, 1.6]]) {
-    const s = new THREE.SphereGeometry(1.25, 10, 8); s.scale(1.1, 0.95, 0.3); s.translate(ox, g + 6.5 + oy, -3.7); s.rotateY(yaw);
-    s.translate(fx, 0, fz); kit.geom('void', s);
+  for (const [ox, oy] of [[-4.2, 1.4], [4.0, 1.6]]) { // fundo escuro das órbitas, só se ficar dentro do morro
+    const c = new THREE.CircleGeometry(1.15, 14); c.scale(1.15, 1, 1); c.translate(ox, g + 6.5 + oy, -3.3); c.rotateY(yaw); c.translate(fx, 0, fz);
+    const p = c.attributes.position; let inside = true;
+    for (let i = 0; i < p.count; i++) if (heightAt(p.getX(i), p.getZ(i)) < p.getY(i) + 0.3) { inside = false; break; }
+    if (inside) kit.geom('void', c); else c.dispose();
   }
   kit.solids.add({ x: fx - Math.sin(yaw) * 2, z: fz - Math.cos(yaw) * 2, hx: 12.5, hz: 2.5, rot: yaw, y0: g - 2, y1: g + 12 });
   for (let i = 0; i < 12; i++) boulder(kit, fx + (rnd() - 0.5) * 22, g + 0.3, fz + 2 + rnd() * 4, 0.6 + rnd() * 1.4, 0.7);
@@ -68,6 +70,7 @@ function golgotha(kit, extras) {
   cross(kit, x - 3.4, z - 1, 4.4, 0.08); cross(kit, x, z, 5.4); cross(kit, x + 3.4, z + 0.8, 4.4, -0.06);
   // títulus sobre a cruz central
   const gc = heightAt(x, z);
+  extras.golgotha = { cross: [x, gc + 1, z], top: gc, face: [fx, fz, yaw, g] };
   kit.box('wood', x, z + 0.16, 0.9, 0.06, gc + 5.55, gc + 5.95, 0, { solid: false });
   for (let i = 0; i < 18; i++) { const a = rnd() * 6.28, r = 4 + rnd() * 10; boulder(kit, x + Math.cos(a) * r, heightAt(x + Math.cos(a) * r, z + Math.sin(a) * r), z + Math.sin(a) * r, 0.4 + rnd() * 0.9, 0.6); }
 }
@@ -84,10 +87,10 @@ function gardenTomb(kit, extras) {
   kit.box('cliff', X, (cz0 + FZ) / 2, 5, FZ - cz0, g + 2.4, top);                // teto da câmara
   kit.box('cliff', X - 1.625, cz1 + 0.5, 1.75, 1, g - 2, g + 2.4, 0, { solid: false });   // frente, à esquerda da porta
   kit.box('cliff', X + 1.625, cz1 + 0.5, 1.75, 1, g - 2, g + 2.4, 0, { solid: false });   // à direita
-  kit.box('cliff', X, cz1 + 0.5, 1.5, 1, g + 1.75, g + 2.4, 0, { solid: false });         // verga
+  kit.box('cliff', X, cz1 + 0.5, 1.5, 1, g + 2.05, g + 2.4, 0, { solid: false });         // verga (porta baixa, mas dá para sair)
   kit.solids.add({ x: X - 1.65, z: cz1 + 0.5, hx: 0.85, hz: 0.5, rot: 0, y0: g - 2, y1: g + 2.4 });
   kit.solids.add({ x: X + 1.65, z: cz1 + 0.5, hx: 0.85, hz: 0.5, rot: 0, y0: g - 2, y1: g + 2.4 });
-  kit.solids.add({ x: X, z: cz1 + 0.5, hx: 0.8, hz: 0.5, rot: 0, y0: g + 1.75, y1: g + 2.4 });
+  kit.solids.add({ x: X, z: cz1 + 0.5, hx: 0.8, hz: 0.5, rot: 0, y0: g + 2.05, y1: g + 2.4 });
   kit.box('cliff', X, (cz0 + cz1) / 2, 5, cz1 - cz0, g - 1, g + 0.02);           // piso
   // banco funerário e nicho ao fundo
   kit.box('cliff', X - 1.75, (cz0 + cz1) / 2 - 0.4, 1.5, 4.8, g, g + 0.7);
@@ -108,6 +111,7 @@ function gardenTomb(kit, extras) {
   for (const s of [-1, 1]) for (let i = 0; i < 4; i++) boulder(kit, X + s * (10 + rnd() * 2), g + i * 1.6, FZ - 2 - rnd() * 6, 1.5 + rnd(), 0.8);
   cliffFace(kit, X, FZ - 0.05, 0, 21, 3.2, top - 1.6, [], 'cliff');
   for (const s of [-1, 1]) cliffFace(kit, X + s * 6.6, FZ + 0.4, 0, 8.4, top - g + 1.5, g - 1.2, [], 'cliff');
+  extras.tomb = { X, FZ, g, stone: [X - 3.6, g + 1.1, FZ + 0.6], linen: [X - 1.75, g + 0.8, cz0 + 1.8] };
   // luz suave lá dentro: "Ele não está aqui"
   extras.lights.push([X - 0.5, g + 1.6, cz0 + 2.5, 0xffe3b0, 7, 0.6]);
   // jardim: muro baixo, poço, banco
@@ -117,7 +121,8 @@ function gardenTomb(kit, extras) {
   kit.cyl('fieldStone', wx, wz, 1.1, wg - 0.5, wg + 0.8, { seg: 14 });
   kit.box('darkWood', wx, wz, 2.4, 0.12, wg + 2.1, wg + 2.25, 0, { solid: false });
   for (const s of [-1, 1]) kit.box('darkWood', wx + s * 1.1, wz, 0.12, 0.12, wg + 0.8, wg + 2.25, 0, { solid: false });
-  kit.box('fieldStone', X - 8, FZ + 6, 2, 0.6, heightAt(X - 8, FZ + 6), heightAt(X - 8, FZ + 6) + 0.5);
+  kit.box('fieldStone', X - 8, FZ + 6, 2, 0.6, heightAt(X - 8, FZ + 6), heightAt(X - 8, FZ + 6) + 0.47);
+  extras.bench = [X - 8, heightAt(X - 8, FZ + 6), FZ + 6];
   extras.gardens.push({ x: X, z: FZ + 9, r: 14 });
 }
 
@@ -200,7 +205,7 @@ function countryside(kit, extras) {
   const pts = [];
   for (let i = 0; i < 26 && pts.length < 15; i++) {
     const a = rnd() * 6.28, r = 6 + rnd() * 24, x = VILLAGE.x + Math.cos(a) * r, z = VILLAGE.z + Math.sin(a) * r;
-    if (pts.some(([px, pz]) => Math.hypot(px - x, pz - z) < 9) || roadDist(x, z) < 5) continue;
+    if (pts.some(([px, pz]) => Math.hypot(px - x, pz - z) < 9) || roadDist(x, z) < 5 || Math.hypot(x - INTRO_HOUSE.x, z - INTRO_HOUSE.z) < 11 || Math.hypot(x - LAZARUS.x, z - LAZARUS.z) < 12) continue;
     pts.push([x, z]);
   }
   for (const [x, z] of pts) {
@@ -271,7 +276,63 @@ function countryside(kit, extras) {
   for (const [x, z] of [[-96, -104], [108, 70], [30, 176], [-200, 6], [182, -22]]) { const g = heightAt(x, z); kit.cyl('fieldStone', x, z, 0.35, g - 0.2, g + 1.4, { seg: 8 }); }
 }
 
+// ---------------- a casa em Betânia onde o discípulo acorda (com interior) ----------------
+function introHouse(kit, extras) {
+  const { x, z, rot } = INTRO_HOUSE, W = 5.4, D = 4.4, T = 0.35, H = 2.8;
+  const P = (lx, lz) => toWorld(x, z, rot, lx, lz);
+  let g = Infinity, gMax = -Infinity;
+  for (let a = -1; a <= 1; a += 0.5) for (let b = -1; b <= 1; b += 0.5) { const h = heightAt(...P(a * W / 2, b * D / 2)); g = Math.min(g, h); gMax = Math.max(gMax, h); }
+  const F = gMax + 0.06, top = F + H;   // piso acima do terreno em toda a casa
+  const wall = (lx, lz, w, d, y0 = g - 1.2, y1 = top) => { const [wx, wz] = P(lx, lz); kit.box('clay', wx, wz, w, d, y0, y1, rot); };
+  wall(0, -D / 2 - T / 2, W + 2 * T, T);                   // fundo
+  wall(-W / 2 - T / 2, 0, T, D);                           // esquerda
+  wall(W / 2 + T / 2, 0, T, D);                            // direita
+  wall(-W / 4 - 0.35, D / 2 + T / 2, W / 2 + 0.3, T);       // frente, à esquerda da porta
+  wall(W / 2 - 0.65, D / 2 + T / 2, 1.3, T);                // frente, à direita da porta
+  wall(0.6, D / 2 + T / 2, 1.75, T, F + 2.15, top);         // verga
+  { const [wx, wz] = P(0, 0); kit.box('clay', wx, wz, W, D, g - 1.2, F, rot); kit.box('roof', wx, wz, W + 2 * T + 0.3, D + 2 * T + 0.3, top, top + 0.3, rot); kit.box('darkWood', wx, wz, W, D, top - 0.18, top, rot, { solid: false }); }
+  for (let i = -2; i <= 2; i++) { const [wx, wz] = P(i * 1.1, 0); kit.box('darkWood', wx, wz, 0.16, D + 0.6, top - 0.36, top - 0.18, rot, { solid: false }); } // vigas
+  { const [wx, wz] = P(0.6, D / 2 + T + 0.05); kit.box('darkWood', wx, wz, 1.6, 0.2, F + 2.15, F + 2.35, rot, { solid: false }); }
+  // janela alta na parede esquerda
+  { const [wx, wz] = P(-W / 2 - T - 0.01, -0.6); kit.box('void', wx, wz, 0.05, 0.6, F + 1.6, F + 2.1, rot, { solid: false }); }
+  // cama: estrado de madeira, colchão de linho, coberta listrada
+  const bedL = -0.6, bedZ = -D / 2 + 0.5;
+  { const [wx, wz] = P(bedL, bedZ); kit.box('darkWood', wx, wz, 2.0, 0.95, F, F + 0.38, rot);
+    kit.box('linen', wx, wz, 1.95, 0.9, F + 0.38, F + 0.47, rot, { solid: false });
+    const [bx, bz] = P(bedL - 0.45, bedZ); kit.box('awning', bx, bz, 1.0, 0.95, F + 0.47, F + 0.52, rot, { solid: false, uv: [0.5, 0, 0.25, 1] }); }
+  // lamparina na mesinha, jarro, esteira
+  { const [wx, wz] = P(W / 2 - 0.5, -D / 2 + 0.5); kit.box('darkWood', wx, wz, 0.7, 0.6, F, F + 0.6, rot);
+    kit.cyl('clay', wx, wz, 0.09, F + 0.6, F + 0.68, { r1: 0.06, seg: 8, solid: false });
+    extras.flames.push([wx, F + 0.74, wz, 0.12]); extras.lights.push([wx, F + 1.0, wz, 0xffb066, 9, 0.5]); }
+  { const [wx, wz] = P(W / 2 - 0.45, 0.9); kit.cyl('clay', wx, wz, 0.24, F, F + 0.7, { r1: 0.14, seg: 10 }); }
+  { const [wx, wz] = P(0.6, 0.6); kit.box('awning', wx, wz, 1.4, 0.9, F, F + 0.02, rot, { solid: false, uv: [0.75, 0, 0.25, 1] }); }
+  // onde ele está sentado (beira da cama, olhando para a porta) e o caminho até a porta
+  const yaw = rot; // local +z (para a porta) vira o "frente" do personagem
+  extras.intro = {
+    sit: [...P(bedL + 0.2, bedZ + 0.62), F], yaw,
+    door: P(0.6, D / 2 - 0.2), out: P(0.6, D / 2 + 3.2), out2: P(0.6, D / 2 + 6.5),
+    camIn: [...P(W / 2 - 0.4, D / 2 - 0.4), F + 1.7], floor: F,
+    houseW: P(0, 0), nard: P(-W / 2 + 0.55, 1.3),
+  };
+}
+
+// túmulo de Lázaro: rochedo com entrada aberta voltada para a aldeia (oeste) e a pedra afastada
+function lazarusTomb(kit, extras) {
+  const { x, z } = LAZARUS, g = heightAt(x - 3, z), top = g + 4.2;
+  kit.box('cliff', x, z, 6, 7, g - 2, top);
+  kit.box('void', x - 3.02, z, 0.06, 1.1, g, g + 1.5, 0, { solid: false });
+  kit.box('cliff', x - 3.2, z, 0.5, 2.4, g + 1.5, g + 1.9, 0, { solid: false });
+  const st = new THREE.CylinderGeometry(0.85, 0.85, 0.35, 18); st.rotateX(Math.PI / 2); st.rotateY(Math.PI / 2);
+  const uv = st.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i), uv.getY(i));
+  st.translate(x - 3.3, g + 0.85, z + 1.9); kit.geom('cliff', st);
+  kit.solids.add({ x: x - 3.3, z: z + 1.9, hx: 0.2, hz: 0.85, rot: 0, y0: g, y1: g + 1.7 });
+  for (let i = 0; i < 7; i++) boulder(kit, x - 1 + (rnd() - 0.5) * 5, top - 0.3, z + (rnd() - 0.5) * 6, 1.1 + rnd(), 0.6);
+  extras.lazarus = { x: x - 5.2, z: z - 1.4, face: [x - 3, z], g };
+}
+
 export function buildSites(kit, extras) {
+  lazarusTomb(kit, extras);
+  introHouse(kit, extras);
   golgotha(kit, extras);
   gardenTomb(kit, extras);
   lookout(kit, extras);

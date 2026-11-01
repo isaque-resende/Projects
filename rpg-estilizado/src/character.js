@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 // =====================================================================================
 //  Personagem: judeu do séc. I. Corpo base (rosto, olhos, sobrancelhas) + cabelo longo e barba
@@ -73,6 +74,18 @@ function mantleTex() {
       }
     }
   });
+}
+// versão em tons de cinza do manto, para tingir cada pessoa com uma cor
+let neutralCache = null;
+export function neutralMantle() {
+  if (neutralCache) return neutralCache;
+  const src = mantleTex().image, c = document.createElement('canvas'); c.width = src.width; c.height = src.height;
+  const x = c.getContext('2d'); x.drawImage(src, 0, 0);
+  const img = x.getImageData(0, 0, c.width, c.height), d = img.data;
+  for (let i = 0; i < d.length; i += 4) { const l = Math.min(255, (d[i] * 0.3 + d[i + 1] * 0.59 + d[i + 2] * 0.11) * 1.9); d[i] = d[i + 1] = d[i + 2] = l; }
+  x.putImageData(img, 0, 0);
+  neutralCache = new THREE.CanvasTexture(c); neutralCache.wrapS = neutralCache.wrapT = THREE.RepeatWrapping; neutralCache.colorSpace = THREE.SRGBColorSpace;
+  return neutralCache;
 }
 function sashTex() {
   return canvasTexture(128, 64, (ctx, w, h) => {
@@ -202,6 +215,7 @@ function skinned(info, body, { positions, uvs, index, si, sw }, material) {
   m.position.copy(body.position); m.quaternion.copy(body.quaternion); m.scale.copy(body.scale);
   body.parent.add(m);
   m.bind(body.skeleton, body.bindMatrix);
+  (body.userData.garments ??= []).push(m);
   return m;
 }
 // grade (linhas x colunas) -> triângulos
@@ -241,8 +255,9 @@ function tunicTop(info, body, mat) {
     uvs.push(info.pos[i * 3] * 1.5, info.pos[i * 3 + 1] * 1.5 + info.pos[i * 3 + 2] * 1.5);
     si.push(info.SI.getX(i), info.SI.getY(i), info.SI.getZ(i), info.SI.getW(i));
     sw.push(info.SW.getX(i), info.SW.getY(i), info.SW.getZ(i), info.SW.getW(i));
-    map.set(i, k); return k;
+    map.set(i, k); orig.push(i); return k;
   };
+  const orig = [];
   for (let t = 0; t < tri.length; t += 3) {
     const [a, b, c] = [tri[t], tri[t + 1], tri[t + 2]];
     if (pickV(a) && pickV(b) && pickV(c)) index.push(vid(a), vid(b), vid(c));
@@ -265,6 +280,13 @@ function tunicTop(info, body, mat) {
       const n = nb[v].size;
       positions[v * 3] += (ax / n - cur[v * 3]) * k; positions[v * 3 + 1] += (ay / n - cur[v * 3 + 1]) * k; positions[v * 3 + 2] += (az / n - cur[v * 3 + 2]) * k;
     }
+  }
+  // a suavização encolhe ombros e peito: empurra de volta para ficar sempre por fora da pele
+  for (let v = 0; v < nV; v++) {
+    const i = orig[v], nx = info.N.getX(i), ny = info.N.getY(i), nz = info.N.getZ(i);
+    const d = (positions[v * 3] - info.pos[i * 3]) * nx + (positions[v * 3 + 1] - info.pos[i * 3 + 1]) * ny + (positions[v * 3 + 2] - info.pos[i * 3 + 2]) * nz;
+    const need = 0.026 - d;
+    if (need > 0) { positions[v * 3] += nx * need; positions[v * 3 + 1] += ny * need; positions[v * 3 + 2] += nz * need; }
   }
   return skinned(info, body, { positions, uvs, index, si: new Uint16Array(si), sw: new Float32Array(sw) }, mat);
 }
@@ -299,17 +321,26 @@ function tunicSkirt(info, body, grid, mat) {
     for (let c = 0; c < cols; c++) {
       const ang = (c / cols) * Math.PI * 2;
       const fold = 1 + (0.02 + 0.07 * t) * Math.sin(ang * 7 + 0.6) * 0.5 + 0.018 * t * Math.sin(ang * 13);
-      const rad = (radius[r][c] + 0.03 + 0.11 * t * t) * fold;
+      const rad = (radius[r][c] + 0.045 + 0.12 * t * t) * fold;
       positions.push(Math.cos(ang) * rad, y, Math.sin(ang) * rad);
       uvs.push(c / cols * 2.5, t * 1.6);
     }
   }
   const { si, sw } = transferWeights(info, grid, positions, 8);
+  const pelvis = info.names.indexOf('pelvis');
+  for (let v = 0; v < positions.length / 3; v++) {
+    const t = Math.floor(v / cols) / (rows - 1), k = 0.32 - 0.2 * t; // topo mais preso ao quadril
+    const acc = new Map();
+    for (let c = 0; c < 4; c++) if (sw[v * 4 + c] > 0) acc.set(si[v * 4 + c], (acc.get(si[v * 4 + c]) || 0) + sw[v * 4 + c] * (1 - k));
+    acc.set(pelvis, (acc.get(pelvis) || 0) + k);
+    const top = [...acc].sort((a, b) => b[1] - a[1]).slice(0, 4), sum = top.reduce((q, e) => q + e[1], 0);
+    for (let c = 0; c < 4; c++) { si[v * 4 + c] = top[c] ? top[c][0] : 0; sw[v * 4 + c] = top[c] ? top[c][1] / sum : 0; }
+  }
   const m = skinned(info, body, { positions, uvs, index: gridIndex(rows, cols, true), si, sw }, mat);
   m.userData.radius = (y, ang) => { // raio externo da saia (para pendurar o cinto)
     const t = THREE.MathUtils.clamp((y - yTop) / (yHem - yTop), 0, 1), r = Math.round(t * (rows - 1));
     const c = Math.round((((ang % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)) / (Math.PI * 2) * cols) % cols;
-    return (radius[r][c] + 0.03 + 0.11 * t * t);
+    return (radius[r][c] + 0.045 + 0.12 * t * t);
   };
   m.userData.yTop = yTop;
   return m;
@@ -467,8 +498,60 @@ function sandals(info, body, grid, mat) {
   return out;
 }
 
+function headCover(info, body, mat) {
+  const B = info.bone; let top = 0;
+  for (let i = 0; i < info.n; i++) if (/^Head/.test(info.dom[i])) top = Math.max(top, info.pos[i * 3 + 1]);
+  const hz = B.Head.z, neckY = B.spine_03.y - 0.03;
+  const pickV = (i) => {
+    const d = info.dom[i], y = info.pos[i * 3 + 1], z = info.pos[i * 3 + 2], x = Math.abs(info.pos[i * 3]);
+    if (!/^(Head|neck|spine_03|spine_02|clavicle|upperarm)/.test(d) || y < neckY || x > 0.24) return false;
+    if (z > hz + 0.035 && y < top - 0.045 && y > B.Head.y - 0.06 && x < 0.075) return false; // rosto
+    return true;
+  };
+  const tri = info.g.index.array, map = new Map(), positions = [], uvs = [], si = [], sw = [], index = [];
+  const vid = (i) => {
+    if (map.has(i)) return map.get(i);
+    const k = positions.length / 3, y = info.pos[i * 3 + 1], o = y > B.Head.y - 0.02 ? 0.05 : 0.055;
+    positions.push(info.pos[i * 3] + info.N.getX(i) * o, y + info.N.getY(i) * o, info.pos[i * 3 + 2] + info.N.getZ(i) * o);
+    uvs.push(info.pos[i * 3] * 2 + 0.5, y * 2);
+    si.push(info.SI.getX(i), info.SI.getY(i), info.SI.getZ(i), info.SI.getW(i)); sw.push(info.SW.getX(i), info.SW.getY(i), info.SW.getZ(i), info.SW.getW(i));
+    map.set(i, k); return k;
+  };
+  for (let t = 0; t < tri.length; t += 3) { const [a, b, c] = [tri[t], tri[t + 1], tri[t + 2]]; if (pickV(a) && pickV(b) && pickV(c)) index.push(vid(a), vid(b), vid(c)); }
+  return skinned(info, body, { positions, uvs, index, si: new Uint16Array(si), sw: new Float32Array(sw) }, mat);
+}
+
+// afunda o corpo onde há roupa por cima (a pele não atravessa o tecido nas animações)
+function hideUnderClothes(info, body) {
+  const B = info.bone, elbowX = Math.abs(B.lowerarm_l.x), wristX = Math.abs(B.hand_l.x), cuffX = elbowX + (wristX - elbowX) * 0.4;
+  const P = body.geometry.attributes.position, neckY = B.neck_01.y - 0.01, ankle = B.foot_l.y + 0.08;
+  for (let i = 0; i < info.n; i++) {
+    const d = info.dom[i], x = Math.abs(info.pos[i * 3]), y = info.pos[i * 3 + 1];
+    if (HANDS.test(d) || /^(Head|neck|foot|ball)/.test(d) || y > neckY || y < ankle || x > cuffX) continue;
+    const k = /^thigh/.test(d) ? 0.065 : /^calf/.test(d) ? (y > ankle + 0.12 ? 0.035 : 0.01) : 0.028;
+    P.setXYZ(i, info.pos[i * 3] - info.N.getX(i) * k, y - info.N.getY(i) * k, info.pos[i * 3 + 2] - info.N.getZ(i) * k);
+  }
+  P.needsUpdate = true;
+}
+
+// junta as peças de roupa de mesmo material numa só malha (menos draw calls)
+function mergeGarments(body) {
+  const groups = new Map();
+  for (const m of body.userData.garments || []) (groups.get(m.material) ?? groups.set(m.material, []).get(m.material)).push(m);
+  for (const [mat, list] of groups) {
+    if (list.length < 2) continue;
+    const g = mergeGeometries(list.map((m) => m.geometry), false);
+    const merged = new THREE.SkinnedMesh(g, mat);
+    merged.castShadow = true; merged.receiveShadow = true; merged.frustumCulled = false;
+    merged.position.copy(body.position); merged.quaternion.copy(body.quaternion); merged.scale.copy(body.scale);
+    body.parent.add(merged); merged.bind(body.skeleton, body.bindMatrix);
+    for (const m of list) { m.removeFromParent(); m.geometry.dispose(); }
+  }
+  body.userData.garments = [];
+}
+
 // liga uma malha com esqueleto próprio (cabelo/barba) aos ossos do corpo, pelo nome
-function rebind(srcRoot, body, tint) {
+function rebind(srcRoot, body, tint, part) {
   const meshes = [];
   srcRoot.traverse((o) => { if (o.isSkinnedMesh) meshes.push(o); });
   const byName = {}; body.skeleton.bones.forEach((b) => { byName[b.name] = b; });
@@ -479,14 +562,14 @@ function rebind(srcRoot, body, tint) {
     if (tint) { mat.color = new THREE.Color(tint); mat.roughness = 0.75; }
     mat.side = THREE.DoubleSide; mat.alphaTest = Math.max(mat.alphaTest || 0, 0.35); mat.transparent = false;
     const m = new THREE.SkinnedMesh(src.geometry, mat);
-    m.castShadow = true; m.frustumCulled = false;
+    m.castShadow = true; m.frustumCulled = false; m.userData.part = part;
     m.position.copy(body.position); m.quaternion.copy(body.quaternion); m.scale.copy(body.scale);
     body.parent.add(m);
     m.bind(skel, body.bindMatrix);
   }
 }
 
-export function buildHero({ baseGltf, hairGltf, beardGltf }) {
+export function buildHero({ baseGltf, hairGltf, beardGltf, female = false, cover = false, colors = {} }) {
   const root = baseGltf.scene;
   root.updateMatrixWorld(true);
   let body = null;
@@ -495,24 +578,30 @@ export function buildHero({ baseGltf, hairGltf, beardGltf }) {
 
   const info = analyze(body);
   const normal = weaveNormal();
-  const linen = new THREE.MeshStandardMaterial({ map: linenTex(), normalMap: normal, normalScale: new THREE.Vector2(0.12, 0.12), roughness: 0.92, side: THREE.DoubleSide });
-  const wool = new THREE.MeshStandardMaterial({ map: mantleTex(), normalMap: normal, normalScale: new THREE.Vector2(0.5, 0.5), roughness: 0.96, side: THREE.DoubleSide, alphaTest: 0.5 });
-  const sashM = new THREE.MeshStandardMaterial({ map: sashTex(), normalMap: normal, normalScale: new THREE.Vector2(0.4, 0.4), roughness: 0.9, side: THREE.DoubleSide });
-  const leather = new THREE.MeshStandardMaterial({ map: leatherTex(), roughness: 0.65, color: 0xffffff });
+  const linen = new THREE.MeshStandardMaterial({ name: 'tunic', map: linenTex(), normalMap: normal, normalScale: new THREE.Vector2(0.12, 0.12), roughness: 0.92, side: THREE.DoubleSide, color: colors.tunic ?? 0xffffff });
+  const wool = new THREE.MeshStandardMaterial({ name: 'mantle', map: mantleTex(), normalMap: normal, normalScale: new THREE.Vector2(0.5, 0.5), roughness: 0.96, side: THREE.DoubleSide, alphaTest: 0.5, color: colors.mantle ?? 0xffffff });
+  const sashM = new THREE.MeshStandardMaterial({ name: 'sash', map: sashTex(), normalMap: normal, normalScale: new THREE.Vector2(0.4, 0.4), roughness: 0.9, side: THREE.DoubleSide, color: colors.sash ?? 0xffffff });
+  const leather = new THREE.MeshStandardMaterial({ name: 'leather', map: leatherTex(), roughness: 0.65 });
+  const veil = new THREE.MeshStandardMaterial({ name: 'veil', map: linenTex(), normalMap: normal, normalScale: new THREE.Vector2(0.2, 0.2), roughness: 0.95, side: THREE.DoubleSide, color: colors.veil ?? 0x9fb0c8 });
 
   const all = (i) => !HANDS.test(info.dom[i]) && !/^Head/.test(info.dom[i]);
   const grid = makeGrid(info, all);
+  const torsoGrid = makeGrid(info, (i) => /^(spine|pelvis|clavicle|neck)/.test(info.dom[i]));
   const legsGrid = makeGrid(info, (i) => /^(pelvis|spine_01|thigh|calf|foot|ball)/.test(info.dom[i]));
 
   tunicTop(info, body, linen);
   const skirt = tunicSkirt(info, body, legsGrid, linen);
   sash(info, body, grid, sashM, skirt);
-  mantle(info, body, grid, wool);
+  mantle(info, body, torsoGrid, wool);
   sandals(info, body, makeGrid(info, (i) => /^(foot|ball|calf)_/.test(info.dom[i]), 0.03), leather);
+  if (cover) headCover(info, body, veil);
+  hideUnderClothes(info, body);
+  mergeGarments(body);
 
-  rebind(hairGltf.scene, body, 0x2a1a10);
-  rebind(beardGltf.scene, body, 0x2a1a10);
-  // sobrancelhas do corpo base: mesmo tom
-  root.traverse((o) => { if (o.isMesh && /Hair/.test(o.material?.name || '')) { o.material = o.material.clone(); o.material.color = new THREE.Color(0x2a1a10); } });
+  const hairC = colors.hair ?? 0x2a1a10;
+  if (hairGltf && !cover) rebind(hairGltf.scene, body, hairC, 'hair');
+  if (beardGltf) rebind(beardGltf.scene, body, hairC, 'beard');
+  root.traverse((o) => { if (o.isMesh && /Hair/.test(o.material?.name || '')) { o.material = o.material.clone(); o.material.color = new THREE.Color(hairC); } });
+  root.userData.body = body;
   return root;
 }

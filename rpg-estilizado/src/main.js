@@ -19,6 +19,8 @@ import { buildSites } from './world/sites.js';
 import { makeFlora, floraTime } from './world/flora.js';
 import { makeAnimals, makeEffects } from './world/life.js';
 import { PLACES } from './world/layout.js';
+import { makeStory, reservedSpots } from './story.js';
+import { clone as skClone } from 'three/examples/jsm/utils/SkeletonUtils.js';
 
 const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
 if (isTouch) document.body.classList.add('touch');
@@ -50,7 +52,8 @@ document.body.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
 const FOG = new THREE.Color(0xe6cbbf);
 scene.fog = new THREE.FogExp2(FOG, 0.0016);
-const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.1, 3200);
+const fovFor = (a) => (a < 1 ? 55 + (1 - a) * 40 : 55); // tela em pé: campo de visão mais aberto
+const camera = new THREE.PerspectiveCamera(fovFor(innerWidth / innerHeight), innerWidth / innerHeight, 0.1, 3200);
 
 // ---------- carregamento ----------
 const bar = document.querySelector('#bar i');
@@ -69,8 +72,8 @@ async function loadSky() {
   return tick(t);
 }
 status('carregando modelos e texturas…');
-const [natureGltf, baseGltf, hairGltf, beardGltf, animGltf, donkeyGltf, sheepGltf, hdr, mats] = await Promise.all([
-  load('nature'), load('hero_base'), load('hair_long'), load('hair_beard'), load('animations'), load('donkey'), load('sheep'),
+const [natureGltf, baseGltf, hairGltf, beardGltf, animGltf, donkeyGltf, sheepGltf, femaleGltf, hdr, mats] = await Promise.all([
+  load('nature'), load('hero_base'), load('hair_long'), load('hair_beard'), load('animations'), load('donkey'), load('sheep'), load('hero_female'),
   loadSky(),
   loadMaterials(texLoader, { anisotropy: lowQuality ? 4 : 8 }),
 ]);
@@ -143,6 +146,7 @@ const houses = buildCity(kit, extras);
 buildSites(kit, extras);
 kit.finish(scene);
 status('plantando oliveiras…'); await nextFrame();
+extras.reserved = reservedSpots(extras);
 const flora = makeFlora(scene, natureGltf, solids, extras, { lowQuality });
 const animals = makeAnimals(scene, { sheepGltf, donkeyGltf }, extras, solids);
 const effects = makeEffects(scene, extras, M);
@@ -151,6 +155,8 @@ M.lit.emissiveIntensity = 2.2;
 // ---------- personagem ----------
 status('vestindo o peregrino…'); await nextFrame();
 const hero = buildHero({ baseGltf, hairGltf, beardGltf });
+const maleTpl = skClone(hero);   // molde para os homens (antes de animar)
+const femaleTpl = buildHero({ baseGltf: femaleGltf, cover: true, colors: { tunic: 0xd8c8a6, veil: 0x8a9cb8, mantle: 0xb0a090 } });
 const player = new THREE.Group(); player.add(hero); scene.add(player);
 const mixer = new THREE.AnimationMixer(hero);
 const clips = Object.fromEntries(animGltf.animations.map((c) => [c.name, c]));
@@ -180,27 +186,36 @@ function teleport(x, z, lookX, lookZ, y) {
 const mir = PLACES.find((q) => q.id === 'mirante');
 const startAt = () => { teleport(mir.spawn[0], mir.spawn[1], 30, -7); pitch = 0.26; dist = 8.5; };
 startAt();
-if (qs.has('at')) { const p = PLACES.find((q) => q.id === qs.get('at')); if (p?.spawn) teleport(p.spawn[0], p.spawn[1], ...(p.look || [p.x, p.z])); }
 
 // ---------- pós-processamento ----------
 const rt = new THREE.WebGLRenderTarget(innerWidth, innerHeight, { type: THREE.HalfFloatType, samples: lowQuality ? 2 : 4 });
 const composer = new EffectComposer(renderer, rt);
+const grade = { tDiffuse: { value: null }, uMem: { value: 0 }, uFade: { value: 0 }, uFlash: { value: 0 }, uDark: { value: 0 }, uTime: { value: 0 } };
 composer.addPass(new RenderPass(scene, camera));
 composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth / 2, innerHeight / 2), 0.22, 0.55, 0.95));
 composer.addPass(new OutputPass());
-composer.addPass(new ShaderPass({
-  uniforms: { tDiffuse: { value: null } },
+const gradePass = new ShaderPass({
+  uniforms: grade,
   vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }',
-  fragmentShader: `uniform sampler2D tDiffuse; varying vec2 vUv;
+  // etalonagem + efeitos de memória: sépia avermelhada, escuridão, grão, clarão branco, tela preta
+  fragmentShader: `uniform sampler2D tDiffuse; uniform float uMem, uFade, uFlash, uDark, uTime; varying vec2 vUv;
+    float rnd(vec2 p){ return fract(sin(dot(p, vec2(12.9898,78.233)) + uTime * 7.) * 43758.5453); }
     void main(){ vec4 c = texture2D(tDiffuse, vUv); float l = dot(c.rgb, vec3(.299,.587,.114));
       c.rgb = mix(vec3(l), c.rgb, 1.14);
       c.rgb += vec3(.03,.012,-.012) * smoothstep(.45,1.,l);
       c.rgb += vec3(-.01,-.004,.03) * (1. - smoothstep(.0,.42,l));
-      vec2 d = vUv - .5; c.rgb *= 1. - dot(d,d) * .7; gl_FragColor = c; }`,
-}));
+      vec3 mem = vec3(l) * vec3(1.08,.82,.66); mem = (mem - .5) * 1.25 + .5;
+      c.rgb = mix(c.rgb, mem, uMem) * (1. - uDark * .6);
+      c.rgb += (rnd(vUv * 900.) - .5) * .09 * uMem;
+      vec2 d = vUv - .5; c.rgb *= 1. - dot(d,d) * (.7 + uMem * 1.6);
+      c.rgb = mix(c.rgb, vec3(1.,.97,.9), uFlash * .85);
+      c.rgb *= 1. - uFade; gl_FragColor = c; }`,
+});
+composer.addPass(gradePass);
+for (const k of Object.keys(grade)) grade[k] = gradePass.uniforms[k]; // a história mexe nos uniforms reais do passe
 addEventListener('resize', () => {
   renderer.setSize(innerWidth, innerHeight); composer.setSize(innerWidth, innerHeight);
-  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  camera.aspect = innerWidth / innerHeight; camera.fov = fovFor(camera.aspect); camera.updateProjectionMatrix();
 });
 
 // ---------- interface: nome do lugar e mapa ----------
@@ -219,12 +234,22 @@ for (const p of PLACES.filter((q) => q.spawn)) {
 document.querySelector('#mapBtn').addEventListener('click', () => { menu.hidden = !menu.hidden; });
 document.querySelector('#closeMenu').addEventListener('click', () => { menu.hidden = true; });
 
+// ---------- história (prólogo) ----------
+const story = makeStory({
+  scene, camera, solids, heightAt, extras, clips, maleTpl, femaleTpl, M, player, hero, play, grade, isTouch,
+  setHeroYaw: (y) => { heroYaw = y; hero.rotation.y = y; },
+  resetCam: (y) => { yaw = y; pitch = 0.22; dist = 6.5; camTarget.copy(player.position).add(tmpV.set(0, 1.55, 0)); visY = player.position.y; },
+});
+
 // ---------- loop ----------
 const WALK = 1.7, JOG = 4.2, SPRINT = 7.0, R = 0.36;
 const clock = new THREE.Clock();
 const mv = new THREE.Vector3(), tmpV = new THREE.Vector3(), dirV = new THREE.Vector3();
 function step(dt) {
   const inp = input.poll();
+  const st = story.update(dt, inp, clock.elapsedTime);
+  grade.uTime.value = clock.elapsedTime;
+  if (st.lock) { inp.ix = inp.iy = 0; inp.jump = false; inp.kneel = false; if (st.cam) { inp.look.x = inp.look.y = 0; } }
   yaw -= inp.look.x; pitch = THREE.MathUtils.clamp(pitch + inp.look.y, -0.35, 1.25); dist = THREE.MathUtils.clamp(dist + inp.zoom, 2.5, 22);
   if (inp.kneel) kneel = !kneel;
   const mag = Math.min(1, Math.hypot(inp.ix, inp.iy));
@@ -234,6 +259,7 @@ function step(dt) {
   const target = mag < 0.05 ? 0 : mag < 0.5 ? WALK : inp.run ? SPRINT : JOG;
   speed = THREE.MathUtils.damp(speed, target, 10, dt);
   const p = player.position;
+  if (st.cam) speed = 0;
   if (speed > 0.05) {
     let nx = p.x + mv.x * speed * dt, nz = p.z + mv.z * speed * dt;
     const dh = heightAt(nx, nz) - heightAt(p.x, p.z), dd = Math.hypot(nx - p.x, nz - p.z);
@@ -245,7 +271,7 @@ function step(dt) {
     heroYaw += d * Math.min(1, dt * 12); hero.rotation.y = heroYaw;
   }
   // chão: terreno ou topo de caixa alcançável (degrau); cai se não houver apoio
-  const gy = solids.groundAt(p.x, p.z, p.y);
+  const gy = st.cam ? p.y : solids.groundAt(p.x, p.z, p.y);
   if (inp.jump && grounded && !kneel) { vy = 6.6; grounded = false; }
   if (grounded && gy < p.y - 0.65) grounded = false;
   if (!grounded) {
@@ -255,7 +281,8 @@ function step(dt) {
   visY = THREE.MathUtils.damp(visY, p.y, 22, dt); if (Math.abs(visY - p.y) > 1.2) visY = p.y;
   hero.position.y = visY - p.y;                                           // o corpo suaviza o degrau
   landT -= dt;
-  if (kneel) play('Fixing_Kneeling', { fade: 0.4, speed: 0.15 });
+  if (st.cam) { /* a história controla a animação */ }
+  else if (kneel) play('Fixing_Kneeling', { fade: 0.4, speed: 0.15 });
   else if (!grounded) play(vy > 1 ? 'Jump_Start' : 'Jump_Loop', { once: vy > 1, fade: 0.12 });
   else if (landT > 0) play('Jump_Land', { once: true, fade: 0.08 });
   else if (speed > 0.15) {
@@ -274,8 +301,8 @@ function step(dt) {
     if (solids.blocked(camTarget.x + dirV.x * t, camTarget.y + dirV.y * t, camTarget.z + dirV.z * t)) { free = Math.max(0.6, t - 0.5); break; }
   }
   camPos.copy(camTarget).addScaledVector(dirV, free);
-  camera.position.lerp(camPos, free < dist ? 1 : 1 - Math.exp(-14 * dt));
-  camera.lookAt(camTarget);
+  if (st.cam) { camera.position.copy(st.cam.pos); camera.lookAt(st.cam.look); camTarget.copy(p).add(tmpV.set(0, 1.55, 0)); }
+  else { camera.position.lerp(camPos, free < dist ? 1 : 1 - Math.exp(-14 * dt)); camera.lookAt(camTarget); }
 
   sun.position.copy(p).addScaledVector(SUN_DIR, 180); sun.target.position.copy(p);
   const t = clock.elapsedTime;
@@ -287,7 +314,7 @@ function step(dt) {
   // nome do lugar ao entrar
   let best = null, bd = Infinity;
   for (const pl of PLACES) { const d = Math.hypot(p.x - pl.x, p.z - pl.z); if (d < pl.r && d / pl.r < bd) { bd = d / pl.r; best = pl; } }
-  if (best && best !== placeNow) showPlace(best);
+  if (best && best !== placeNow && !st.cam) showPlace(best);
   placeNow = best;
   labelT -= dt; if (labelT < 0) label.classList.remove('on');
 }
@@ -298,8 +325,12 @@ function frame() {
 }
 bar.style.width = '100%';
 document.querySelector('#loading').classList.add('done');
+// começa pela introdução (?at=lugar ou ?intro=0 pulam direto para o jogo)
+if (qs.has('at')) { story.skipIntro(); const p = PLACES.find((q) => q.id === qs.get('at')); if (p?.spawn) teleport(p.spawn[0], p.spawn[1], ...(p.look || [p.x, p.z])); }
+else if (qs.get('intro') === '0') story.skipIntro();
+else story.startIntro();
 window.__game = {
-  player, camera, scene, solids, extras, houses, flora, teleport,
+  player, camera, scene, solids, extras, houses, flora, teleport, story,
   setCam: (y, p, d) => { yaw = y; pitch = p; dist = d; },
   advance: (n = 1, dt = 1 / 30) => { for (let i = 0; i < n; i++) step(dt); composer.render(); },
   view: (px, py, pz, tx, ty, tz) => { camera.position.set(px, py, pz); camera.lookAt(tx, ty, tz); composer.render(); },

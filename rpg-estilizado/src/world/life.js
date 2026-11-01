@@ -36,7 +36,7 @@ export function makeAnimals(scene, { sheepGltf, donkeyGltf }, extras, solids) {
   const clips = Object.fromEntries(donkeyGltf.animations.map((c) => [c.name, c]));
   const dBox = new THREE.Box3().setFromObject(donkeyGltf.scene), dk = 1.35 / dBox.getSize(new THREE.Vector3()).y;
   const mkDonkey = () => { const d = skClone(donkeyGltf.scene); d.scale.setScalar(dk); d.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } }); scene.add(d); return d; };
-  for (const [x, z, anim] of [[VILLAGE.x - 12, VILLAGE.z + 6, 'Eating'], [VILLAGE.x + 8, VILLAGE.z - 14, 'Idle_Headlow'], [-86, -96, 'Idle']]) {
+  for (const [x, z, anim] of [[VILLAGE.x + 4, VILLAGE.z + 13, 'Eating'], [VILLAGE.x + 13, VILLAGE.z - 9, 'Idle_Headlow'], [-86, -96, 'Idle']]) {
     const d = mkDonkey(); d.position.set(x, heightAt(x, z), z); d.rotation.y = rnd() * 6.28;
     const mx = new THREE.AnimationMixer(d); mx.clipAction(clips[anim] || donkeyGltf.animations[0]).play(); mx.update(rnd() * 3);
     updaters.push((t, dt) => mx.update(dt));
@@ -47,7 +47,7 @@ export function makeAnimals(scene, { sheepGltf, donkeyGltf }, extras, solids) {
     const L = []; let tot = 0; for (let i = 0; i < road.length - 1; i++) { const l = Math.hypot(road[i + 1][0] - road[i][0], road[i + 1][1] - road[i][1]); L.push(l); tot += l; }
     let s = 30, dir = 1;
     updaters.push((t, dt) => {
-      mx.update(dt); s += dir * dt * 1.1; if (s > tot - 2 || s < 2) dir *= -1;
+      mx.update(dt); s += dir * dt * 1.1; if (s > tot - 2) { s = tot - 2; dir = -1; } else if (s < 2) { s = 2; dir = 1; } // sem inverter a cada quadro
       let u = s, i = 0; while (i < L.length - 1 && u > L[i]) { u -= L[i]; i++; }
       const [ax, az] = road[i], [bx, bz] = road[i + 1], f = u / L[i], x = ax + (bx - ax) * f + 1.2, z = az + (bz - az) * f;
       d.position.set(x, heightAt(x, z), z); d.rotation.y = Math.atan2((bx - ax) * dir, (bz - az) * dir);
