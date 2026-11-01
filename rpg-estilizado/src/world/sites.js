@@ -137,9 +137,11 @@ function lookout(kit, extras) {
   for (let k = -2; k <= 2; k++) for (const [ox, oz] of [[k * 1.1, -2.35], [k * 1.1, 2.35], [2.35, k * 1.1]]) kit.box('walls', tx + ox, tz + oz, 0.5, 0.45, TH + 1.05, TH + 1.6, 0, { solid: false });
   kit.box('void', tx - 2.52, tz + 1.2, 0.08, 1.1, T, T + 2.1, 0, { solid: false });
   kit.stairs('walls', tx + 0.6, tz + 3.4, 1.6, 4.4, T, T + 3.5, -Math.PI / 2);   // lance 1: lado sul, sobe para oeste
-  kit.box('walls', tx - 2.5, tz + 3.4, 3.4, 1.8, T, T + 3.5);                     // patamar
+  kit.box('walls', tx - 3.7, tz + 3.4, 3.0, 1.8, T, T + 3.5);                     // patamar
   kit.stairs('walls', tx - 3.4, tz + 0.5, 1.6, 4.8, T + 3.5, TH, Math.PI);        // lance 2: lado oeste, sobe para norte
-  kit.box('walls', tx - 3.4, tz - 2.4, 1.8, 1.4, T, TH);                          // chegada ao terraço da torre
+  kit.box('walls', tx - 3.4, tz - 2.2, 1.8, 0.7, T, TH);                          // chegada ao terraço da torre
+  kit.box('walls', tx - 3.4, tz - 2.7, 1.8, 0.3, TH, TH + 1.05);                   // parapeitos da chegada
+  kit.box('walls', tx - 4.45, tz - 2.2, 0.3, 0.7, TH, TH + 1.05);
   extras.viewpoint = [tx, TH + 1.6, tz];
 }
 

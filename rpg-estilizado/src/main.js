@@ -150,11 +150,11 @@ play('Idle_Loop');
 
 // ---------- entrada / câmera ----------
 const input = makeInput(renderer.domElement, isTouch);
-let yaw = 0, pitch = 0.18, dist = 6.5, heroYaw = 0, vy = 0, grounded = true, landT = 0, kneel = false, speed = 0;
+let yaw = 0, pitch = 0.18, dist = 6.5, heroYaw = 0, vy = 0, grounded = true, landT = 0, kneel = false, speed = 0, visY = 0;
 const camTarget = new THREE.Vector3(), camPos = new THREE.Vector3();
 function teleport(x, z, lookX, lookZ, y) {
   const gy = y ?? solids.groundAt(x, z, heightAt(x, z) + 30);
-  player.position.set(x, gy, z);
+  player.position.set(x, gy, z); visY = gy;
   heroYaw = Math.atan2(lookX - x, lookZ - z); hero.rotation.y = heroYaw;
   yaw = heroYaw + Math.PI; vy = 0; grounded = true; kneel = false;
   camTarget.set(x, gy + 1.55, z);
@@ -234,7 +234,9 @@ function step(dt) {
   if (!grounded) {
     vy -= 20 * dt; p.y += vy * dt;
     if (p.y <= gy && vy <= 0) { p.y = gy; grounded = true; landT = vy < -7 ? 0.35 : 0.15; vy = 0; }
-  } else p.y = THREE.MathUtils.damp(p.y, gy, gy > p.y ? 25 : 18, dt);
+  } else p.y = gy > p.y ? gy : THREE.MathUtils.damp(p.y, gy, 18, dt); // sobe degrau na hora (física)
+  visY = THREE.MathUtils.damp(visY, p.y, 22, dt); if (Math.abs(visY - p.y) > 1.2) visY = p.y;
+  hero.position.y = visY - p.y;                                           // o corpo suaviza o degrau
   landT -= dt;
   if (kneel) play('Fixing_Kneeling', { fade: 0.4, speed: 0.15 });
   else if (!grounded) play(vy > 1 ? 'Jump_Start' : 'Jump_Loop', { once: vy > 1, fade: 0.12 });
