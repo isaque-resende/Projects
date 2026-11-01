@@ -1,13 +1,13 @@
 // Entrada unificada: teclado + mouse no desktop; joystick virtual + botões + arrastar no celular.
 export function makeInput(canvas, touch) {
   const keys = new Set();
-  let jumpQ = false, attackQ = false, runHeld = false;
+  let jumpQ = false, kneelQ = false, runHeld = false;
   const look = { x: 0, y: 0 }; let zoom = 0;
 
   addEventListener('keydown', (e) => {
     keys.add(e.code);
     if (e.code === 'Space') { jumpQ = true; e.preventDefault(); }
-    if (e.code === 'KeyF') attackQ = true;
+    if (e.code === 'KeyF' || e.code === 'KeyK') kneelQ = true;
   });
   addEventListener('keyup', (e) => keys.delete(e.code));
   addEventListener('blur', () => keys.clear());
@@ -15,7 +15,6 @@ export function makeInput(canvas, touch) {
   // arrastar para girar a câmera (mouse ou dedo fora do joystick/botões)
   const drags = new Map();
   canvas.addEventListener('pointerdown', (e) => {
-    if (e.pointerType === 'mouse' && e.button === 0) attackQ = attackQ || false;
     drags.set(e.pointerId, { x: e.clientX, y: e.clientY });
     canvas.setPointerCapture(e.pointerId);
   });
@@ -30,7 +29,6 @@ export function makeInput(canvas, touch) {
   canvas.addEventListener('pointercancel', end);
   canvas.addEventListener('wheel', (e) => { zoom += Math.sign(e.deltaY) * 0.8; e.preventDefault(); }, { passive: false });
   canvas.addEventListener('contextmenu', (e) => e.preventDefault());
-  canvas.addEventListener('dblclick', () => { attackQ = true; });
 
   // joystick virtual
   const stickV = { x: 0, y: 0 };
@@ -57,7 +55,7 @@ export function makeInput(canvas, touch) {
       if (off) { el.addEventListener('pointerup', () => off(el)); el.addEventListener('pointercancel', () => off(el)); }
     };
     press('#bJump', () => { jumpQ = true; });
-    press('#bAtk', () => { attackQ = true; });
+    press('#bKneel', () => { kneelQ = true; });
     let runToggle = false;
     press('#bRun', (el) => { runToggle = !runToggle; runHeld = runToggle; el.classList.toggle('on', runToggle); });
   }
@@ -72,10 +70,10 @@ export function makeInput(canvas, touch) {
       const out = {
         ix, iy,
         run: keys.has('ShiftLeft') || keys.has('ShiftRight') || runHeld,
-        jump: jumpQ, attack: attackQ,
+        jump: jumpQ, kneel: kneelQ,
         look: { x: look.x, y: look.y }, zoom,
       };
-      jumpQ = attackQ = false; look.x = look.y = 0; zoom = 0;
+      jumpQ = kneelQ = false; look.x = look.y = 0; zoom = 0;
       return out;
     },
   };
