@@ -1,0 +1,19 @@
+{
+  "name": "rpg-estilizado",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vite build",
+    "preview": "vite preview --host"
+  },
+  "dependencies": {
+    "three": "^0.170.0"
+  },
+  "devDependencies": {
+    "@gltf-transform/cli": "^4.1.0",
+    "sharp": "^0.33.5",
+    "vite": "^6.0.0"
+  }
+}
