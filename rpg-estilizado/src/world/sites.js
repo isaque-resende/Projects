@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { GOLGOTHA, TOMB, LOOKOUT, GETHSEMANE, VILLAGE, INTRO_HOUSE, KIDRON, roadDist } from './layout.js';
+import { GOLGOTHA, TOMB, LOOKOUT, GETHSEMANE, VILLAGE, INTRO_HOUSE, LAZARUS, KIDRON, roadDist } from './layout.js';
 import { heightAt, fbm, tombFloor } from './terrain.js';
 import { toWorld } from './city.js';
 
@@ -121,7 +121,8 @@ function gardenTomb(kit, extras) {
   kit.cyl('fieldStone', wx, wz, 1.1, wg - 0.5, wg + 0.8, { seg: 14 });
   kit.box('darkWood', wx, wz, 2.4, 0.12, wg + 2.1, wg + 2.25, 0, { solid: false });
   for (const s of [-1, 1]) kit.box('darkWood', wx + s * 1.1, wz, 0.12, 0.12, wg + 0.8, wg + 2.25, 0, { solid: false });
-  kit.box('fieldStone', X - 8, FZ + 6, 2, 0.6, heightAt(X - 8, FZ + 6), heightAt(X - 8, FZ + 6) + 0.5);
+  kit.box('fieldStone', X - 8, FZ + 6, 2, 0.6, heightAt(X - 8, FZ + 6), heightAt(X - 8, FZ + 6) + 0.47);
+  extras.bench = [X - 8, heightAt(X - 8, FZ + 6), FZ + 6];
   extras.gardens.push({ x: X, z: FZ + 9, r: 14 });
 }
 
@@ -204,7 +205,7 @@ function countryside(kit, extras) {
   const pts = [];
   for (let i = 0; i < 26 && pts.length < 15; i++) {
     const a = rnd() * 6.28, r = 6 + rnd() * 24, x = VILLAGE.x + Math.cos(a) * r, z = VILLAGE.z + Math.sin(a) * r;
-    if (pts.some(([px, pz]) => Math.hypot(px - x, pz - z) < 9) || roadDist(x, z) < 5 || Math.hypot(x - INTRO_HOUSE.x, z - INTRO_HOUSE.z) < 11) continue;
+    if (pts.some(([px, pz]) => Math.hypot(px - x, pz - z) < 9) || roadDist(x, z) < 5 || Math.hypot(x - INTRO_HOUSE.x, z - INTRO_HOUSE.z) < 11 || Math.hypot(x - LAZARUS.x, z - LAZARUS.z) < 12) continue;
     pts.push([x, z]);
   }
   for (const [x, z] of pts) {
@@ -311,11 +312,26 @@ function introHouse(kit, extras) {
     sit: [...P(bedL + 0.2, bedZ + 0.62), F], yaw,
     door: P(0.6, D / 2 - 0.2), out: P(0.6, D / 2 + 3.2), out2: P(0.6, D / 2 + 6.5),
     camIn: [...P(W / 2 - 0.4, D / 2 - 0.4), F + 1.7], floor: F,
-    houseW: P(0, 0),
+    houseW: P(0, 0), nard: P(-W / 2 + 0.55, 1.3),
   };
 }
 
+// túmulo de Lázaro: rochedo com entrada aberta voltada para a aldeia (oeste) e a pedra afastada
+function lazarusTomb(kit, extras) {
+  const { x, z } = LAZARUS, g = heightAt(x - 3, z), top = g + 4.2;
+  kit.box('cliff', x, z, 6, 7, g - 2, top);
+  kit.box('void', x - 3.02, z, 0.06, 1.1, g, g + 1.5, 0, { solid: false });
+  kit.box('cliff', x - 3.2, z, 0.5, 2.4, g + 1.5, g + 1.9, 0, { solid: false });
+  const st = new THREE.CylinderGeometry(0.85, 0.85, 0.35, 18); st.rotateX(Math.PI / 2); st.rotateY(Math.PI / 2);
+  const uv = st.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i), uv.getY(i));
+  st.translate(x - 3.3, g + 0.85, z + 1.9); kit.geom('cliff', st);
+  kit.solids.add({ x: x - 3.3, z: z + 1.9, hx: 0.2, hz: 0.85, rot: 0, y0: g, y1: g + 1.7 });
+  for (let i = 0; i < 7; i++) boulder(kit, x - 1 + (rnd() - 0.5) * 5, top - 0.3, z + (rnd() - 0.5) * 6, 1.1 + rnd(), 0.6);
+  extras.lazarus = { x: x - 5.2, z: z - 1.4, face: [x - 3, z], g };
+}
+
 export function buildSites(kit, extras) {
+  lazarusTomb(kit, extras);
   introHouse(kit, extras);
   golgotha(kit, extras);
   gardenTomb(kit, extras);

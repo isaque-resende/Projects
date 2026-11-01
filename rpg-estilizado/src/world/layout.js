@@ -10,6 +10,7 @@ export const TOMB = { x: -40, z: -150 };                                 // coli
 export const LOOKOUT = { x: 180, z: -10 };                               // mirante no Monte das Oliveiras
 export const GETHSEMANE = { x: 128, z: -6 };
 export const VILLAGE = { x: 262, z: 40 };   // Betânia: encosta leste do Monte das Oliveiras
+export const LAZARUS = { x: 292, z: 34 };   // túmulo de Lázaro, na saída leste de Betânia
 export const INTRO_HOUSE = { x: 250, z: 49, rot: -Math.PI / 2 };   // porta voltada para oeste (para Jerusalém)
 export const KIDRON = (z) => 114 + Math.sin(z * 0.018) * 7;              // leito do vale do Cedrom
 

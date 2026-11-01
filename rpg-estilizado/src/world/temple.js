@@ -206,6 +206,8 @@ export function buildTemple(kit, extras) {
   kit.box('paving', (R.x0 + WX) / 2 + 1, ZC + 0, WX - R.x0 - wt, R.z1 - R.z0 - wt * 2, CHEL - 0.2, ISRAEL);
   // grade baixa separando Israel dos sacerdotes
   for (const [za, zb] of [[R.z0 + wt, ZC - 2.5], [ZC + 2.5, R.z1 - wt]]) kit.box('temple', 47, (za + zb) / 2, 0.4, zb - za, ISRAEL, ISRAEL + 1.0);
+  kit.box('temple', 47, ZC, 0.4, 5, ISRAEL, ISRAEL + 1.0); // a passagem fica fechada: só sacerdotes entram
+  kit.solids.add({ x: 47, z: ZC, hx: 0.25, hz: (R.z1 - R.z0) / 2, rot: 0, y0: ISRAEL - 0.5, y1: ISRAEL + 3.2 });
   // câmaras ao longo dos muros (Câmara da Pedra Talhada etc.)
   for (const z of [R.z0 + wt + 3, R.z1 - wt - 3]) for (const x of [10, 18, 26]) {
     kit.box('plasterWarm', x + 2, z, 7, 5.5, ISRAEL, ISRAEL + 7);
