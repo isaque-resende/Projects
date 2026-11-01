@@ -24,7 +24,15 @@ const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in win
 if (isTouch) document.body.classList.add('touch');
 const qs = new URLSearchParams(location.search);
 const lowQuality = isTouch || qs.has('low');
-const BIN = import.meta.env.VITE_BIN ?? '';
+// Build para compartilhar: modelos 3D e céu vêm embutidos em módulos JS (só imagens ficam como arquivos)
+const EMBED = import.meta.env.VITE_EMBED === '1';
+const embedded = import.meta.glob('./embedded/*.js');
+async function embeddedBuffer(name) {
+  const s = (await embedded[`./embedded/${name}.js`]()).default, n = s.length;
+  const bin = atob(s), out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out.buffer;
+}
 const msg = document.querySelector('#msg');
 const status = (t) => { if (msg) msg.textContent = t; };
 const nextFrame = () => new Promise((r) => setTimeout(r, 0));
@@ -50,11 +58,20 @@ const manager = new THREE.LoadingManager();
 manager.onProgress = (_, l, t) => { bar.style.width = `${(l / t) * 80}%`; };
 const gltfLoader = new GLTFLoader(manager).setMeshoptDecoder(MeshoptDecoder);
 const texLoader = new THREE.TextureLoader(manager);
-const load = (n) => gltfLoader.loadAsync(`assets/models/${n}.glb${BIN}`);
+let loaded = 0;
+const tick = (x) => { loaded++; bar.style.width = `${Math.min(80, loaded * 8)}%`; return x; };
+const load = async (n) => tick(EMBED ? await gltfLoader.parseAsync(await embeddedBuffer(n), '') : await gltfLoader.loadAsync(`assets/models/${n}.glb`));
+async function loadSky() {
+  if (!EMBED) return new RGBELoader(manager).loadAsync('assets/sky/sunset.hdr');
+  const d = new RGBELoader().parse(await embeddedBuffer('sunset'));
+  const t = new THREE.DataTexture(d.data, d.width, d.height, THREE.RGBAFormat, d.type);
+  t.colorSpace = THREE.LinearSRGBColorSpace; t.minFilter = t.magFilter = THREE.LinearFilter; t.generateMipmaps = false; t.flipY = true; t.needsUpdate = true;
+  return tick(t);
+}
 status('carregando modelos e texturas…');
 const [natureGltf, baseGltf, hairGltf, beardGltf, animGltf, donkeyGltf, sheepGltf, hdr, mats] = await Promise.all([
   load('nature'), load('hero_base'), load('hair_long'), load('hair_beard'), load('animations'), load('donkey'), load('sheep'),
-  new RGBELoader(manager).loadAsync(`assets/sky/sunset.hdr${BIN}`),
+  loadSky(),
   loadMaterials(texLoader, { anisotropy: lowQuality ? 4 : 8 }),
 ]);
 const { M, ground } = mats;
