@@ -63,6 +63,14 @@ Status: **D** = decidido, **P** = proposta em discussão, **A** = em aberto (ret
 - **D (nota)** Muita intertextualidade (AT↔NT, profeta citando profeta, citações de Moisés) + hebraico: criar recursos e minijogos para isso.
   - **P** Ideias: quadro de ligações com fio vermelho; "ecos" (pegar uma palavra que reaparece em outro texto, ex.: semente/descendência Gn 3:15 → Gn 22:18 → Gl 3:16); árvore de raízes hebraicas de 3 letras; carta-chave do NT que encaixa na fechadura do AT; linha do tempo de "quem cita quem".
 
+## Jerusalém como fase de abertura (rodada B)
+- **D** Jerusalém e arredores viram uma fase de verdade: a saída de Jerusalém.
+- **D** Cartas de personagem/depoimento: cada pessoa (sacerdote, Maria, Marta...) gera uma carta com perfil e o resumo da fala que contribui para o caso. Objetos-chave também.
+- **D** "Chefão" da abertura: na estrada, o estranho aparece e pergunta o que houve; os dois discípulos revisam tudo usando as cartas de Jerusalém. O jogador acerta cada ponto, mas a **conclusão final é inevitavelmente errada** ("nós esperávamos... mas ele morreu"), porque as pistas certas não bastam sem a chave das Escrituras. Aí entra a explicação do estranho, que vira as cartas (segundo lado, profético).
+- **D** Fluxo do prólogo: Cléopas → Marta e Maria em Betânia → algo indica o mirante → interação no parapeito ("contemplar Jerusalém") → passeio panorâmico (aproxima do Templo, 360° nele, depois cada lugar a visitar) → aviso claro de que o MAPA leva direto a qualquer lugar (com corte para o preto, "cortar tempo de viagem").
+- **D** O botão de ajoelhar é cênico, quase sem uso; o botão de interação é o principal.
+- **A** "Algumas correçõezinhas" que o usuário viu ao testar a abertura (pedir a lista).
+
 ## Em aberto (retomar)
 - **A1** Os momentos "uau" de cada fase (o usuário traz ao desenvolver a fase 1).
 - **A2** Tradução bíblica: direitos autorais × legibilidade; possibilidade de tradução própria com o amigo estudante de hebraico.
