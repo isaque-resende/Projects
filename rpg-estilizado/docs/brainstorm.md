@@ -71,6 +71,18 @@ Status: **D** = decidido, **P** = proposta em discussão, **A** = em aberto (ret
 - **D** O botão de ajoelhar é cênico, quase sem uso; o botão de interação é o principal.
 - **A** "Algumas correçõezinhas" que o usuário viu ao testar a abertura (pedir a lista).
 
+## Bloco C — dentro das visões (memórias)
+- **D** Misto: no geral o jogador controla o discípulo; em momentos em que um personagem bíblico age (ex.: Eva, Balaão), o jogador o controla para fazer a história andar, sem mudar o que aconteceu.
+- **D** Cléopas e o estranho vão junto e seguem o jogador. Os três aparecem levemente translúcidos/brilhantes: não são fantasmas, são a memória tomando forma.
+- **D** A história não muda. Não há "tentar avisar Eva". Ações pedagógicas inventadas são permitidas desde que não contradigam o texto (como as entrevistas em Jerusalém). Referência: *Superbook* (eles vivem a história em paralelo e às vezes a ajudam a andar, sem mudá-la).
+- **D** A visão é um **palácio de memórias 3D**: o jogador "desengaveta" memórias interagindo com elas (ativar a fala da serpente, a fala de Deus, a fala de Eva), e o estranho narra e guia, esperando as respostas.
+  - Exemplo (Éden): ouvir o que a serpente disse → comparar com o que Deus disse → puzzle de comparação → Eva diz algo que Deus não disse ("Deus disse isso?") → voltar e ouvir Deus de novo.
+- **D** Balaão: em certo trecho o jogador controla Balaão na jumenta; a história só avança quando ele fala com a jumenta e com o anjo; depois volta ao discípulo.
+
+## Estilo e estrutura (em teste)
+- **P** Recomendação: 3D "livro de histórias" (toon/diorama, câmera alta quase fixa, tocar para andar) + estrada como hub + níveis feitos à mão por profecia; puzzles de ambiente só quando nascem do texto (ex.: o caminho que se estreita na história de Balaão).
+- **D** Próximo passo: mockups rascunho com 3–4 módulos (Betânia, mirante, pátio do Templo com comerciante, beira do Templo), em duas versões: (1) "dungeon" de ambientes ligados e (2) hub/ilhas. Usuário vai mandar referências visuais antes.
+
 ## Em aberto (retomar)
 - **A1** Os momentos "uau" de cada fase (o usuário traz ao desenvolver a fase 1).
 - **A2** Tradução bíblica: direitos autorais × legibilidade; possibilidade de tradução própria com o amigo estudante de hebraico.
