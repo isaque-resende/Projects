@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <title>Jerusalém, Ano 30</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Alegreya+Sans:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root { --ink: #f6ead2; --gold: #e3b766; --shade: #1b1410cc; --sky: #e6cbbf; }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: var(--sky); color: var(--ink); font-family: 'Alegreya Sans', system-ui, sans-serif; touch-action: none; user-select: none; -webkit-user-select: none; }
+    canvas { display: block; width: 100%; height: 100%; }
+    #loading { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: radial-gradient(circle at 50% 40%, #3a2c48, #16101c 70%); color: var(--ink); z-index: 10; transition: opacity .8s; }
+    #loading.done { opacity: 0; pointer-events: none; }
+    #loading h1 { margin: 0; font-family: 'Cinzel', serif; font-weight: 700; letter-spacing: .14em; font-size: clamp(20px, 5vw, 34px); color: var(--gold); text-align: center; }
+    #loading p { margin: 0; font-size: 14px; opacity: .75; letter-spacing: .04em; }
+    #bar { width: min(280px, 70vw); height: 4px; background: #ffffff1f; border-radius: 2px; overflow: hidden; }
+    #bar i { display: block; height: 100%; width: 0; background: var(--gold); transition: width .3s; }
+    #place { position: fixed; left: 50%; top: max(22px, calc(env(safe-area-inset-top) + 12px)); transform: translate(-50%, -8px); text-align: center; pointer-events: none; opacity: 0; transition: opacity .9s, transform .9s; text-shadow: 0 2px 12px #0009; }
+    #place.on { opacity: 1; transform: translate(-50%, 0); }
+    #place b { display: block; font-family: 'Cinzel', serif; font-weight: 700; letter-spacing: .12em; font-size: clamp(17px, 4.2vw, 28px); color: #fff4dc; }
+    #place span { display: block; width: 120px; height: 1px; margin: 8px auto 0; background: linear-gradient(90deg, transparent, var(--gold), transparent); }
+    #hint { position: fixed; left: 16px; bottom: 14px; color: #fff; font-size: 13px; text-shadow: 0 1px 3px #000a; opacity: .85; pointer-events: none; }
+    body.touch #hint { display: none; }
+    #mapBtn { position: fixed; right: max(14px, env(safe-area-inset-right)); top: max(14px, env(safe-area-inset-top)); z-index: 5; font: 600 13px 'Alegreya Sans', sans-serif; letter-spacing: .08em; color: var(--ink); background: var(--shade); border: 1px solid #e3b76666; border-radius: 20px; padding: 9px 16px; }
+    #mapBtn:focus-visible, #menu button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+    #menu { position: fixed; right: max(14px, env(safe-area-inset-right)); top: calc(max(14px, env(safe-area-inset-top)) + 46px); z-index: 6; width: min(300px, calc(100vw - 28px)); background: #1b1410ee; border: 1px solid #e3b76655; border-radius: 12px; padding: 12px; box-shadow: 0 10px 30px #0008; }
+    #menu h2 { margin: 2px 4px 10px; font: 700 13px 'Cinzel', serif; letter-spacing: .14em; color: var(--gold); display: flex; justify-content: space-between; align-items: center; }
+    #menu h2 button { background: none; border: 0; color: var(--ink); font-size: 18px; padding: 0 4px; }
+    #places { display: grid; gap: 6px; }
+    #places button { text-align: left; font: 500 15px 'Alegreya Sans', sans-serif; color: var(--ink); background: #ffffff0d; border: 1px solid #ffffff14; border-radius: 8px; padding: 9px 12px; }
+    #places button:hover { background: #e3b76626; }
+    #touch { display: none; }
+    body.touch #touch { display: block; }
+    #stick { position: fixed; left: max(16px, env(safe-area-inset-left)); bottom: max(24px, env(safe-area-inset-bottom)); width: 130px; height: 130px; border-radius: 50%; background: #ffffff1f; border: 2px solid #ffffff55; }
+    #knob { position: absolute; left: 50%; top: 50%; width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: 50%; background: #ffffffaa; box-shadow: 0 2px 8px #0005; }
+    .btn { position: fixed; width: 68px; height: 68px; border-radius: 50%; background: #1b141055; border: 2px solid #ffffff77; color: #fff; font-weight: 600; display: flex; align-items: center; justify-content: center; font-size: 11.5px; letter-spacing: .04em; text-shadow: 0 1px 2px #0008; }
+    #bJump { right: max(22px, env(safe-area-inset-right)); bottom: max(34px, env(safe-area-inset-bottom)); }
+    #bKneel { right: max(100px, calc(env(safe-area-inset-right) + 78px)); bottom: max(78px, env(safe-area-inset-bottom)); }
+    #bRun { right: max(22px, env(safe-area-inset-right)); bottom: max(114px, calc(env(safe-area-inset-bottom) + 80px)); }
+    .btn.on { background: #e3b766aa; }
+  </style>
+</head>
+<body>
+  <div id="loading"><h1>JERUSALÉM · ANO 30</h1><div id="bar"><i></i></div><p id="msg">carregando…</p></div>
+  <div id="place"><b>Monte das Oliveiras</b><span></span></div>
+  <button id="mapBtn" type="button">MAPA</button>
+  <div id="menu" hidden><h2>IR PARA <button id="closeMenu" type="button" aria-label="Fechar">×</button></h2><div id="places"></div></div>
+  <div id="hint">WASD mover · Shift correr · Espaço pular · F ajoelhar · arraste para girar a câmera · roda para zoom</div>
+  <div id="touch">
+    <div id="stick"><div id="knob"></div></div>
+    <div class="btn" id="bRun">CORRER</div>
+    <div class="btn" id="bKneel">AJOELHAR</div>
+    <div class="btn" id="bJump">PULAR</div>
+  </div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

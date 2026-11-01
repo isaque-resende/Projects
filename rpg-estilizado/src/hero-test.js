@@ -1,0 +1,27 @@
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
+import { buildHero } from './character.js';
+const q = new URLSearchParams(location.search);
+const r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+r.setSize(innerWidth, innerHeight); r.shadowMap.enabled = true; r.toneMapping = THREE.ACESFilmicToneMapping; document.body.appendChild(r.domElement);
+const s = new THREE.Scene(); s.background = new THREE.Color(0xcbb59a);
+const cam = new THREE.PerspectiveCamera(35, innerWidth / innerHeight, 0.05, 50);
+s.add(new THREE.HemisphereLight(0xdfe8ff, 0x8a6a4a, 1.2));
+const sun = new THREE.DirectionalLight(0xffe2b8, 2.6); sun.position.set(2, 4, 3); sun.castShadow = true; s.add(sun);
+const ground = new THREE.Mesh(new THREE.CircleGeometry(4, 32).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xa08a68 })); ground.receiveShadow = true; s.add(ground);
+const L = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder); const ld = (u) => L.loadAsync(u);
+const [base, hair, beard, anim] = await Promise.all(['hero_base', 'hair_long', 'hair_beard', 'animations'].map((n) => ld(`assets/models/${n}.glb`)));
+const t0 = performance.now();
+const hero = buildHero({ baseGltf: base, hairGltf: hair, beardGltf: beard });
+console.log('build ms', Math.round(performance.now() - t0));
+s.add(hero);
+const mixer = new THREE.AnimationMixer(hero);
+const name = q.get('anim') || 'Idle_Loop';
+const clip = anim.animations.find((c) => c.name === name);
+if (clip) { const a = mixer.clipAction(clip); a.play(); mixer.update(+(q.get('t') || 0.5)); }
+const view = q.get('view') || 'front', z = +(q.get('zoom') || 1);
+const views = { front: [0, 1.1, 4.2], side: [4.2, 1.1, 0], back: [0, 1.1, -4.2], face: [0.35, 1.62, 1.1], q34: [2.6, 1.3, 3.2] };
+const v = views[view]; cam.position.set(v[0] / z, v[1], v[2] / z); cam.lookAt(0, view === 'face' ? 1.6 : 0.95, 0);
+r.render(s, cam);
+window.__ready = true;
