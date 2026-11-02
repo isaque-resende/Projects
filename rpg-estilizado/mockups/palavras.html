@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Palavras que se Parecem</title>
+<style>
+  :root { --ink:#f3e6c8; --muted:#bfae88; --gold:#e3b766; --stone:#3a332b; --ok:#8fd17a; --bad:#e0563f; --bg:#15110d; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; background:radial-gradient(circle at 50% 0,#2c241b,var(--bg) 70%); color:var(--ink); font:16px/1.45 Georgia, 'Times New Roman', serif; min-height:100vh; }
+  main { max-width:760px; margin:0 auto; padding:16px 12px 40px; }
+  h1 { margin:0; font-size:22px; letter-spacing:.12em; color:var(--gold); text-align:center; }
+  .sub { text-align:center; color:var(--muted); font-style:italic; margin:4px 0 14px; }
+  .help { color:var(--muted); font-size:14px; border-left:3px solid var(--gold); padding:6px 10px; margin:10px 0; }
+  .stone { background:repeating-linear-gradient(45deg,#3d352c 0 6px,#39312a 6px 12px); border:2px solid #5b4f40; border-radius:12px; padding:14px; display:flex; justify-content:center; gap:10px; flex-wrap:wrap; }
+  .w { cursor:pointer; border-radius:10px; padding:10px 12px; min-width:120px; text-align:center; background:#2a241d; border:2px dashed #6d5f4b; transition:transform .15s; }
+  .w:hover { transform:translateY(-2px); }
+  .w .h { font-size:30px; direction:rtl; font-family:'SBL Hebrew','Ezra SIL','Times New Roman',serif; color:#f7e7b8; }
+  .w .tr { font-size:13px; color:var(--muted); }
+  .w .m { font-size:15px; margin-top:4px; min-height:1.2em; }
+  .w.hyp { border-style:dashed; border-color:var(--gold); }
+  .w.hyp .m::after { content:' ?'; color:var(--gold); }
+  .w.ok { border:2px solid var(--ok); box-shadow:0 0 18px rgba(143,209,122,.35); }
+  .w.sel { outline:3px solid #fff; }
+  .panel { margin-top:14px; background:#221c16; border:1px solid #5b4f40; border-radius:12px; padding:14px; }
+  .panel[hidden] { display:none; }
+  .opts { display:flex; flex-wrap:wrap; gap:8px; margin:8px 0; }
+  button { font:600 15px Georgia, serif; color:var(--ink); background:#2b2017; border:2px solid #6d5a3a; border-radius:9px; padding:9px 12px; cursor:pointer; }
+  button.on { border-color:var(--gold); background:#4a3a20; }
+  button.go { background:#6e2418; border-color:var(--bad); color:#fff; }
+  .ctx { background:#efe0bd; color:#2b1d0e; border-radius:8px; padding:10px 12px; margin:8px 0; }
+  .ctx small { color:#6d4f1f; display:block; }
+  .ctx mark { background:#ffd98a; padding:0 3px; border-radius:3px; }
+  .ctx.bad mark { background:#f3a08f; text-decoration:line-through; }
+  .note { margin-top:8px; padding:8px 10px; border-radius:8px; font-size:15px; }
+  .note.bad { background:rgba(224,86,63,.15); border-left:3px solid var(--bad); }
+  .note.ok { background:rgba(143,209,122,.12); border-left:3px solid var(--ok); }
+  .slots { display:flex; gap:8px; margin:10px 0; }
+  .slot { flex:1; min-height:74px; border:2px dashed #6d5f4b; border-radius:10px; padding:6px; text-align:center; font-size:13px; color:var(--muted); }
+  .slot b { display:block; color:var(--ink); font-size:16px; margin-top:6px; }
+  .letters { font-size:28px; direction:rtl; text-align:center; letter-spacing:.15em; margin:6px 0; }
+  .letters i { color:var(--gold); font-style:normal; }
+  .names { display:grid; gap:8px; }
+  .nm { background:#efe0bd; color:#2b1d0e; border-radius:8px; padding:8px 10px; }
+  .nm .who { font-size:12px; color:#6d4f1f; }
+  .nm .pick { display:flex; gap:6px; margin-top:6px; flex-wrap:wrap; }
+  .nm .pick button { color:#2b1d0e; background:#fff8e6; border-color:#b9a06a; font-size:14px; padding:5px 8px; }
+  .nm .pick button.on { background:#2b2017; color:#fff; }
+  .nm.ok { outline:3px solid var(--ok); }
+  .special { margin-top:14px; border-radius:12px; padding:16px; text-align:center; color:#2b1d0e; background:radial-gradient(circle at 50% 0,#ffdf9a,#c58b2e); box-shadow:0 0 30px rgba(255,190,90,.45); }
+  h2 { color:var(--gold); font-size:16px; letter-spacing:.15em; margin:22px 0 6px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>PALAVRAS QUE SE PARECEM</h1>
+  <div class="sub">Mockup · tradução por contexto (estilo Heaven's Vault) · Gn 2–3</div>
+
+  <h2>1 · A INSCRIÇÃO</h2>
+  <div class="help">Três palavras hebraicas quase iguais. Toque numa, proponha um sentido (vira hipótese) e teste a hipótese nos dois contextos em que a palavra aparece. Só é confirmada se encaixar nos dois.</div>
+  <div class="stone" id="stone"></div>
+  <div class="panel" id="panel" hidden></div>
+
+  <div id="p2" hidden>
+    <h2>2 · A ORDEM</h2>
+    <div class="help">Coloque as três palavras na ordem em que acontecem na história. Toque numa palavra da pedra e depois num espaço.</div>
+    <div class="slots" id="slots"></div>
+    <div id="p2note"></div>
+  </div>
+
+  <div id="p3" hidden>
+    <h2>3 · OS NOMES DE DEUS</h2>
+    <div class="help">Em hebraico, o Criador aparece com dois nomes: <b>יְהוָה אֱלֹהִים</b> (<i>YHWH Elohim</i>, “o SENHOR Deus”, o nome pessoal) e <b>אֱלֹהִים</b> (<i>Elohim</i>, “Deus”, o termo genérico). Que nome cada um usa?</div>
+    <div class="names" id="names"></div>
+    <div id="p3note"></div>
+  </div>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const OPTS = ['nus', 'sagaz', 'maldita', 'mau', 'envergonhados', 'bendita'];
+const W = [
+  { id:0, h:'עֲרוּמִּים', tr:'ʿărûmmîm', a:'nus',
+    ctx:[{ ref:'Gn 2:25', s:'Ambos estavam ___, o homem e sua mulher, e não se envergonhavam.' },
+         { ref:'Gn 3:7', s:'Abriram-se os olhos de ambos e perceberam que estavam ___ (forma parecida: ʿêrummîm).' }],
+    why:{ envergonhados:'Encaixa em 3:7, mas não em 2:25: lá eles “não se envergonhavam”. A vergonha é justamente o que muda.',
+         sagaz:'“Ambos estavam sagazes e não se envergonhavam”? A esperteza é da serpente, não do casal antes da queda.' } },
+  { id:1, h:'עָרוּם', tr:'ʿārûm', a:'sagaz',
+    ctx:[{ ref:'Gn 3:1', s:'A serpente era a mais ___ de todos os animais do campo.' },
+         { ref:'Pv 12:23', s:'O homem ___ encobre o conhecimento.' }],
+    why:{ mau:'Encaixa em 3:1, mas não em Provérbios: lá a mesma palavra é elogio (“prudente”). Sozinha, ela não é “má”. O que pesa é o contraste com o casal “nu”.',
+         maldita:'A maldição vem depois (3:14). Em Provérbios, a palavra descreve alguém prudente.' } },
+  { id:2, h:'אָרוּר', tr:'ʾārûr', a:'maldita',
+    ctx:[{ ref:'Gn 3:14', s:'Visto que isso fizeste, ___ és entre todos os animais.' },
+         { ref:'Gn 3:17', s:'___ é a terra por tua causa.' }],
+    why:{ sagaz:'“Sagaz é a terra por tua causa”? Não encaixa. O som é parecido, mas o sentido mudou.',
+         bendita:'É o contrário: é uma sentença, não uma bênção.' } },
+];
+let cur = null, pick = null;
+
+function drawStone() {
+  $('stone').innerHTML = W.map((w) => `<div class="w ${w.ok ? 'ok' : w.hyp ? 'hyp' : ''} ${pick === w.id ? 'sel' : ''}" data-id="${w.id}">
+    <div class="h">${w.h}</div><div class="tr">${w.tr}</div><div class="m">${w.ok ? w.a : w.hyp || '—'}</div></div>`).join('');
+  $('stone').querySelectorAll('.w').forEach((el) => el.onclick = () => {
+    const w = W[+el.dataset.id];
+    if (!$('p2').hidden && !W.every((x) => x.placed !== undefined)) { pick = w.id; drawStone(); return; }
+    open(w);
+  });
+}
+function open(w) {
+  cur = w; const p = $('panel'); p.hidden = false;
+  const fill = (s, bad) => s.replace('___', `<mark>${w.ok ? w.a : w.hyp || '___'}</mark>`);
+  p.innerHTML = `<div><b>${w.tr}</b> · ${w.ok ? 'confirmada' : w.hyp ? 'hipótese' : 'desconhecida'}</div>
+    ${w.ok ? '' : `<div class="opts">${OPTS.map((o) => `<button class="${w.hyp === o ? 'on' : ''}" data-o="${o}">${o}</button>`).join('')}</div>`}
+    ${w.ctx.map((c, i) => `<div class="ctx" id="c${i}"><small>${c.ref}</small>${fill(c.s)}</div>`).join('')}
+    ${w.ok || !w.hyp ? '' : '<button class="go" id="test">Testar nos dois contextos</button>'}<div id="note"></div>`;
+  p.querySelectorAll('[data-o]').forEach((b) => b.onclick = () => { w.hyp = b.dataset.o; drawStone(); open(w); });
+  if ($('test')) $('test').onclick = test;
+}
+function test() {
+  const w = cur;
+  if (w.hyp === w.a) {
+    w.ok = true; drawStone(); open(w);
+    $('note').innerHTML = `<div class="note ok">Encaixa nos dois contextos. <b>${w.tr} = ${w.a}</b> confirmada.</div>`;
+    if (W.every((x) => x.ok)) setTimeout(() => { $('p2').hidden = false; drawSlots(); $('p2').scrollIntoView({ behavior:'smooth' }); }, 900);
+  } else {
+    $(w.id === 0 ? 'c0' : 'c1').classList.add('bad');
+    $('note').innerHTML = `<div class="note bad">${w.why[w.hyp] || `Leia a frase com “${w.hyp}” nos dois contextos. Em um deles ela não faz sentido.`}</div>`;
+  }
+}
+
+// ---- 2 · a ordem ----
+const SL = ['antes da queda (2:25)', 'a tentação (3:1)', 'a sentença (3:14)'];
+const order = [null, null, null];
+function drawSlots() {
+  $('slots').innerHTML = SL.map((s, i) => `<div class="slot" data-i="${i}">${s}${order[i] !== null ? `<b>${W[order[i]].tr}<br>${W[order[i]].a}</b>` : ''}</div>`).join('');
+  $('slots').querySelectorAll('.slot').forEach((el) => el.onclick = () => {
+    if (pick === null) return;
+    const i = +el.dataset.i; order.forEach((v, k) => { if (v === pick) order[k] = null; });
+    order[i] = pick; W[pick].placed = i; pick = null; drawStone(); drawSlots(); checkOrder();
+  });
+}
+function checkOrder() {
+  if (order.includes(null)) return;
+  if (order.join() !== '0,1,2') { $('p2note').innerHTML = '<div class="note bad">Não é bem essa a sequência. A nudez sem vergonha vem antes de tudo; a sentença vem por último.</div>'; return; }
+  $('p2note').innerHTML = `<div class="note ok"><b>Inocência → esperteza → maldição.</b><br>
+    A serpente prometeu: “sereis como Deus” (3:5). Mas eles ficaram como a serpente: os olhos se abriram e perceberam que estavam nus, agora com vergonha (3:7).</div>
+    <div class="letters">ע<i>רוּם</i> · א<i>רוּר</i></div>
+    <div class="note ok"><b>ʿārûm</b> (sagaz) e <b>ʾārûr</b> (maldita) soam quase iguais. Ela era “mais sagaz que todos os animais”, e agora é “maldita mais que todos os animais”, com as mesmas palavras. <b>A esperteza virou a maldição dela.</b></div>`;
+  setTimeout(() => { $('p3').hidden = false; drawNames(); $('p3').scrollIntoView({ behavior:'smooth' }); }, 1200);
+}
+
+// ---- 3 · os nomes ----
+const N = [
+  { who:'Narrador · Gn 3:1', s:'…todos os animais que [?] tinha feito.', a:'y' },
+  { who:'Serpente · Gn 3:1', s:'É assim que [?] disse: Não comereis de toda árvore do jardim?', a:'e' },
+  { who:'Mulher · Gn 3:3', s:'…disse [?]: Dele não comereis, nem tocareis nele.', a:'e' },
+  { who:'Narrador · Gn 3:8', s:'Ouviram a voz de [?], que andava no jardim.', a:'y' },
+];
+const NAME = { y:'o SENHOR Deus · יְהוָה אֱלֹהִים', e:'Deus · אֱלֹהִים' };
+function drawNames() {
+  $('names').innerHTML = N.map((n, i) => `<div class="nm ${n.ok ? 'ok' : ''}"><div class="who">${n.who}</div>${n.s.replace('[?]', `<b>${n.ans ? NAME[n.ans].split(' · ')[0] : '[ ? ]'}</b>`)}
+    <div class="pick">${['y', 'e'].map((k) => `<button class="${n.ans === k ? 'on' : ''}" data-i="${i}" data-k="${k}">${NAME[k]}</button>`).join('')}</div></div>`).join('');
+  $('names').querySelectorAll('button').forEach((b) => b.onclick = () => { const n = N[+b.dataset.i]; n.ans = b.dataset.k; n.ok = false; drawNames(); checkNames(); });
+}
+function checkNames() {
+  if (N.some((n) => !n.ans)) return;
+  const wrong = N.find((n) => n.ans !== n.a);
+  if (wrong) {
+    $('p3note').innerHTML = `<div class="note bad">${wrong.who.startsWith('Narrador')
+      ? 'O narrador nunca abandona o nome pessoal: para ele, é sempre “o SENHOR Deus”, quem forma, sopra, planta e conversa.'
+      : 'Repare em quem está falando. Quem conversa com Deus de perto usa o nome pessoal. E quem quer afastá-lo?'}</div>`;
+    return;
+  }
+  N.forEach((n) => n.ok = true); drawNames();
+  $('p3note').innerHTML = `<div class="note ok">O narrador diz <b>o SENHOR Deus</b>. A serpente diz só <b>Deus</b>, uma divindade distante. E a mulher, sem perceber, <b>responde no mesmo tom</b>: o nome pessoal some da conversa antes de qualquer fruto.</div>
+    <div class="special"><small>CARTA ESPECIAL</small><h3 style="margin:4px 0">Palavras que se parecem</h3>
+    <b>Nus → sagaz → maldita</b>: prometeram ser como Deus e viraram como a serpente.<br>E o Deus pessoal virou “um deus”: a distância começa no nome.</div>`;
+}
+drawStone();
+</script>
+</body>
+</html>

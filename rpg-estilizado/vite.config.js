@@ -18,6 +18,8 @@ export default defineConfig({
         octopath: page('mockups/octopath.html'),
         vault: page('mockups/vault.html'),
         dissedeus: page('mockups/disse-deus.html'),
+        verbos: page('mockups/verbos.html'),
+        palavras: page('mockups/palavras.html'),
       },
     },
   },

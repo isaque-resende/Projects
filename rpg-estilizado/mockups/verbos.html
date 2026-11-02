@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Os Verbos do Criador</title>
+<style>
+  :root { --ink:#2b1d0e; --paper:#f1e2bf; --paper2:#e6d1a2; --gold:#b8862d; --red:#a8321f; --bg:#1a130d; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.45 Georgia, 'Times New Roman', serif; }
+  main { max-width:760px; margin:0 auto; padding:16px 12px 120px; }
+  .book { background:linear-gradient(90deg,#d9c38f,var(--paper) 6%,var(--paper) 94%,#d9c38f); border-radius:6px; padding:18px 16px 22px; box-shadow:0 10px 40px rgba(0,0,0,.6), inset 0 0 60px rgba(120,80,20,.25); }
+  h1 { margin:0; font-size:22px; letter-spacing:.12em; text-align:center; }
+  .sub { text-align:center; font-style:italic; margin:4px 0 14px; opacity:.8; }
+  h2 { font-size:15px; letter-spacing:.2em; text-transform:uppercase; margin:18px 0 6px; border-bottom:1px solid #b9a06a; color:#6d4f1f; }
+  .row { display:grid; grid-template-columns:62px 1fr; gap:8px; align-items:start; padding:8px 6px; border-radius:6px; position:relative; transition:background .3s; }
+  .row:nth-child(odd) { background:rgba(255,255,255,.18); }
+  .ref { font-size:13px; color:#6d4f1f; padding-top:6px; }
+  .t { font-size:16px; }
+  select { font:600 15px Georgia, serif; color:var(--red); background:#fff8e6; border:2px dashed #b9a06a; border-radius:6px; padding:3px 4px; margin:0 2px; }
+  .ctxb { border:0; background:none; cursor:pointer; font-size:15px; padding:0 4px; opacity:.7; }
+  .ctx { display:none; font-size:14px; font-style:italic; margin-top:4px; color:#5a4220; }
+  .row.open .ctx { display:block; }
+  .row.locked select { border:2px solid var(--gold); color:#1d5a1d; background:#f4ecd2; pointer-events:none; }
+  .row.locked::after { content:'✓'; position:absolute; right:8px; top:6px; color:#1d5a1d; font:700 22px sans-serif; animation:stamp .5s; }
+  @keyframes stamp { 0%{transform:scale(3);opacity:0} 100%{transform:scale(1);opacity:1} }
+  .row.flash { background:rgba(184,134,45,.45) !important; }
+  .bar { position:fixed; left:0; right:0; bottom:0; background:rgba(20,14,9,.96); color:#f6ead2; padding:10px 12px max(12px, env(safe-area-inset-bottom)); }
+  .bar .in { max-width:760px; margin:0 auto; display:flex; gap:10px; align-items:center; }
+  .bar .msg { flex:1; font-size:14px; min-height:2.6em; }
+  .bar .msg b { color:#e3b766; }
+  .count { font-size:13px; color:#c8b896; }
+  button.go { font:700 15px Georgia, serif; background:#6e2418; color:#fff; border:2px solid #e0563f; border-radius:9px; padding:12px 16px; cursor:pointer; }
+  .help { background:rgba(0,0,0,.08); border-left:3px solid var(--gold); padding:8px 10px; font-size:14px; margin-bottom:6px; }
+  .final { display:none; margin-top:18px; }
+  .final.on { display:block; animation:stamp .6s; }
+  table { width:100%; border-collapse:collapse; font-size:15px; margin:8px 0; }
+  td, th { border-bottom:1px solid #b9a06a; padding:6px; text-align:left; }
+  th { font-size:13px; letter-spacing:.1em; color:#6d4f1f; }
+  .special { margin-top:14px; border-radius:12px; padding:16px; text-align:center; background:radial-gradient(circle at 50% 0,#ffdf9a,#c58b2e); box-shadow:0 0 30px rgba(255,190,90,.45); }
+</style>
+</head>
+<body>
+<main>
+  <div class="book">
+    <h1>OS VERBOS DO CRIADOR</h1>
+    <div class="sub">Mockup · dedução em blocos (estilo Return of the Obra Dinn) · Gn 1–3</div>
+    <div class="help">Quem é o sujeito de cada verbo? Preencha os espaços. Toque em 📜 para ler o contexto.
+      <b>Verificar</b> só confirma quando houver <b>três respostas certas</b> ainda não confirmadas, e não diz quais estão erradas.</div>
+    <div id="sheet"></div>
+    <div class="final" id="final">
+      <h2>O que o livro revela</h2>
+      <table>
+        <tr><th>Verbo</th><th>Gn 1–2</th><th>Gn 3</th></tr>
+        <tr><td>viu que era bom</td><td>Deus (1:31)</td><td><b>a mulher</b> (3:6)</td></tr>
+        <tr><td>deu de comer</td><td>Deus (1:29)</td><td><b>a mulher</b> (3:6)</td></tr>
+        <tr><td>tomou</td><td>Deus (2:15)</td><td><b>a mulher</b> (3:6)</td></tr>
+        <tr><td>fez</td><td>Deus (Gn 1–2)</td><td><b>o casal</b> (3:7) → Deus de novo (3:21)</td></tr>
+      </table>
+      <p>A mulher age com os verbos que até ali eram só do Criador. Ela vê e julga, toma e dá: <b>comer é sentar no trono</b>. O casal "faz" a própria cobertura, mas no fim o verbo volta às mãos de Deus.</p>
+      <div class="special"><small>CARTA ESPECIAL</small><h3 style="margin:4px 0">Os verbos do Criador</h3>Viu, tomou, deu, fez: no Éden eram verbos de Deus. Na queda, a criatura os pega para si.</div>
+    </div>
+  </div>
+</main>
+<div class="bar"><div class="in">
+  <div class="msg" id="msg">Preencha e toque em <b>Verificar</b>.<div class="count" id="count"></div></div>
+  <button class="go" id="check">Verificar</button>
+</div></div>
+
+<script>
+const SUBJ = ['Deus', 'a mulher', 'o homem', 'o casal', 'a serpente'];
+const G = [
+  { verb:'viu que era bom', rows:[
+    { ref:'Gn 1:31', t:['E ', ' viu tudo quanto tinha feito, e eis que era muito bom.'], a:'Deus', ctx:'Fim do sexto dia. A cada dia de Gn 1, quem vê e diz “é bom” é sempre o mesmo.' },
+    { ref:'Gn 3:6', t:['Vendo ', ' que a árvore era boa para se comer, agradável aos olhos…'], a:'a mulher', ctx:'Logo antes (3:4-5), a serpente fala “à mulher”. Quem está diante da árvore?',
+      why:{ 'o homem':'O homem só entra no fim do versículo. Quem olha e julga a árvore é a mulher.', 'a serpente':'A serpente já falou. Quem olha agora é quem foi convencida.' } },
+  ]},
+  { verb:'deu de comer', rows:[
+    { ref:'Gn 1:29', t:['Eis que ', ' vos tenho dado toda erva que dá semente… isso vos será para mantimento.'], a:'Deus', ctx:'Quem fala em Gn 1:29 está dando o alimento ao ser humano.' },
+    { ref:'Gn 3:6', t:['…e ', ' deu também ao marido, e ele comeu.'], a:'a mulher', ctx:'“Tomou do seu fruto, comeu, e deu também ao marido.” Quem deu ao marido?',
+      why:{ 'Deus':'Até aqui só Deus dava o alimento. Aqui quem dá é outra pessoa. É exatamente esse o choque.' } },
+  ]},
+  { verb:'tomou', rows:[
+    { ref:'Gn 2:15', t:['Tomou, pois, ', ' o homem e o colocou no jardim do Éden para o cultivar e o guardar.'], a:'Deus', ctx:'Gn 2: quem forma o homem e o põe no jardim?' },
+    { ref:'Gn 3:6', t:['', ' tomou do seu fruto e comeu.'], a:'a mulher', ctx:'Continuação de “vendo a mulher que a árvore era boa…”.',
+      why:{ 'o homem':'O homem só recebe o fruto depois. Quem toma é quem viu.' } },
+  ]},
+  { verb:'comeu', rows:[
+    { ref:'Gn 3:6', t:['…deu também ao marido, e ', ' comeu.'], a:'o homem', ctx:'O último verbo do versículo. Sem pergunta, sem resistência: só “comeu”.',
+      why:{ 'a mulher':'Ela já comeu antes, no meio do versículo. O último “comeu” é do marido, sem uma palavra.' } },
+  ]},
+  { verb:'fez', rows:[
+    { ref:'Gn 3:7', t:['', ' coseram folhas de figueira e fizeram cintas para si.'], a:'o casal', ctx:'“Abriram-se os olhos de ambos…” Quem percebe a nudez e se cobre?',
+      why:{ 'Deus':'Ainda não. Aqui eles tentam resolver sozinhos, com o que têm na mão. Deus vai “fazer” depois.' } },
+    { ref:'Gn 3:21', t:['Fez ', ' vestimentas de peles para Adão e sua mulher, e os vestiu.'], a:'Deus', ctx:'Depois das sentenças. Quem veste o casal?',
+      why:{ 'o casal':'As folhas eram deles. As peles, não. É o mesmo verbo, mas outro autor.' } },
+  ]},
+];
+const ROWS = G.flatMap((g) => g.rows);
+const $ = (id) => document.getElementById(id);
+let fails = 0;
+
+$('sheet').innerHTML = G.map((g, gi) => `<h2>${g.verb}</h2>` + g.rows.map((r) => {
+  const i = ROWS.indexOf(r);
+  const sel = `<select data-i="${i}"><option value="">  ?  </option>${SUBJ.map((s) => `<option>${s}</option>`).join('')}</select>`;
+  return `<div class="row" id="r${i}"><div class="ref">${r.ref}</div><div><span class="t">${r.t[0]}${sel}${r.t[1]}</span>
+    <button class="ctxb" data-c="${i}" title="contexto">📜</button><div class="ctx">${r.ctx}</div></div></div>`;
+}).join('')).join('');
+document.querySelectorAll('select').forEach((s) => s.onchange = () => { ROWS[s.dataset.i].ans = s.value; });
+document.querySelectorAll('.ctxb').forEach((b) => b.onclick = () => $('r' + b.dataset.c).classList.toggle('open'));
+
+const lockedN = () => ROWS.filter((r) => r.locked).length;
+const say = (h) => { $('msg').innerHTML = h + `<div class="count">${lockedN()}/${ROWS.length} confirmados</div>`; };
+say('Preencha e toque em <b>Verificar</b>.');
+
+$('check').onclick = () => {
+  const good = ROWS.filter((r) => !r.locked && r.ans === r.a);
+  if (good.length >= 3) {
+    fails = 0;
+    good.slice(0, 3).forEach((r, k) => setTimeout(() => {
+      r.locked = true; const el = $('r' + ROWS.indexOf(r)); el.classList.add('locked', 'flash'); setTimeout(() => el.classList.remove('flash'), 700);
+      if (k === 2) done();
+    }, k * 350));
+    return say('<b>Três confirmados.</b> O livro carimba, mas não diz quais eram.');
+  }
+  fails++;
+  const filled = ROWS.filter((r) => !r.locked && r.ans).length;
+  const wrong = ROWS.find((r) => !r.locked && r.ans && r.ans !== r.a);
+  if (filled < 3) return say('Preencha pelo menos três espaços ainda não confirmados.');
+  if (fails >= 2 && wrong) {
+    fails = 0; const el = $('r' + ROWS.indexOf(wrong)); el.classList.add('open', 'flash'); setTimeout(() => el.classList.remove('flash'), 900);
+    el.scrollIntoView({ behavior:'smooth', block:'center' });
+    return say(`<b>Cléopas:</b> ${(wrong.why && wrong.why[wrong.ans]) || 'Releia o contexto desta frase. Quem está agindo ali?'}`);
+  }
+  say('Ainda não há três respostas certas juntas. Revise. (Na próxima tentativa, Cléopas aponta uma pista.)');
+};
+function done() {
+  say(`<b>${lockedN()}/${ROWS.length}</b> confirmados.`);
+  if (lockedN() === ROWS.length) { $('final').classList.add('on'); $('final').scrollIntoView({ behavior:'smooth' }); say('<b>Livro completo.</b> Veja o que ele revela.'); }
+}
+</script>
+</body>
+</html>
