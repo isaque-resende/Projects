@@ -83,6 +83,20 @@ Status: **D** = decidido, **P** = proposta em discussão, **A** = em aberto (ret
 - **P** Recomendação: 3D "livro de histórias" (toon/diorama, câmera alta quase fixa, tocar para andar) + estrada como hub + níveis feitos à mão por profecia; puzzles de ambiente só quando nascem do texto (ex.: o caminho que se estreita na história de Balaão).
 - **D** Próximo passo: mockups rascunho com 3–4 módulos (Betânia, mirante, pátio do Templo com comerciante, beira do Templo), em duas versões: (1) "dungeon" de ambientes ligados e (2) hub/ilhas. Usuário vai mandar referências visuais antes.
 
+## Referências visuais e kits (rodada de estilo)
+- **D** Mockups jogáveis em `mockups/`: Tunic (salas), The Gardens Between (ilhas), Octopath HD-2D (vila), Heaven's Vault (mapa + tradução). Usuário vai avaliar.
+- **D** Referências do usuário (Pinterest): câmera alta quase de cima, texturas pintadas à mão, mundo modular em blocos/peças.
+- **D** Kits CC0 escolhidos pelo usuário, baixáveis com `bash scripts/fetch-kits.sh` (pasta `kits/`, fora do git): Kenney Mini Arena, Nature Kit, Survival Kit, Retro Textures Fantasy; Quaternius Modular Dungeon, Ultimate Platformer; KayKit Medieval Builder.
+- **A** Quaternius Ultimate Modular Ruins e RPG Characters: só no Google Drive do autor, que respondia "Quota exceeded" em 02/11/2026; baixar manualmente depois.
+
+## Bloco D — mecânica (perguntas enviadas, aguardando respostas)
+- **D12** Dos jogos de referência (Ace Attorney, Outer Wilds, Obra Dinn, Heaven's Vault, Zelda/Tunic, Layton, Slay the Spire), quais mecânicas entram no núcleo?
+- **D13** Além de revisar e responder relatórios, as cartas têm uso ativo em puzzles (chave/fechadura, montar sequência, "virar" o sentido)?
+- **D14** Até onde ir no "puzzle que é teologia" (ex.: calcular as 70 semanas) × puzzles mais leves de ambiente?
+- **D15** Errar: só explicação e nova tentativa, ou existe algum recurso limitado (dicas, "brasa")?
+- **D16** Alguma progressão do personagem além do conhecimento (diário, chama, cartas)?
+- **D17** Tensão sem combate: há perigo/pressão em alguma fase (fuga, tempo, furtividade) ou nenhuma?
+
 ## Em aberto (retomar)
 - **A1** Os momentos "uau" de cada fase (o usuário traz ao desenvolver a fase 1).
 - **A2** Tradução bíblica: direitos autorais × legibilidade; possibilidade de tradução própria com o amigo estudante de hebraico.
