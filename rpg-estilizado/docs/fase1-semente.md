@@ -1,7 +1,16 @@
 # Fase 1 — A semente (Gn 3:15): conteúdo do estudo
 
-Fonte: transcrição automática da live "01 - A semente - (Gn 3) - Cinco profecias messiânicas" (YouTube, ~2h).
-**Conteúdo parcial**: o usuário ainda vai mandar mais material. Não é a palavra final; serve como noção do estudo.
+Fontes:
+- **[Live]** transcrição automática da live "01 - A semente - (Gn 3) - Cinco profecias messiânicas" (YouTube, ~2h);
+- **[Com.]** J. B. Doukhan, comentário a Gn 3 (série *Seventh-day Adventist International Bible Commentary*, *Genesis*, págs. 89–114), incluindo o excurso de R. M. Davidson sobre Gn 3:16 em Ellen White;
+- **[Emaús]** J. B. Doukhan, *On the Way to Emmaus*, introdução e cap. 1, "The Seed".
+
+As fontes [Com.] e [Emaús] estão aqui resumidas com palavras nossas; não copiar trechos longos dos livros para o jogo.
+
+**Regras do usuário para este material:**
+- É o **material definitivo** de Gn 3 (a live junto com o Doukhan). É **base para a montagem**, não verdade automática: cada ponto ainda passa pelo crivo do usuário.
+- **O livro do Doukhan é o esqueleto do jogo, mas só a parte bíblica**: o texto hebraico, os ecos dentro da Bíblia hebraica e o NT. Ficam fora a cultura (mitos do Antigo Oriente), a tradição (Ellen G. White, Pais da Igreja) e os judaísmos (Septuaginta como tradição, Targum, Midrash, Qumran, gematria).
+- **Não seguimos o quiasmo de Gn 3**: a fase segue a **progressão narrativa** do capítulo.
 
 Rótulos (da skill `estudio-de-jogos`, ferramenta 48):
 - **texto**: o que o versículo diz;
@@ -32,6 +41,13 @@ Rótulos (da skill `estudio-de-jogos`, ferramenta 48):
 - **leitura / verificar** "Sagaz" (*ʿārûm*) não é negativo em si; em Provérbios é positivo, e Jesus diz "prudentes como as serpentes" (Mt 10:16).
 - **leitura** Jogo de palavras com Gn 2:25: estavam "nus" (*ʿărûmmîm*) e não se envergonhavam. A semelhança aproxima e ao mesmo tempo opõe: o casal é inocente, a serpente não.
 - **leitura** Gn 3 não diz que a serpente é Satanás; isso só aparece em Ap 12:9. O silêncio é intencional: o foco é a responsabilidade do casal, não "a culpa do diabo". Adão e Eva falam com uma serpente; eles "não leram Apocalipse".
+  - **Tensão entre as fontes.** [Com.] e [Emaús] concordam que o nome não aparece, mas mostram que **o próprio texto indica que é mais que uma cobra**:
+    - o artigo ("a serpente", alguém conhecido);
+    - o "todos" repetido três vezes, com tom universal;
+    - fala, inteligência e conhecimento superiores aos do ser humano;
+    - é a própria serpente, e não a descendência dela, que enfrenta a semente da mulher no futuro;
+    - no AT, a serpente é o inimigo cósmico de Deus (Is 27:1, Leviatã; Sl 74:13-14).
+  - Proposta para o jogo: as duas leituras convivem. O narrador não põe nota de rodapé, e o jogador vai juntando os indícios.
 - **leitura** O texto não estranha um animal que fala, e o ser humano reage com naturalidade. Há o gancho para a fase 2: a jumenta de Balaão.
 - **leitura** A pergunta vem com dupla negativa no hebraico e não dá para responder com "sim" ou "não": ou você vai embora ou entra no diálogo. É um ataque ao pressuposto (a palavra de Deus) feito com uma pergunta, não com uma afirmação.
 - **leitura** **Os nomes de Deus**: o narrador diz "o SENHOR Deus" (YHWH Elohim, nome pessoal, de aliança), a serpente diz só "Deus" (Elohim, termo genérico para divindade). Ela trata Deus como distante e impessoal.
@@ -56,14 +72,14 @@ Rótulos (da skill `estudio-de-jogos`, ferramenta 48):
 - **leitura** A árvore era "santa", no sentido de separada, e pertencia só a Deus.
 - **leitura** **Éden como santuário** (os dois apresentadores divergem: "é" ou "é constituído como"): terra → Éden → jardim → meio do jardim, como pátio → santo → santíssimo. A árvore cumpre o papel da arca com as tábuas da lei sob o propiciatório, o trono de Deus, de onde ele governa e julga (Hc 2:20). Comer é sentar no trono.
 - **leitura** Eva "deu" de comer, coisa que até ali só Deus fazia.
-- **especulação** (os próprios apresentadores avisam) Adão talvez não estivesse junto: "deu também ao marido" seria uma elipse de tempo. O leitor espera um confronto, e Adão come em silêncio. "O texto grita em silêncio." Eva foi enganada e discutiu; Adão pecou sabendo, de "mão levantada".
+- **especulação, com apoio no comentário** (os apresentadores avisam que é hipótese) Adão talvez não estivesse junto: "deu também ao marido" seria uma elipse de tempo. [Com.] lê a preposição *ʿimmāh*, "com ela", no sentido de "como ela": Adão fez o mesmo que ela, e não necessariamente estava ao lado. A serpente fala só com a mulher, e Adão fica calado no diálogo inteiro. O leitor espera um confronto, e Adão come em silêncio. "O texto grita em silêncio." Eva foi enganada e discutiu; Adão pecou sabendo, de "mão levantada".
 - **especulação** ("salto quântico") 1Jo 2:16: concupiscência da carne ("boa para comer"), concupiscência dos olhos ("agradável aos olhos") e soberba da vida ("para dar entendimento").
 - **leitura** Esse ato modela todo pecado: tirar Deus do centro e definir por conta própria. Até o bem vira mal. Ligação com os Dez Mandamentos: quebrar um mandamento é dizer "eu tenho a minha própria lei".
 
 ## 6. Olhos abertos, folhas e esconderijo (Gn 3:7-10)
 - **texto** "Abriram-se os olhos de ambos, perceberam que estavam nus, coseram folhas de figueira e fizeram cintas para si."
 - **leitura** Os olhos de fato se abrem, mas para a vergonha. É o desfazer de Gn 2:25. **Prometeu torná-los como Deus; tornaram-se como a serpente** (sagazes, maliciosos).
-- **leitura / verificar** O verbo "fazer" (*ʿāśâ*), até aqui, só tinha Deus como sujeito. Agora o ser humano "faz" para si, em vez de se voltar para Deus.
+- **confirmado** [Com.] O verbo "fazer", até aqui, só tinha Deus como sujeito. Fazer para si a própria cobertura é usurpar o papel do Criador; Paulo chamará isso de justiça pelas obras (Gl 2:16). Quando Deus "faz" as túnicas (3:21, **o mesmo verbo na mesma forma**), é graça e, ao mesmo tempo, Deus retomando o que é dele.
 - **texto** v. 8: ouvem a voz do SENHOR Deus e se escondem entre as árvores.
 - **leitura** A voz que antes fazia as coisas aparecerem agora faz a criação sumir (eles se escondem). As árvores, que eram comida e refúgio, viram esconderijo.
 - **texto** v. 9: "Onde estás?"
@@ -88,7 +104,7 @@ Rótulos (da skill `estudio-de-jogos`, ferramenta 48):
   - **leitura** É dita no meio de uma maldição, no momento da rebeldia máxima, e Deus nem para para explicar. Quem é, como e quando ficam em aberto.
   - **especulação** (os apresentadores chamam de "sutil, embrionário") Deus é o sujeito das ações do v. 15 ("porei"). Alguns estudiosos veem nisso uma ligação entre a semente e a divindade.
 - **texto** v. 16, a mulher: "multiplicarei grandemente a tua dor e a tua conceição; com dor terás filhos; o teu desejo será para o teu marido, e ele te governará."
-  - **verificar** Os apresentadores dizem que "sofrimento" não está no hebraico e que a expressão seria "multiplicarei a tua gravidez". Isso precisa ser conferido: o hebraico traz *ʿiṣṣᵉbônēk wᵉhērōnēk*. **especulação** Gravidez mais longa (citam comentários).
+  - **corrigido** A live diz que "sofrimento" não está no hebraico. Está: *ʿiṣṣābôn* (dor, fadiga) aparece em 3:16 e é **a mesma palavra** usada para a fadiga do homem em 3:17 [Com.]. Os dois esforços estão ligados ao dom da vida, o filho e o fruto da terra. **especulação** A gravidez mais longa fica como hipótese da live, sem apoio nas outras fontes.
   - **leitura** O castigo corresponde à origem e à missão: a mulher (*ʾiššâ*) vem do homem (*ʾîš*), e o castigo dela é em relação a ele. Ela foi criada como *ʿēzer*, "ajudadora", palavra que na Bíblia costuma descrever Deus (Ebenézer). **verificar**: a conta "21 ocorrências, 16 para Deus".
   - **leitura** "Ele te governará" não é o ideal da criação: descreve como fica a realidade sob o pecado (o mais forte domina).
 - **texto** vv. 17-19, o homem: "porque deste ouvidos à **voz** da tua mulher… maldita é a terra por tua causa… cardos e abrolhos… no suor do teu rosto… até que tornes à terra… és pó e ao pó tornarás."
@@ -107,7 +123,8 @@ Rótulos (da skill `estudio-de-jogos`, ferramenta 48):
 
 ## 11. Expulsão e querubins (Gn 3:22-24)
 - **texto** v. 22: "Eis que o homem é como um de nós, conhecendo o bem e o mal; ora, para que não estenda a mão, tome da árvore da vida, coma e viva eternamente…"
-- **leitura / verificar** Os apresentadores leem o verbo como passado ("o homem **era** como um de nós"): ele perdeu o que já tinha. Isso confirma que a serpente ofereceu o que eles já possuíam.
+- **confirmado** [Com.] A gramática (*hāyâ* no perfeito) aponta para um tempo anterior: "o homem **era** como um de nós". Para "tornar-se", o hebraico usaria *hāyâ lᵉ* (como em Gn 2:10). Ele perdeu o que já tinha.
+  - Nuance [Com.]: a serpente usa "conhecendo" no particípio (*yōdʿê ṭôb wārāʿ*), ou seja, experimentar o bem e o mal. Deus usa o infinitivo, "quanto a conhecer o bem e o mal", ou seja, discernir. O único modo de "conhecer o bem e o mal" sem perder o discernimento era conhecer só o bem. Ao conhecer o mal, o ser humano perdeu a capacidade de distinguir.
 - **leitura** Ser privado da árvore da vida é graça: viver para sempre na dor e no pecado seria o inferno. A morte não é eterna: haverá ressurreição e juízo (o assunto fica para depois).
 - **texto** v. 24: expulsou o homem e **colocou** querubins ao **oriente** do jardim, com uma espada flamejante, para guardar o caminho da árvore da vida.
 - **leitura** Deus não destrói o acesso; ele o guarda, e quem guarda preserva para usar depois.
@@ -127,6 +144,93 @@ Rótulos (da skill `estudio-de-jogos`, ferramenta 48):
   - vv. 5-7: "*ʾĂdōnāy* (título exclusivo de Deus) **à tua direita** esmagará reis… esmagará cabeças… beberá da torrente… levantará a cabeça". O enigma posicional: quem está à direita é o "meu senhor", e ele é chamado pelo título de Deus. **O Messias é o próprio Deus**, que entra na família da mulher.
   - **Mt 22:41-46**: Jesus usa o Sl 110 com os fariseus: "se Davi o chama Senhor, como é seu filho?".
 - Ao fim, o estranho na estrada diz: "Lembra da semente? Estou aqui."
+
+## 12b. Acréscimos de Doukhan, por verso ([Com.] e [Emaús])
+
+### A progressão narrativa do capítulo
+A fase segue a história na ordem em que ela acontece (decisão do usuário; o quiasmo do Doukhan não é usado):
+1. **A conversa** (vv. 1-5): a serpente e a mulher; Deus ausente da cena.
+2. **A queda** (v. 6): ela vê, toma, come e dá; ele come.
+3. **As folhas** (vv. 7-8): olhos abertos, vergonha, as cintas feitas por eles mesmos, o esconderijo.
+4. **"Onde estás?"** (vv. 9-13): as perguntas de Deus, as respostas e as acusações.
+5. **A sentença da serpente e a promessa** (vv. 14-15): o ponto alto da fase.
+6. **As consequências** (vv. 16-19): a mulher, o homem e a terra.
+7. **A resposta de Adão** (v. 20): "Vida".
+8. **As peles** (v. 21): Deus veste.
+9. **A saída** (vv. 22-24): a árvore da vida guardada.
+
+- **leitura** Na história, Deus pergunta ao homem, depois à mulher, e a serpente nem é interrogada (vv. 9-13). Depois sentencia na ordem inversa: serpente, mulher, homem (vv. 14-19).
+- **leitura** Dentro da profecia, o v. 14 tem 6 linhas irregulares (2-2-3-3-2-3 palavras), negativas; o v. 15 tem 4 linhas regulares (4-4-3-3), positivas. É a única palavra positiva do capítulo. O "Ele" (*hû'*) fica onde o ritmo muda de 4 para 3: **é a dobradiça do poema**. (Isto é a forma do próprio verso, não o quiasmo do capítulo.)
+
+### 3:1-5
+- **leitura** "Disse" (*wayyōʾmer*) é o mesmo verbo usado para Deus em Gn 1 (dez vezes) e Gn 2. Em 3:1 o sujeito nem é repetido, e a frase fica na sequência "YHWH Deus… disse à mulher". **A serpente aparece como se fosse a voz de Deus**, usurpando o papel dele. Ela não discute com a palavra de Deus: posa de intérprete dela.
+- **leitura** "De toda árvore": na boca de Deus (2:16), "toda" vinha com a generosidade; na da serpente, vem com a proibição. O Deus da graça vira o Deus que oprime. A árvore proibida perde o nome e vira "uma entre todas": **o mal deixa de ser reconhecido como mal**.
+- **leitura** O diálogo serpente-mulher substitui o único diálogo anterior, o de Deus com Adão.
+- **leitura** Eva é até mais precisa do que a serpente, mas o próprio cuidado em "acertar" revela insegurança. Ela já adotou a teologia da serpente: YHWH, o Deus pessoal, virou Elohim, uma força distante. "Se não há Deus, ou se ele está longe, por que se preocupar com o bem e o mal?"
+- **leitura** Nos vv. 4-5 a serpente pela primeira vez é nomeada como sujeito e contradiz Deus abertamente. A insinuação é que a árvore do conhecimento daria também a imortalidade e que Deus guardava esse privilégio para si.
+
+### 3:6-8
+- **leitura** "Viu que era bom" é o eco de Deus em Gn 1, e "tomou", "deu" e "comeu" eram verbos só do Criador (1:29; 2:15, 21). A resposta de Adão repete mecanicamente o verbo dela (*wattōʾkal* / *wayyōʾkal*).
+- **leitura** "Nus" muda de palavra: antes da queda era *ʿărûmmîm* (2:25); agora é *ʿêrummîm* (3:7), uma nudez de outro tipo.
+- **leitura** Em 3:8 o casal só **ouve** a voz (*qôl*): passa do ver e tocar (o mundo da serpente) para o ouvir (Deus distante). "Andava" (*mithallēk*) é a forma usada para a presença de Deus no santuário (Lv 26:12; 2Sm 7:6-7). Deus continua passeando como sempre; quem mudou foram eles.
+- **leitura** **Ironia**: eles se escondem "no meio" (*bᵉtôk*) das árvores, a mesma preposição usada para a árvore proibida "no meio" do jardim. Escondem-se atrás das árvores que causaram o problema.
+
+### 3:9-13
+- **leitura** Deus brinca de esconde-esconde e só faz perguntas. É o **processo da aliança** (*covenant lawsuit*), um "juízo investigativo" (Westermann): Deus desce para confrontar e julgar, como depois em Caim ("Onde está Abel?" ecoa "Onde estás?"), Babel e Sodoma. O objetivo é restaurar a comunicação e levar ao arrependimento.
+- **leitura** "Chamou" (*qārāʾ*) é o verbo de Deus abrindo comunicação (Êx 19:20; Lv 1:1). Ele chama Adão porque foi Adão quem tomou a iniciativa de se esconder (o verbo está no singular masculino) e quem fala só de si: "eu me escondi".
+- **leitura** "Estou nu" é mais do que falta de roupa, porque eles já estavam cobertos de folhas: é estar desmascarado. Adão sugere "foi assim que tu me fizeste", ou seja, Deus seria a causa.
+- **leitura** "Quem te **contou**" usa *higgîd*, verbo de revelação profética, e "quem" (*mî*) aponta para um terceiro personagem. A ironia: "quem é que fala em meu nome?"
+- **leitura** "Enganou" (*nāšāʾ*) é fazer crer em falsa segurança (2Rs 19:10; Jr 49:16; Ob 7). O pior mal é praticar o mal convicto de que "Deus está conosco".
+
+### 3:14-15
+- **leitura** "Maldita" (*ʾārûr*) soa como "sagaz" (*ʿārûm*): **a esperteza vira a maldição dela**. Ela é "mais maldita que todos", com as mesmas palavras de "mais sagaz que todos".
+- **leitura** "Sobre o ventre andarás" sugere que antes ela não rastejava (cf. Is 30:6, a "serpente voadora"). Lv 11:42, "o que anda sobre o ventre", é o único outro texto com a palavra rara para ventre (*gāḥôn*): a impureza ritual tem a morte como denominador comum.
+- **leitura** "Comer pó" é linguagem de derrota do inimigo (Sl 72:9; Is 49:23; Mq 7:17) e quer dizer que **a serpente se alimenta da morte**. Ela come "todos os dias da tua **vida**", ironia com a árvore da **vida**.
+- **leitura** "Inimizade" (*ʾêbâ*) é a primeira palavra da estrofe, e por isso a ênfase. Aparece só mais em Ez 25:15 e 35:5, como inimizade perpétua: é um conflito cósmico e permanente.
+- **leitura** "**Porei**" (*ʾāšît*) tem Deus como sujeito: a inimizade é sobrenatural. A combinação "pôr" + "inimigos" só aparece mais uma vez na Bíblia, em **Sl 110:1** (*ʾāšît ʾōybeykā*, "até que eu ponha os teus inimigos").
+- **leitura** **Gn 4:25**: Sete (*šēt*) vem de *šāt*, "pôs", o mesmo verbo de "porei", junto com "semente" (*zeraʿ*). Ali "semente" é **um indivíduo**, Sete, o que apoia ler 3:15 como uma pessoa.
+- **leitura** **Gn 4:1** [Emaús]: a partícula *ʾet* é o marcador do objeto direto, a mesma diante de Caim e diante de "o SENHOR". A leitura literal fica "adquiri um varão, o SENHOR". Isso apoia a leitura que a live chamou de especulação: Eva pode ter ligado a semente ao próprio Deus.
+- **leitura** **O "Ele"** (*hû'*) vem antes do verbo, ordem incomum que indica ênfase. Pela sintaxe, o "Ele" remete ao "Eu" de Deus, o último sujeito antes dele: "Eu porei a inimizade, **mas Ele** é quem vai esmagar".
+- **leitura** **2Sm 7:12-13** repete a construção: "levantarei a tua semente… **Ele** edificará uma casa ao meu nome". O "Ele" enfático vem com "semente" e "inimigos"; o autor aplicou Gn 3:15 ao filho de Davi.
+- **leitura** **"Ferir"** (*šûp*): a mesma forma vem de duas raízes, "pisar/esmagar" e "ofegar/abocanhar". O jogo de sons mostra que as duas ações são **um só evento**: o calcanhar é ferido *porque* foi com ele que se esmagou a cabeça. Cabeça e calcanhar, os dois extremos, indicam a pessoa inteira (merismo), e os dois morrem. O verbo só aparece mais em Sl 139:11 e Jó 9:17.
+- **leitura** **Sl 110** fecha o arco do pé (v. 1, "estrado dos teus pés") até a cabeça (vv. 6-7, "esmagará cabeças… levantará a cabeça"). É o mesmo jogo de pé e cabeça de Gn 3:15.
+- **No NT**: Rm 16:20, "o Deus da paz esmagará Satanás debaixo dos vossos pés" (a alusão mais explícita); Gl 3:16; Hb 2:14; Ap 12:11. Hb 1:1-5 aplica Sl 110 e 2Sm 7 ao Filho.
+- **Lição de [Emaús]**: "Deus vai rolar no pó em nosso lugar". A semente que luta, na primeira metade do versículo, é substituída pelo "Ele", o grande Outro. O fio que atravessa a Bíblia é "**O SENHOR pelejará por vós**" (Êx 14:13-14; Dt 1:30; 3:22; Ne 4:20). A luta contra a serpente não é minha.
+
+### 3:16-19
+- **leitura** 3:16 deve ser lido à luz de 3:15, porque os dois versos têm cinco paralelos:
+  - as introduções se espelham ("o SENHOR disse à serpente" / "à mulher disse");
+  - os dois falam de "a mulher";
+  - os dois são anúncios divinos na primeira pessoa ("porei" / "multiplicarei");
+  - os dois têm o jogo "Ele… tu / tu… ele";
+  - os dois falam de nascimento (semente / dar à luz).
+  É pelo dar à luz que vem a semente: **o parto passa a carregar a esperança**.
+- **leitura** Só a serpente e a terra são "malditas" (*ʾārûr*); não há "maldição da mulher". A submissão não fazia parte do plano da criação (Ct 7:10 inverte o "desejo"). 3:16 não justifica dominação.
+- **leitura** "Deste ouvidos à voz" (*šāmaʿ lᵉqôl*) é a expressão de obedecer a Deus: Adão tratou Eva como se ela fosse a voz de Deus.
+- **leitura** "**Por tua causa**" (*baʿăbûrekā*) também quer dizer "em teu benefício": a fadiga lembra o pecado e alimenta o desejo de redenção (Dt 8:16; Rm 8:18-22).
+- **leitura** "Comer" aparece três vezes na fala ao homem: comer da árvore (o pecado), comer com dor (a condição humana) e o pó que a serpente come (o conflito cósmico).
+- **leitura** "Brotar" (*ṣāmaḥ*) ecoa 2:9. Antes, fruto do alto, de pé; agora, erva do campo, curvado no chão. **Antes dependiam do que vem de cima (fé); agora, do pó.**
+- **leitura** O homem é "pó": quando se fala da origem dele, o verbo é passivo, com Deus como sujeito ("dela foste tomado"); quando se fala da morte, o sujeito é só o homem ("tornarás ao pó").
+
+### 3:20-21
+- **leitura** "Eva" (*ḥawwâ*, de *ḥay*, "vivo") é **o primeiro nome profético da Bíblia**. Adão (de *ʾădāmâ*, terra) carrega a morte; Eva, a vida. Na primeira vez que deu nome (2:23), Adão falou do passado; agora fala do futuro.
+- **leitura** Deus "fez" as túnicas com o mesmo verbo e a mesma forma de 3:7: é o contraste entre as duas roupas. Pele de animal implica morte, ou seja, sacrifício (Lv 5:13; 7:8).
+- **leitura** **Túnicas sacerdotais**: "túnicas" (*kuttōnet*) e "vestiu" (*hiphil* de *lābaš*) são termos técnicos de vestir os sacerdotes (Êx 28:41; 29:8; Lv 8:13). **Adão e Eva vestidos como sacerdotes do santuário.**
+- **especulação** [Com.] O texto diz que Deus fez as túnicas, mas não quem matou o animal. Em Levítico, o culpado é quem mata a vítima, então Adão teria oferecido o primeiro sacrifício. O momento cronológico seria depois da expulsão.
+
+### 3:22-24
+- **leitura** Jogo de palavras com *šālaḥ*: Adão "estendeu" a mão para a árvore (3:22), e Deus o "enviou" para fora (3:23), na forma intensiva.
+- **leitura** "Lançou fora" (*gāraš*) é o verbo da expulsão dos cananeus da terra (Êx 23:28-31).
+- **leitura** "Pôs" (*wayyaškēn*) os querubins é da mesma raiz de *miškān*, "tabernáculo". Os querubins ficam sobre a arca e bordados no véu; a entrada fica a leste.
+- **leitura** O Éden aponta para além do tabernáculo: **o santuário celestial**. Moisés construiu segundo o modelo visto (Êx 25:40; Hb 8:5), e Ez 28:13-14 chama o templo celestial de "Éden".
+
+## Novos candidatos a momento jogável (vindos de Doukhan)
+- **"Quem está falando?"**: em 3:1 o "disse" vem logo depois de "YHWH Deus", e a serpente se faz passar pela voz de Deus. É um minijogo de atribuir falas aos falantes, ligado ao "Disse Deus?" da live.
+- **Quem Deus chama e quem ele sentencia**: na cena do "Onde estás?", Deus pergunta ao homem e à mulher, e a serpente fica sem voz; na sentença, a ordem se inverte.
+- **O ritmo da profecia**: ouvir ou tocar as batidas (2-2-3-3-2-3 contra 4-4-3-3) e descobrir onde o ritmo muda: ali está o "Ele".
+- **O fio "porei"**: ligar *ʾāšît* em Gn 3:15, *šāt* em Gn 4:25 (Sete) e *ʾāšît* em Sl 110:1. Ao fim, a carta "Ele" se encaixa em 2Sm 7.
+- **Pé e cabeça**: no Sl 110, seguir o caminho do v. 1 (pés) até os vv. 6-7 (cabeça).
+- **Vestir os sacerdotes**: as túnicas de 3:21 se encaixam nas palavras de Êx 28-29 e Lv 8.
 
 ## 13. O que o próprio estudo anuncia sobre o jogo (fim da live)
 Na live, o usuário mostra o jogo "No caminho para Emaús". A estrutura que ele descreve bate com o `brainstorm.md`:
@@ -160,5 +264,19 @@ Ligações entre o conteúdo e as mecânicas de referência, para escolhermos ju
 - Gn 3:15 é **profecia**: a ligação com Cristo vem do próprio texto (*zeraʿ*/*hû'*, depois Sl 110 e o NT). Não criar alegorias extras sem marca no texto.
 - Separar no jogo o que é **texto**, **leitura** e **especulação**. As especulações acima podem virar "curiosidades" (extras), nunca chave obrigatória de um puzzle.
 - O santuário é tema sensível para a tradição (ferramenta 48): rotular como leitura da tradição, não só como texto.
-- Conferir os dados marcados como **verificar** (hebraico e contagens) com o amigo que estuda hebraico.
+- Conferir os dados marcados como **verificar** (hebraico e contagens) com o amigo que estuda hebraico. Situação depois das fontes de Doukhan:
+  - 3:16 "sofrimento" → **corrigido** (a palavra está no texto);
+  - 3:22 "era" → **confirmado**;
+  - "fazer" só com Deus como sujeito → **confirmado**;
+  - a contagem de *ʿēzer* (21 ocorrências, 16 para Deus) → ainda **verificar**;
+  - "sagaz é sempre positivo em Provérbios" → ainda **verificar**.
+- **Só Bíblia**: o que vem de cultura, tradição ou judaísmos nas fontes fica fora do jogo (regra do usuário). Isso inclui:
+  - mitos do Antigo Oriente (Tiamat, Apófis, Lotan);
+  - Ellen G. White, inclusive o excurso de Davidson sobre 3:16;
+  - Justino e Irineu;
+  - a Septuaginta como testemunho de tradição (o *autos* de 3:15);
+  - Targum, Bereshit Rabbah, Midrash Tehilim e Qumran;
+  - a gematria *nāḥāš* = *māšîaḥ* e a lenda do Messias lutando com a serpente;
+  - as vestes de luz (Targum e Ellen G. White).
+- A introdução de [Emaús] lembra o tom: profecia messiânica não é arma contra ninguém. O jogo deve manter esse respeito.
 - A fala do estranho no fim é **adaptação**, e precisa estar rotulada.
