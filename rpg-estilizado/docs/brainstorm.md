@@ -102,7 +102,15 @@ Status: **D** = decidido, **P** = proposta em discussão, **A** = em aberto (ret
   - **P** O minijogo de recuperação pode reusar a repetição espaçada das cartas, para não soar como castigo.
 - **D (D17)** Nenhuma pressão: sem tempo, fuga nem furtividade.
   - **P** Cenas como o caminho que se estreita (Balaão) viram puzzle de espaço, no ritmo do jogador.
-- **A** D12, D13, D14 e D16 ainda sem resposta.
+- **A (D12)** Mecânicas do núcleo: o usuário não consegue visualizar sem testar. Próximo passo: um minijogo ou exemplo jogável de cada referência. Antes disso, o usuário vai enviar a transcrição de uma conversa sobre o tema do jardim (Gn 3), como noção do conteúdo do estudo (não é a palavra final); as mecânicas serão discutidas depois.
+- **D (D13)** As cartas têm uso jogável, além de flashcards; o detalhe se define caso a caso, depois de ver as mecânicas.
+  - **P** Categorias de carta, cada uma com seu minijogo (exemplos do usuário, a definir):
+    - cronológicas: colocadas na ordem certa, liberam a estrada para a próxima fase;
+    - linguísticas: pareadas ou contextualizadas, desbloqueiam um item ou um entendimento;
+    - de revisão: preenchem o relatório.
+- **D (D14)** Teologia no centro: os puzzles principais são com o próprio texto.
+- **D (D16)** Só conhecimento: diário, cartas e chama são toda a progressão.
+- **A** O usuário vai providenciar a skill de games.
 
 Perguntas originais:
 - **D12** Dos jogos de referência (Ace Attorney, Outer Wilds, Obra Dinn, Heaven's Vault, Zelda/Tunic, Layton, Slay the Spire), quais mecânicas entram no núcleo?
