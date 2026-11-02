@@ -30,6 +30,7 @@ function people(extras) {
         'Seis dias antes da Páscoa, eu quebrei o vaso de nardo e derramei nos pés dele. Judas reclamou do desperdício.',
         'Ele me defendeu. Disse que eu tinha guardado o perfume para o dia do seu sepultamento. Eu não entendi.',
         'Agora entendo. E ainda assim... ele também disse que era a ressurreição e a vida. Disse isso aqui, diante do túmulo do meu irmão.',
+        'Quando não aguento ficar em casa, subo ao mirante, no alto do monte. Lá de cima a cidade inteira cabe nos olhos... e todos os lugares por onde ele passou nesta semana.',
       ] },
     { id: 'lazaro', name: 'Lázaro', proper: true, kind: 'male', at: [Lz.x, Lz.z], face: Lz.face, y: undefined, colors: { tunic: 0xece4d0, mantle: 0x8a8070 },
       lines: [
@@ -131,6 +132,7 @@ function things(extras) {
   const G = extras.golgotha, T = extras.tomb, V = extras.veil, I = extras.intro;
   const gx = GETHSEMANE.x, gz = GETHSEMANE.z;
   return [
+    { id: 'mirante', key: true, name: 'Jerusalém', verb: 'Contemplar', panorama: true, at: [extras.lookoutSpot[0], extras.lookoutSpot[1], extras.lookoutSpot[2]], r: 2.4, lines: [] },
     { id: 'nardo', name: 'o vaso de alabastro', at: [I.nard[0], null, I.nard[1]], r: 1.6, mesh: 'jar',
       lines: ['Um vaso de alabastro quebrado no gargalo. Ainda guarda o cheiro do nardo puro.', 'A casa inteira ficou perfumada naquela noite. Perfume de rei. Perfume de sepultura.'] },
     { id: 'sangue', key: true, name: 'a pedra do horto', at: [gx - 4, null, gz - 3], r: 2.6, mesh: 'blood',
@@ -159,8 +161,10 @@ function things(extras) {
 // capítulos: a história sugere a ordem, sem trancar nada. O pensamento e as dicas de Cléopas
 // apontam para o primeiro capítulo com depoimentos ou pistas essenciais ainda não ouvidos.
 const CHAPTERS = [
-  { keys: ['casa', 'maria', 'lazaro'], thought: 'Marta, Maria, Lázaro... esta casa já viu um morto sair do túmulo.',
-    hint: 'Comece aqui mesmo, em Betânia. Marta está ali no quintal. E Lázaro... Lázaro sabe o que é um túmulo por dentro. Ele fica perto do dele, na saída da aldeia.' },
+  { keys: ['casa', 'maria'], thought: 'Marta e Maria... esta casa já viu um morto sair do túmulo.',
+    hint: 'Comece aqui mesmo, em Betânia. Marta está no quintal; Maria, sentada perto da porta. Elas o conheciam como poucos.' },
+  { keys: ['mirante'], thought: 'Do alto do monte dá para ver a cidade inteira. Talvez de lá eu entenda por onde começar.',
+    hint: 'Suba ao mirante, no alto do monte, e olhe para a cidade. De lá se vê tudo: o horto, o Templo, a Caveira, o jardim.' },
   { keys: ['horto', 'sangue'], thought: 'Na quinta, depois da ceia, descemos ao horto das oliveiras, no pé do monte. Ele pediu que vigiássemos. Eu dormi.',
     hint: 'E o horto, no pé do monte? Tem um homem que dorme lá, perto da prensa de azeite. E dizem que a pedra onde ele orou ainda está marcada.' },
   { keys: ['cambista', 'sacerdote', 'pretorio'], thought: 'Levaram-no amarrado para a cidade. Do pátio do Templo ao pretório do governador, cada pedra ouviu alguma coisa.',
@@ -169,12 +173,13 @@ const CHAPTERS = [
     hint: 'Você teve coragem de subir na Caveira? O homem de Cirene que carregou a cruz anda pela porta do norte. E a placa que pregaram nela... dizem que ainda está lá.' },
   { keys: ['jose', 'guarda', 'mulher', 'pedro', 'pedra', 'lencois', 'sudario'], thought: 'Um homem do conselho pediu o corpo. Um túmulo novo, num jardim ali perto. As mulheres foram lá hoje cedo.',
     hint: 'O jardim. O túmulo de José, o do conselho. Entre lá dentro e olhe bem os panos. Pedro está sentado lá fora, sem dizer nada a ninguém.' },
-  { keys: ['mercador', 'tome', 'pastor'], thought: 'Ainda há quem fale disso pela cidade e pelos campos.',
-    hint: 'Tomé está aqui perto, resmungando. O mercador da rua principal também tem o que dizer. E o pastor, lá nos campos do sul, viu os amigos dele fugirem.' },
+  { keys: ['mercador', 'tome', 'pastor', 'lazaro'], thought: 'Ainda há quem fale disso pela cidade, pelos campos... e em Betânia.',
+    hint: 'Tomé está aqui perto, resmungando. O mercador da rua principal também tem o que dizer. O pastor, lá nos campos do sul, viu os amigos dele fugirem. E Lázaro, em Betânia, sabe o que é um túmulo por dentro.' },
 ];
 const REQUIRED = new Set(CHAPTERS.flatMap((c) => c.keys));
 // como Cléopas reage ao último depoimento que você trouxe
 const REACT = {
+  mirante: 'Você subiu ao mirante? Lá de cima a cidade parece tão quieta... depois de tudo.',
   lazaro: 'Lázaro disse isso? "Um morto não se desamarra sozinho"... Ele sabe do que fala.',
   maria: 'Maria guardou aquele perfume para o sepultamento dele. Como ela sabia?',
   casa: 'Marta sempre foi a primeira a crer. Mesmo agora.',
@@ -325,7 +330,7 @@ export function reservedSpots(extras) {
 export function makeStory(ctx) {
   const { scene, camera, solids, heightAt, extras, clips, maleTpl, femaleTpl, M, player, hero, play, grade, isTouch } = ctx;
   const $ = (s) => document.querySelector(s);
-  const ui = { wip: $('#wip'), wipBtn: $('#wipBtn'), img: $('#talkImg'), talk: $('#talk'), name: $('#talkName'), text: $('#talkText'), prompt: $('#prompt'), act: $('#bAct'), obj: $('#objective'), cap: $('#caption'), skip: $('#skip') };
+  const ui = { mapBtn: $('#mapBtn'), mapTip: $('#mapTip'), wip: $('#wip'), wipBtn: $('#wipBtn'), img: $('#talkImg'), talk: $('#talk'), name: $('#talkName'), text: $('#talkText'), prompt: $('#prompt'), act: $('#bAct'), obj: $('#objective'), cap: $('#caption'), skip: $('#skip') };
 
   // ---------- pessoas no mundo ----------
   const npcs = people(extras).map((d) => {
@@ -414,7 +419,7 @@ export function makeStory(ctx) {
       'Você acordou. Eu nem consegui dormir.',
       'Tem alguma coisa fora do lugar hoje. As mulheres voltaram do jardim dizendo coisas sem pé nem cabeça. Pedro saiu correndo e voltou mudo.',
       'Eu queria ir para casa, para Emaús, e esquecer. Mas não consigo partir sem entender o que está acontecendo.',
-      'Faça isso por nós dois: ouça quem estava lá. Aqui em Betânia, no horto, na cidade, onde ele morreu, onde o puseram. Veja com seus próprios olhos.',
+      'Faça isso por nós dois: ouça quem estava lá, veja com seus próprios olhos. Comece aqui mesmo. Marta e Maria estão acordadas desde antes de mim... e o conheciam como poucos.',
       'Vou na frente. Espero você na Porta de Jafa, na saída para Emaús. Depois me conte tudo.',
     ];
     if (complete()) return [
@@ -484,7 +489,7 @@ export function makeStory(ctx) {
   ];
   function startIntro() {
     cine = { shots: introShots, i: 0, t: 0, onEnd: endIntro };
-    document.body.classList.add('cine'); ui.skip.hidden = false;
+    document.body.classList.add('cine'); ui.skip.textContent = 'Pular introdução'; ui.skip.hidden = false;
     player.position.copy(sitPos); hero.rotation.y = 0; player.rotation.y = 0;
     ctx.setHeroYaw(I.yaw);
     play('Sitting_Idle_Loop', { fade: 0 });
@@ -512,7 +517,8 @@ export function makeStory(ctx) {
     grade.uMem.value = THREE.MathUtils.damp(grade.uMem.value, s.mem ? 1 : 0, 6, dt);
     grade.uDark.value = THREE.MathUtils.damp(grade.uDark.value, s.dark || 0, 4, dt);
     grade.uFlash.value = Math.max(0, grade.uFlash.value - dt * 2.4);
-    if (s.black) grade.uFade.value = 1;
+    if (s.xfade) grade.uFade.value = Math.max(0, 1 - cine.t / 0.4, (cine.t - (s.dur - 0.4)) / 0.4);
+    else if (s.black) grade.uFade.value = 1;
     else if (s.fade) grade.uFade.value = 1 - Math.min(1, Math.max(0, (cine.t - 2.2) / 1.6));
     else if (s.end) grade.uFade.value = Math.min(1, cine.t / 0.8);
     else grade.uFade.value = Math.max(0, grade.uFade.value - dt * 2);
@@ -572,7 +578,53 @@ export function makeStory(ctx) {
     play('Idle_Loop', { fade: 0.3 });
     setObjective('A estrada para Emaús continua na próxima fase. Jerusalém está aberta para explorar.');
   });
-  ui.skip.addEventListener('click', () => { if (cine && cine.onEnd === endIntro) endIntro(); });
+  // ---------- panorâmica do mirante: apresenta os lugares da cidade ----------
+  const ease = (u) => u * u * (3 - 2 * u);
+  const lerp3 = (a, b, u) => a.clone().lerp(b, ease(Math.min(1, Math.max(0, u))));
+  const TC = v3(30, 34, -7);                       // centro do Templo (altura do Santuário)
+  function above(x, z, dy) { return Math.max(heightAt(x, z) + dy, dy); }
+  // tomada de um lugar: vista aérea alta, aproximando devagar; nunca atravessa paredes nem morros
+  function place(at, dir, caps, { dist = 34, h = 24, dur = 3.8 } = {}) {
+    const tgt = v3(at[0], at[1], at[2]), L = Math.hypot(dir[0], dir[1]), ux = dir[0] / L, uz = dir[1] / L;
+    const pos = (d) => { const x = at[0] + ux * d, z = at[2] + uz * d; return v3(x, Math.max(at[1] + h * d / dist, heightAt(x, z) + 6), z); };
+    const p0 = pos(dist), p1 = pos(dist * 0.78);
+    return { dur, xfade: 1, caps, cam: (t) => [lerp3(p0, p1, t / dur), tgt] };
+  }
+  function startPanorama() {
+    const start = camera.position.clone(), head = player.position.clone().add(v3(0, 1.6, 0));
+    const near = v3(150, 62, -8), orbitR = 78, orbitH = 60;
+    const orbit = (u) => { const a = u * Math.PI * 2; return v3(TC.x + Math.cos(a) * orbitR, orbitH, TC.z + Math.sin(a) * orbitR); };
+    const hp = (x, z, dy = 1.5) => [x, heightAt(x, z) + dy, z];
+    const Gc = extras.golgotha, Tb = extras.tomb;
+    cine = {
+      skippable: true,
+      shots: [
+        { dur: 3.2, caps: [[0.3, 'Jerusalém.']], cam: (t) => [lerp3(start, near, t / 3.2), lerp3(head, TC, t / 1.6)] },
+        { dur: 3.6, caps: [[0.2, 'Daqui se vê tudo o que aconteceu nesta semana.']], cam: (t) => [lerp3(near, orbit(0), t / 3.6), TC] },
+        { dur: 10, caps: [[0.4, 'O Templo, onde ele ensinou até a última semana.'], [5.2, 'O ouro brilha como sempre. Como se nada tivesse acontecido.']], cam: (t) => [orbit(t / 10), TC] },
+        place(hp(GETHSEMANE.x, GETHSEMANE.z, 1), [1, 0.6], [[0.5, 'Getsêmani, ao pé do monte. O horto onde ele orou na quinta à noite.']], { dist: 30, h: 16 }),
+        { dur: 3.8, xfade: 1, caps: [[0.5, 'O pátio do Templo. Cambistas e sacerdotes ainda comentam a semana.']], cam: (t) => [lerp3(v3(84, 38, 4), v3(76, 36, 8), t / 3.8), v3(40, 21, 30)] },
+        place(hp(-30, -64, 1), [-1, 0.25], [[0.5, 'A fortaleza Antônia e o pretório, onde o governador o julgou.']], { dist: 40, h: 34 }),
+        place(hp(-91, -82, 1), [-0.45, -1], [[0.5, 'A porta do norte. Por ali ele saiu, carregando a trave.']], { dist: 36, h: 22 }),
+        place([Gc.cross[0], Gc.top + 3, Gc.cross[2]], [0.7, 1], [[0.5, 'O lugar da Caveira. As cruzes ainda estão lá.']], { dist: 28, h: 12 }),
+        place([Tb.X, Tb.g + 2, Tb.FZ + 4], [0.4, 1], [[0.5, 'O jardim de José e um túmulo novo, talhado na rocha.']], { dist: 30, h: 16 }),
+        place(hp(-50, 3, 1), [0.4, -1], [[0.5, 'A rua do mercado, no coração da cidade.']], { dist: 30, h: 26 }),
+        place(hp(-148, 4, 1), [-1, -0.35], [[0.5, 'A Porta de Jafa, a saída para Emaús. Cléopas espera ali.']], { dist: 34, h: 18 }),
+        place(hp(88, 146, 1), [-0.3, 1], [[0.5, 'Os campos do sul, onde os pastores guardam os rebanhos.']], { dist: 34, h: 20 }),
+        { dur: 1.6, xfade: 1, cam: () => [start, head] },
+      ],
+      i: 0, t: 0, onEnd: endPanorama,
+    };
+    document.body.classList.add('cine'); ui.skip.textContent = 'Pular'; ui.skip.hidden = false; enterShot();
+  }
+  function endPanorama() {
+    cine = null; document.body.classList.remove('cine'); ui.skip.hidden = true; ui.cap.classList.remove('on'); grade.uFade.value = 0;
+    ctx.resetCam(Math.atan2(player.position.x - TC.x, player.position.z - TC.z));
+    ui.mapBtn.classList.add('pulse'); ui.mapTip.hidden = false;
+  }
+  const hideTip = () => { ui.mapTip.hidden = true; ui.mapBtn.classList.remove('pulse'); };
+  ui.mapBtn.addEventListener('click', hideTip); ui.mapTip.addEventListener('click', hideTip);
+  ui.skip.addEventListener('click', () => { if (cine && (cine.onEnd === endIntro || cine.skippable)) cine.onEnd(); });
 
   // ---------- atualização por quadro ----------
   const tmp = new THREE.Vector3();
@@ -631,12 +683,15 @@ export function makeStory(ctx) {
     for (const n of npcs) { const d = Math.hypot(n.root.position.x - player.position.x, n.root.position.z - player.position.z); if (d < 2.6 && Math.abs(n.y - player.position.y) < 2 && d < bd) { bd = d; best = n; } }
     for (const o of objs) { const d = Math.hypot(o.at[0] - player.position.x, o.at[2] - player.position.z); if (d < o.r && Math.abs(o.at[1] - player.position.y) < 2.6 && d < bd) { bd = d; best = o; } }
     if (best) {
-      const verb = best.kind === 'npc' ? 'Falar com' : 'Examinar';
+      const verb = best.verb || (best.kind === 'npc' ? 'Falar com' : 'Examinar');
       ui.prompt.hidden = false; ui.prompt.innerHTML = `${isTouch ? '' : '<kbd>E</kbd> '}${verb} <b>${best.kind === 'npc' && !best.proper ? best.name.toLowerCase() : best.name}</b>${best.heard && !best.hub ? ' <i>·</i>' : ''}`;
       ui.act.hidden = !isTouch; ui.act.textContent = best.kind === 'npc' ? 'FALAR' : 'OLHAR';
-      if (inp.interact) openDialog(best);
+      if (inp.interact) {
+        if (best.panorama) { if (!best.heard) { best.heard = true; lastHeard.push(best.id); refreshObjective(); } ui.prompt.hidden = true; ui.act.hidden = true; startPanorama(); }
+        else openDialog(best);
+      }
     } else { ui.prompt.hidden = true; ui.act.hidden = true; }
     return { lock: false };
   }
-  return { update, startIntro, skipIntro: () => endIntro(), npcs, objs, get busy() { return !!cine || !!dlg; }, get stage() { return stage; }, setObjective, startEnding };
+  return { update, startPanorama, startIntro, skipIntro: () => endIntro(), npcs, objs, get busy() { return !!cine || !!dlg; }, get stage() { return stage; }, setObjective, startEnding };
 }

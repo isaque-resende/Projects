@@ -63,6 +63,21 @@ export const PLACES = [
   { id: 'cidade', name: 'Cidade Alta', x: -80, z: 10, r: 60, spawn: [-78, 4], look: [30, -6] },
 ];
 
+// destinos do botão MAPA (chegada no chão, de frente para o que importa)
+export const TRAVEL = [
+  { id: 'betania', name: 'Betânia', spawn: [243, 44], look: [250, 49] },
+  { id: 'mirante', name: 'Mirante do Monte das Oliveiras', spawn: [LOOKOUT.x - 5.5, LOOKOUT.z + 1], look: [30, -7] },
+  { id: 'getsemani', name: 'Getsêmani', spawn: [121, 6], look: [126, -6] },
+  { id: 'patio', name: 'Pátio do Templo', spawn: [42, 37], look: [31, 30] },
+  { id: 'pretorio', name: 'Pretório', spawn: [-38.5, -57], look: [-31, -64] },
+  { id: 'genate', name: 'Porta de Genate', spawn: [-91, -93], look: [-95, -100] },
+  { id: 'golgota', name: 'Gólgota', spawn: [-80, -104], look: [-84, -134] },
+  { id: 'sepulcro', name: 'Sepulcro no Jardim', spawn: [-42, -126], look: [-40, -142] },
+  { id: 'mercado', name: 'Mercado', spawn: [-52, 1.5], look: [-49.4, 9.5] },
+  { id: 'jafa', name: 'Porta de Jafa', spawn: [-133, 4], look: [-140, 6] },
+  { id: 'campos', name: 'Campos do Sul', spawn: [83, 141], look: [88, 146] },
+];
+
 // ---------------- utilidades geométricas ----------------
 export function inPoly(x, z, poly) {
   let inside = false;

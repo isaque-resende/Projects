@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <title>Ilhas da Memória</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Nunito:wght@500;700&display=swap" rel="stylesheet" />
+  <style>
+    :root { --ink: #3d3550; --soft: #fff8f2; --gold: #e9b872; --rose: #f2b8b5; --teal: #5fb8bf; }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #f3d3c9; font-family: 'Nunito', system-ui, sans-serif; color: var(--ink); touch-action: none; user-select: none; -webkit-user-select: none; }
+    canvas { display: block; width: 100%; height: 100%; }
+    [hidden] { display: none !important; }
+    #load { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; background: linear-gradient(#7fc3c9, #f3c9c1); color: #fff; transition: opacity 1s; }
+    #load.done { opacity: 0; pointer-events: none; }
+    #load h1 { margin: 0; font: italic 500 clamp(26px, 6vw, 44px) 'Cormorant Garamond', serif; letter-spacing: .04em; text-shadow: 0 2px 18px #0002; }
+    #load p { margin: 0; font-size: 14px; opacity: .85; }
+    #place { position: fixed; left: 50%; top: max(26px, calc(env(safe-area-inset-top) + 16px)); transform: translateX(-50%); text-align: center; pointer-events: none; opacity: 0; transition: opacity 1.2s; }
+    #place.on { opacity: 1; }
+    #place b { display: block; font: italic 600 clamp(22px, 5vw, 34px) 'Cormorant Garamond', serif; color: #fff; text-shadow: 0 2px 16px #6a4a6a66; letter-spacing: .03em; }
+    #place span { display: block; font-size: 12px; letter-spacing: .25em; text-transform: uppercase; color: #fff; opacity: .9; text-shadow: 0 1px 8px #6a4a6a55; }
+    #talk { position: fixed; left: 50%; bottom: max(22px, env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(560px, calc(100vw - 32px)); box-sizing: border-box; z-index: 8; background: #fff8f2e8; border-radius: 22px; padding: 16px 22px 18px; box-shadow: 0 14px 40px #6a4a6a33; cursor: pointer; backdrop-filter: blur(6px); }
+    #talk b { display: block; font: italic 600 19px 'Cormorant Garamond', serif; color: #b07a5a; margin-bottom: 4px; }
+    #talk p { margin: 0; font-size: 16.5px; line-height: 1.5; min-height: 3em; }
+    #talk i { position: absolute; right: 18px; bottom: 10px; font-style: normal; color: #d49a7a; opacity: 0; transition: opacity .3s; }
+    #talk.ready i { opacity: 1; }
+    #act { position: fixed; left: 50%; bottom: max(26px, calc(env(safe-area-inset-bottom) + 10px)); transform: translateX(-50%); z-index: 7; font: 700 15px 'Nunito', sans-serif; color: var(--ink); background: #fff8f2e0; border: 0; border-radius: 26px; padding: 12px 22px; box-shadow: 0 8px 24px #6a4a6a2a; }
+    #act kbd { font: 700 12px 'Nunito', sans-serif; background: var(--gold); color: #fff; border-radius: 6px; padding: 2px 7px; margin-right: 6px; }
+    body.touch #act kbd { display: none; }
+    #hint { position: fixed; right: max(14px, env(safe-area-inset-right)); bottom: max(14px, env(safe-area-inset-bottom)); font-size: 12px; color: #fff; opacity: .85; text-shadow: 0 1px 6px #6a4a6a66; pointer-events: none; text-align: right; }
+    body.touch #hint { display: none; }
+    #tag { position: fixed; left: max(14px, env(safe-area-inset-left)); top: max(14px, env(safe-area-inset-top)); font: 700 11px 'Nunito', sans-serif; letter-spacing: .14em; color: #fff; background: #ffffff33; border-radius: 12px; padding: 6px 10px; }
+  </style>
+</head>
+<body>
+  <div id="load"><h1>Ilhas da Memória</h1><p>mockup no estilo The Gardens Between</p></div>
+  <div id="tag">MOCKUP · ILHAS</div>
+  <div id="place"><b></b><span></span></div>
+  <button id="act" type="button" hidden></button>
+  <div id="talk" hidden><b id="talkName"></b><p id="talkText"></p><i>toque para continuar ›</i></div>
+  <div id="hint">WASD ou clique no chão para andar · E para interagir · arraste para girar</div>
+  <script type="module" src="/src/mockups/gardens/main.js"></script>
+</body>
+</html>

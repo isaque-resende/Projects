@@ -133,7 +133,8 @@ function lookout(kit, extras) {
   kit.stairs('walls', x - 2, z + 8.2, 4, 2.4, g - 0.4, T, Math.PI);
   // parapeito voltado para a cidade, com banco
   for (const [lx, lz, w, d] of [[-7.8, 0, 0.5, 14], [0, -6.8, 16, 0.5], [-6.1, 6.8, 3.8, 0.5], [3.8, 6.8, 8.4, 0.5], [7.8, 0, 0.5, 14]]) kit.box('walls', x + lx, z + lz, w, d, T, T + 1.0);
-  kit.box('stoneDark', x - 6.6, z, 0.8, 7, T, T + 0.45, 0, { solid: false });
+  kit.box('stoneDark', x - 6.6, z, 0.8, 7, T, T + 0.45);   // banco sólido (dá para subir, não para atravessar)
+  extras.lookoutSpot = [x - 6.9, T, z + 4.8];
   // torre 5x5 com escada externa em dois lances (sul e oeste) até o terraço de cima
   const tx = x + 4, tz = z - 2.5, TH = T + 7;
   kit.box('walls', tx, tz, 5, 5, T, TH);
