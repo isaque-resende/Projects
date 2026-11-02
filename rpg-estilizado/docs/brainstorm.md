@@ -86,8 +86,8 @@ Status: **D** = decidido, **P** = proposta em discussão, **A** = em aberto (ret
 ## Referências visuais e kits (rodada de estilo)
 - **D** Mockups jogáveis em `mockups/`: Tunic (salas), The Gardens Between (ilhas), Octopath HD-2D (vila), Heaven's Vault (mapa + tradução). Usuário vai avaliar.
 - **D** Referências do usuário (Pinterest): câmera alta quase de cima, texturas pintadas à mão, mundo modular em blocos/peças.
-- **D** Kits CC0 escolhidos pelo usuário, baixáveis com `bash scripts/fetch-kits.sh` (pasta `kits/`, fora do git): Kenney Mini Arena, Nature Kit, Survival Kit, Retro Textures Fantasy; Quaternius Modular Dungeon, Ultimate Platformer; KayKit Medieval Builder.
-- **A** Quaternius Ultimate Modular Ruins e RPG Characters: só no Google Drive do autor, que respondia "Quota exceeded" em 02/11/2026; baixar manualmente depois.
+- **D** Kits CC0 escolhidos pelo usuário, baixáveis com `bash scripts/fetch-kits.sh` (pasta `kits/`, fora do git): Kenney Mini Arena, Nature Kit, Survival Kit, Retro Textures Fantasy; Quaternius Modular Dungeon, Ultimate Platformer, RPG Characters (via OpenGameArt); KayKit Medieval Builder.
+- **A** Quaternius Ultimate Modular Ruins: só no Google Drive do autor, que respondia "Quota exceeded" em 02/11/2026; baixar manualmente depois.
 
 ## Bloco D — mecânica (perguntas enviadas, aguardando respostas)
 - **D12** Dos jogos de referência (Ace Attorney, Outer Wilds, Obra Dinn, Heaven's Vault, Zelda/Tunic, Layton, Slay the Spire), quais mecânicas entram no núcleo?

@@ -17,7 +17,9 @@ for pair in quaternius:lowpoly-modular-dungeon-pack quaternius:ultimate-platform
   user=${pair%%:*}; slug=${pair##*:}
   [ -s "${user}_$slug.zip" ] || bash ../scripts/itch-download.sh "https://$user.itch.io/$slug" "${user}_$slug.zip" 1
 done
-# Quaternius "Ultimate Modular Ruins" e "RPG Characters" só estão no Google Drive do autor
-# (quaternius.com/packs/ultimatemodularruins.html e rpgcharacters.html). Em 02/11/2026 o Drive
-# respondia "Quota exceeded"; baixar manualmente pelo site quando a cota liberar.
+# Quaternius RPG Characters: espelho oficial do autor no OpenGameArt (CC0)
+[ -s quaternius_rpg-characters.zip ] || curl -sSL -A "$UA" -o quaternius_rpg-characters.zip https://opengameart.org/sites/default/files/rpg_characters_-_nov_2020.zip
+# Quaternius "Ultimate Modular Ruins" só está no Google Drive do autor
+# (quaternius.com/packs/ultimatemodularruins.html). Em 02/11/2026 o Drive respondia
+# "Quota exceeded"; baixar manualmente pelo site quando a cota liberar.
 ls -la
