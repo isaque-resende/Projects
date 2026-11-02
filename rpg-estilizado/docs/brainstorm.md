@@ -87,9 +87,32 @@ Status: **D** = decidido, **P** = proposta em discussão, **A** = em aberto (ret
 - **D** Mockups jogáveis em `mockups/`: Tunic (salas), The Gardens Between (ilhas), Octopath HD-2D (vila), Heaven's Vault (mapa + tradução). Usuário vai avaliar.
 - **D** Referências do usuário (Pinterest): câmera alta quase de cima, texturas pintadas à mão, mundo modular em blocos/peças.
 - **D** Kits CC0 escolhidos pelo usuário, baixáveis com `bash scripts/fetch-kits.sh` (pasta `kits/`, fora do git): Kenney Mini Arena, Nature Kit, Survival Kit, Retro Textures Fantasy; Quaternius Modular Dungeon, Ultimate Platformer, RPG Characters (via OpenGameArt); KayKit Medieval Builder.
-- **A** Quaternius Ultimate Modular Ruins: só no Google Drive do autor, que respondia "Quota exceeded" em 02/11/2026; baixar manualmente depois.
+- **D** Quaternius Ultimate Modular Ruins: baixado do Google Drive do autor (OBJ + texturas, 92 modelos), também pelo `fetch-kits.sh`.
 
-## Bloco D — mecânica (perguntas enviadas, aguardando respostas)
+## Avaliação dos mockups
+- **D** Visual preferido: Tunic e The Gardens Between. Ressalva do usuário: os gráficos dos rascunhos ficaram bem abaixo; falta saber se é por serem rascunhos ou se é o teto possível.
+- **D** Estrutura: o hub de ilhas encanta, mas depende de quanta arte dá para produzir. As salas do Tunic têm potencial, dependendo do teto gráfico. Por ora, o modelo atual (Jerusalém contínua) parece ter o teto mais alto.
+- **P** Híbrido: Jerusalém e a estrada continuam como mundo contínuo, no motor atual; cada visão (memória) é uma ilha no estilo Gardens, pequena, feita à mão e com acabamento do Tunic (texturas pintadas, luz forte, contorno). Assim a arte se concentra onde a história acontece.
+- **A** Antes de decidir, um teste de teto gráfico: uma única ilha (Éden) com acabamento final, para comparar com Jerusalém.
+
+## Bloco D — mecânica
+- **D (D15)** Dois níveis de jogador, escolhidos no início e alteráveis nas configurações:
+  - iniciante: o jogo guia pela mão e oferece todas as dicas;
+  - experiente: tem um número limitado de **brasas**. Ao perder todas, faz um minijogo de revisão ou de método que mostra por que errou, e recupera as brasas.
+  - **P** O minijogo de recuperação pode reusar a repetição espaçada das cartas, para não soar como castigo.
+- **D (D17)** Nenhuma pressão: sem tempo, fuga nem furtividade.
+  - **P** Cenas como o caminho que se estreita (Balaão) viram puzzle de espaço, no ritmo do jogador.
+- **A (D12)** Mecânicas do núcleo: o usuário não consegue visualizar sem testar. Próximo passo: um minijogo ou exemplo jogável de cada referência. Antes disso, o usuário vai enviar a transcrição de uma conversa sobre o tema do jardim (Gn 3), como noção do conteúdo do estudo (não é a palavra final); as mecânicas serão discutidas depois.
+- **D (D13)** As cartas têm uso jogável, além de flashcards; o detalhe se define caso a caso, depois de ver as mecânicas.
+  - **P** Categorias de carta, cada uma com seu minijogo (exemplos do usuário, a definir):
+    - cronológicas: colocadas na ordem certa, liberam a estrada para a próxima fase;
+    - linguísticas: pareadas ou contextualizadas, desbloqueiam um item ou um entendimento;
+    - de revisão: preenchem o relatório.
+- **D (D14)** Teologia no centro: os puzzles principais são com o próprio texto.
+- **D (D16)** Só conhecimento: diário, cartas e chama são toda a progressão.
+- **A** O usuário vai providenciar a skill de games.
+
+Perguntas originais:
 - **D12** Dos jogos de referência (Ace Attorney, Outer Wilds, Obra Dinn, Heaven's Vault, Zelda/Tunic, Layton, Slay the Spire), quais mecânicas entram no núcleo?
 - **D13** Além de revisar e responder relatórios, as cartas têm uso ativo em puzzles (chave/fechadura, montar sequência, "virar" o sentido)?
 - **D14** Até onde ir no "puzzle que é teologia" (ex.: calcular as 70 semanas) × puzzles mais leves de ambiente?

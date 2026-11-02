@@ -19,7 +19,11 @@ for pair in quaternius:lowpoly-modular-dungeon-pack quaternius:ultimate-platform
 done
 # Quaternius RPG Characters: espelho oficial do autor no OpenGameArt (CC0)
 [ -s quaternius_rpg-characters.zip ] || curl -sSL -A "$UA" -o quaternius_rpg-characters.zip https://opengameart.org/sites/default/files/rpg_characters_-_nov_2020.zip
-# Quaternius "Ultimate Modular Ruins" só está no Google Drive do autor
-# (quaternius.com/packs/ultimatemodularruins.html). Em 02/11/2026 o Drive respondia
-# "Quota exceeded"; baixar manualmente pelo site quando a cota liberar.
+# Quaternius "Ultimate Modular Ruins": só no Google Drive do autor
+# (quaternius.com/packs/ultimatemodularruins.html). Baixa OBJ + texturas.
+# Se o Drive responder "Quota exceeded", tente mais tarde.
+R=quaternius-ultimate-modular-ruins
+python3 ../scripts/drive-folder.py 1ETp2ldaHaP0BkS4FBmkT-g9Yf88T_cIX "$R"
+python3 ../scripts/drive-folder.py 1ebE2bnuhQdZCZq19Yf6gyFxhvgOpteXs "$R/OBJ"
+python3 ../scripts/drive-folder.py 1kWN1jt4cMXJZC6owb9H7GS4panrti6Dz "$R/Textures"
 ls -la
