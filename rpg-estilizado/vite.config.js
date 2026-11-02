@@ -17,6 +17,7 @@ export default defineConfig({
         gardens: page('mockups/gardens.html'),
         octopath: page('mockups/octopath.html'),
         vault: page('mockups/vault.html'),
+        dissedeus: page('mockups/disse-deus.html'),
       },
     },
   },

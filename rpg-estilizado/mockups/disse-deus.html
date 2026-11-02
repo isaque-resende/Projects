@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Disse Deus?</title>
+<style>
+  :root { --ink:#f6ead2; --muted:#c8b896; --gold:#e3b766; --red:#e0563f; --green:#9fe08a; --bg:#120d0a; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { margin:0; height:100%; background:var(--bg); color:var(--ink); font:16px/1.45 Georgia, 'Times New Roman', serif; overflow:hidden; }
+  #app { position:relative; height:100%; max-width:820px; margin:0 auto; display:flex; flex-direction:column; }
+  #scene { position:relative; flex:1; min-height:220px; overflow:hidden;
+    background: radial-gradient(ellipse at 50% 120%, #6b5a2c 0%, transparent 60%),
+                radial-gradient(circle at 20% 30%, #3d4a24 0 60px, transparent 61px),
+                radial-gradient(circle at 82% 26%, #34421f 0 80px, transparent 81px),
+                radial-gradient(circle at 50% 18%, #50612b 0 70px, transparent 71px),
+                linear-gradient(#2a2215, #1b150d); }
+  #scene::after { content:''; position:absolute; inset:0; pointer-events:none;
+    background: radial-gradient(ellipse at center, transparent 45%, rgba(0,0,0,.65)); mix-blend-mode:multiply; }
+  #scene.shake { animation:shake .35s; }
+  @keyframes shake { 20%{transform:translate(-8px,3px)} 40%{transform:translate(7px,-4px)} 60%{transform:translate(-5px,2px)} 80%{transform:translate(4px,0)} }
+  #char { position:absolute; left:50%; bottom:0; width:min(62vw,300px); transform:translateX(-50%); transition:opacity .25s; filter:drop-shadow(0 0 14px rgba(255,220,150,.35)); }
+  #char svg { width:100%; height:auto; display:block; }
+  #char.memory { opacity:.82; }
+  #hud { position:absolute; top:10px; left:12px; right:12px; display:flex; justify-content:space-between; align-items:center; gap:8px; z-index:2; font-size:13px; }
+  #prog { background:rgba(0,0,0,.45); padding:4px 10px; border-radius:20px; color:var(--muted); letter-spacing:.04em; }
+  #brasas { font-size:20px; letter-spacing:2px; text-shadow:0 0 8px #ff8a2a; }
+  #brasas .off { filter:grayscale(1) brightness(.4); text-shadow:none; }
+  #title { position:absolute; inset:0; display:grid; place-items:center; z-index:3; pointer-events:none; opacity:0; }
+  #title.on { animation:titleIn 2.2s forwards; }
+  #title div { background:linear-gradient(90deg,transparent,rgba(0,0,0,.8) 15%,rgba(0,0,0,.8) 85%,transparent); padding:14px 60px; text-align:center; }
+  #title b { display:block; color:var(--green); font-size:26px; letter-spacing:.18em; }
+  #title small { color:var(--muted); }
+  @keyframes titleIn { 0%{opacity:0;transform:scaleX(.2)} 15%{opacity:1;transform:none} 80%{opacity:1} 100%{opacity:0} }
+  #shout { position:absolute; inset:0; display:grid; place-items:center; z-index:4; pointer-events:none; opacity:0; }
+  #shout span { font:900 clamp(34px,9vw,64px)/1 Impact, 'Arial Black', sans-serif; letter-spacing:.04em; padding:10px 26px; transform:rotate(-6deg);
+    -webkit-text-stroke:3px #2a0a05; color:#fff; background:var(--red); border:5px solid #fff; box-shadow:0 0 0 6px var(--red), 0 10px 40px rgba(0,0,0,.6); }
+  #shout.press span { background:#2f6fd8; box-shadow:0 0 0 6px #2f6fd8, 0 10px 40px rgba(0,0,0,.6); }
+  #shout.bad span { background:#555; box-shadow:0 0 0 6px #555, 0 10px 40px rgba(0,0,0,.6); }
+  #shout.on { animation:pop 1s forwards; }
+  @keyframes pop { 0%{opacity:0;transform:scale(2.4)} 12%{opacity:1;transform:scale(1)} 75%{opacity:1} 100%{opacity:0} }
+  #flash { position:absolute; inset:0; background:#fff; opacity:0; pointer-events:none; z-index:5; }
+  #flash.on { animation:flash .4s; }
+  @keyframes flash { 0%{opacity:.9} 100%{opacity:0} }
+  #box { position:relative; margin:0 10px; min-height:118px; background:rgba(16,11,8,.94); border:2px solid #6d5a3a; border-radius:10px; padding:22px 16px 14px; cursor:pointer; user-select:none; }
+  #name { position:absolute; top:-14px; left:14px; background:#6d5a3a; color:#fff; padding:2px 12px; border-radius:6px; font-size:14px; letter-spacing:.05em; }
+  #name i { font-size:11px; opacity:.75; margin-left:6px; }
+  #text { min-height:3.2em; font-size:17px; }
+  #text.testimony { color:var(--green); }
+  #text.found { color:var(--muted); text-decoration:line-through; text-decoration-color:var(--red); }
+  #text .tag { display:inline-block; margin-top:6px; font-size:12px; text-decoration:none; color:#fff; background:var(--red); padding:1px 8px; border-radius:4px; }
+  #next { position:absolute; right:12px; bottom:6px; color:var(--gold); animation:bob 1s infinite; }
+  @keyframes bob { 50%{transform:translateY(3px)} }
+  #ctl { display:grid; grid-template-columns:1fr 1.4fr 1.4fr 1fr; gap:8px; padding:10px 10px max(12px, env(safe-area-inset-bottom)); }
+  #ctl.hide { visibility:hidden; }
+  button { font:600 15px Georgia, serif; color:var(--ink); background:#2b2017; border:2px solid #6d5a3a; border-radius:9px; padding:12px 6px; cursor:pointer; }
+  button:active { transform:translateY(1px); }
+  button.press { background:#1f3b6e; border-color:#5b8de0; }
+  button.present { background:#6e2418; border-color:var(--red); }
+  button.hint { position:absolute; top:44px; right:12px; z-index:2; padding:6px 12px; font-size:13px; background:rgba(0,0,0,.5); }
+  .modal { position:absolute; inset:0; z-index:10; background:rgba(8,5,3,.92); display:flex; flex-direction:column; padding:18px 14px; overflow:auto; }
+  .modal[hidden] { display:none; }
+  .modal h2 { margin:0 0 4px; color:var(--gold); font-size:20px; letter-spacing:.08em; }
+  .modal p { color:var(--muted); margin:4px 0 12px; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:10px; }
+  .card { background:linear-gradient(160deg,#f3e3bf,#d9c08a); color:#2b1d0e; border-radius:10px; padding:10px; border:3px solid transparent; cursor:pointer; min-height:92px; position:relative; }
+  .card small { display:block; font-size:12px; opacity:.7; }
+  .card b { display:block; font-size:15px; }
+  .card.sel { border-color:var(--red); box-shadow:0 0 0 3px #fff; }
+  .card.new::after { content:'NOVA'; position:absolute; top:-8px; right:-6px; background:var(--red); color:#fff; font:700 10px sans-serif; padding:2px 6px; border-radius:4px; }
+  .detail { margin:14px 0; background:#f3e3bf; color:#2b1d0e; border-radius:10px; padding:14px; min-height:80px; }
+  .row { display:flex; gap:10px; margin-top:auto; padding-top:12px; }
+  .row button { flex:1; }
+  .opt { display:block; width:100%; margin:8px 0; text-align:left; }
+  .ladder { list-style:none; padding:0; margin:0; counter-reset:s; }
+  .ladder li { counter-increment:s; background:#f3e3bf; color:#2b1d0e; border-radius:8px; padding:8px 12px 8px 40px; margin:6px 0; position:relative; }
+  .ladder li::before { content:counter(s); position:absolute; left:10px; top:8px; width:22px; height:22px; border-radius:50%; background:var(--red); color:#fff; font:700 13px/22px sans-serif; text-align:center; }
+  .ladder b { color:#8a2a17; }
+  .special { margin-top:14px; border-radius:12px; padding:16px; text-align:center; background:radial-gradient(circle at 50% 0,#ffdf9a,#c58b2e); color:#2b1d0e; box-shadow:0 0 30px rgba(255,190,90,.45); }
+  .mode { display:block; width:100%; text-align:left; margin:8px 0; padding:14px; }
+  .mode span { display:block; font-weight:400; font-size:14px; color:var(--muted); }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="scene">
+    <div id="hud"><div id="prog">Memória do Éden · Gênesis 3</div><div id="brasas"></div></div>
+    <button class="hint" id="hintBtn" hidden>Dica</button>
+    <div id="char"></div>
+    <div id="title"><div><b id="titleB"></b><small id="titleS"></small></div></div>
+    <div id="shout"><span></span></div>
+    <div id="flash"></div>
+  </div>
+  <div id="box"><div id="name"></div><div id="text"></div><div id="next">▼</div></div>
+  <div id="ctl" class="hide">
+    <button id="prev">◀</button>
+    <button id="press" class="press">Insistir</button>
+    <button id="pres" class="present">Apresentar</button>
+    <button id="nxt">▶</button>
+  </div>
+
+  <div class="modal" id="start">
+    <h2>DISSE DEUS?</h2>
+    <p>Mockup do minijogo de depoimentos (estilo Ace Attorney). Gênesis 2–3.</p>
+    <button class="mode" data-m="ini">Iniciante<span>Sem brasas. Botão de dica sempre disponível.</span></button>
+    <button class="mode" data-m="exp">Experiente<span>5 brasas. Cada carta errada gasta uma. Sem brasas, uma revisão curta devolve três.</span></button>
+  </div>
+
+  <div class="modal" id="case" hidden>
+    <h2>CARTAS</h2>
+    <p id="caseHint">Toque numa carta para ler.</p>
+    <div class="cards" id="cards"></div>
+    <div class="detail" id="detail">—</div>
+    <div class="row"><button id="caseBack">Voltar</button><button id="casePresent" class="present">Apresentar esta</button></div>
+  </div>
+
+  <div class="modal" id="quiz" hidden>
+    <h2>REVISÃO</h2>
+    <p>Sem brasas. Volte ao que Deus disse de fato.</p>
+    <div class="detail" id="qq"></div>
+    <div id="qo"></div>
+  </div>
+
+  <div class="modal" id="end" hidden>
+    <h2>RELATÓRIO: A PALAVRA TORCIDA</h2>
+    <p>A escada do engano, na ordem em que você a desmontou:</p>
+    <ul class="ladder" id="ladder"></ul>
+    <div class="special"><small>CARTA ESPECIAL</small><h3 style="margin:4px 0">A palavra torcida</h3>
+      Antes de qualquer fruto, a palavra de Deus foi torcida: perguntada como acusação, afastada, esvaziada, aumentada, negada e trocada por uma oferta do que já era deles.</div>
+    <div class="row"><button onclick="location.reload()">Jogar de novo</button></div>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+
+// ---------- personagens (silhuetas simples) ----------
+const ART = {
+  Serpente: `<svg viewBox="0 0 200 220"><defs><linearGradient id="sg" x1="0" x2="1"><stop offset="0" stop-color="#f5d37a"/><stop offset="1" stop-color="#b8862d"/></linearGradient></defs>
+    <path d="M40 210 C10 170 70 150 110 160 C160 172 175 130 140 115 C100 98 60 110 70 70 C78 40 120 30 140 48" fill="none" stroke="url(#sg)" stroke-width="26" stroke-linecap="round"/>
+    <ellipse cx="146" cy="50" rx="24" ry="16" fill="#e7c063"/><circle cx="154" cy="45" r="4" fill="#2b0d05"/>
+    <path d="M168 54 l14 4 l-6 3 l6 3 l-14 -2" fill="#c0392b"/></svg>`,
+  Mulher: `<svg viewBox="0 0 200 240"><path d="M100 30 c22 0 34 18 32 40 c-2 18 -12 30 -32 30 c-20 0 -30 -12 -32 -30 c-2 -22 10 -40 32 -40z" fill="#c69a72"/>
+    <path d="M66 62 c-4 -40 30 -50 44 -44 c26 4 34 30 28 52 c10 30 6 70 -4 90 l-8 -60 c-6 -24 -40 -30 -60 -38z" fill="#3a2414"/>
+    <path d="M62 240 c4 -70 14 -110 38 -116 c24 6 34 46 38 116z" fill="#6a8a4a" opacity=".85"/></svg>`,
+  Estranho: `<svg viewBox="0 0 200 240"><defs><linearGradient id="fg" x1="0" y1="0" x2="0" y2="1"><stop offset=".15" stop-color="#0d0805"/><stop offset=".72" stop-color="#0d0805" stop-opacity=".92"/><stop offset="1" stop-color="#0d0805" stop-opacity="0"/></linearGradient></defs>
+    <path d="M30 240 c0 -80 20 -150 70 -170 c50 20 70 90 70 170z" fill="#5b4632"/>
+    <path d="M56 110 c0 -60 20 -92 44 -96 c24 4 44 36 44 96 c-10 -6 -24 -10 -44 -10 s-34 4 -44 10z" fill="#6e563c"/>
+    <ellipse cx="100" cy="104" rx="30" ry="38" fill="#b08766"/><ellipse cx="100" cy="104" rx="31" ry="39" fill="url(#fg)"/>
+    <path d="M90 128 q10 6 20 0" stroke="#5a3424" stroke-width="3" fill="none"/></svg>`,
+  'Cléopas': `<svg viewBox="0 0 200 240"><circle cx="100" cy="80" r="34" fill="#b88b62"/><path d="M68 92 c4 40 60 40 64 0 c-4 30 -60 30 -64 0z" fill="#4a3220"/>
+    <path d="M62 70 c0 -40 76 -40 76 0 c-10 -16 -66 -16 -76 0z" fill="#7a5a3a"/><circle cx="88" cy="78" r="3"/><circle cx="112" cy="78" r="3"/>
+    <path d="M40 240 c4 -80 30 -110 60 -112 c30 2 56 32 60 112z" fill="#8a6a44"/></svg>`,
+};
+
+// ---------- cartas ----------
+const C = {
+  c216:  { ref:'Gn 2:16', t:'A permissão', x:'“De toda árvore do jardim comerás livremente.” Quem fala: o SENHOR Deus.' },
+  c217a: { ref:'Gn 2:17a', t:'A única proibição', x:'“…mas da árvore do conhecimento do bem e do mal, dela não comerás.” Só comer. Nada sobre tocar.' },
+  c217b: { ref:'Gn 2:17b', t:'A consequência', x:'“…porque, no dia em que dela comeres, certamente morrerás.”' },
+  cnome: { ref:'Gn 2:4–3:1', t:'O nome', x:'O narrador sempre diz “o SENHOR Deus” (YHWH Elohim): o nome pessoal, o Deus que forma, sopra, planta e conversa com eles.' },
+  c29:   { ref:'Gn 2:9', t:'A árvore com nome', x:'“…a árvore da vida no meio do jardim, e a árvore do conhecimento do bem e do mal.” A árvore tem nome. Não é uma qualquer.' },
+  c127:  { ref:'Gn 1:27', t:'Imagem de Deus', x:'“Criou Deus o homem à sua imagem; à imagem de Deus o criou.”' },
+};
+let hand = ['c216','c217a','c217b','cnome','c29'];
+const fresh = new Set();
+
+// ---------- depoimentos ----------
+// ok: carta que contradiz a linha · kind: degrau da escada · wr: respostas a cartas erradas específicas
+const TS = [
+  { who:'Serpente', title:'DEPOIMENTO', sub:'A serpente · Gn 3:1', need:2, lines:[
+    { t:'Eu só estou fazendo uma pergunta…', ok:null,
+      press:[['Cléopas','Ela não afirma nada. Só pergunta.'],['Estranho','Uma pergunta também pode carregar uma acusação. Escute o resto.']] },
+    { t:'“É assim que Deus disse…', ok:'cnome', kind:'Distância', short:'Ela diz só “Deus”, um termo genérico.',
+      press:[['Você','Só “Deus”?'],['Estranho','Repare em como cada um chama o Criador neste jardim.']],
+      okMsg:'Ela diz só “Elohim”, o termo genérico para divindade. O narrador diz “o SENHOR Deus”, o nome de quem conversa com eles. A serpente tira Deus da relação.' },
+    { t:'…“Não comereis de toda árvore do jardim”?”', ok:'c216', kind:'Distorção', short:'O “toda” da generosidade colado na proibição.',
+      press:[['Serpente','“Toda árvore”. Foi o que me disseram.'],['Cléopas','“Toda”… essa palavra eu já ouvi em outro lugar.']],
+      wr:{ c217a:'Perto! Mas o problema não é qual árvore está proibida. É a palavra “toda”. Onde Deus usou “toda”?' },
+      okMsg:'Deus disse “de TODA árvore comerás livremente”. A serpente pega o “toda” da generosidade e cola na proibição. O Deus que dá virou o Deus que tira.' },
+  ]},
+  { who:'Mulher', title:'DEPOIMENTO', sub:'A mulher · Gn 3:2-3', need:3, lines:[
+    { t:'“Do fruto das árvores do jardim podemos comer,', ok:null,
+      press:[['Cléopas','Ela corrige a serpente. Parece até defender Deus.']],
+      wr:{ c216:'Aqui ela está certa! Ela corrige a serpente. O deslize dela vem depois.' } },
+    { t:'mas do fruto da árvore que está no meio do jardim,', ok:'c29', kind:'Omissão', short:'A árvore perdeu o nome.',
+      press:[['Você','Qual árvore? No meio do jardim havia duas.'],['Estranho','E como Deus chamou essa árvore?']],
+      okMsg:'A árvore perdeu o nome. Não é mais “a árvore do conhecimento do bem e do mal”, é só “a do meio”. Sem nome, o mal deixa de parecer mal.' },
+    { t:'disse Deus:', ok:'cnome', kind:'Distância', short:'Ela também diz só “Deus”.',
+      press:[['Cléopas','“Disse Deus”. Parece inofensivo.']],
+      okMsg:'Ela também diz só “Deus”. Sem perceber, já fala como a serpente.' },
+    { t:'“Dele não comereis, nem tocareis nele,', ok:'c217a', kind:'Acréscimo', short:'“Nem tocareis”: Deus nunca disse isso.',
+      press:[['Mulher','É melhor nem chegar perto.'],['Estranho','Prudente… mas quem disse isso?']],
+      okMsg:'Deus nunca disse “nem tocareis”. A cerca cresceu. E quando ela tocar e não morrer… por que não comer?' },
+    { t:'para que não morrais.”', ok:null,
+      press:[['Cléopas','Isso é quase o que Deus disse.']],
+      wr:{ c217b:'Está perto da palavra de Deus. O maior desvio está antes. Volte algumas linhas.' } },
+  ]},
+  { who:'Serpente', title:'DEPOIMENTO', sub:'A serpente · Gn 3:4-5', need:2, lines:[
+    { t:'“É certo que não morrereis.', ok:'c217b', kind:'Negação', short:'“Certamente morrerás” virou “certamente NÃO morrereis”.',
+      press:[['Serpente','Ora… você acredita mesmo nisso?']],
+      okMsg:'Agora não é mais pergunta: é a negação direta. Deus: “certamente morrerás”. Serpente: “certamente NÃO morrereis”. A palavra foi invertida.' },
+    { t:'Porque Deus sabe que, no dia em que dele comerdes, se vos abrirão os olhos,', ok:null,
+      press:[['Estranho','Os olhos de fato se abriram. Para ver o quê? (Gn 3:7)']],
+      wr:{ c217b:'Meia verdade: os olhos se abriram mesmo, para a vergonha (3:7). O engano está na promessa seguinte.' } },
+    { t:'e sereis como Deus, conhecedores do bem e do mal.”', ok:'c127', kind:'Usurpação', short:'Ofereceu o que eles já eram: imagem de Deus.',
+      press:[['Você','Como Deus… Espera. Eles já não eram…?'],['Estranho','Lembre do sexto dia.']], give:'c127',
+      wr:{ c217b:'A morte já foi tratada na primeira linha. Aqui a pergunta é outra: o que eles já tinham?' },
+      okMsg:'Eles JÁ eram imagem de Deus (1:27). A serpente oferece o que eles tinham, mas à revelia de Deus, sentados no trono dele.' },
+  ]},
+];
+
+// ---------- estado ----------
+let mode = 'ini', brasas = 5, ti = 0, li = 0, phase = 'talk', hintLv = 0, sel = null;
+const ladder = [];
+
+// ---------- diálogo com máquina de escrever ----------
+let q = [], qDone = null, timer = null, fullText = '';
+function setChar(who) {
+  const c = $('char');
+  if (ART[who]) { c.innerHTML = ART[who]; c.className = (who === 'Serpente' || who === 'Mulher') ? 'memory' : ''; }
+}
+function type(txt, cls) {
+  const el = $('text'); el.className = cls || ''; el.textContent = ''; fullText = txt;
+  let i = 0; clearInterval(timer);
+  timer = setInterval(() => { el.textContent = txt.slice(0, ++i); if (i >= txt.length) { clearInterval(timer); timer = null; } }, 18);
+}
+function finish() { clearInterval(timer); timer = null; $('text').textContent = fullText; }
+function speaker(who) { $('name').innerHTML = who + (who === 'Estranho' ? '<i>fala adaptada</i>' : ''); setChar(who); }
+function say(lines, done) { q = lines.slice(); qDone = done; phase = 'talk'; $('ctl').classList.add('hide'); $('next').style.display = ''; step(); }
+function step() {
+  if (timer) return finish();
+  const l = q.shift();
+  if (!l) { const d = qDone; qDone = null; return d && d(); }
+  speaker(l[0]); type(l[1], l[2]);
+}
+$('box').onclick = () => { if (phase === 'talk') step(); else if (phase === 'cross') move(1); };
+
+// ---------- efeitos ----------
+function shout(txt, kind) {
+  const s = $('shout'); s.querySelector('span').textContent = txt; s.className = kind || '';
+  void s.offsetWidth; s.classList.add('on');
+  if (kind !== 'press') { $('scene').classList.remove('shake'); void $('scene').offsetWidth; $('scene').classList.add('shake'); }
+  if (!kind) { $('flash').classList.remove('on'); void $('flash').offsetWidth; $('flash').classList.add('on'); }
+}
+function titleCard(b, s) { $('titleB').textContent = b; $('titleS').textContent = s; const t = $('title'); t.classList.remove('on'); void t.offsetWidth; t.classList.add('on'); }
+function drawBrasas() {
+  $('brasas').innerHTML = mode === 'exp' ? Array.from({ length: 5 }, (_, i) => `<span class="${i < brasas ? '' : 'off'}">🔥</span>`).join('') : '';
+}
+function drawProg() { const T = TS[ti]; $('prog').textContent = `Depoimento ${ti + 1}/${TS.length} · contradições ${T.lines.filter(l => l.found).length}/${T.need}`; }
+
+// ---------- interrogatório ----------
+function startTestimony() {
+  const T = TS[ti]; li = 0; hintLv = 0; drawProg();
+  titleCard(T.title, T.sub);
+  setTimeout(() => say(T.lines.map(l => [T.who, l.t, 'testimony']).concat([['Cléopas', 'Agora é com a gente. Vamos passar frase por frase.']]), cross), 1400);
+}
+function cross() {
+  phase = 'cross'; $('ctl').classList.remove('hide'); $('next').style.display = 'none';
+  const T = TS[ti], L = T.lines[li]; speaker(T.who);
+  const el = $('text');
+  if (L.found) { el.className = 'found'; el.innerHTML = ''; el.append(L.t); const tg = document.createElement('div'); tg.className = 'tag'; tg.textContent = L.kind + ': ' + L.short; el.append(tg); finish0(); }
+  else type(L.t, 'testimony');
+  $('prev').disabled = li === 0;
+}
+function finish0() { clearInterval(timer); timer = null; }
+function move(d) { const n = TS[ti].lines.length; li = (li + d + n) % n; cross(); }
+$('prev').onclick = () => move(-1);
+$('nxt').onclick = () => move(1);
+$('press').onclick = () => {
+  const L = TS[ti].lines[li]; shout('INSISTA!', 'press');
+  const lines = [['Você', 'Espera aí. Repita isso.']].concat(L.press || [['Cléopas', 'Não parece haver mais nada aqui.']]);
+  if (L.give && !hand.includes(L.give)) { hand.push(L.give); fresh.add(L.give); lines.push(['Narrador', `Nova carta: “${C[L.give].t}” (${C[L.give].ref}).`]); }
+  setTimeout(() => say(lines, cross), 450);
+};
+$('pres').onclick = () => openCase(true);
+
+function present(cid) {
+  closeCase();
+  const T = TS[ti], L = T.lines[li];
+  if (L.found) return say([['Cléopas', 'Essa já desmontamos. Procure outra frase.']], cross);
+  if (L.ok === cid) {
+    L.found = true; ladder.push(L); shout('CONTRADIÇÃO!'); drawProg();
+    setTimeout(() => say([['Você', `Isso não foi o que Deus disse! Veja: ${C[cid].ref}.`], ['Estranho', L.okMsg]], () => {
+      if (T.lines.filter(l => l.found).length >= T.need) nextTestimony(); else cross();
+    }), 900);
+  } else {
+    const msg = (L.wr && L.wr[cid]) || (L.ok ? 'Essa carta não fala desta frase. O que, exatamente, esta frase muda na palavra de Deus?' : 'Esta frase não contradiz a palavra de Deus. Insista nas outras para ouvir mais.');
+    shout('…?', 'bad');
+    if (mode === 'exp') { brasas = Math.max(0, brasas - 1); drawBrasas(); }
+    setTimeout(() => say([['Estranho', msg]], () => (mode === 'exp' && brasas === 0) ? review() : cross()), 700);
+  }
+}
+function nextTestimony() {
+  ti++;
+  if (ti >= TS.length) return ending();
+  const bridge = ti === 1 ? [['Estranho', 'A serpente perguntou. Agora escutem como a mulher responde.']] : [['Estranho', 'Agora a serpente deixa de perguntar.']];
+  say(bridge, startTestimony);
+}
+
+// ---------- cartas ----------
+function openCase(canPresent) {
+  sel = null; $('case').hidden = false; $('casePresent').style.display = canPresent ? '' : 'none';
+  $('caseHint').textContent = canPresent ? `Frase: “${TS[ti].lines[li].t}”. Escolha a carta que a contradiz.` : 'Toque numa carta para ler.';
+  $('detail').textContent = '—';
+  $('cards').innerHTML = hand.map(id => `<div class="card ${fresh.has(id) ? 'new' : ''}" data-id="${id}"><small>${C[id].ref}</small><b>${C[id].t}</b></div>`).join('');
+  $('cards').querySelectorAll('.card').forEach(el => el.onclick = () => {
+    sel = el.dataset.id; fresh.delete(sel);
+    $('cards').querySelectorAll('.card').forEach(c => c.classList.toggle('sel', c === el)); el.classList.remove('new');
+    $('detail').innerHTML = `<b>${C[sel].t}</b> · ${C[sel].ref}<br>${C[sel].x}`;
+  });
+}
+function closeCase() { $('case').hidden = true; }
+$('caseBack').onclick = closeCase;
+$('casePresent').onclick = () => sel ? present(sel) : ($('detail').textContent = 'Escolha uma carta primeiro.');
+
+// ---------- dicas (iniciante): empurrão → direção → resposta ----------
+$('hintBtn').onclick = () => {
+  const T = TS[ti], miss = T.lines.map((l, i) => [l, i]).filter(([l]) => l.ok && !l.found);
+  if (!miss.length) return;
+  const [L, i] = miss[0]; hintLv = Math.min(hintLv + 1, 3);
+  const msg = hintLv === 1 ? `Ainda há ${miss.length} desvio(s) neste depoimento. Compare cada frase com as cartas.`
+            : hintLv === 2 ? `Olhe a frase ${i + 1}: “${L.t}”.`
+            : `Na frase ${i + 1}, apresente “${C[L.ok].t}” (${C[L.ok].ref}).${L.give && !hand.includes(L.give) ? ' Antes, insista nela para ganhar a carta.' : ''}`;
+  say([['Cléopas', msg]], cross);
+};
+
+// ---------- revisão (experiente, sem brasas) ----------
+const QZ = [
+  { q:'Deus disse: “De ____ árvore do jardim comerás livremente.”', o:['toda','nenhuma','quase toda'], a:0, why:['', 'Não: Deus foi generoso. Só uma árvore estava proibida.', 'Não: “toda”. A exceção vem depois, e é uma só.'] },
+  { q:'Sobre a árvore do conhecimento, Deus proibiu…', o:['comer','comer e tocar','olhar'], a:0, why:['', '“Tocar” foi acréscimo da mulher (3:3).', 'Nada sobre olhar.'] },
+  { q:'“No dia em que dela comeres, ____ morrerás.”', o:['certamente','talvez','não'], a:0, why:['', 'Deus não deixou dúvida.', '“Não morrereis” é a fala da serpente (3:4).'] },
+];
+function review() {
+  let k = 0; $('quiz').hidden = false;
+  const draw = (msg) => {
+    const z = QZ[k]; $('qq').innerHTML = (msg ? `<i>${msg}</i><br><br>` : '') + z.q;
+    $('qo').innerHTML = z.o.map((o, i) => `<button class="opt" data-i="${i}">${o}</button>`).join('');
+    $('qo').querySelectorAll('button').forEach(b => b.onclick = () => {
+      const i = +b.dataset.i;
+      if (i !== z.a) return draw(z.why[i]);
+      if (++k < QZ.length) return draw('Isso.');
+      $('quiz').hidden = true; brasas = 3; drawBrasas();
+      say([['Estranho', 'A palavra está firme de novo. Três brasas acesas. Continue.']], cross);
+    });
+  };
+  draw();
+}
+
+// ---------- fim ----------
+function ending() {
+  say([['Estranho', 'Antes de qualquer fruto, a palavra foi torcida. Vocês viram cada degrau.'], ['Cléopas', 'E a mulher nem percebeu que já falava como a serpente…'], ['Estranho', 'Guardem estas cartas. Elas ainda vão servir no caminho.']], () => {
+    $('ladder').innerHTML = ladder.map(l => `<li><b>${l.kind}</b>: ${l.short}</li>`).join('');
+    $('end').hidden = false;
+  });
+}
+
+// ---------- início ----------
+document.querySelectorAll('.mode').forEach(b => b.onclick = () => {
+  mode = b.dataset.m; $('start').hidden = true; drawBrasas(); $('hintBtn').hidden = mode !== 'ini';
+  say([
+    ['Narrador', 'Memória do Éden. Gênesis 3.'],
+    ['Estranho', 'Toda queda começa numa conversa. Escutem com atenção.'],
+    ['Cléopas', 'Vamos ouvir cada frase. Se alguma não bater com o que Deus disse, mostramos a carta.'],
+    ['Narrador', '◀ ▶ percorrem as frases. INSISTIR pede mais detalhes e às vezes revela uma carta nova. APRESENTAR mostra uma carta contra a frase que ela contradiz.'],
+  ], startTestimony);
+});
+</script>
+</body>
+</html>
