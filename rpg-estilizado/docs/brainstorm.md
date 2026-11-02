@@ -87,7 +87,7 @@ Status: **D** = decidido, **P** = proposta em discussão, **A** = em aberto (ret
 - **D** Mockups jogáveis em `mockups/`: Tunic (salas), The Gardens Between (ilhas), Octopath HD-2D (vila), Heaven's Vault (mapa + tradução). Usuário vai avaliar.
 - **D** Referências do usuário (Pinterest): câmera alta quase de cima, texturas pintadas à mão, mundo modular em blocos/peças.
 - **D** Kits CC0 escolhidos pelo usuário, baixáveis com `bash scripts/fetch-kits.sh` (pasta `kits/`, fora do git): Kenney Mini Arena, Nature Kit, Survival Kit, Retro Textures Fantasy; Quaternius Modular Dungeon, Ultimate Platformer, RPG Characters (via OpenGameArt); KayKit Medieval Builder.
-- **A** Quaternius Ultimate Modular Ruins: só no Google Drive do autor, que respondia "Quota exceeded" em 02/11/2026; baixar manualmente depois.
+- **D** Quaternius Ultimate Modular Ruins: baixado do Google Drive do autor (OBJ + texturas, 92 modelos), também pelo `fetch-kits.sh`.
 
 ## Avaliação dos mockups
 - **D** Visual preferido: Tunic e The Gardens Between. Ressalva do usuário: os gráficos dos rascunhos ficaram bem abaixo; falta saber se é por serem rascunhos ou se é o teto possível.
