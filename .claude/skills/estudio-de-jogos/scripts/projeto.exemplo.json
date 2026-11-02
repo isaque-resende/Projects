@@ -1,0 +1,21 @@
+{
+  "briefing": {
+    "fonteDoEstudo": "Lição da Escola Sabatina (exemplo)",
+    "traducao": "ARC (verificar licença da edição usada)",
+    "tradicao": "adventista do sétimo dia, histórico-bíblico",
+    "publico": "adultos, estudo em grupo",
+    "grauDeAdaptacao": "expansão rotulada",
+    "oQueNaoFara": "não mede fé, não compara pessoas, não inventa fala de Deus"
+  },
+  "licencas": { "traducao": "ARC (edição verificada)", "ativos": [] },
+  "cenas": [
+    {
+      "id": "filho-prodigo",
+      "genero": "parabola",
+      "mecanicas": ["escolha_de_resposta"],
+      "afirmacoes": [{ "tipo": "texto", "ref": "Lc 15:11-32" }],
+      "usos": [{ "uso": "exegetico", "versoes": ["ARC", "NVI"] }],
+      "camadas": { "textoDiz": "Lc 15:11-32", "paraMim": { "texto": "Onde me vejo nesta história?" } }
+    }
+  ]
+}
