@@ -20,7 +20,6 @@ import { makeFlora, floraTime } from './world/flora.js';
 import { makeAnimals, makeEffects } from './world/life.js';
 import { PLACES, TRAVEL } from './world/layout.js';
 import { makeStory, reservedSpots } from './story.js';
-import { clone as skClone } from 'three/examples/jsm/utils/SkeletonUtils.js';
 
 const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
 if (isTouch) document.body.classList.add('touch');
@@ -72,8 +71,8 @@ async function loadSky() {
   return tick(t);
 }
 status('carregando modelos e texturas…');
-const [natureGltf, baseGltf, hairGltf, beardGltf, animGltf, donkeyGltf, sheepGltf, femaleGltf, hdr, mats] = await Promise.all([
-  load('nature'), load('hero_base'), load('hair_long'), load('hair_beard'), load('animations'), load('donkey'), load('sheep'), load('hero_female'),
+const [natureGltf, baseGltf, hairGltf, beardGltf, animGltf, donkeyGltf, sheepGltf, femaleGltf, walkerGltf, hdr, mats] = await Promise.all([
+  load('nature'), load('hero_base'), load('hair_long'), load('hair_beard'), load('animations'), load('donkey'), load('sheep'), load('hero_female'), load('caminhante'),
   loadSky(),
   loadMaterials(texLoader, { anisotropy: lowQuality ? 4 : 8 }),
 ]);
@@ -154,15 +153,51 @@ M.lit.emissiveIntensity = 2.2;
 
 // ---------- personagem ----------
 status('vestindo o peregrino…'); await nextFrame();
-const hero = buildHero({ baseGltf, hairGltf, beardGltf });
-const maleTpl = skClone(hero);   // molde para os homens (antes de animar)
+// protagonista: o caminhante low-poly (rig próprio, 8 clipes); os NPCs continuam no modelo antigo
+const hero = walkerGltf.scene;
+hero.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; } });
+const maleTpl = buildHero({ baseGltf, hairGltf, beardGltf });   // molde para os homens
 const femaleTpl = buildHero({ baseGltf: femaleGltf, cover: true, colors: { tunic: 0xd8c8a6, veil: 0x8a9cb8, mantle: 0xb0a090 } });
 const player = new THREE.Group(); player.add(hero); scene.add(player);
 const mixer = new THREE.AnimationMixer(hero);
-const clips = Object.fromEntries(animGltf.animations.map((c) => [c.name, c]));
-const actions = {}; const act = (n) => (actions[n] ??= mixer.clipAction(clips[n]));
+const clips = Object.fromEntries(animGltf.animations.map((c) => [c.name, c]));   // clipes dos NPCs
+// pose de descanso de cada osso (antes de animar)
+const REST = [];
+hero.traverse((b) => { if (b.isBone) REST.push([b.name, b.quaternion.clone(), b.position.clone()]); });
+// os clipes do caminhante só animam parte dos ossos; completa o resto com a pose de descanso
+// para que um osso não fique "preso" na pose do clipe anterior
+function fillRest(clip) {
+  const has = new Set(clip.tracks.map((t) => t.name));
+  for (const [n, q, p] of REST) {
+    if (!has.has(`${n}.quaternion`)) clip.tracks.push(new THREE.QuaternionKeyframeTrack(`${n}.quaternion`, [0], q.toArray()));
+    if (!has.has(`${n}.position`)) clip.tracks.push(new THREE.VectorKeyframeTrack(`${n}.position`, [0], p.toArray()));
+  }
+  return clip;
+}
+const heroClips = Object.fromEntries(walkerGltf.animations.map((c) => [c.name, fillRest(c)]));
+heroClips.Idle = fillRest(idleClip());
+// nomes antigos usados pelo jogo e pela história → clipes do caminhante
+const ALIAS = {
+  Idle_Loop: 'Idle', Walk_Loop: 'Walk', Jog_Fwd_Loop: 'Run', Sprint_Loop: 'Run',
+  Jump_Start: 'Jump', Jump_Loop: 'Jump', Jump_Land: 'Idle',
+  Fixing_Kneeling: 'Kneel', Sitting_Idle_Loop: 'Kneel', Sitting_Exit: 'PickUp',
+};
+const CYCLE = new Set(['Idle', 'Walk', 'Run', 'Talk']);
+const actions = {};
+const act = (n) => (actions[n] ??= mixer.clipAction(heroClips[n]));
 let current = null;
+// pose de descanso com uma respiração leve no peito
+function idleClip() {
+  const [, q] = REST.find(([n]) => n === 'Chest') ?? [];
+  if (!q) return new THREE.AnimationClip('Idle', 3.2, []);
+  const q2 = q.clone().multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -0.03));
+  return new THREE.AnimationClip('Idle', 3.2, [
+    new THREE.QuaternionKeyframeTrack('Chest.quaternion', [0, 1.6, 3.2], [...q.toArray(), ...q2.toArray(), ...q.toArray()]),
+  ]);
+}
 function play(name, { once = false, fade = 0.2, speed = 1 } = {}) {
+  name = ALIAS[name] ?? name;
+  if (!CYCLE.has(name)) { once = true; speed = 1; }
   const a = act(name); a.timeScale = speed;
   if (current === a) return a;
   a.reset(); a.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat, Infinity); a.clampWhenFinished = once; a.enabled = true;
@@ -337,7 +372,7 @@ if (qs.has('at')) { story.skipIntro(); const p = PLACES.find((q) => q.id === qs.
 else if (qs.get('intro') === '0') story.skipIntro();
 else story.startIntro();
 window.__game = {
-  player, camera, scene, solids, extras, houses, flora, teleport, story, travelTo, TRAVEL, get traveling() { return !!travel; },
+  player, hero, play, mixer, camera, scene, solids, extras, houses, flora, teleport, story, travelTo, TRAVEL, get traveling() { return !!travel; },
   setCam: (y, p, d) => { yaw = y; pitch = p; dist = d; },
   advance: (n = 1, dt = 1 / 30) => { for (let i = 0; i < n; i++) step(dt); composer.render(); },
   view: (px, py, pz, tx, ty, tz) => { camera.position.set(px, py, pz); camera.lookAt(tx, ty, tz); composer.render(); },
