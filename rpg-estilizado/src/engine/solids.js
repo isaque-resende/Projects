@@ -55,6 +55,21 @@ export class Solids {
     });
     return h;
   }
+  // altura de chegada segura: a superfície livre mais baixa (terreno ou topo de caixa) com espaço para o corpo
+  spawnY(x, z) {
+    const ground = this.heightAt(x, z), cands = [ground], boxes = [];
+    this.near(x, z, 0, (b) => {
+      const [lx, lz] = this.local(b, x, z);
+      if (Math.abs(lx) > b.hx || Math.abs(lz) > b.hz) return;
+      boxes.push([b.y0, this.top(b, lx, lz)]); cands.push(this.top(b, lx, lz));
+    });
+    cands.sort((a, b) => a - b);
+    for (const c of cands) {
+      if (c < ground - 0.01) continue;
+      if (!boxes.some(([y0, y1]) => y0 < c + BODY_H && y1 > c + 0.05)) return c;
+    }
+    return cands[cands.length - 1];
+  }
   // empurra um círculo (raio r) para fora das caixas que bloqueiam nessa altura
   resolve(x, z, feetY, r) {
     for (let it = 0; it < 3; it++) {

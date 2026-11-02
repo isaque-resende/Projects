@@ -18,7 +18,7 @@ import { buildCity } from './world/city.js';
 import { buildSites } from './world/sites.js';
 import { makeFlora, floraTime } from './world/flora.js';
 import { makeAnimals, makeEffects } from './world/life.js';
-import { PLACES } from './world/layout.js';
+import { PLACES, TRAVEL } from './world/layout.js';
 import { makeStory, reservedSpots } from './story.js';
 import { clone as skClone } from 'three/examples/jsm/utils/SkeletonUtils.js';
 
@@ -176,7 +176,7 @@ const input = makeInput(renderer.domElement, isTouch);
 let yaw = 0, pitch = 0.18, dist = 6.5, heroYaw = 0, vy = 0, grounded = true, landT = 0, kneel = false, speed = 0, visY = 0;
 const camTarget = new THREE.Vector3(), camPos = new THREE.Vector3();
 function teleport(x, z, lookX, lookZ, y) {
-  const gy = y ?? solids.groundAt(x, z, heightAt(x, z) + 30);
+  const gy = y ?? solids.spawnY(x, z);
   player.position.set(x, gy, z); visY = gy;
   heroYaw = Math.atan2(lookX - x, lookZ - z); hero.rotation.y = heroYaw;
   yaw = heroYaw + Math.PI; vy = 0; grounded = true; kneel = false;
@@ -223,12 +223,12 @@ const label = document.querySelector('#place');
 let placeNow = null, labelT = 0;
 const showPlace = (p) => { label.querySelector('b').textContent = p.name; label.classList.add('on'); labelT = 4; };
 const menu = document.querySelector('#menu'), list = document.querySelector('#places');
-for (const p of PLACES.filter((q) => q.spawn)) {
+// viagem pelo mapa: escurece, leva ao lugar e clareia (corte de tempo, não teleporte seco)
+let travel = null;
+function travelTo(p) { menu.hidden = true; if (!travel) travel = { p, t: 0, phase: 'out' }; }
+for (const p of TRAVEL) {
   const b = document.createElement('button'); b.type = 'button'; b.textContent = p.name;
-  b.addEventListener('click', () => {
-    teleport(p.spawn[0], p.spawn[1], ...(p.look || [p.x, p.z]));
-    menu.hidden = true;
-  });
+  b.addEventListener('click', () => travelTo(p));
   list.appendChild(b);
 }
 document.querySelector('#mapBtn').addEventListener('click', () => { menu.hidden = !menu.hidden; });
@@ -247,7 +247,14 @@ const clock = new THREE.Clock();
 const mv = new THREE.Vector3(), tmpV = new THREE.Vector3(), dirV = new THREE.Vector3();
 function step(dt) {
   const inp = input.poll();
+  if (travel) inp.interact = false;
   const st = story.update(dt, inp, clock.elapsedTime);
+  if (travel) {
+    travel.t += dt;
+    if (travel.phase === 'out') { grade.uFade.value = Math.min(1, travel.t / 0.35); if (travel.t >= 0.45) { const p = travel.p; teleport(p.spawn[0], p.spawn[1], ...p.look); travel.phase = 'in'; travel.t = 0; } }
+    else { grade.uFade.value = Math.max(0, 1 - travel.t / 0.5); if (travel.t >= 0.5) { grade.uFade.value = 0; travel = null; } }
+    st.lock = true;
+  }
   grade.uTime.value = clock.elapsedTime;
   if (st.lock) { inp.ix = inp.iy = 0; inp.jump = false; inp.kneel = false; if (st.cam) { inp.look.x = inp.look.y = 0; } }
   yaw -= inp.look.x; pitch = THREE.MathUtils.clamp(pitch + inp.look.y, -0.35, 1.25); dist = THREE.MathUtils.clamp(dist + inp.zoom, 2.5, 22);
@@ -330,7 +337,7 @@ if (qs.has('at')) { story.skipIntro(); const p = PLACES.find((q) => q.id === qs.
 else if (qs.get('intro') === '0') story.skipIntro();
 else story.startIntro();
 window.__game = {
-  player, camera, scene, solids, extras, houses, flora, teleport, story,
+  player, camera, scene, solids, extras, houses, flora, teleport, story, travelTo, TRAVEL, get traveling() { return !!travel; },
   setCam: (y, p, d) => { yaw = y; pitch = p; dist = d; },
   advance: (n = 1, dt = 1 / 30) => { for (let i = 0; i < n; i++) step(dt); composer.render(); },
   view: (px, py, pz, tx, ty, tz) => { camera.position.set(px, py, pz); camera.lookAt(tx, ty, tz); composer.render(); },

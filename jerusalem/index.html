@@ -24,6 +24,15 @@
     #hint { position: fixed; left: 16px; bottom: 14px; color: #fff; font-size: 13px; text-shadow: 0 1px 3px #000a; opacity: .85; pointer-events: none; }
     body.touch #hint { display: none; }
     #mapBtn { position: fixed; right: max(14px, env(safe-area-inset-right)); top: max(14px, env(safe-area-inset-top)); z-index: 5; font: 600 13px 'Alegreya Sans', sans-serif; letter-spacing: .08em; color: var(--ink); background: var(--shade); border: 1px solid #e3b76666; border-radius: 20px; padding: 9px 16px; }
+    #mapBtn.pulse { animation: mapPulse 1.3s ease-in-out infinite; background: #3a2610; }
+    @keyframes mapPulse { 0%, 100% { box-shadow: 0 0 0 0 #e3b76699; } 50% { box-shadow: 0 0 0 10px #e3b76600; transform: scale(1.06); } }
+    #mapTip { position: fixed; right: max(14px, env(safe-area-inset-right)); top: calc(max(14px, env(safe-area-inset-top)) + 50px); z-index: 6; width: min(260px, calc(100vw - 28px)); box-sizing: border-box; background: #1b1410f0; border: 1px solid var(--gold); border-radius: 10px; padding: 10px 14px; font-size: 14.5px; line-height: 1.4; color: #f6ead2; box-shadow: 0 8px 24px #0009; cursor: pointer; }
+    #mapTip::before { content: ""; position: absolute; top: -7px; right: 30px; width: 12px; height: 12px; background: #1b1410f0; border-left: 1px solid var(--gold); border-top: 1px solid var(--gold); transform: rotate(45deg); }
+    #mapTip b { display: block; color: var(--gold); font-weight: 600; margin-bottom: 2px; }
+    #mapTip span { font-weight: 700; color: var(--gold); letter-spacing: .06em; }
+    body.cine #mapTip { display: none !important; }
+    body.touch #mapTip { top: calc(max(14px, env(safe-area-inset-top)) + 100px); }
+    body.touch #mapTip::before { display: none; }
     #mapBtn:focus-visible, #menu button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
     #menu { position: fixed; right: max(14px, env(safe-area-inset-right)); top: calc(max(14px, env(safe-area-inset-top)) + 46px); z-index: 6; width: min(300px, calc(100vw - 28px)); background: #1b1410ee; border: 1px solid #e3b76655; border-radius: 12px; padding: 12px; box-shadow: 0 10px 30px #0008; }
     #menu h2 { margin: 2px 4px 10px; font: 700 13px 'Cinzel', serif; letter-spacing: .14em; color: var(--gold); display: flex; justify-content: space-between; align-items: center; }
@@ -71,12 +80,17 @@
     #wip button { font: 500 15px 'Alegreya Sans', sans-serif; color: #1b1410; background: var(--gold); border: 0; border-radius: 22px; padding: 10px 20px; }
     #skip { position: fixed; right: max(14px, env(safe-area-inset-right)); top: calc(9vh + 12px); z-index: 9; font: 500 13px 'Alegreya Sans', sans-serif; color: #f6ead2; background: #ffffff1a; border: 1px solid #ffffff44; border-radius: 16px; padding: 7px 14px; }
   </style>
-  <script type="module" crossorigin src="./assets/index-bMiVFULv.js"></script>
+  <script type="module" crossorigin src="./assets/main-BhYPE3IO.js"></script>
+  <link rel="modulepreload" crossorigin href="./assets/OutputPass-CqC7-5jz.js">
+  <link rel="modulepreload" crossorigin href="./assets/BufferGeometryUtils-DeuHxSFJ.js">
+  <link rel="modulepreload" crossorigin href="./assets/SkeletonUtils-Bd0_ABCX.js">
+  <link rel="modulepreload" crossorigin href="./assets/UnrealBloomPass-BNWaAJFW.js">
 </head>
 <body>
   <div id="loading"><h1>JERUSALÉM · ANO 30</h1><div id="bar"><i></i></div><p id="msg">carregando…</p></div>
   <div id="place"><b>Monte das Oliveiras</b><span></span></div>
   <button id="mapBtn" type="button">MAPA</button>
+  <div id="mapTip" hidden role="status"><b>Você não precisa ir a pé.</b> Toque em <span>MAPA</span> para ir direto a qualquer lugar da cidade.</div>
   <div id="menu" hidden><h2>IR PARA <button id="closeMenu" type="button" aria-label="Fechar">×</button></h2><div id="places"></div></div>
   <div id="hint">WASD mover · Shift correr · Espaço pular · E falar/examinar · F ajoelhar · arraste para girar a câmera · roda para zoom</div>
   <div id="objective" hidden></div>

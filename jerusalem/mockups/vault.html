@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <title>Mockup — estilo Heaven's Vault</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@500;700&family=Alegreya:ital,wght@0,500;0,700;1,500&family=Alegreya+Sans:wght@500;700&display=swap" rel="stylesheet" />
+  <style>
+    :root { --ink: #2a1a10; --paper: #f3e3c2; --paper2: #e8d2a6; --amber: #e0962e; --ok: #3f8f4e; --bad: #b8432e; }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #f0b878; font-family: 'Alegreya Sans', system-ui, sans-serif; touch-action: none; user-select: none; -webkit-user-select: none; }
+    canvas#gl { display: block; width: 100%; height: 100%; }
+    [hidden] { display: none !important; }
+    .hud { position: fixed; z-index: 5; }
+    #place { left: 50%; top: max(16px, env(safe-area-inset-top)); transform: translateX(-50%); font: 700 clamp(18px, 4vw, 26px) 'Alegreya', serif; color: #fff7e6; text-shadow: 0 2px 0 #6a3a1a, 0 0 18px #0006; letter-spacing: .04em; pointer-events: none; }
+    #btns { right: max(12px, env(safe-area-inset-right)); top: max(12px, env(safe-area-inset-top)); display: flex; gap: 8px; }
+    #btns button { font: 700 13px 'Alegreya Sans', sans-serif; letter-spacing: .08em; color: var(--ink); background: var(--paper); border: 2px solid var(--ink); border-radius: 4px; padding: 7px 12px; box-shadow: 3px 3px 0 #2a1a1066; }
+    #help { left: max(12px, env(safe-area-inset-left)); bottom: max(12px, env(safe-area-inset-bottom)); color: #fff7e6; font-size: 13px; text-shadow: 0 1px 2px #000a; pointer-events: none; max-width: 70vw; }
+    /* balões de quadrinho */
+    @media (max-width: 520px) { #place { top: max(62px, calc(env(safe-area-inset-top) + 50px)); } .balloon { min-width: 230px; } #help { display: none; } }
+    .balloon { position: fixed; z-index: 6; transform: translate(-50%, -100%); max-width: min(300px, 78vw); background: #fffdf6; color: var(--ink); border: 2.5px solid var(--ink); border-radius: 18px; padding: 10px 14px 11px; font: 500 16px/1.32 'Alegreya', serif; box-shadow: 4px 4px 0 #2a1a1055; }
+    .balloon::after { content: ''; position: absolute; left: 50%; bottom: -14px; width: 18px; height: 18px; background: #fffdf6; border-right: 2.5px solid var(--ink); border-bottom: 2.5px solid var(--ink); transform: translateX(-50%) rotate(45deg) skew(8deg, 8deg); }
+    .balloon b { display: block; font: 700 12px 'Alegreya Sans', sans-serif; letter-spacing: .1em; text-transform: uppercase; color: #8a4a1e; margin-bottom: 2px; }
+    .balloon.me { background: #2a1a10; color: #fff4dc; } .balloon.me::after { background: #2a1a10; } .balloon.me b { color: var(--amber); }
+    #choices { position: fixed; z-index: 7; left: 50%; bottom: max(18px, env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; width: min(720px, calc(100vw - 24px)); }
+    #choices button { display: flex; align-items: center; gap: 8px; text-align: left; font: italic 500 15px 'Alegreya', serif; color: #fff4dc; background: #2a1a10e6; border: 2px solid #f3e3c2aa; border-radius: 24px; padding: 8px 14px 8px 8px; }
+    #choices button i { font: 700 13px 'Alegreya Sans', sans-serif; font-style: normal; width: 24px; height: 24px; border-radius: 50%; background: var(--amber); color: var(--ink); display: grid; place-items: center; flex: none; }
+    #tap { position: fixed; z-index: 6; left: 50%; bottom: max(22px, env(safe-area-inset-bottom)); transform: translateX(-50%); font: 700 14px 'Alegreya Sans'; color: var(--ink); background: var(--paper); border: 2px solid var(--ink); border-radius: 20px; padding: 8px 16px; box-shadow: 3px 3px 0 #2a1a1066; }
+    /* tradução */
+    #trans { position: fixed; inset: 0; z-index: 9; background: #1a0f08cc; display: grid; place-items: center; padding: 12px; }
+    .sheet { width: min(760px, 100%); max-height: 96vh; overflow: auto; box-sizing: border-box; background: radial-gradient(circle at 30% 20%, #f8ebcf, var(--paper2)); border: 3px solid var(--ink); border-radius: 6px; padding: 16px 16px 18px; color: var(--ink); box-shadow: 8px 8px 0 #0006; }
+    .sheet h3 { margin: 0 0 4px; font: 700 20px 'Alegreya', serif; } .sheet .sub { margin: 0 0 12px; font: italic 500 14px 'Alegreya', serif; color: #6a4a2a; }
+    #words { display: flex; flex-direction: row-reverse; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 6px 0 14px; }
+    .word { position: relative; min-width: 108px; text-align: center; background: #d9c08f; border: 2.5px solid var(--ink); border-radius: 8px; padding: 10px 8px 8px; cursor: pointer; }
+    .word .he { font: 700 34px 'Frank Ruhl Libre', serif; direction: rtl; line-height: 1.1; color: #3a2414; text-shadow: 1px 1px 0 #f4e4c0; }
+    .word .tr { font: italic 500 12px 'Alegreya', serif; color: #6a4a2a; }
+    .word .g { margin-top: 6px; font: 700 15px 'Alegreya Sans'; min-height: 1.2em; }
+    .word .st { position: absolute; top: -10px; right: -10px; width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--ink); display: grid; place-items: center; font: 700 13px 'Alegreya Sans'; }
+    .st.inc { background: var(--amber); } .st.ok { background: #7fc68a; } .st.bad { background: #f08a74; }
+    .word.sel { outline: 3px dashed var(--amber); outline-offset: 3px; }
+    #opts { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; min-height: 40px; }
+    #opts button { font: 700 15px 'Alegreya Sans'; background: #fff6e2; color: var(--ink); border: 2px solid var(--ink); border-radius: 18px; padding: 7px 14px; }
+    #reading { margin: 14px 0 6px; padding: 10px 12px; background: #fff6e2; border: 2px dashed #8a6a3a; border-radius: 6px; font: italic 500 18px 'Alegreya', serif; text-align: center; }
+    #verdict { text-align: center; font: 500 14px 'Alegreya Sans'; min-height: 1.3em; color: #6a3a1a; }
+    .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 10px; }
+    .row button { font: 700 14px 'Alegreya Sans'; letter-spacing: .06em; background: var(--ink); color: var(--paper); border: 0; border-radius: 4px; padding: 9px 16px; }
+    /* léxico */
+    #lex { position: fixed; z-index: 9; inset: 0; background: #1a0f08cc; display: grid; place-items: center; padding: 12px; }
+    #lexList { display: grid; gap: 6px; }
+    .lexrow { display: grid; grid-template-columns: 92px 1fr auto; align-items: center; gap: 10px; background: #fff6e2; border: 2px solid #8a6a3a; border-radius: 6px; padding: 6px 10px; }
+    .lexrow .he { font: 700 24px 'Frank Ruhl Libre', serif; direction: rtl; text-align: right; }
+    .lexrow small { color: #6a4a2a; font-style: italic; }
+    /* mapa */
+    #map { position: fixed; inset: 0; z-index: 9; background: #1a0f08cc; display: grid; place-items: center; padding: 12px; }
+    #mapCanvas { width: min(720px, 100%); aspect-ratio: 4 / 3; max-height: 82vh; border: 3px solid var(--ink); border-radius: 6px; box-shadow: 8px 8px 0 #0006; cursor: pointer; }
+    #mapNote { margin-top: 8px; color: #fff4dc; font: italic 500 15px 'Alegreya', serif; text-align: center; }
+    #fade { position: fixed; inset: 0; z-index: 20; background: #1a0f08; opacity: 0; pointer-events: none; transition: opacity .45s; }
+    #toast { position: fixed; z-index: 21; left: 50%; top: 22%; transform: translateX(-50%); background: var(--paper); color: var(--ink); border: 3px solid var(--ink); border-radius: 6px; padding: 10px 16px; font: 700 16px 'Alegreya', serif; box-shadow: 6px 6px 0 #0006; transition: opacity .4s; }
+  </style>
+  <script type="module" crossorigin src="../assets/vault-B7k7I0uF.js"></script>
+  <link rel="modulepreload" crossorigin href="../assets/OutputPass-CqC7-5jz.js">
+</head>
+<body>
+  <canvas id="gl"></canvas>
+  <div id="place" class="hud">Betânia</div>
+  <div id="btns" class="hud"><button id="bLex" type="button">LÉXICO</button><button id="bMap" type="button">MAPA</button></div>
+  <div id="help" class="hud">Toque no chão ou use WASD para andar · E ou toque na pessoa/pedra para interagir · M mapa · L léxico</div>
+  <div id="tap" hidden></div>
+  <div id="choices" hidden></div>
+  <div id="trans" hidden>
+    <div class="sheet" role="dialog" aria-label="Inscrição">
+      <h3 id="tTitle"></h3><p class="sub" id="tSub"></p>
+      <div id="words"></div>
+      <div id="opts"></div>
+      <div id="reading"></div>
+      <div id="verdict"></div>
+      <div class="row"><small style="font:italic 500 13px Alegreya,serif;color:#6a4a2a">Toque numa palavra e escolha um sentido. Palpites ficam <b style="color:#b36a10">incertos</b> até a mesma palavra fazer sentido em outra inscrição.</small><button id="tClose" type="button">FECHAR</button></div>
+    </div>
+  </div>
+  <div id="lex" hidden>
+    <div class="sheet"><h3>Léxico</h3><p class="sub">Palavras que você já viu. Verde: confirmada. Âmbar: palpite.</p><div id="lexList"></div><div class="row"><span></span><button id="lexClose" type="button">FECHAR</button></div></div>
+  </div>
+  <div id="map" hidden><div><canvas id="mapCanvas" width="960" height="720"></canvas><div id="mapNote">Escolha para onde ir.</div></div></div>
+  <div id="fade"></div>
+  <div id="toast" hidden></div>
+</body>
+</html>
