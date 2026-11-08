@@ -175,7 +175,7 @@ async function carregaCottage() {
       vec3 nW = normalize(cross(dFdx(vWPos2), dFdy(vWPos2)));
       vec2 p = planar(vWPos2, nW);
       float a = dot(semRep(tPedra, p / 1.6), vec3(0.333)), b = dot(semRep(tReboco, p / 0.8), vec3(0.333));
-      diffuseColor.rgb *= (0.7 + 0.22 * a + 0.16 * b) * macro(vWPos2);`);
+      diffuseColor.rgb *= (0.86 + 0.16 * a + 0.1 * b) * macro(vWPos2) * vec3(1.06, 1.0, 0.92);`);
   };
   cot = g.scene;
   cot.traverse((o) => { if (o.isMesh) { o.material = mat; o.castShadow = true; o.receiveShadow = true; } });
