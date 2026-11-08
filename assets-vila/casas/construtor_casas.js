@@ -129,6 +129,28 @@ export async function carregarKit(url, texDir = 'tex/') {
     pecas[no.name] = porMat;
   }
   const atl = atlas.clone(); atl.vertexColors = true;
+  // pedras (metade de cima do atlas = folhas de pedras): mais claras e levemente acinzentadas,
+  // e com restos de reboco por cima, que se desfazem aos poucos e revelam a pedra
+  atl.onBeforeCompile = (sh) => {
+    sh.uniforms.tReboco = { value: tex.reboco };
+    sh.vertexShader = 'varying vec3 vWPosA;\n' + sh.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>\n vWPosA = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+    sh.fragmentShader = 'uniform sampler2D tReboco; varying vec3 vWPosA;\n' + GLSL_NOISE + sh.fragmentShader.replace('#include <map_fragment>', `
+      vec3 c = texture2D(map, vMapUv).rgb;
+      if (vMapUv.y < 0.5) {
+        float l = dot(c, vec3(0.3333));
+        c = mix(c, vec3(l) * vec3(1.0, 0.99, 0.96), 0.32) * 1.14 + 0.025;
+        vec3 nW = normalize(cross(dFdx(vWPosA), dFdy(vWPosA)));
+        if (abs(nW.y) < 0.55) {
+          vec2 p = planar(vWPosA, nW);
+          float n = vnoise(p * 1.3 + 3.0) * 0.6 + vnoise(p * 4.1) * 0.4;
+          float massa = smoothstep(0.5, 0.68, n) * (0.55 + 0.45 * smoothstep(0.6, 2.2, mod(vWPosA.y, 2.8)));
+          vec3 reb = semRep(tReboco, p / 2.9) * vec3(1.0, 0.96, 0.9);
+          c = mix(c, reb, massa * 0.9);
+        }
+      }
+      diffuseColor.rgb *= c;`);
+  };
+  atl.customProgramCacheKey = () => 'casa_atlas_pedras';
   const materiais = { Casa_Alvenaria: materialMundo('alvenaria', tex), Casa_Teto: materialMundo('teto', tex), Casa_Atlas: atl };
   return { pecas, materiais, tex };
 }
@@ -241,6 +263,7 @@ function construir(kit, mapa, casas, rnd) {
     trechos.get(key).push(a);
   }
   // um pilar por nó e faixa de altura; parede > mureta > pátio
+  const semPilar = new Set();   // nós de chegada da escada no terraço (passagem livre)
   const pilares = new Map();
   const pilar = (no, nivel, nome, casa) => {
     const tipo = nome === 'Pilar_Mureta' ? 1 : nome === 'Pilar_Patio' ? 0 : 2;
@@ -268,7 +291,7 @@ function construir(kit, mapa, casas, rnd) {
         else if (a.tipo === 'mureta') {
           if (m === 'vao') {
             M.naAresta('Laje_Borda', a.lado, no, a.nivel, 0, 0, 'cima', casa.tom, casa.parede);
-            pilar(no, a.nivel, 'Pilar_Mureta', casa); pilar([no[0] + L.dir[0], no[1] + L.dir[1]], a.nivel, 'Pilar_Mureta', casa);
+            semPilar.add(no[0] + ',' + no[1] + '|' + (a.nivel + 1)); pilar([no[0] + L.dir[0], no[1] + L.dir[1]], a.nivel, 'Pilar_Mureta', casa);
             x += 1; continue;
           }
           n = run.length - x >= 2 && !prox ? 2 : 1;
@@ -315,6 +338,7 @@ function construir(kit, mapa, casas, rnd) {
     const dono = casas.get(cel(no[0] + quad[0][0], no[1] + quad[0][1]).casa);
     M.por('Cunhal', no[0], nivel * H, no[1], giro[quad[0].join(',')], nivel > 0 ? 'cima' : 'base', dono.tom, 1, dono.parede);
   }
+  for (const k of semPilar) { const pp = pilares.get(k); if (pp && pp[0] === 'Pilar_Mureta') pilares.delete(k); }
   for (const [nome, no, nivel, casa] of pilares.values()) {
     M.por(nome, no[0], nivel * H, no[1], 0, nome === 'Pilar_Mureta' || nivel > 0 ? 'cima' : 'base', nome === 'Pilar_Patio' ? null : casa.tom, 1, casa.parede);
   }
