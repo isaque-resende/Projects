@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#86b9df">
+<title>Forno de pão</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #c6e0ef; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; opacity: 0; transition: opacity .8s; }
+  canvas.on { opacity: 1; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<script type="module">
+// Forno de pão (tannur) com fogo e fumaça constantes. Toque numa massa da mesa: ela vai para o forno e,
+// alguns segundos depois, sai um pão assado que volta para a mesa soltando vapor.
+// Luz padrão: manhã no deserto.
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const sky = (() => {
+  const c = document.createElement('canvas'); c.width = 2; c.height = 256;
+  const g = c.getContext('2d'); const gr = g.createLinearGradient(0, 0, 0, 256);
+  gr.addColorStop(0, '#86b9df'); gr.addColorStop(0.55, '#c6e0ef'); gr.addColorStop(1, '#f2e6d0');
+  g.fillStyle = gr; g.fillRect(0, 0, 2, 256);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+})();
+scene.background = sky;
+scene.fog = new THREE.Fog(0xeae4d6, 22, 50);
+
+// manhã no deserto: céu azul claro, sol branco-quente vindo do leste a uns 35°, luz rebatida da areia
+scene.add(new THREE.HemisphereLight(0xcfe6ff, 0xc9a47a, 1.35));
+const sun = new THREE.DirectionalLight(0xffe4bc, 3.2);
+sun.position.set(7, 6.5, 4.5);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -3, right: 3, top: 3, bottom: -3, near: 0.5, far: 30 });
+sun.shadow.bias = -0.0004;
+sun.shadow.normalBias = 0.02;
+scene.add(sun);
+
+// chão: sua textura de terra clara com grama, repetida (~5 m por repetição)
+const groundTex = new THREE.TextureLoader().load('tex/chao_grama_v3.webp');
+groundTex.colorSpace = THREE.SRGBColorSpace;
+groundTex.wrapS = groundTex.wrapT = THREE.RepeatWrapping;
+groundTex.repeat.set(16, 16);
+groundTex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+const ground = new THREE.Mesh(new THREE.CircleGeometry(40, 48), new THREE.MeshStandardMaterial({ map: groundTex, roughness: 1, color: 0xffffff }));
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+const camera = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 0.1, 120);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 1.2;
+controls.maxDistance = 12;
+controls.maxPolarAngle = Math.PI * 0.48;
+controls.target.set(0.15, 0.55, 0);
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.6;
+const stopSpin = () => { controls.autoRotate = false; };
+renderer.domElement.addEventListener('pointerdown', stopSpin, { once: true });
+
+function frame() {
+  const portrait = innerHeight > innerWidth;
+  const dist = portrait ? 6.5 : 4.4;
+  camera.position.set(0.35, 0.42, 1).normalize().multiplyScalar(dist).add(controls.target);
+  controls.update();
+}
+
+const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync('forno.glb');
+const root = gltf.scene; root.position.set(-0.5, 0, 78);
+const N = {};
+root.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } if (o.name) N[o.name] = o; });
+scene.add(root);
+const LAYOUT = [{ x: 0, z: 0 }];
+
+// fogo: brasa e respiro acesos, chamas que dançam, luz alaranjada piscando
+function glow(mesh, k) { const m = mesh.material.clone(); m.emissive = new THREE.Color(0xffffff); m.emissiveMap = m.map; m.emissiveIntensity = k; mesh.material = m; mesh.castShadow = false; return m; }
+const mBrasa = glow(N.Forno_Brasa, 1.4), mBoca = glow(N.Forno_Boca, 1.2), mChama = glow(N.Forno_Chamas, 2.2);
+mChama.side = THREE.DoubleSide;
+const fire = new THREE.PointLight(0xff8a3a, 2.5, 3.2, 1.6);
+const ovenTop = N.Forno_Corpo.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, 0.95, 0));
+fire.position.copy(ovenTop).add(new THREE.Vector3(0, -0.45, 0)); scene.add(fire);
+const glowTop = new THREE.PointLight(0xff9a4a, 1.2, 1.8, 2); glowTop.position.copy(ovenTop).add(new THREE.Vector3(0, 0.15, 0)); scene.add(glowTop);
+
+// fumaça: bolotas facetadas cinza que sobem, crescem e somem
+const smokeGeo = new THREE.IcosahedronGeometry(1, 0);
+const smoke = [];
+let smokeT = 0;
+function puff(pos, color, size, life, vy) {
+  const m = new THREE.Mesh(smokeGeo, new THREE.MeshStandardMaterial({ color, roughness: 1, flatShading: true, transparent: true, opacity: 0.55, depthWrite: false }));
+  m.position.copy(pos); m.userData = { t: 0, life, size, vy, spin: (Math.random() - 0.5) * 1.5 };
+  m.scale.setScalar(size * 0.3); scene.add(m); smoke.push(m);
+}
+
+// massa -> forno -> pão na mesa
+const massas = [1, 2, 3].map((i) => N['Forno_Massa_' + i]);
+const paes = [1, 2, 3].map((i) => N['Forno_Pao_' + i]);
+massas.forEach((m) => { m.userData.home = m.position.clone(); });
+paes.forEach((p) => { p.userData.home = p.position.clone(); p.visible = false; });
+const flights = [];   // {obj, from, to, t, dur, onEnd}
+const steam = [];      // pães soltando vapor
+let resetAt = 0, tNow = 0;
+function fly(obj, fromW, toW, dur, onEnd) { flights.push({ obj, from: fromW.clone(), to: toW.clone(), t: 0, dur, onEnd }); }
+const toLocal = (o, w) => o.parent.worldToLocal(w.clone());
+function bake(i) {
+  const m = massas[i]; if (!m.visible || m.userData.busy) return;
+  m.userData.busy = true;
+  const from = m.getWorldPosition(new THREE.Vector3());
+  fly(m, from, ovenTop.clone().add(new THREE.Vector3(0, -0.25, 0)), 0.9, () => {
+    m.visible = false;
+    setTimeout(() => {
+      const p = paes[i]; p.visible = true;
+      const home = p.parent.localToWorld(p.userData.home.clone());
+      fly(p, ovenTop.clone().add(new THREE.Vector3(0, 0.05, 0)), home, 1.0, () => { steam.push({ p, until: tNow + 9 }); if (paes.every((x) => x.visible)) resetAt = tNow + 10; });
+    }, 4000);
+  });
+}
+const ray = new THREE.Raycaster(), ptr = new THREE.Vector2();
+let down = null;
+renderer.domElement.addEventListener('pointerdown', (e) => { down = { x: e.clientX, y: e.clientY, t: performance.now() }; });
+renderer.domElement.addEventListener('pointerup', (e) => {
+  if (!down) return;
+  const ok = Math.hypot(e.clientX - down.x, e.clientY - down.y) < 8 && performance.now() - down.t < 350; down = null;
+  if (!ok) return;
+  ptr.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+  ray.setFromCamera(ptr, camera);
+  const hit = ray.intersectObjects(massas.filter((m) => m.visible), false)[0];
+  if (hit) bake(massas.indexOf(hit.object));
+  else { const any = massas.findIndex((m) => m.visible && !m.userData.busy); const h2 = ray.intersectObjects([N.Forno_Mesa, N.Forno_Corpo], false)[0]; if (h2 && any >= 0) bake(any); }
+});
+
+function tickForno(dt) {
+  tNow += dt;
+  const f = 0.75 + 0.25 * Math.sin(tNow * 13.0) * Math.sin(tNow * 7.3 + 1.0) + 0.1 * Math.sin(tNow * 23.0);
+  fire.intensity = 2.2 * f; glowTop.intensity = 1.1 * f;
+  mBrasa.emissiveIntensity = 1.2 + 0.4 * f; mBoca.emissiveIntensity = 1.0 + 0.5 * f;
+  const ch = N.Forno_Chamas; ch.scale.set(1 + 0.08 * Math.sin(tNow * 9), 0.85 + 0.3 * f, 1 + 0.08 * Math.cos(tNow * 8)); ch.rotation.y += dt * 0.6;
+  // fumaça constante
+  smokeT -= dt;
+  if (smokeT <= 0) { smokeT = 0.28; puff(ovenTop.clone().add(new THREE.Vector3((Math.random() - 0.5) * 0.15, 0.02, (Math.random() - 0.5) * 0.15)), 0x8a8580, 0.22 + Math.random() * 0.12, 4.5, 0.38); }
+  // vapor dos pães quentes
+  for (const s of steam) if (tNow < s.until && Math.random() < dt * 4) puff(s.p.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3((Math.random() - 0.5) * 0.12, 0.03, (Math.random() - 0.5) * 0.12)), 0xf2eee6, 0.05, 1.8, 0.22);
+  for (let i = smoke.length - 1; i >= 0; i--) {
+    const m = smoke[i]; const u = m.userData; u.t += dt; const k = u.t / u.life;
+    m.position.y += u.vy * dt; m.position.x += dt * 0.12 * k; m.rotation.y += u.spin * dt;
+    m.scale.setScalar(u.size * (0.3 + k * 1.6)); m.material.opacity = 0.55 * (1 - k) * Math.min(1, u.t * 4);
+    if (k >= 1) { scene.remove(m); m.material.dispose(); smoke.splice(i, 1); }
+  }
+  // voos (arco)
+  for (let i = flights.length - 1; i >= 0; i--) {
+    const F = flights[i]; F.t += dt; const k = Math.min(1, F.t / F.dur);
+    const w = F.from.clone().lerp(F.to, k); w.y += Math.sin(k * Math.PI) * 0.45;
+    F.obj.position.copy(toLocal(F.obj, w)); F.obj.rotation.y += dt * 4;
+    if (k >= 1) { flights.splice(i, 1); F.onEnd && F.onEnd(); }
+  }
+  // recomeça
+  if (resetAt && tNow > resetAt) {
+    resetAt = 0; steam.length = 0;
+    paes.forEach((p) => { p.visible = false; p.position.copy(p.userData.home); });
+    massas.forEach((m) => { m.visible = true; m.userData.busy = false; m.position.copy(m.userData.home); m.rotation.set(0, 0, 0); });
+  }
+}
+
+// tufos de grama em pé: 2 planos cruzados (4 triângulos) com o seu recorte de grama, todos num só draw call.
+// Normais apontando para cima: a grama recebe a mesma luz do chão, sem escurecer de lado.
+{
+  const tex = new THREE.TextureLoader().load('tex/grama_tufo.webp');
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const a = new THREE.PlaneGeometry(0.62, 0.62); a.translate(0, 0.29, 0);
+  const b = a.clone(); b.rotateY(Math.PI / 2);
+  const geo = mergeGeometries([a, b]);
+  const n = geo.attributes.normal;
+  for (let i = 0; i < n.count; i++) n.setXYZ(i, 0, 1, 0);
+  const mat = new THREE.MeshStandardMaterial({ map: tex, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 1 });
+  let seed = 17;
+  const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  const N = 520;
+  const grass = new THREE.InstancedMesh(geo, mat, N);
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3(), c = new THREE.Color();
+  for (let i = 0; i < N; i++) {
+    if (i < N * 0.55) {               // mais grama ao redor das oliveiras
+      const L = LAYOUT[i % LAYOUT.length];
+      const ang = rnd() * Math.PI * 2, d = 2.2 + rnd() * 2.5;
+      p.set(L.x + Math.cos(ang) * d, 0, L.z + Math.sin(ang) * d);
+    } else {                          // e espalhada pelo campo
+      const ang = rnd() * Math.PI * 2, d = 2.5 + Math.sqrt(rnd()) * 14;
+      p.set(Math.cos(ang) * d, 0, Math.sin(ang) * d);
+    }
+    q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rnd() * Math.PI);
+    const k = 0.55 + rnd() * 0.8;
+    s.set(k, k * (0.8 + rnd() * 0.5), k);
+    grass.setMatrixAt(i, m4.compose(p, q, s));
+    const t = 0.82 + rnd() * 0.25;
+    grass.setColorAt(i, c.setRGB(t, t * (0.96 + rnd() * 0.06), t * 0.9));
+  }
+  grass.receiveShadow = true;
+  scene.add(grass);
+}
+
+frame();
+addEventListener('resize', () => {
+  renderer.setSize(innerWidth, innerHeight);
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+});
+let lastT = performance.now();
+renderer.setAnimationLoop(() => { const now = performance.now(); const dt = Math.min(0.05, (now - lastT) / 1000); lastT = now; tickForno(dt); controls.update(); renderer.render(scene, camera); });
+requestAnimationFrame(() => renderer.domElement.classList.add('on'));
+</script>
+</body>
+</html>
