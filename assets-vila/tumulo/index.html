@@ -88,6 +88,9 @@ const groundMat = (() => {
   const h = new THREE.Path();   // x de -1,7 a 1,7 e profundidade de 0 a 6,3 (no plano: y_forma = -z)
   h.moveTo(-1.7, 0); h.lineTo(1.7, 0); h.lineTo(1.7, 6.3); h.lineTo(-1.7, 6.3); h.closePath();
   shape.holes.push(h);
+  const t = new THREE.Path();   // sulco da pedra (fica abaixo do chão)
+  t.moveTo(-2.62, -0.62); t.lineTo(0.95, -0.62); t.lineTo(0.95, -0.2); t.lineTo(-2.62, -0.2); t.closePath();
+  shape.holes.push(t);
   const geo = new THREE.ShapeGeometry(shape, 48);
   const uv = geo.attributes.uv, pos = geo.attributes.position;
   for (let i = 0; i < uv.count; i++) uv.setXY(i, pos.getX(i) / 5, pos.getY(i) / 5);
@@ -123,7 +126,7 @@ function alternarPedra() { fechada = !fechada; document.getElementById('bPedra')
 document.getElementById('bPedra').onclick = alternarPedra;
 
 // ------------------------------------------------------------------ câmera
-const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.05, 200);
+const camera = new THREE.PerspectiveCamera(innerHeight > innerWidth ? 58 : 42, innerWidth / innerHeight, 0.05, 200);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true; controls.dampingFactor = 0.08;
 controls.minDistance = 0.25; controls.maxDistance = 30;
@@ -174,22 +177,22 @@ renderer.domElement.addEventListener('pointerup', (e) => {
   if (ray.intersectObject(pedra, true)[0]) { alternarPedra(); document.getElementById('dica').style.opacity = 0; }
 });
 setTimeout(() => { document.getElementById('dica').style.opacity = 0; }, 9000);
-addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.fov = innerHeight > innerWidth ? 58 : 42; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
 
 const ease = (t) => t * t * (3 - 2 * t);
 const clock = new THREE.Clock();
 renderer.setAnimationLoop(() => {
-  const dt = Math.min(0.05, clock.getDelta()), T = clock.elapsedTime;
+  const raw = clock.getDelta(), dt = Math.min(0.05, raw), adt = Math.min(0.25, raw), T = clock.elapsedTime;
   // a pedra rola de verdade: anda em x e gira em torno do próprio eixo (a profundidade)
   const alvo = fechada ? xFechada : xAberta;
-  const dx = (alvo - px) * Math.min(1, dt * 1.6);
+  const dx = (alvo - px) * Math.min(1, adt * 1.6);
   px += Math.abs(dx) > 0.0005 ? dx : (alvo - px);
   pedra.position.x = px;
   pedra.rotation.z = -(px - xAberta) / R;
   lamp.intensity = 5 + Math.sin(T * 9) * 0.35 + Math.sin(T * 23) * 0.2;
   flame.scale.setScalar(1 + Math.sin(T * 11) * 0.15);
   if (anim) {
-    anim.t = Math.min(1, anim.t + dt / anim.dur); const k = fila.length ? anim.t : ease(anim.t);
+    anim.t = Math.min(1, anim.t + adt / anim.dur); const k = fila.length ? anim.t : ease(anim.t);
     controls.target.lerpVectors(anim.t0, anim.t1, k); camera.position.lerpVectors(anim.p0, anim.p1, k);
     if (anim.t >= 1) proximo();
   }
