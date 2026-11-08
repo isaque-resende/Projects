@@ -26,7 +26,7 @@
 <body>
 <div id="bar">
   <button data-v="geral">Vila</button><button data-v="terreiro">Terreiro</button><button data-v="cisterna">Cisterna</button>
-  <button data-v="curral">Curral</button><button data-v="trigal">Trigal</button><button data-v="tumulo">Túmulo</button><button data-v="saida">Saída</button>
+  <button data-v="curral">Curral</button><button data-v="trigal">Trigal</button><button data-v="tumulo">Túmulo</button><button data-v="saida">Saída</button><button data-v="vale">Vale</button>
 </div>
 <div id="carga">Carregando Betânia…</div>
 <div id="dica">Toque no chão para andar até lá. Arraste para girar.</div>
@@ -467,6 +467,7 @@ const VISTAS = {
   trigal: [V3(TRIGAL.x - 4, TRIGAL.z - 2, 1), new THREE.Vector3(11, 7, 11)],
   tumulo: [V3(TUMULO.x, TUMULO.z + 1.5, 1.4), new THREE.Vector3(9, 5, 9)],
   saida: [V3(-36, -5, 2), new THREE.Vector3(18, 7, 10)],
+  vale: [V3(22, 3, 2.5), new THREE.Vector3(-16, 5, -2)],
 };
 let anim = null;
 function irPara(alvo, off, dur = 1.6) {
