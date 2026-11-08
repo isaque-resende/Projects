@@ -67,7 +67,7 @@ function materialMundo(tipo, tex) {
       vec3 pedra = mix(semRep(tPedra, p / 1.5), semRep(tCantaria, p / 1.9), step(0.5, vParede.y)) * vec3(1.0, 0.9, 0.76);
       vec3 rb = semRep(tReboco, p / 2.9);
       // reboco: menos contraste (as rachaduras repetidas eram o que mais aparecia) e mais calor
-      vec3 reboco = mix(vec3(0.8, 0.67, 0.5), rb * vec3(1.0, 0.92, 0.8), 0.45);
+      vec3 reboco = rb * vec3(1.0, 0.96, 0.9);
       float nn = vnoise(p * 0.85) * 0.62 + vnoise(p * 2.6) * 0.38;
       float baseY = vParede.z + (vnoise(vec2(p.x * 1.7, 3.1)) - 0.5) * 0.32;
       float acima = smoothstep(baseY - 0.025, baseY + 0.025, vWPos.y);
@@ -92,7 +92,7 @@ function materialMundo(tipo, tex) {
       diffuseColor.rgb *= col * ao;` : `
       vec3 nW = normalize(cross(dFdx(vWPos), dFdy(vWPos)));
       vec2 p = planar(vWPos, nW);
-      diffuseColor.rgb *= mix(vec3(0.6, 0.47, 0.33), semRep(tTeto, p / 2.4), 0.65) * macro(vWPos);`;
+      diffuseColor.rgb *= semRep(tTeto, p / 2.6) * macro(vWPos);`;
     sh.fragmentShader = 'uniform sampler2D tReboco, tPedra, tCantaria, tTeto; varying vec3 vParede; varying float vCodigo; varying vec3 vWPos;\n' + GLSL_NOISE +
       sh.fragmentShader.replace('#include <map_fragment>', corpo);
   };
@@ -417,6 +417,12 @@ export function quarteirao(kit, semente, W = 18, D = 14) {
     const l = casa.lote; if (rnd() < 0.5) continue;
     const c = mapa.get(l.x + ',' + l.z); const y = c.andares * H + 0.2;
     if (rnd() < 0.4) M.por('Pedrisco_' + (1 + Math.floor(rnd() * 3)), l.x + l.w - 1.0, y - 0.2, l.z + l.d - 1.0, rnd() * 6, 'cima');
+    // vida nos terraços: toldo colorido ou varal
+    if (l.w >= 3 && l.d >= 3) {
+      const r2 = rnd();
+      if (r2 < 0.45) M.por(['Toldo', 'Toldo_Vermelho', 'Toldo_Azul', 'Toldo_Ocre'][Math.floor(rnd() * 4)], l.x + 0.5, y - 0.2, l.z + l.d - 0.5, rnd() < 0.5 ? 0 : Math.PI / 2, 'cima', null, 0.8);
+      else if (r2 < 0.75) M.por('Varal', l.x + 0.5, y - 0.2, l.z + 1.2 + rnd(), 0, 'cima', null, Math.min(1, (l.w - 1) / 2.4));
+    }
     if (rnd() < 0.5) M.por('Esteira_Enrolada', l.x + 0.5, y, l.z + 0.6, rnd() * 3, 'cima');
     else M.por('Jarro_Grande', l.x + 0.6, y, l.z + 0.6, 0, 'cima', casa.tom);
   }
