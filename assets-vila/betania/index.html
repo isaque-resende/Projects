@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#86b9df">
+<title>Betânia</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #c6e0ef; font-family: system-ui, sans-serif; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; opacity: 0; transition: opacity .8s; }
+  canvas.on { opacity: 1; }
+  #bar { z-index: 2; position: fixed; top: max(10px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; width: 96vw; }
+  #bar button { border: 0; border-radius: 14px; padding: 7px 11px; background: #f6efe2e6; color: #4a3a28; font-size: 13px; }
+  #bar button.on { background: #8a5a35; color: #fff7ea; }
+  #dica, #carga { z-index: 2; position: fixed; left: 50%; transform: translateX(-50%); color: #4a3a28; background: #f6efe2d9; padding: 7px 13px; border-radius: 16px; font-size: 13px; pointer-events: none; white-space: nowrap; }
+  #dica { bottom: max(14px, env(safe-area-inset-bottom)); transition: opacity 1.2s; }
+  #carga { top: 45%; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="bar">
+  <button data-v="geral">Vila</button><button data-v="terreiro">Terreiro</button><button data-v="cisterna">Cisterna</button>
+  <button data-v="curral">Curral</button><button data-v="trigal">Trigal</button><button data-v="tumulo">Túmulo</button><button data-v="saida">Saída</button>
+</div>
+<div id="carga">Carregando Betânia…</div>
+<div id="dica">Toque no chão para andar até lá. Arraste para girar.</div>
+<script type="module">
+// PRÉ-VILA DE BETÂNIA (sem pessoas e sem animais): encosta leste do Monte das Oliveiras.
+// Leste (+x) desce para o deserto da Judeia e Jericó; oeste (-x) sobe o monte rumo a Betfagé = fim da fase.
+// Tudo vem da biblioteca de assets (../<asset>/), montado aqui por código: terreno, estrada, patamares e peças.
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { carregarKit, casaAleatoria, GLSL_NOISE } from '../casas/construtor_casas.js';
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = (() => {
+  const c = document.createElement('canvas'); c.width = 2; c.height = 256;
+  const g = c.getContext('2d'); const gr = g.createLinearGradient(0, 0, 0, 256);
+  gr.addColorStop(0, '#7fb3dc'); gr.addColorStop(0.55, '#c3ddec'); gr.addColorStop(1, '#efe5d2');
+  g.fillStyle = gr; g.fillRect(0, 0, 2, 256);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+})();
+scene.fog = new THREE.Fog(0xe7dfcf, 70, 260);
+scene.add(new THREE.HemisphereLight(0xcfe6ff, 0xc9a47a, 1.3));
+const sun = new THREE.DirectionalLight(0xffe4bc, 3.1);
+sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.04;
+scene.add(sun); scene.add(sun.target);
+const SUN_DIR = new THREE.Vector3(9, 11, 6).normalize();
+
+const camera = new THREE.PerspectiveCamera(innerHeight > innerWidth ? 55 : 42, innerWidth / innerHeight, 0.1, 700);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = 0.08;
+controls.minDistance = 2; controls.maxDistance = 120; controls.maxPolarAngle = Math.PI * 0.48;
+
+const TL = new THREE.TextureLoader();
+function tex(url, repeat = true) {
+  const t = TL.load(url); t.colorSpace = THREE.SRGBColorSpace;
+  if (repeat) t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  return t;
+}
+const T = {
+  terra: tex('tex/terra_batida.webp'), seco: tex('tex/campo_seco.webp'), verde: tex('tex/campo_verde.webp'),
+  estrada: tex('tex/estrada_terra.webp'), rocha: tex('../tumulo/tex/rocha_encosta.webp'),
+  capim: tex('tex/capim_tufo.webp', false), horiz: tex('tex/horizonte.webp', false),
+};
+T.estrada.wrapS = THREE.ClampToEdgeWrapping;
+
+// ================================================================== TERRENO
+// relevo: desce para leste; sobe forte a oeste (monte); flancos sobem ao norte e ao sul (a vila fica num "ombro")
+function hsh(x, z) { const s = Math.sin(x * 127.1 + z * 311.7) * 43758.5453; return s - Math.floor(s); }
+function vnoise(x, z) {
+  const ix = Math.floor(x), iz = Math.floor(z); let fx = x - ix, fz = z - iz;
+  fx = fx * fx * (3 - 2 * fx); fz = fz * fz * (3 - 2 * fz);
+  const a = hsh(ix, iz), b = hsh(ix + 1, iz), c = hsh(ix, iz + 1), d = hsh(ix + 1, iz + 1);
+  return a + (b - a) * fx + (c - a) * fz + (a - b - c + d) * fx * fz;
+}
+const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+function base(x, z) {
+  let h = -0.1 * x;
+  h += 24 * (1 - Math.exp(-Math.max(0, -x - 36) / 22));           // subida para o Monte das Oliveiras
+  const az = Math.abs(z);
+  h += 13 * (1 - Math.exp(-Math.max(0, az - 30) / 16)) * (0.75 + 0.25 * Math.sin(x * 0.03));
+  h += 1.6 * (vnoise(x * 0.025 + 3, z * 0.025) - 0.5) + 0.7 * (vnoise(x * 0.07, z * 0.07 + 9) - 0.5);
+  h -= 6 * smooth(70, 160, x) * (0.6 + 0.4 * vnoise(z * 0.02, 1));  // o vale para leste
+  return h;
+}
+
+// estrada: vem de leste (de Jericó, mais baixa), cruza o terreiro e sobe a oeste (limite da fase)
+const ESTRADA = [[240, 26], [120, 16], [70, 10], [48, 8], [30, 5], [16, 2.5], [6, 1.2], [-6, 2], [-20, 4], [-33, 1.5], [-46, -3.5], [-60, -8.5], [-74, -12], [-95, -15], [-140, -20]];
+const RW = 1.9;  // meia-largura
+const RP = []; // pontos densos {x,z,s,h}
+{
+  let s = 0;
+  for (let i = 0; i < ESTRADA.length - 1; i++) {
+    const [ax, az] = ESTRADA[i], [bx, bz] = ESTRADA[i + 1]; const L = Math.hypot(bx - ax, bz - az); const n = Math.ceil(L);
+    for (let k = 0; k < n; k++) { const t = k / n; RP.push({ x: ax + (bx - ax) * t, z: az + (bz - az) * t, s: s + L * t }); }
+    s += L;
+  }
+  const last = ESTRADA[ESTRADA.length - 1]; RP.push({ x: last[0], z: last[1], s });
+  const h0 = RP.map((p) => base(p.x, p.z));
+  for (let i = 0; i < RP.length; i++) {         // perfil suavizado (sem degraus)
+    let a = 0, n = 0; for (let k = -7; k <= 7; k++) { const j = i + k; if (j >= 0 && j < RP.length) { a += h0[j]; n++; } }
+    RP[i].h = a / n;
+  }
+}
+function naEstrada(x, z) {
+  let best = 1e9, bi = 0, bt = 0;
+  for (let i = 0; i < RP.length - 1; i++) {
+    const a = RP[i], b = RP[i + 1]; const dx = b.x - a.x, dz = b.z - a.z; const L2 = dx * dx + dz * dz;
+    const t = Math.max(0, Math.min(1, ((x - a.x) * dx + (z - a.z) * dz) / L2));
+    const px = a.x + dx * t - x, pz = a.z + dz * t - z; const d = px * px + pz * pz;
+    if (d < best) { best = d; bi = i; bt = t; }
+  }
+  const a = RP[bi], b = RP[bi + 1];
+  const dx = b.x - a.x, dz = b.z - a.z; const side = Math.sign(dx * (z - a.z) - dz * (x - a.x)) || 1;
+  return { d: Math.sqrt(best), sd: Math.sqrt(best) * side, s: a.s + (b.s - a.s) * bt, h: a.h + (b.h - a.h) * bt };
+}
+
+// patamares (aplainados): terreiro, casas, curral, aprisco, trigal, eira, túmulo...
+const PADS = [];
+function pad(o) { o.blend = o.blend ?? 3.5; o.dirt = o.dirt ?? 0; o.rot = o.rot ?? 0; PADS.push(o); return o; }
+function padDist(p, x, z) {             // distância "fora" do patamar (0 dentro)
+  if (p.r) return Math.max(0, Math.hypot(x - p.x, z - p.z) - p.r);
+  const c = Math.cos(p.rot), s = Math.sin(p.rot); const lx = (x - p.x) * c - (z - p.z) * s, lz = (x - p.x) * s + (z - p.z) * c;
+  return Math.hypot(Math.max(0, Math.abs(lx) - p.w / 2), Math.max(0, Math.abs(lz) - p.d / 2));
+}
+function semPads(x, z) {
+  let h = base(x, z);
+  const r = naEstrada(x, z); const w = 1 - smooth(RW + 0.4, RW + 3.2, r.d);
+  return { h: h + (r.h - h) * w, r };
+}
+function altura(x, z) {
+  let { h } = semPads(x, z);
+  for (const p of PADS) { const w = 1 - smooth(0, p.blend, padDist(p, x, z)); h += (p.h - h) * w; }
+  return h;
+}
+
+// ================================================================== LAYOUT DA VILA
+const PLAZA = pad({ x: 0, z: 0, r: 8.5, blend: 5, dirt: 1 });
+const CASAS = [
+  { x: -12, z: -11, semente: 3 }, { x: 11.5, z: -12, semente: 11 }, { x: -16, z: 12.5, semente: 27 },
+  { x: 14, z: 13.5, semente: 42 }, { x: -1, z: -20, semente: 77 },
+];
+const CISTERNA = { x: 3.2, z: -5.2 };
+const FORNO = { x: 18.5, z: -6.5 };
+const CURRAL = { x: 27, z: 19 };
+const APRISCO = { x: 30, z: -17 };
+const TRIGAL = { x: -15, z: 25, w: 13, d: 7 };
+const EIRA = { x: -30, z: 18 };
+const TUMULO = { x: 5, z: -36 };
+const ROMAS = [[6, -15, 'Romanzeira2_Pomar_ComFruta'], [-6, 12, 'Romanzeira1_Jovem_ComFruta'], [21, -2, 'Romanzeira4_Aberta_ComFruta'], [-22, -5, 'Romanzeira3_Retorcida_ComFruta'], [24, 8, 'Romanzeira1_Jovem_SemFruta']];
+const OLIVAS = [[-38, -11, 'Oliveira2_Retorcida'], [-41, 10, 'Oliveira1_Jovem'], [-50, 4, 'Oliveira4_Ancia'], [-55, -20, 'Oliveira3_Vaso'], [-30, -15, 'Oliveira1_Jovem'], [-47, 17, 'Oliveira2_Retorcida']];
+const FIGOS = [[-61, -3.5, 'Figueira4_Grande_SemFruta'], [-68, -16.5, 'Figueira2_Larga_SemFruta'], [-74, -6.5, 'Figueira1_Jovem_ComFruta']];
+
+for (const c of CASAS) c.pad = pad({ x: c.x, z: c.z, w: 10, d: 10, blend: 3.5, dirt: 0.9, rot: 0 });
+pad({ x: CISTERNA.x, z: CISTERNA.z, r: 2.6, blend: 2, dirt: 1 });
+pad({ x: FORNO.x, z: FORNO.z, r: 2.4, blend: 2.5, dirt: 1 });
+const PCUR = pad({ x: CURRAL.x, z: CURRAL.z, w: 9, d: 7, blend: 3.5, dirt: 0.85 });
+const PAPR = pad({ x: APRISCO.x, z: APRISCO.z, w: 9, d: 9, blend: 3.5, dirt: 0.6 });
+const PTRI = pad({ x: TRIGAL.x, z: TRIGAL.z, w: TRIGAL.w + 2, d: TRIGAL.d + 2, blend: 3, dirt: 0.25 });
+const PEIR = pad({ x: EIRA.x, z: EIRA.z, r: 5.5, blend: 3.5, dirt: 0.7 });
+const PTUM = pad({ x: TUMULO.x, z: TUMULO.z + 3, w: 7, d: 7, blend: 3.5, dirt: 0.35 });
+// alturas dos patamares (pela encosta já com a estrada)
+for (const p of PADS) p.h = semPads(p.x, p.z).h;
+PTUM.h = semPads(TUMULO.x, TUMULO.z).h;
+
+// buracos no chão (o chão some onde há câmara, sulco e poço)
+const HOLES = { tumulo: [TUMULO.x - 1.75, TUMULO.z - 6.4, TUMULO.x + 1.75, TUMULO.z], sulco: [TUMULO.x - 2.65, TUMULO.z + 0.18, TUMULO.x + 0.98, TUMULO.z + 0.64], poco: [CISTERNA.x, CISTERNA.z, 0.5] };
+
+// ------------------------------------------------------------------ malha do terreno (grade fina no centro, larga longe)
+function eixo(min, max, a, b, step) {
+  const v = []; for (let x = a; x <= b + 1e-6; x += step) v.push(x);
+  let x = a, d = step; while (x > min) { d *= 1.35; x -= d; v.unshift(Math.max(min, x)); }
+  x = b; d = step; while (x < max) { d *= 1.35; x += d; v.push(Math.min(max, x)); }
+  return v;
+}
+const XS = eixo(-240, 240, -90, 84, 1.5), ZS = eixo(-240, 240, -64, 64, 1.5);
+const terreno = (() => {
+  const nx = XS.length, nz = ZS.length, n = nx * nz;
+  const pos = new Float32Array(n * 3), mask = new Float32Array(n * 4), ruv = new Float32Array(n * 2);
+  let k = 0;
+  for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++, k++) {
+    const x = XS[i], z = ZS[j];
+    const sp = semPads(x, z); let h = sp.h; let dirt = 0;
+    for (const p of PADS) { const dd = padDist(p, x, z); const w = 1 - smooth(0, p.blend, dd); h += (p.h - h) * w; dirt = Math.max(dirt, p.dirt * (1 - smooth(0, p.blend * 0.8, dd))); }
+    pos[k * 3] = x; pos[k * 3 + 1] = h; pos[k * 3 + 2] = z;
+    const r = sp.r;
+    const road = 1 - smooth(RW - 0.25, RW + 0.7, r.d);
+    // verde: mais nas baixadas do leste, em manchas, e nos terraços de oliveiras
+    const green = Math.min(1, 0.25 + 0.5 * vnoise(x * 0.035 + 7, z * 0.035) + 0.25 * smooth(10, 60, x) - 0.25 * dirt);
+    mask[k * 4] = road; mask[k * 4 + 1] = dirt; mask[k * 4 + 2] = green; mask[k * 4 + 3] = 0;
+    ruv[k * 2] = 0.5 + r.sd / (2 * RW + 0.8); ruv[k * 2 + 1] = r.s / 4.5;
+  }
+  const idx = [];
+  for (let j = 0; j < nz - 1; j++) for (let i = 0; i < nx - 1; i++) {
+    const a = j * nx + i, b = a + 1, c = a + nx, d = c + 1; idx.push(a, c, b, b, c, d);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('aMask', new THREE.BufferAttribute(mask, 4));
+  g.setAttribute('aRoad', new THREE.BufferAttribute(ruv, 2));
+  g.setIndex(idx); g.computeVertexNormals();
+  const m = new THREE.MeshStandardMaterial({ roughness: 1, metalness: 0 });
+  m.onBeforeCompile = (sh) => {
+    Object.assign(sh.uniforms, { tTerra: { value: T.terra }, tSeco: { value: T.seco }, tVerde: { value: T.verde }, tEstr: { value: T.estrada }, tRocha: { value: T.rocha },
+      uHoleA: { value: new THREE.Vector4(...HOLES.tumulo) }, uHoleB: { value: new THREE.Vector4(...HOLES.sulco) }, uPoco: { value: new THREE.Vector3(...HOLES.poco) } });
+    sh.vertexShader = 'attribute vec4 aMask; attribute vec2 aRoad; varying vec4 vMask; varying vec2 vRoad; varying vec3 vW;\n' + sh.vertexShader
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\n vMask = aMask; vRoad = aRoad; vW = (modelMatrix * vec4(position, 1.0)).xyz;');
+    sh.fragmentShader = 'uniform sampler2D tTerra, tSeco, tVerde, tEstr, tRocha; uniform vec4 uHoleA, uHoleB; uniform vec3 uPoco; varying vec4 vMask; varying vec2 vRoad; varying vec3 vW;\n' + GLSL_NOISE
+      + sh.fragmentShader.replace('#include <map_fragment>', `
+      if (vW.x > uHoleA.x && vW.x < uHoleA.z && vW.z > uHoleA.y && vW.z < uHoleA.w) discard;
+      if (vW.x > uHoleB.x && vW.x < uHoleB.z && vW.z > uHoleB.y && vW.z < uHoleB.w) discard;
+      if (distance(vW.xz, uPoco.xy) < uPoco.z) discard;
+      vec2 p = vW.xz;
+      vec3 seco = semRep(tSeco, p / 5.0), verde = semRep(tVerde, p / 5.5), terra = semRep(tTerra, p / 4.0);
+      float n = vnoise(p * 0.07) * 0.6 + vnoise(p * 0.23 + 4.0) * 0.4;
+      vec3 c = mix(seco, verde, smoothstep(0.45, 0.8, vMask.z + (n - 0.5) * 0.8));
+      float dm = vMask.y + (vnoise(p * 0.45) - 0.5) * 0.55;
+      c = mix(c, terra, smoothstep(0.3, 0.65, dm));
+      vec3 nW = normalize(cross(dFdx(vW), dFdy(vW)));
+      float rk = smoothstep(0.86, 0.72, abs(nW.y)) * (1.0 - vMask.x);
+      c = mix(c, semRep(tRocha, planar(vW, nW) / 3.2) * 0.98, rk);
+      float rm = smoothstep(0.25, 0.75, vMask.x + (vnoise(p * 1.4) - 0.5) * 0.35);
+      c = mix(c, texture2D(tEstr, vec2(clamp(vRoad.x, 0.02, 0.98), vRoad.y)).rgb, rm);
+      c *= macro(vec3(vW.x, 0.0, vW.z));
+      diffuseColor.rgb *= c;`);
+  };
+  m.customProgramCacheKey = () => 'terreno_betania';
+  const mesh = new THREE.Mesh(g, m); mesh.receiveShadow = true;
+  scene.add(mesh);
+  return mesh;
+})();
+
+// horizonte: colinas do deserto da Judeia pintadas, num cilindro bem longe
+{
+  const g = new THREE.CylinderGeometry(330, 330, 62, 64, 1, true);
+  T.horiz.wrapS = THREE.RepeatWrapping; T.horiz.repeat.set(4, 1);
+  const m = new THREE.MeshBasicMaterial({ map: T.horiz, transparent: true, side: THREE.BackSide, depthWrite: false, fog: false, color: 0xf2ece4 });
+  const h = new THREE.Mesh(g, m); h.position.y = 2; h.renderOrder = -1; scene.add(h);
+}
+
+// ================================================================== PEÇAS DA BIBLIOTECA
+const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+const [gVila, gTum, gCol, gTri, gFor, gRom, gFig, gOli, kit] = await Promise.all([
+  '../vila/vila.glb', '../tumulo/tumulo.glb', '../colheita-trigo/colheita.glb', '../trigal/trigo.glb', '../forno-pao/forno.glb',
+  '../romanzeiras/romanzeiras.glb', '../figueiras/figueiras.glb', '../oliveiras/oliveiras.glb',
+].map((u) => loader.loadAsync(u)).concat([carregarKit('../casas/casas_kit.glb', '../casas/tex/')]));
+const N = {};
+for (const g of [gVila, gTum, gCol, gTri, gFor, gRom, gFig, gOli]) g.scene.traverse((o) => { if (o.name && !N[o.name]) N[o.name] = o; });
+
+// grupo de peças com os deslocamentos originais entre elas (origem = primeira peça ou 'origem')
+function grupo(nomes, x, z, rot = 0, origem = null, y = null) {
+  const g = new THREE.Group();
+  const o0 = (origem ? N[origem] : N[nomes[0]]).position;
+  for (const n of nomes) {
+    const src = N[n]; if (!src) { console.warn('falta', n); continue; }
+    const c = src.clone(); c.position.copy(src.position).sub(o0);
+    c.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } });
+    g.add(c); g.userData[n] = c;
+  }
+  g.position.set(x, y ?? altura(x, z), z); g.rotation.y = rot;
+  scene.add(g); return g;
+}
+const prefixo = (p) => Object.keys(N).filter((n) => n === p || n.startsWith(p + '_'));
+// módulo de 2 m entre dois nós (cercas, muros), apoiado no chão
+function aresta(nome, ax, az, bx, bz, y = null) {
+  return grupo([nome], ax, az, Math.atan2(-(bz - az), bx - ax), null, y);
+}
+
+// ------------------------------------------------------------------ casas (kit modular + construtor)
+for (const c of CASAS) {
+  const casa = casaAleatoria(kit, c.semente);
+  const box = new THREE.Box3().setFromObject(casa); const ctr = box.getCenter(new THREE.Vector3());
+  const w = new THREE.Group(); casa.position.set(-ctr.x, 0, -ctr.z); w.add(casa);
+  // a porta (lado +z da casa) vira para o terreiro
+  const ang = Math.atan2(PLAZA.x - c.x, PLAZA.z - c.z);
+  w.rotation.y = Math.round(ang / (Math.PI / 2)) * (Math.PI / 2) + (c.semente % 3 - 1) * 0.06;
+  w.position.set(c.x, c.pad.h + 0.02, c.z);
+  scene.add(w);
+}
+
+// ------------------------------------------------------------------ cisterna (boca de pedra, corda e balde), forno
+{
+  const nomes = prefixo('Poco_1').concat(['NPC_Poco_1_Puxar', 'NPC_Poco_1_Encher']);
+  const g = grupo(nomes, CISTERNA.x, CISTERNA.z, 0.3, 'Poco_1');
+  g.userData.Poco_1_BaldeAgua.visible = false; g.userData.Poco_1_CantaroAgua.visible = false;
+}
+{
+  const nomes = ['Forno_Corpo', 'Forno_Boca', 'Forno_Nicho', 'Forno_Brasa', 'Forno_Mesa', 'Forno_Massa_1', 'Forno_Massa_2', 'Forno_Pao_3'];
+  grupo(nomes, FORNO.x, FORNO.z, -0.9, 'Forno_Corpo');
+}
+
+// ------------------------------------------------------------------ curral (cercas + porteira), manjedoura e bebedouro
+{
+  const { x, z } = CURRAL, y = PCUR.h;
+  const X = [x - 3, x - 1, x + 1, x + 3], Zn = z - 2, Zs = z + 2;
+  for (let i = 0; i < 3; i++) aresta('Cerca_Varas', X[i], Zn, X[i + 1], Zn, y);
+  aresta('Cerca_Rustica', X[0], Zs, X[1], Zs, y); aresta('Cerca_Rustica', X[2], Zs, X[3], Zs, y);
+  for (const xx of [X[0], X[3]]) { aresta('Cerca_Trancada', xx, Zn, xx, Zn + 2, y); aresta('Cerca_Trancada', xx, Zn + 2, xx, Zs, y); }
+  for (const xx of X) { grupo(['Cerca_Rustica_Poste'], xx, Zn, 0, null, y); grupo(['Cerca_Rustica_Poste'], xx, Zs, 0, null, y); }
+  grupo(['Cerca_Trancada_Poste'], X[0], z, 0, null, y); grupo(['Cerca_Trancada_Poste'], X[3], z, 0, null, y);
+  const gate = grupo(['Porteira_Amarras', 'Porteira_Folha'], X[1], Zs, 0, null, y); gate.userData.Porteira_Folha.rotation.y = 0.5;
+  grupo(['Manjedoura', 'Manjedoura_Feno', 'Manjedoura_FenoChao'], x - 1.8, z - 1.1, 0, null, y);
+  grupo(['Bebedouro', 'Bebedouro_Agua'], x + 2.2, z - 0.4, Math.PI / 2, null, y);
+}
+// ------------------------------------------------------------------ aprisco de pedra seca (entrada para o sul)
+{
+  const { x, z } = APRISCO, y = PAPR.h;
+  const X = [x - 3, x - 1, x + 1, x + 3], Z = [z - 3, z - 1, z + 1, z + 3];
+  const muro = (i) => (i % 2 ? 'Aprisco_Muro_B' : 'Aprisco_Muro_A');
+  for (let i = 0; i < 3; i++) aresta(muro(i), X[i], Z[0], X[i + 1], Z[0], y);
+  for (let i = 0; i < 3; i++) aresta(muro(i + 1), X[0], Z[i], X[0], Z[i + 1], y);
+  for (let i = 0; i < 3; i++) aresta(muro(i), X[3], Z[i + 1], X[3], Z[i], y);
+  aresta('Aprisco_Muro_A', X[0], Z[3], X[1], Z[3], y); aresta('Aprisco_Muro_B', X[3], Z[3], X[2], Z[3], y);
+  for (const [xx, zz] of [[X[0], Z[0]], [X[3], Z[0]], [X[0], Z[3]], [X[3], Z[3]]]) grupo(['Aprisco_Canto'], xx, zz, hsh(xx, zz) * 6, null, y);
+  grupo(['Aprisco_Ombreira'], X[1], Z[3], 0, null, y); grupo(['Aprisco_Ombreira'], X[2], Z[3], Math.PI, null, y);
+  grupo(['Aprisco_Barreira'], X[1] + 0.25, Z[3] + 0.9, 1.1, null, y);
+  grupo(['Manjedoura', 'Manjedoura_Feno'], x + 1.2, z - 1.8, 0, null, y);
+}
+
+// ------------------------------------------------------------------ trigal (touceiras instanciadas) e eira com o processo do pão
+{
+  const tipos = ['Trigo_Maduro', 'Trigo_Cheio', 'Trigo_Ralo'];
+  const listas = { Trigo_Maduro: [], Trigo_Cheio: [], Trigo_Ralo: [] };
+  const { x, z, w, d } = TRIGAL, y = PTRI.h;
+  for (let gx = -w / 2; gx <= w / 2; gx += 0.34) for (let gz = -d / 2; gz <= d / 2; gz += 0.34) {
+    const px = x + gx + (hsh(gx, gz) - 0.5) * 0.2, pz = z + gz + (hsh(gz, gx) - 0.5) * 0.2;
+    const edge = Math.min(w / 2 - Math.abs(gx), d / 2 - Math.abs(gz));
+    const t = edge < 0.6 ? 'Trigo_Ralo' : (hsh(px * 3, pz * 3) < 0.55 ? 'Trigo_Maduro' : 'Trigo_Cheio');
+    listas[t].push([px, pz]);
+  }
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0);
+  for (const t of tipos) {
+    let src = null; N[t].traverse((o) => { if (o.isMesh && !src) src = o; });
+    const inst = new THREE.InstancedMesh(src.geometry, src.material, listas[t].length);
+    listas[t].forEach(([px, pz], i) => {
+      q.setFromAxisAngle(up, hsh(px, pz) * 6.28); const s = 0.85 + hsh(pz, px) * 0.3;
+      m4.compose(new THREE.Vector3(px, y, pz), q, new THREE.Vector3(s, s, s)); inst.setMatrixAt(i, m4);
+    });
+    inst.castShadow = true; inst.receiveShadow = true; scene.add(inst);
+  }
+  grupo(['Foice'], x + w / 2 + 0.6, z + 1.2, 0.4, null, y + 0.01);
+  // eira, feixes, forcado, peneira, mó, farinha e a carroça (composição original da colheita)
+  const nomes = ['Eira', 'Feixe_Deitado', 'Feixe_EmPe', 'Feixe_Pilha', 'Forcado', 'Peneira', 'Mo_Base', 'Mo_Cima', 'Jarro_Farinha', 'Cesto_Espigas', 'Cesto_Graos', 'Carroca', 'Carroca_Carga'];
+  grupo(nomes, EIRA.x, EIRA.z, 0.4, 'Eira', PEIR.h);
+}
+
+// ------------------------------------------------------------------ árvores
+function arvore(nome, x, z, rot) { const g = grupo([nome], x, z, rot); g.position.y -= 0.05; return g; }
+for (const [x, z, n] of ROMAS) arvore(n, x, z, hsh(x, z) * 6.28);
+for (const [x, z, n] of OLIVAS) arvore(n, x, z, hsh(z, x) * 6.28);
+for (const [x, z, n] of FIGOS) arvore(n, x, z, hsh(x, -z) * 6.28);
+
+// ------------------------------------------------------------------ túmulo de Lázaro, fora da vila, cavado na encosta norte (entrada para o sul)
+{
+  const g = grupo(['Tumulo_Massa_Grama', 'Tumulo_Interior', 'Tumulo_Patio', 'Tumulo_Pedra'], TUMULO.x, TUMULO.z, 0, 'Tumulo_Interior', PTUM.h);
+  // a grama do morrote passa a usar o mesmo campo do terreno
+  g.traverse((o) => { if (o.isMesh && o.material.name === 'Tumulo_Grama') { const m = o.material.clone(); const t = T.seco.clone(); t.flipY = false; t.needsUpdate = true; m.map = t; o.material = m; } });
+}
+
+// ------------------------------------------------------------------ muretas de pedra na beira da estrada (entrada leste e subida oeste)
+function muretasAoLongo(s0, s1, lado) {
+  const pts = RP.filter((p) => p.s >= s0 && p.s <= s1);
+  for (let i = 0; i + 2 < pts.length; i += 2) {
+    const a = pts[i], b = pts[i + 2];
+    const dx = b.x - a.x, dz = b.z - a.z, L = Math.hypot(dx, dz); const nx = -dz / L * lado, nz = dx / L * lado;
+    const off = RW + 0.7;
+    const ax = a.x + nx * off, az = a.z + nz * off, bx = b.x + nx * off, bz = b.z + nz * off;
+    const y = Math.min(altura(ax, az), altura(bx, bz)) - 0.08;
+    aresta(i % 6 === 4 ? 'Mureta_Fim' : 'Mureta_Reta', ax, az, bx, bz, y);
+  }
+}
+const sDe = (x) => { let best = RP[0]; for (const p of RP) if (Math.abs(p.x - x) < Math.abs(best.x - x)) best = p; return best.s; };
+muretasAoLongo(sDe(50), sDe(30), 1); muretasAoLongo(sDe(52), sDe(34), -1);
+muretasAoLongo(sDe(-28), sDe(-52), 1); muretasAoLongo(sDe(-36), sDe(-58), -1);
+// terraços de oliveiras na subida: muros de arrimo
+for (const [x, z, rot] of [[-40, 7, 1.57], [-40, 9, 1.57], [-44, -13, 1.57], [-44, -15, 1.57], [-52, 2, 1.62], [-52, 4.1, 1.62]]) grupo(['Arrimo_Reta'], x, z, rot, null, altura(x, z) - 0.6);
+
+// ------------------------------------------------------------------ capim em 3D (cards cruzados, instanciados) só no campo
+{
+  const geo = new THREE.BufferGeometry();
+  const P = [], UV = [], I = [];
+  for (let k = 0; k < 2; k++) {
+    const a = k * Math.PI / 2, c = Math.cos(a) * 0.5, s = Math.sin(a) * 0.5, b = P.length / 3;
+    P.push(-c, 0, -s, c, 0, s, c, 1, s, -c, 1, -s); UV.push(0, 0, 1, 0, 1, 1, 0, 1); I.push(b, b + 1, b + 2, b, b + 2, b + 3);
+  }
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(UV, 2)); geo.setIndex(I);
+  geo.computeVertexNormals();
+  const mat = new THREE.MeshStandardMaterial({ map: T.capim, alphaTest: 0.45, side: THREE.DoubleSide, roughness: 1 });
+  mat.onBeforeCompile = (sh) => {
+    sh.uniforms.uTime = { value: 0 }; mat.userData.sh = sh;
+    sh.vertexShader = 'uniform float uTime;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+      vec4 wp = instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0);
+      float sw = sin(uTime * 1.7 + wp.x * 0.35 + wp.z * 0.21) * 0.07 + sin(uTime * 3.1 + wp.x) * 0.025;
+      transformed.x += sw * position.y; transformed.z += sw * 0.6 * position.y;`);
+    // normal para cima: o capim recebe a luz como o chão (sem faces escuras)
+    sh.vertexShader = sh.vertexShader.replace('#include <beginnormal_vertex>', 'vec3 objectNormal = vec3(0.0, 1.0, 0.0);');
+  };
+  const MAX = 4200, inst = new THREE.InstancedMesh(geo, mat, MAX);
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), col = new THREE.Color();
+  let n = 0, tries = 0;
+  while (n < MAX && tries < 40000) {
+    tries++;
+    const x = -82 + Math.random() * 160, z = -58 + Math.random() * 116;
+    const r = naEstrada(x, z); if (r.d < RW + 0.8) continue;
+    let ok = true; for (const p of PADS) if (padDist(p, x, z) < (p.dirt > 0.5 ? 1.2 : 0.2)) { ok = false; break; }
+    if (!ok) continue;
+    if (Math.hypot(x - TUMULO.x, z - TUMULO.z + 2) < 6.5) continue;
+    const dens = 0.35 + 0.65 * vnoise(x * 0.08, z * 0.08); if (Math.random() > dens) continue;
+    const s = 0.35 + Math.random() * 0.45;
+    q.setFromAxisAngle(up, Math.random() * 6.28);
+    m4.compose(new THREE.Vector3(x, altura(x, z) - 0.03, z), q, new THREE.Vector3(s * 1.1, s, s * 1.1)); inst.setMatrixAt(n, m4);
+    const g = 0.8 + Math.random() * 0.25; inst.setColorAt(n, col.setRGB(g, g * (0.97 + Math.random() * 0.05), g * 0.92)); n++;
+  }
+  inst.count = n; inst.instanceMatrix.needsUpdate = true; if (inst.instanceColor) inst.instanceColor.needsUpdate = true;
+  inst.receiveShadow = true; scene.add(inst);
+  window.__capim = mat;
+}
+
+// esconde os pontos de NPC
+scene.traverse((o) => { if (o.name && o.name.startsWith('NPC_')) o.visible = false; });
+
+// ================================================================== CÂMERA, VISTAS E ANDAR
+const V3 = (x, z, dy = 1.6) => new THREE.Vector3(x, altura(x, z) + dy, z);
+const VISTAS = {
+  geral: [V3(-4, 0, 2), new THREE.Vector3(32, 34, 48)],
+  terreiro: [V3(0, 0, 1.4), new THREE.Vector3(9, 6, 13)],
+  cisterna: [V3(CISTERNA.x, CISTERNA.z, 1.2), new THREE.Vector3(4, 3.2, 5.5)],
+  curral: [V3(CURRAL.x, CURRAL.z, 1), new THREE.Vector3(-6, 6, 11)],
+  trigal: [V3(TRIGAL.x - 6, TRIGAL.z - 2, 1), new THREE.Vector3(14, 8, 14)],
+  tumulo: [V3(TUMULO.x, TUMULO.z + 1.5, 1.4), new THREE.Vector3(5, 4.5, 13)],
+  saida: [V3(-62, -8, 2), new THREE.Vector3(26, 9, 14)],
+};
+let anim = null;
+function irPara(alvo, off, dur = 1.6) {
+  const f = innerHeight > innerWidth ? 1.35 : 1;
+  anim = { t: 0, dur, t0: controls.target.clone(), p0: camera.position.clone(), t1: alvo.clone(), p1: alvo.clone().add(off.clone().multiplyScalar(f)) };
+}
+function vista(k) {
+  const [t, o] = VISTAS[k]; irPara(t, o);
+  document.querySelectorAll('#bar button').forEach((b) => b.classList.toggle('on', b.dataset.v === k));
+}
+document.querySelectorAll('#bar button').forEach((b) => b.onclick = () => vista(b.dataset.v));
+{ const [t, o] = VISTAS.geral; controls.target.copy(t); camera.position.copy(t).add(o.clone().multiplyScalar(innerHeight > innerWidth ? 1.35 : 1)); }
+document.querySelector('[data-v=geral]').classList.add('on');
+
+const ray = new THREE.Raycaster(), ptr = new THREE.Vector2(); let down = null;
+renderer.domElement.addEventListener('pointerdown', (e) => { down = [e.clientX, e.clientY]; });
+renderer.domElement.addEventListener('pointerup', (e) => {
+  if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 8) return;
+  ptr.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+  ray.setFromCamera(ptr, camera);
+  const hit = ray.intersectObject(terreno, false)[0]; if (!hit) return;
+  const p = hit.point; if (Math.abs(p.x) > 95 || Math.abs(p.z) > 66) return;
+  const off = camera.position.clone().sub(controls.target);
+  irPara(new THREE.Vector3(p.x, p.y + 1.4, p.z), off.divideScalar(innerHeight > innerWidth ? 1.35 : 1), 1.2);
+  document.querySelectorAll('#bar button').forEach((b) => b.classList.remove('on'));
+  document.getElementById('dica').style.opacity = 0;
+});
+setTimeout(() => { document.getElementById('dica').style.opacity = 0; }, 10000);
+addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.fov = innerHeight > innerWidth ? 55 : 42; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+
+const ease = (t) => t * t * (3 - 2 * t);
+const clock = new THREE.Clock();
+renderer.setAnimationLoop(() => {
+  const raw = clock.getDelta(), adt = Math.min(0.25, raw);
+  if (window.__capim.userData.sh) window.__capim.userData.sh.uniforms.uTime.value = clock.elapsedTime;
+  if (anim) {
+    anim.t = Math.min(1, anim.t + adt / anim.dur); const k = ease(anim.t);
+    controls.target.lerpVectors(anim.t0, anim.t1, k); camera.position.lerpVectors(anim.p0, anim.p1, k);
+    if (anim.t >= 1) anim = null;
+  }
+  controls.update();
+  // sombra acompanha o alvo (caixa modesta: nítida no celular)
+  const tg = controls.target; const s = Math.min(45, 14 + camera.position.distanceTo(tg) * 0.45);
+  sun.position.copy(tg).addScaledVector(SUN_DIR, 60); sun.target.position.copy(tg);
+  Object.assign(sun.shadow.camera, { left: -s, right: s, top: s, bottom: -s, near: 10, far: 140 }); sun.shadow.camera.updateProjectionMatrix();
+  renderer.render(scene, camera);
+});
+document.getElementById('carga').remove();
+renderer.domElement.classList.add('on');
+</script>
+</body>
+</html>
