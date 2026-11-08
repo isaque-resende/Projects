@@ -138,12 +138,12 @@ export async function carregarKit(url, texDir = 'tex/') {
       vec3 c = texture2D(map, vMapUv).rgb;
       if (vMapUv.y < 0.5) {
         float l = dot(c, vec3(0.3333));
-        c = mix(c, vec3(l) * vec3(1.0, 0.99, 0.96), 0.32) * 1.14 + 0.025;
+        c = mix(c, vec3(l) * vec3(1.0, 0.985, 0.95), 0.5) * 1.18 + 0.035;
         vec3 nW = normalize(cross(dFdx(vWPosA), dFdy(vWPosA)));
         if (abs(nW.y) < 0.55) {
           vec2 p = planar(vWPosA, nW);
           float n = vnoise(p * 1.3 + 3.0) * 0.6 + vnoise(p * 4.1) * 0.4;
-          float massa = smoothstep(0.5, 0.68, n) * (0.55 + 0.45 * smoothstep(0.6, 2.2, mod(vWPosA.y, 2.8)));
+          float massa = smoothstep(0.44, 0.64, n) * (0.55 + 0.45 * smoothstep(0.6, 2.2, mod(vWPosA.y, 2.8)));
           vec3 reb = semRep(tReboco, p / 2.9) * vec3(1.0, 0.96, 0.9);
           c = mix(c, reb, massa * 0.9);
         }
