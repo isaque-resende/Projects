@@ -57,7 +57,7 @@ scene.background = (() => {
   g.fillStyle = gr; g.fillRect(0, 0, 2, 256);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
 })();
-scene.fog = new THREE.Fog(0xe7dfcf, 70, 260);
+scene.fog = new THREE.Fog(0xe7dfcf, 28, 150);
 scene.add(new THREE.HemisphereLight(0xcfe6ff, 0xc9a47a, 1.3));
 const sun = new THREE.DirectionalLight(0xffe4bc, 3.1);
 sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
@@ -68,7 +68,7 @@ const SUN_DIR = new THREE.Vector3(9, 11, 6).normalize();
 const camera = new THREE.PerspectiveCamera(innerHeight > innerWidth ? 55 : 42, innerWidth / innerHeight, 0.1, 700);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true; controls.dampingFactor = 0.08;
-controls.minDistance = 2; controls.maxDistance = 120; controls.maxPolarAngle = Math.PI * 0.48;
+controls.minDistance = 2; controls.maxDistance = 70; controls.maxPolarAngle = Math.PI * 0.48;
 
 const TL = new THREE.TextureLoader();
 function tex(url, repeat = true) {
@@ -96,16 +96,16 @@ function vnoise(x, z) {
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 function base(x, z) {
   let h = -0.1 * x;
-  h += 15 * (1 - Math.exp(-Math.max(0, -x - 30) / 48));           // subida para o Monte das Oliveiras (suave: a estrada sobe)
+  h += 14 * (1 - Math.exp(-Math.max(0, -x - 16) / 34));           // subida para o Monte das Oliveiras (suave: a estrada sobe)
   const az = Math.abs(z);
-  h += 9 * (1 - Math.exp(-Math.max(0, az - 28) / 26)) * (0.75 + 0.25 * Math.sin(x * 0.03));
+  h += 8 * (1 - Math.exp(-Math.max(0, az - 17) / 20)) * (0.75 + 0.25 * Math.sin(x * 0.03));
   h += 1.6 * (vnoise(x * 0.025 + 3, z * 0.025) - 0.5) + 0.7 * (vnoise(x * 0.07, z * 0.07 + 9) - 0.5);
   h -= 6 * smooth(70, 160, x) * (0.6 + 0.4 * vnoise(z * 0.02, 1));  // o vale para leste
   return h;
 }
 
 // estrada: vem de leste (de Jericó, mais baixa), cruza o terreiro e sobe a oeste (limite da fase)
-const ESTRADA = [[240, 26], [120, 16], [70, 10], [48, 8], [30, 5], [16, 2.5], [6, 1.2], [-6, 2], [-20, 4], [-33, 1.5], [-46, -3.5], [-60, -8.5], [-74, -12], [-95, -15], [-140, -20]];
+const ESTRADA = [[240, 26], [120, 14], [60, 8], [32, 5], [17, 2.5], [7, 1.2], [-4, 1.6], [-12, 2.6], [-20, 1], [-28, -2.5], [-36, -5.5], [-46, -8], [-70, -12], [-140, -20]];
 const RW = 1.9;  // meia-largura
 const RP = []; // pontos densos {x,z,s,h}
 {
@@ -155,29 +155,29 @@ function altura(x, z) {
 }
 
 // ================================================================== LAYOUT DA VILA
-const PLAZA = pad({ x: 0, z: 0, r: 8.5, blend: 5, dirt: 1 });
+const PLAZA = pad({ x: 0, z: 0, r: 5.5, blend: 4, dirt: 1 });
 const CASAS = [
-  { x: -12, z: -11, semente: 3 }, { x: 11.5, z: -12, semente: 11 }, { x: -16, z: 12.5, semente: 27 },
-  { x: 14, z: 13.5, semente: 42 }, { x: -4, z: -20, semente: 77 },
+  { x: -8, z: -8.5, semente: 3 }, { x: 8, z: -9, semente: 11 }, { x: -9, z: 9, semente: 27 },
+  { x: 9, z: 9.5, semente: 42 }, { x: -0.5, z: -16, semente: 77 },
 ];
-const CISTERNA = { x: 3.2, z: -5.2 };
-const FORNO = { x: 18.5, z: -6.5 };
-const CURRAL = { x: 27, z: 19 };
-const APRISCO = { x: 30, z: -17 };
-const TRIGAL = { x: -15, z: 25, w: 13, d: 7 };
-const EIRA = { x: -30, z: 18 };
-const TUMULO = { x: 5, z: -36 };
-const ROMAS = [[6, -15, 'Romanzeira2_Pomar_ComFruta'], [-6, 12, 'Romanzeira1_Jovem_ComFruta'], [21, -2, 'Romanzeira4_Aberta_ComFruta'], [-22, -5, 'Romanzeira3_Retorcida_ComFruta'], [24, 8, 'Romanzeira1_Jovem_SemFruta']];
-const OLIVAS = [[-38, -11, 'Oliveira2_Retorcida'], [-41, 10, 'Oliveira1_Jovem'], [-50, 4, 'Oliveira4_Ancia'], [-55, -20, 'Oliveira3_Vaso'], [-30, -15, 'Oliveira1_Jovem'], [-47, 17, 'Oliveira2_Retorcida']];
-const FIGOS = [[-61, -3.5, 'Figueira4_Grande_SemFruta'], [-68, -16.5, 'Figueira2_Larga_SemFruta'], [-74, -6.5, 'Figueira1_Jovem_ComFruta']];
+const CISTERNA = { x: 2.6, z: -3.6 };
+const FORNO = { x: 13.5, z: -4.5 };
+const CURRAL = { x: 19, z: 14 };
+const APRISCO = { x: 20, z: -14 };
+const TRIGAL = { x: -10, z: 18.5, w: 10, d: 6 };
+const EIRA = { x: -20, z: 11 };
+const TUMULO = { x: 4, z: -25 };
+const ROMAS = [[3.5, -10.5, 'Romanzeira2_Pomar_ComFruta'], [-3, 9, 'Romanzeira1_Jovem_ComFruta'], [13.5, 6, 'Romanzeira4_Aberta_ComFruta'], [-14, -3.5, 'Romanzeira3_Retorcida_ComFruta'], [15, 8, 'Romanzeira1_Jovem_SemFruta']];
+const OLIVAS = [[-22, -8, 'Oliveira2_Retorcida'], [-25, 6, 'Oliveira1_Jovem'], [-31, 3, 'Oliveira4_Ancia'], [-33, -14, 'Oliveira3_Vaso'], [-17, -12, 'Oliveira1_Jovem'], [-29, 12, 'Oliveira2_Retorcida']];
+const FIGOS = [[-38, -1, 'Figueira4_Grande_SemFruta'], [-42, -12.5, 'Figueira2_Larga_SemFruta'], [-47, -3, 'Figueira1_Jovem_ComFruta']];
 
-for (const c of CASAS) c.pad = pad({ x: c.x, z: c.z, w: 10, d: 10, blend: 3.5, dirt: 0.9, rot: 0 });
+for (const c of CASAS) c.pad = pad({ x: c.x, z: c.z, w: 8.5, d: 8.5, blend: 3, dirt: 0.9, rot: 0 });
 pad({ x: CISTERNA.x, z: CISTERNA.z, r: 2.6, blend: 2, dirt: 1 });
 pad({ x: FORNO.x, z: FORNO.z, r: 2.4, blend: 2.5, dirt: 1 });
 const PCUR = pad({ x: CURRAL.x, z: CURRAL.z, w: 9, d: 7, blend: 3.5, dirt: 0.85 });
 const PAPR = pad({ x: APRISCO.x, z: APRISCO.z, w: 9, d: 9, blend: 3.5, dirt: 0.6 });
 const PTRI = pad({ x: TRIGAL.x, z: TRIGAL.z, w: TRIGAL.w + 2, d: TRIGAL.d + 2, blend: 3, dirt: 0.25 });
-const PEIR = pad({ x: EIRA.x, z: EIRA.z, r: 5.5, blend: 3.5, dirt: 0.7 });
+const PEIR = pad({ x: EIRA.x, z: EIRA.z, r: 4.5, blend: 3.5, dirt: 0.7 });
 const PTUM = pad({ x: TUMULO.x, z: TUMULO.z + 3, w: 7, d: 7, blend: 3.5, dirt: 0.35 });
 // alturas dos patamares (pela encosta já com a estrada)
 for (const p of PADS) p.h = semPads(p.x, p.z).h;
@@ -193,7 +193,7 @@ function eixo(min, max, a, b, step) {
   x = b; d = step; while (x < max) { d *= 1.35; x += d; v.push(Math.min(max, x)); }
   return v;
 }
-const XS = eixo(-240, 240, -90, 84, 1.5), ZS = eixo(-240, 240, -64, 64, 1.5);
+const XS = eixo(-240, 240, -58, 52, 1.2), ZS = eixo(-240, 240, -40, 40, 1.2);
 const terreno = (() => {
   const nx = XS.length, nz = ZS.length, n = nx * nz;
   const pos = new Float32Array(n * 3), mask = new Float32Array(n * 4), ruv = new Float32Array(n * 2);
@@ -242,6 +242,7 @@ const terreno = (() => {
       float rm = smoothstep(0.25, 0.75, vMask.x + (vnoise(p * 1.4) - 0.5) * 0.35);
       c = mix(c, texture2D(tEstr, vec2(clamp(vRoad.x, 0.02, 0.98), vRoad.y)).rgb, rm);
       c *= macro(vec3(vW.x, 0.0, vW.z));
+      c = mix(c, vec3(0.95, 0.92, 0.86), smoothstep(-1.5, -9.0, vW.y) * 0.5);   // névoa que assenta na baixada
       diffuseColor.rgb *= c;`);
   };
   m.customProgramCacheKey = () => 'terreno_betania';
@@ -252,10 +253,27 @@ const terreno = (() => {
 
 // horizonte: colinas do deserto da Judeia pintadas, num cilindro bem longe
 {
-  const g = new THREE.CylinderGeometry(330, 330, 62, 64, 1, true);
-  T.horiz.wrapS = THREE.RepeatWrapping; T.horiz.repeat.set(4, 1);
-  const m = new THREE.MeshBasicMaterial({ map: T.horiz, transparent: true, side: THREE.BackSide, depthWrite: false, fog: false, color: 0xf2ece4 });
-  const h = new THREE.Mesh(g, m); h.position.y = 2; h.renderOrder = -1; scene.add(h);
+  const g = new THREE.CylinderGeometry(300, 300, 85, 72, 1, true);
+  T.horiz.wrapS = THREE.MirroredRepeatWrapping; T.horiz.wrapT = THREE.ClampToEdgeWrapping; T.horiz.repeat.set(4, 1);
+  const m = new THREE.MeshBasicMaterial({ map: T.horiz, transparent: true, side: THREE.BackSide, depthWrite: false, fog: false });
+  m.onBeforeCompile = (sh) => {   // a pintura recebe a mesma bruma da cena, mais forte no pé dos morros
+    sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
+      diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.906, 0.875, 0.812), 0.28 + 0.5 * (1.0 - smoothstep(0.05, 0.6, vMapUv.y)));`);
+  };
+  const h = new THREE.Mesh(g, m); h.position.y = -6; h.renderOrder = -1; scene.add(h);
+}
+// bancos de neblina baixa nas bordas (gradiente gerado: sem textura pintada), andando devagar
+const NEVOAS = [];
+{
+  const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d');
+  const gr = x.createRadialGradient(64, 64, 4, 64, 64, 64); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.5, 'rgba(255,255,255,0.45)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+  x.fillStyle = gr; x.fillRect(0, 0, 128, 128);
+  const t = new THREE.CanvasTexture(c);
+  const m = new THREE.MeshBasicMaterial({ map: t, color: 0xf1ebe0, transparent: true, opacity: 0.38, depthWrite: false });
+  for (const [px, pz, w, d, dy] of [[46, -6, 60, 34, 1.2], [36, 26, 46, 26, 1.5], [36, -30, 46, 26, 1.5], [0, 40, 70, 24, 2.0], [-6, -40, 70, 24, 2.0], [-58, -10, 40, 40, 2.5], [70, 18, 70, 40, 0.8]]) {
+    const pl = new THREE.Mesh(new THREE.PlaneGeometry(w, d), m); pl.rotation.x = -Math.PI / 2;
+    pl.position.set(px, 0, pz); pl.userData = { x0: px, z0: pz, dy, f: Math.random() * 6 }; pl.renderOrder = 2; scene.add(pl); NEVOAS.push(pl);
+  }
 }
 
 // ================================================================== PEÇAS DA BIBLIOTECA
@@ -390,8 +408,8 @@ function muretasAoLongo(s0, s1, lado) {
   }
 }
 const sDe = (x) => { let best = RP[0]; for (const p of RP) if (Math.abs(p.x - x) < Math.abs(best.x - x)) best = p; return best.s; };
-muretasAoLongo(sDe(50), sDe(30), 1); muretasAoLongo(sDe(52), sDe(34), -1);
-muretasAoLongo(sDe(-28), sDe(-52), 1); muretasAoLongo(sDe(-36), sDe(-58), -1);
+muretasAoLongo(sDe(34), sDe(20), 1); muretasAoLongo(sDe(36), sDe(22), -1);
+muretasAoLongo(sDe(-17), sDe(-33), 1); muretasAoLongo(sDe(-22), sDe(-36), -1);
 
 // ------------------------------------------------------------------ capim em 3D (cards cruzados, instanciados) só no campo
 {
@@ -413,12 +431,12 @@ muretasAoLongo(sDe(-28), sDe(-52), 1); muretasAoLongo(sDe(-36), sDe(-58), -1);
     // normal para cima: o capim recebe a luz como o chão (sem faces escuras)
     sh.vertexShader = sh.vertexShader.replace('#include <beginnormal_vertex>', 'vec3 objectNormal = vec3(0.0, 1.0, 0.0);');
   };
-  const MAX = 2600, inst = new THREE.InstancedMesh(geo, mat, MAX);
+  const MAX = 1800, inst = new THREE.InstancedMesh(geo, mat, MAX);
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), col = new THREE.Color();
   let n = 0, tries = 0;
   while (n < MAX && tries < 40000) {
     tries++;
-    const x = -82 + Math.random() * 160, z = -58 + Math.random() * 116;
+    const x = -52 + Math.random() * 100, z = -36 + Math.random() * 72;
     const r = naEstrada(x, z); if (r.d < RW + 0.8) continue;
     let ok = true; for (const p of PADS) if (padDist(p, x, z) < (p.dirt > 0.5 ? 1.2 : 0.2)) { ok = false; break; }
     if (!ok) continue;
@@ -442,13 +460,13 @@ scene.traverse((o) => { if (o.name && o.name.startsWith('NPC_')) o.visible = fal
 // ================================================================== CÂMERA, VISTAS E ANDAR
 const V3 = (x, z, dy = 1.6) => new THREE.Vector3(x, altura(x, z) + dy, z);
 const VISTAS = {
-  geral: [V3(-4, 0, 2), new THREE.Vector3(32, 34, 48)],
-  terreiro: [V3(0, 0, 1.4), new THREE.Vector3(9, 6, 13)],
+  geral: [V3(-3, 0, 2), new THREE.Vector3(20, 21, 30)],
+  terreiro: [V3(0, 0, 1.4), new THREE.Vector3(7, 5, 10)],
   cisterna: [V3(CISTERNA.x, CISTERNA.z, 1.2), new THREE.Vector3(4, 3.2, 5.5)],
   curral: [V3(CURRAL.x, CURRAL.z, 1), new THREE.Vector3(-6, 6, 11)],
-  trigal: [V3(TRIGAL.x - 6, TRIGAL.z - 2, 1), new THREE.Vector3(14, 8, 14)],
+  trigal: [V3(TRIGAL.x - 4, TRIGAL.z - 2, 1), new THREE.Vector3(11, 7, 11)],
   tumulo: [V3(TUMULO.x, TUMULO.z + 1.5, 1.4), new THREE.Vector3(9, 5, 9)],
-  saida: [V3(-58, -7, 2), new THREE.Vector3(24, 8, 12)],
+  saida: [V3(-36, -5, 2), new THREE.Vector3(18, 7, 10)],
 };
 let anim = null;
 function irPara(alvo, off, dur = 1.6) {
@@ -470,7 +488,7 @@ renderer.domElement.addEventListener('pointerup', (e) => {
   ptr.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
   ray.setFromCamera(ptr, camera);
   const hit = ray.intersectObject(terreno, false)[0]; if (!hit) return;
-  const p = hit.point; if (Math.abs(p.x) > 95 || Math.abs(p.z) > 66) return;
+  const p = hit.point; if (Math.abs(p.x) > 60 || Math.abs(p.z) > 42) return;
   const off = camera.position.clone().sub(controls.target);
   irPara(new THREE.Vector3(p.x, p.y + 1.4, p.z), off.divideScalar(innerHeight > innerWidth ? 1.35 : 1), 1.2);
   document.querySelectorAll('#bar button').forEach((b) => b.classList.remove('on'));
@@ -483,6 +501,7 @@ const ease = (t) => t * t * (3 - 2 * t);
 const clock = new THREE.Clock();
 renderer.setAnimationLoop(() => {
   const raw = clock.getDelta(), adt = Math.min(0.25, raw);
+  for (const n of NEVOAS) { const u = n.userData; n.position.x = u.x0 + Math.sin(clock.elapsedTime * 0.05 + u.f) * 4; n.position.y = altura(n.position.x, u.z0) + u.dy; }
   if (window.__capim.userData.sh) window.__capim.userData.sh.uniforms.uTime.value = clock.elapsedTime;
   if (anim) {
     anim.t = Math.min(1, anim.t + adt / anim.dur); const k = ease(anim.t);
