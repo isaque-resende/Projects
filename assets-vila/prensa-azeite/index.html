@@ -104,7 +104,7 @@ function liquidMat(base, flow, amp, wobble = 0) {
   m.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, m.userData.u);
     sh.vertexShader = 'uniform float uTime, uFlow, uAmp, uWob;\n' + sh.vertexShader
-      .replace('#include <uv_vertex>', '#include <uv_vertex>\n#ifdef USE_MAP\n vMapUv.x += uTime * uFlow;\n#endif')
+      .replace('#include <uv_vertex>', '#include <uv_vertex>\n#ifdef USE_MAP\n vMapUv.x -= uTime * uFlow;   // a textura corre para baixo no fio\n#endif')
       .replace('#include <begin_vertex>', `#include <begin_vertex>
         transformed.y += uAmp * (sin(position.x * 9.0 + uTime * 1.4) + cos(position.z * 8.0 + uTime * 1.1)) * 0.5;
         transformed.x += uWob * sin(position.y * 30.0 - uTime * 8.0);
@@ -133,12 +133,29 @@ heaps.forEach((h) => {
   h.userData.ang = Math.atan2(-(h.position.z - moC.z), h.position.x - moC.x);
 });
 const pasta0 = pasta.position.y, tanque0 = tanque.position.y;
+let tanqueFill = 0, rippleT = 0;
+tanque.visible = false; fio.visible = false; laje.visible = false;
 let moTarget = 0, crushed = 0, crushedV = 0;
 let press = 0, pressPhase = 0, pressT = 0, oil = 0, resetAt = 0;
 // pressPhase: 0 parado, 1 descendo, 2 segurando, 3 subindo
 const BEAM_DROP = 0.085;   // rad
 const H_CESTOS = 0.35;     // altura da pilha de cestos (m)
 const ARM = 1.05;          // distância do apoio até os cestos (m)
+
+
+// ponto onde o fio cai (vértice mais baixo do fio), para as ondinhas no tanque de baixo
+function landingOf(mesh) {
+  const pos = mesh.geometry.attributes.position, v = new THREE.Vector3();
+  let best = null;
+  for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i); if (!best || v.y < best.y) best = v.clone(); }
+  return best;   // em coordenadas locais do fio
+}
+
+const fioLand = landingOf(fio);
+const ringGeo = new THREE.RingGeometry(0.8, 1.0, 20); ringGeo.rotateX(-Math.PI / 2);
+const ringMat = new THREE.MeshBasicMaterial({ color: 0xe6da8a, transparent: true, opacity: 0.6, depthWrite: false });
+const ripples = [];
+function ripple(p, y) { const r = new THREE.Mesh(ringGeo, ringMat.clone()); r.position.set(p.x, y, p.z); r.userData.t = 0; r.scale.setScalar(0.02); scene.add(r); ripples.push(r); }
 
 function wrap(a) { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; }
 
@@ -268,18 +285,32 @@ renderer.setAnimationLoop(() => {
   laje.scale.set(0.6 + oil * 0.4, 1, 0.6 + oil * 0.4);
   fio.visible = oil > 0.05;
   fio.scale.set(oil, 1, oil);
-  if (oil > 0.3) tanque.position.y = Math.min(tanque0 + 0.2, tanque.position.y + dt * 0.012 * oil);
-  if (Math.random() < oil * dt * 3) {
-    const tp = fio.getWorldPosition(tmp).clone();
-    burst(new THREE.Vector3(tp.x, tanque.getWorldPosition(new THREE.Vector3()).y + 0.01, tp.z - 0.07), [oilDrop], 2, 0.5);
+  // tanque de pedra: começa vazio e enche enquanto o azeite cai
+  if (fio.visible) tanqueFill = Math.min(1, tanqueFill + dt * 0.045 * oil);
+  tanque.visible = tanqueFill > 0.01;
+  tanque.position.y = tanque0 + tanqueFill * 0.085;
+  const ts = 0.8 + tanqueFill * 0.22;
+  tanque.scale.set(ts, 1, ts);
+  rippleT -= dt;
+  if (fio.visible && rippleT <= 0) {
+    rippleT = 0.5;
+    const lp = fio.localToWorld(fioLand.clone());
+    const y = tanque.visible ? tanque.getWorldPosition(new THREE.Vector3()).y + 0.008 : lp.y + 0.008;
+    ripple(lp, y);
+    if (Math.random() < 0.5) burst(new THREE.Vector3(lp.x, y, lp.z), [oilDrop], 2, 0.35);
+  }
+  for (let i = ripples.length - 1; i >= 0; i--) {
+    const r = ripples[i]; r.userData.t += dt; const k = r.userData.t / 1.1;
+    r.scale.setScalar(0.02 + k * 0.14); r.material.opacity = 0.55 * (1 - k);
+    if (k >= 1) { scene.remove(r); r.material.dispose(); ripples.splice(i, 1); }
   }
 
   // --- volta ao começo
-  if (!resetAt && crushed >= heaps.length && tanque.position.y > tanque0 + 0.12 && pressPhase === 0) resetAt = t + 5;
+  if (!resetAt && crushed >= heaps.length && tanqueFill > 0.6 && pressPhase === 0) resetAt = t + 5;
   if (resetAt && t > resetAt) {
     resetAt = 0; crushed = 0;
     heaps.forEach((h) => { h.userData.k = 1; });
-    tanque.position.y = tanque0;
+    tanqueFill = 0;
   }
 
   // pedacinhos e gotas

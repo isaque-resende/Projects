@@ -22,6 +22,7 @@
 // Lagar em tela cheia, sem texto, luz de manhã.
 // Líquido animado: o fio corre, as superfícies ondulam.
 // Toque nas uvas para pisar: o monte afunda, respinga, faz onda, o suco sobe e o tanque de baixo enche.
+// O fio só corre depois de pisar; o suco cai no tanque de pedra de baixo, que vai enchendo.
 // Quando todas as uvas forem pisadas, tudo volta ao começo depois de alguns segundos.
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -105,7 +106,7 @@ function liquidMat(base, flow, amp, wobble = 0) {
   m.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, m.userData.u);
     sh.vertexShader = 'uniform float uTime, uFlow, uAmp, uWob;\n' + sh.vertexShader
-      .replace('#include <uv_vertex>', '#include <uv_vertex>\n#ifdef USE_MAP\n vMapUv.x += uTime * uFlow;\n#endif')
+      .replace('#include <uv_vertex>', '#include <uv_vertex>\n#ifdef USE_MAP\n vMapUv.x -= uTime * uFlow;   // a textura corre para baixo no fio\n#endif')
       .replace('#include <begin_vertex>', `#include <begin_vertex>
         transformed.y += uAmp * (sin(position.x * 11.0 + uTime * 2.3) + cos(position.z * 9.0 + uTime * 1.9) + 0.6 * sin((position.x + position.z) * 17.0 - uTime * 3.1)) * 0.4;
         transformed.x += uWob * sin(position.y * 38.0 - uTime * 14.0);
@@ -130,7 +131,19 @@ heaps.forEach((h) => { h.userData.k = 1; h.userData.kv = 1; h.userData.p0 = h.po
 const tank = N.Lagar_SucoTanque, coleta = N.Lagar_SucoColeta, fio = N.Lagar_Fio, bag = N.Lagar_Bagaco;
 const tank0 = tank.position.y, coleta0 = coleta.position.y;
 let pressed = 0, pressedV = 0, flowBoost = 0, resetAt = 0;
+let flow = 0, coletaFill = 0, rippleT = 0;   // fio parado até pisar; tanque de baixo começa vazio
+const fioLand = landingOf(fio);
+coleta.visible = false; fio.visible = false;
 const total = heaps.length * 3;   // 3 pisadas por monte
+
+
+// ponto onde o fio cai (vértice mais baixo do fio), para as ondinhas no tanque de baixo
+function landingOf(mesh) {
+  const pos = mesh.geometry.attributes.position, v = new THREE.Vector3();
+  let best = null;
+  for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i); if (!best || v.y < best.y) best = v.clone(); }
+  return best;   // em coordenadas locais do fio
+}
 
 // respingos e ondas
 const dropGeo = new THREE.IcosahedronGeometry(0.018, 0);
@@ -140,8 +153,8 @@ const ringGeo = new THREE.RingGeometry(0.8, 1.0, 20); ringGeo.rotateX(-Math.PI /
 const ringMat = new THREE.MeshBasicMaterial({ color: 0xc890b0, transparent: true, opacity: 0.6, depthWrite: false });
 const ripples = [];
 
-function splash(p) {
-  for (let i = 0; i < 10; i++) {
+function splash(p, atY, nDrops = 10) {
+  for (let i = 0; i < nDrops; i++) {
     const d = new THREE.Mesh(dropGeo, dropMat);
     d.position.copy(p).add(new THREE.Vector3(0, 0.03, 0));
     const a = Math.random() * Math.PI * 2, s = 0.5 + Math.random() * 0.9;
@@ -151,7 +164,7 @@ function splash(p) {
     scene.add(d); drops.push(d);
   }
   const r = new THREE.Mesh(ringGeo, ringMat.clone());
-  r.position.copy(p); r.position.y = tank.getWorldPosition(new THREE.Vector3()).y + 0.012;
+  r.position.copy(p); if (atY === undefined) r.position.y = tank.getWorldPosition(new THREE.Vector3()).y + 0.012; else r.position.y = atY;
   r.userData.t = 0; r.scale.setScalar(0.05);
   scene.add(r); ripples.push(r);
 }
@@ -170,6 +183,7 @@ function stomp(hitPoint) {
   best.userData.k = Math.max(0, best.userData.k - 0.34);
   pressed = Math.min(total, pressed + 1);
   flowBoost = 1;
+  flow = 1;          // cada pisada faz o suco escorrer por uns segundos
   if (heaps.every((h) => h.userData.k <= 0.01)) resetAt = clock.t + 4;
 }
 
@@ -236,7 +250,7 @@ renderer.setAnimationLoop(() => {
 
   // volta ao começo depois de pisar tudo
   if (resetAt && clock.t > resetAt) {
-    resetAt = 0; pressed = 0;
+    resetAt = 0; pressed = 0; coletaFill = 0;
     heaps.forEach((h) => { h.userData.k = 1; });
   }
 
@@ -255,10 +269,25 @@ renderer.setAnimationLoop(() => {
   bag.scale.set(1 + f * 0.9, 1 + f * 0.6, 1 + f * 0.9);
   bag.position.y = tank.position.y;
   flowBoost = Math.max(0, flowBoost - dt * 0.35);
-  const fw = 1 + f * 0.6 + flowBoost * 0.9;
+  flow = Math.max(0, flow - dt * 0.22);                 // escorre ~4,5 s depois de cada pisada
+  const fw = (0.5 + flowBoost * 0.9) * Math.min(1, flow * 3);
+  fio.visible = flow > 0.02;
   fio.scale.set(fw, 1, fw);
   matFio.userData.u.uFlow.value = 1.4 + flowBoost * 1.6;
-  coleta.position.y = coleta0 + f * 0.17;
+  // tanque de pedra de baixo: enche enquanto o suco cai, e o nível sobe junto com as paredes que abrem
+  coletaFill = Math.min(1, coletaFill + dt * 0.05 * flow);
+  coleta.visible = coletaFill > 0.01;
+  coleta.position.y = coleta0 + coletaFill * 0.13;
+  const cs = 0.75 + coletaFill * 0.3;
+  coleta.scale.set(cs, 1, cs);
+  // ondinhas onde o fio cai
+  rippleT -= dt;
+  if (fio.visible && rippleT <= 0) {
+    rippleT = 0.35;
+    const lp = fio.localToWorld(fioLand.clone());
+    const y = coleta.visible ? coleta.getWorldPosition(new THREE.Vector3()).y + 0.01 : lp.y + 0.01;
+    splash(lp, y, 2);
+  }
 
   // respingos
   for (let i = drops.length - 1; i >= 0; i--) {
