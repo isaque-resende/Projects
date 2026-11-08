@@ -27,6 +27,7 @@
   <button id="bQuart">Quarteirão</button>
   <button id="bSort">Sortear</button>
   <button id="bDentro">Ver dentro</button>
+  <button id="bIA">Teste IA</button>
 </div>
 <script type="module">
 // Viewer do kit de casas: casa de exemplo mobiliada (porta abre com um toque), um quarteirão de casas
@@ -34,6 +35,8 @@
 // "Ver dentro" tira o teto e o andar de cima. O boneco tem 1,70 m (escala do personagem).
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { carregarKit, casaExemplo, casaAleatoria, quarteirao, GLSL_NOISE } from './construtor_casas.js';
 
@@ -123,7 +126,7 @@ function olhar(alvo, dist, dir) {
   // sol fixo em direção, a ~30 m do alvo; caixa de sombra fixa e modesta (o chão escurecia no celular com a caixa grande)
   sun.position.copy(alvo).add(new THREE.Vector3(9, 11, 6).normalize().multiplyScalar(30)); sun.target.position.copy(alvo);
   sun.target.updateMatrixWorld();
-  const s = modo === 'quart' ? 16 : 10; Object.assign(sun.shadow.camera, { left: -s, right: s, top: s, bottom: -s, near: 5, far: 60 }); sun.shadow.camera.updateProjectionMatrix();
+  const s = modo === 'quart' ? 16 : modo === 'ia' ? 18 : 10; Object.assign(sun.shadow.camera, { left: -s, right: s, top: s, bottom: -s, near: 5, far: 60 }); sun.shadow.camera.updateProjectionMatrix();
   controls.update();
 }
 const retrato = () => innerHeight > innerWidth;
@@ -133,7 +136,7 @@ function verQuart() {
   olhar(QUART_POS.clone().add(new THREE.Vector3(W / 2, 2, D / 2)), retrato() ? 44 : 30, new THREE.Vector3(0.5, 0.75, 1)); marca();
 }
 const bCasa = document.getElementById('bCasa'), bQuart = document.getElementById('bQuart'), bDentro = document.getElementById('bDentro');
-function marca() { bCasa.classList.toggle('on', modo === 'casa'); bQuart.classList.toggle('on', modo === 'quart'); bDentro.classList.toggle('on', dentro); }
+function marca() { bCasa.classList.toggle('on', modo === 'casa'); bQuart.classList.toggle('on', modo === 'quart'); bDentro.classList.toggle('on', dentro); const bi = document.getElementById('bIA'); if (bi) bi.classList.toggle('on', modo === 'ia'); }
 bCasa.onclick = () => { if (modo === 'casa') porCasa(casaExemplo(kit)); verCasa(); };
 bQuart.onclick = () => verQuart();
 document.getElementById('bSort').onclick = () => {
@@ -143,6 +146,26 @@ document.getElementById('bSort').onclick = () => {
 };
 bDentro.onclick = () => { dentro = !dentro; aplicaDentro(); marca(); };
 verCasa();
+
+// ------------------------------------------------------------------ TESTE: casa da IA reduzida (20 mil triângulos, textura 1K)
+// ao lado da nossa casa de exemplo, e uma fileira de 6 cópias giradas atrás (para julgar a repetição)
+const IA_POS = new THREE.Vector3(-11, 0, 2);
+let ia = null;
+async function carregaIA() {
+  if (ia) return;
+  const g = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync('casa_ia_20k.glb');
+  ia = g.scene; ia.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  ia.position.copy(IA_POS); ia.rotation.y = 0; scene.add(ia);
+  const giros = [0, Math.PI / 2, Math.PI, -Math.PI / 2, 0, Math.PI];
+  giros.forEach((r, k) => {
+    const c = ia.clone(); c.position.set(IA_POS.x - 4 + (k % 3) * 9.2, 0, IA_POS.z - 12 - Math.floor(k / 3) * 9.2);
+    c.rotation.y = r; if (k % 2) c.scale.x = -1; scene.add(c);
+  });
+}
+document.getElementById('bIA').onclick = async () => {
+  await carregaIA(); modo = 'ia'; marca();
+  olhar(new THREE.Vector3(-7, 1.6, -4), retrato() ? 36 : 25, new THREE.Vector3(0.35, 0.6, 1));
+};
 
 // toque numa porta: abre ou fecha
 const ray = new THREE.Raycaster(), ptr = new THREE.Vector2();
@@ -174,7 +197,7 @@ renderer.domElement.addEventListener('pointerup', (e) => {
   let i = 0;
   while (i < 700) {
     p.set(-25 + rnd() * 80, 0, -28 + rnd() * 50);
-    const naCasa = p.x > -2.5 && p.x < 7 && p.z > -1.5 && p.z < 7.5;
+    const naCasa = (p.x > -2.5 && p.x < 7 && p.z > -1.5 && p.z < 7.5) || (p.x > -21 && p.x < -1 && p.z > -26 && p.z < 7);
     const noQuart = p.x > QUART_POS.x - 2 && p.x < QUART_POS.x + 20 && p.z > QUART_POS.z - 2 && p.z < QUART_POS.z + 16.5;
     if (naCasa || noQuart) continue;
     q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rnd() * Math.PI);
