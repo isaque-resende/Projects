@@ -26,7 +26,7 @@
 <body>
 <div id="bar">
   <button data-v="geral">Vila</button><button data-v="terreiro">Terreiro</button><button data-v="baixo">Curral</button>
-  <button data-v="alto">Túmulo</button><button data-v="trigal">Trigal</button><button data-v="saida">Saída</button><button data-v="vale">Vale</button>
+  <button data-v="alto">Túmulo</button><button data-v="trigal">Trigal</button><button data-v="saida">Saída</button>
 </div>
 <div id="carga">Carregando Betânia…</div>
 <div id="dica">Toque no chão para andar até lá. Arraste para girar.</div>
@@ -59,19 +59,31 @@ scene.background = (() => {
   g.fillStyle = gr; g.fillRect(0, 0, 2, 256);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
 })();
-scene.fog = new THREE.Fog(0xe7dfcf, 100, 260);
-scene.add(new THREE.HemisphereLight(0xcfe6ff, 0xc9a47a, 1.3));
-const sun = new THREE.DirectionalLight(0xffe4bc, 3.1);
+scene.fog = new THREE.Fog(0xeadfca, 70, 165);
+scene.add(new THREE.HemisphereLight(0xd8e6f2, 0xd0a878, 1.3));
+const sun = new THREE.DirectionalLight(0xffdcae, 3.2);
 sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
 sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.04;
 scene.add(sun); scene.add(sun.target);
 const SUN_DIR = new THREE.Vector3(9, 11, 6).normalize();
 
 const retrato = () => innerHeight > innerWidth;
-const camera = new THREE.PerspectiveCamera(retrato() ? 40 : 30, innerWidth / innerHeight, 0.3, 800);
+const camera = new THREE.PerspectiveCamera(retrato() ? 34 : 26, innerWidth / innerHeight, 0.3, 400);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true; controls.dampingFactor = 0.08;
-controls.minDistance = 4; controls.maxDistance = 95; controls.maxPolarAngle = Math.PI * 0.42;
+const AZ0 = Math.atan2(1, 1.05);
+controls.minDistance = 16; controls.maxDistance = 58;
+controls.minPolarAngle = 0.72; controls.maxPolarAngle = 1.02;
+controls.minAzimuthAngle = AZ0 - 0.62; controls.maxAzimuthAngle = AZ0 + 0.62;
+controls.screenSpacePanning = false;
+// o alvo nunca sai da vila
+const LIM = { x0: -21, x1: 18, z0: -14, z1: 14 };
+function prende() {
+  const t = controls.target, x = Math.min(LIM.x1, Math.max(LIM.x0, t.x)), z = Math.min(LIM.z1, Math.max(LIM.z0, t.z));
+  const y = Math.min(4.5, Math.max(0.5, t.y));
+  const d = new THREE.Vector3(x - t.x, y - t.y, z - t.z);
+  if (d.lengthSq() > 1e-8) { t.add(d); camera.position.add(d); }
+}
 
 const TL = new THREE.TextureLoader();
 function tex(url, repeat = true) {
@@ -137,21 +149,21 @@ const NIVEIS = [
 const RAMPAS = [
   { xa: 12.2, xb: 7.0, zc: 2.0, hw: 1.9, ya: 0.0, yb: 1.4 },
   { xa: -7.6, xb: -12.0, zc: 2.0, hw: 1.9, ya: 1.4, yb: 2.8 },
-  { xa: 29.0, xb: 22.0, zc: 2.4, hw: 1.9, ya: null, yb: 0.0 },   // saída leste: desce para o vale
+  { xa: 27.0, xb: 22.0, zc: 2.4, hw: 1.9, ya: null, yb: 0.0 },   // saída leste: desce para o vale
 ];
 const ESCADA = { x: 7.0, z: 13.2, w: 1.7, n: 7, rise: 0.2, run: 0.34 };
 
 // fora da fase: encosta (sobe forte para oeste = Monte das Oliveiras; desce para leste = vale de Jericó)
 function fora(x, z) {
-  let h = -3 + 5.8 * smooth(22, -23, x);
-  if (x < -23) h = 2.8 + 0.34 * (-x - 23);
-  if (x > 22) h = -3 - 0.05 * (x - 22);
-  h += 1.2 * (vnoise(x * 0.05, z * 0.05) - 0.5) + 0.5 * (vnoise(x * 0.13 + 5, z * 0.13) - 0.5);
-  // um degrau em volta do bloco da vila (os muros aparecem), menos onde a estrada entra e sai
-  const dx = Math.max(-24 - x, 0, x - 22), dz = Math.max(-17 - z, 0, z - 17);
-  const dOut = Math.hypot(dx, dz), perto = Math.abs(z - 2) < 6 && (x > 20 || x < -22);
-  if (!perto) h -= 1.6 * (1 - smooth(0, 9, dOut)) * smooth(-23, -15, x) ** 0.3;
-  // o morrote do túmulo (canto noroeste) se apoia num ombro de terra que desce suave
+  let h = -0.6 + 3.4 * smooth(22, -23, x);
+  if (x < -23) h = 2.8 + 0.42 * (-x - 23);
+  const az = Math.abs(z - 1);
+  h += 5.5 * smooth(17, 34, az);                                 // as encostas fecham a vila ao norte e ao sul
+  if (x > 23) {                                                   // a leste: a estrada desce num corredor; dos lados, morros
+    const corr = 1 - smooth(4, 12, Math.abs(z - 3));
+    h += (-0.1 * (x - 23)) * corr + 4.5 * smooth(23, 42, x) * (1 - corr);
+  }
+  h += 1.0 * (vnoise(x * 0.06, z * 0.06) - 0.5) + 0.4 * (vnoise(x * 0.15 + 5, z * 0.15) - 0.5);
   const dtm = Math.hypot(x + 18, z + 19); h = Math.max(h, 2.75 - 0.3 * Math.max(0, dtm - 6));
   return h;
 }
@@ -375,14 +387,14 @@ const CHAO = []; scene.traverse((o) => { if (o.userData.chao) CHAO.push(o); });
 
 // horizonte e neblina
 {
-  const g = new THREE.CylinderGeometry(300, 300, 60, 72, 1, true);
-  T.horiz.wrapS = THREE.MirroredRepeatWrapping; T.horiz.wrapT = THREE.ClampToEdgeWrapping; T.horiz.repeat.set(4, 1);
+  const g = new THREE.CylinderGeometry(150, 150, 34, 72, 1, true);
+  T.horiz.wrapS = THREE.MirroredRepeatWrapping; T.horiz.wrapT = THREE.ClampToEdgeWrapping; T.horiz.repeat.set(3, 1);
   const m = new THREE.MeshBasicMaterial({ map: T.horiz, transparent: true, side: THREE.BackSide, depthWrite: false, fog: false });
   m.onBeforeCompile = (sh) => {
     sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
       diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.906, 0.875, 0.812), 0.25 + 0.75 * smoothstep(0.64, 0.38, vMapUv.y));`);
   };
-  const h = new THREE.Mesh(g, m); h.position.y = -10; h.renderOrder = -1; scene.add(h);
+  const h = new THREE.Mesh(g, m); h.position.y = 4; h.renderOrder = -1; scene.add(h);
 }
 const NEVOAS = [];
 {
@@ -391,7 +403,7 @@ const NEVOAS = [];
   x.fillStyle = gr; x.fillRect(0, 0, 128, 128);
   const t = new THREE.CanvasTexture(c);
   const m = new THREE.MeshBasicMaterial({ map: t, color: 0xf1ebe0, transparent: true, opacity: 0.26, depthWrite: false });
-  for (const [px, pz, w, d, dy] of [[44, -2, 46, 40, 1.0], [10, 30, 60, 18, 1.2], [6, -30, 60, 18, 1.2], [70, 22, 60, 40, 0.8], [62, -28, 60, 40, 0.8]]) {
+  for (const [px, pz, w, d, dy] of [[40, 3, 30, 18, 1.0], [-2, 38, 70, 16, 1.5], [-2, -36, 70, 16, 1.5]]) {
     const pl = new THREE.Mesh(new THREE.PlaneGeometry(w, d), m); pl.rotation.x = -Math.PI / 2;
     pl.position.set(px, 0, pz); pl.userData = { x0: px, z0: pz, dy, f: Math.random() * 6 }; pl.renderOrder = 2; scene.add(pl); NEVOAS.push(pl);
   }
@@ -488,6 +500,30 @@ function arvore(nome, x, z, rot) { const g = grupo([nome], x, z, rot); g.positio
 for (const [x, z, n] of ROMAS) arvore(n, x, z, hsh(x, z) * 6.28);
 for (const [x, z, n] of OLIVAS) arvore(n, x, z, hsh(z, x) * 6.28);
 for (const [x, z, n] of FIGOS) arvore(n, x, z, hsh(x, -z) * 6.28);
+// cinturão de árvores: fecha a vila e dá a sensação de lugar (oliveiras no monte, figueiras e romãzeiras perto)
+{
+  const ESP = { oeste: ['Oliveira1_Jovem', 'Oliveira2_Retorcida', 'Oliveira4_Ancia', 'Oliveira3_Vaso', 'Figueira3_Encostada_SemFruta'],
+    lados: ['Oliveira2_Retorcida', 'Figueira2_Larga_SemFruta', 'Romanzeira2_Pomar_SemFruta', 'Oliveira1_Jovem', 'Figueira3_Encostada_ComFruta', 'Romanzeira4_Aberta_SemFruta'],
+    leste: ['Romanzeira3_Retorcida_SemFruta', 'Oliveira3_Vaso', 'Figueira1_Jovem_SemFruta'] };
+  let k = 0;
+  for (let i = 0; i < 46; i++) {
+    const a = (i / 46) * Math.PI * 2 + (hsh(i, 2) - 0.5) * 0.08;
+    const rx = 29 + (hsh(i, 5) - 0.5) * 5, rz = 23 + (hsh(i, 9) - 0.5) * 4;
+    const x = -1 + Math.cos(a) * rx, z = 1 + Math.sin(a) * rz;
+    if (Math.abs(z - 2) < 5.5 && (x > 18 || x < -24)) continue;          // saídas da estrada
+    if (Math.hypot(x - TUMULO.x, z - TUMULO.z + 3) < 8) continue;
+    const lista = x < -22 ? ESP.oeste : (x > 20 ? ESP.leste : ESP.lados);
+    const nome = lista[(k++) % lista.length];
+    const g = arvore(nome, x, z, hsh(z, x) * 6.28); const s = 0.95 + hsh(x, z) * 0.35; g.scale.setScalar(s);
+  }
+  // uma segunda fileira, mais solta, por trás
+  for (let i = 0; i < 22; i++) {
+    const a = (i / 22) * Math.PI * 2 + 0.13;
+    const x = -1 + Math.cos(a) * 37, z = 1 + Math.sin(a) * 30;
+    if (Math.abs(z - 2) < 7 && (x > 18 || x < -24)) continue;
+    const g = arvore(i % 2 ? 'Oliveira4_Ancia' : 'Oliveira2_Retorcida', x, z, hsh(x, z) * 6.28); g.scale.setScalar(1.15 + hsh(z, x) * 0.3);
+  }
+}
 // ------------------------------------------------------------------ túmulo de Lázaro (canto noroeste do patamar alto; o morrote passa da borda)
 {
   const g = grupo(['Tumulo_Massa_Grama', 'Tumulo_Interior', 'Tumulo_Patio', 'Tumulo_Pedra'], TUMULO.x, TUMULO.z, 0, 'Tumulo_Interior', L.alto);
@@ -529,7 +565,7 @@ parapeito(7, -12.2, -0.2, L.meio, -0.45); parapeito(7, 4.2, 10.2, L.meio, -0.45)
   let n = 0, tries = 0;
   while (n < MAX && tries < 60000) {
     tries++;
-    const x = -48 + Math.random() * 86, z = -34 + Math.random() * 68;
+    const x = -34 + Math.random() * 62, z = -24 + Math.random() * 50;
     if (ocupado(x, z)) continue;
     let borda = 0;   // perto do pé ou da beira de um muro de patamar
     for (const nv of NIVEIS) { const d = distBorda(nv.pts, x, z); if (d < 1.3) borda = Math.max(borda, 1 - d / 1.3); }
@@ -548,23 +584,25 @@ scene.traverse((o) => { if (o.name && o.name.startsWith('NPC_')) o.visible = fal
 // ================================================================== CÂMERA (quase isométrica, de cima) E VISTAS
 const V3 = (x, z, dy = 1.2) => new THREE.Vector3(x, nivel(x, z) + dy, z);
 const ISO = new THREE.Vector3(1, 1.15, 1.05).normalize();
+const dir = (daz, dpol = 0) => {   // direção dentro dos limites (girando a partir do enquadramento padrão)
+  const sp = new THREE.Spherical().setFromVector3(ISO); sp.theta += daz; sp.phi += dpol; return new THREE.Vector3().setFromSpherical(sp);
+};
 const VISTAS = {
-  geral: [new THREE.Vector3(-2, 1.4, 0), ISO.clone().multiplyScalar(66)],
-  terreiro: [V3(-1, 0), ISO.clone().multiplyScalar(26)],
-  baixo: [V3(14, 0), new THREE.Vector3(0.75, 1.0, 0.9).normalize().multiplyScalar(30)],
-  alto: [V3(-17, -9), new THREE.Vector3(0.55, 1.0, 1.0).normalize().multiplyScalar(28)],
-  trigal: [V3(-12, 11), new THREE.Vector3(0.9, 1.0, 0.75).normalize().multiplyScalar(28)],
-  saida: [V3(-28, 0, 2), new THREE.Vector3(0.95, 0.75, 0.6).normalize().multiplyScalar(30)],
-  vale: [V3(18, 2, 2.5), new THREE.Vector3(-1, 0.38, -0.12).normalize().multiplyScalar(18)],
+  geral: [new THREE.Vector3(-2, 1.4, 0.5), dir(0).multiplyScalar(47)],
+  terreiro: [V3(-1, 0), dir(0.1, -0.05).multiplyScalar(22)],
+  baixo: [V3(13, 1), dir(0.35).multiplyScalar(24)],
+  alto: [V3(-16, -9), dir(-0.3).multiplyScalar(24)],
+  trigal: [V3(-14, 9), dir(0.45).multiplyScalar(24)],
+  saida: [V3(-20, 0, 1.5), dir(-0.5, 0.08).multiplyScalar(26)],
 };
 let anim = null;
 function irPara(alvo, off, dur = 1.6) {
-  const f = retrato() ? 1.25 : 1;
+  const f = retrato() ? 1.2 : 1;
   anim = { t: 0, dur, t0: controls.target.clone(), p0: camera.position.clone(), t1: alvo.clone(), p1: alvo.clone().add(off.clone().multiplyScalar(f)) };
 }
 function vista(k) { const [t, o] = VISTAS[k]; irPara(t, o); document.querySelectorAll('#bar button').forEach((b) => b.classList.toggle('on', b.dataset.v === k)); }
 document.querySelectorAll('#bar button').forEach((b) => b.onclick = () => vista(b.dataset.v));
-{ const [t, o] = VISTAS.geral; controls.target.copy(t); camera.position.copy(t).add(o.clone().multiplyScalar(retrato() ? 1.25 : 1)); }
+{ const [t, o] = VISTAS.geral; controls.target.copy(t); camera.position.copy(t).add(o.clone().multiplyScalar(retrato() ? 1.2 : 1)); }
 document.querySelector('[data-v=geral]').classList.add('on');
 
 const ray = new THREE.Raycaster(), ptr = new THREE.Vector2(); let down = null;
@@ -574,14 +612,14 @@ renderer.domElement.addEventListener('pointerup', (e) => {
   ptr.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
   ray.setFromCamera(ptr, camera);
   const hit = ray.intersectObjects(CHAO, false)[0]; if (!hit) return;
-  const p = hit.point; if (Math.abs(p.x + 1) > 42 || Math.abs(p.z) > 30) return;
+  const p = hit.point; if (p.x < LIM.x0 - 4 || p.x > LIM.x1 + 4 || Math.abs(p.z) > LIM.z1 + 4) return;
   const off = camera.position.clone().sub(controls.target);
-  irPara(new THREE.Vector3(p.x, p.y + 1.2, p.z), off.divideScalar(retrato() ? 1.25 : 1), 1.1);
+  irPara(new THREE.Vector3(p.x, p.y + 1.2, p.z), off.divideScalar(retrato() ? 1.2 : 1), 1.1);
   document.querySelectorAll('#bar button').forEach((b) => b.classList.remove('on'));
   document.getElementById('dica').style.opacity = 0;
 });
 setTimeout(() => { document.getElementById('dica').style.opacity = 0; }, 10000);
-addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.fov = retrato() ? 40 : 30; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.fov = retrato() ? 34 : 26; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
 
 const ease = (t) => t * t * (3 - 2 * t);
 const clock = new THREE.Clock();
@@ -594,7 +632,7 @@ renderer.setAnimationLoop(() => {
     controls.target.lerpVectors(anim.t0, anim.t1, k); camera.position.lerpVectors(anim.p0, anim.p1, k);
     if (anim.t >= 1) anim = null;
   }
-  controls.update();
+  controls.update(); prende();
   const tg = controls.target; const s = Math.min(42, 12 + camera.position.distanceTo(tg) * 0.42);
   sun.position.copy(tg).addScaledVector(SUN_DIR, 70); sun.target.position.copy(tg);
   Object.assign(sun.shadow.camera, { left: -s, right: s, top: s, bottom: -s, near: 10, far: 160 }); sun.shadow.camera.updateProjectionMatrix();
