@@ -35,7 +35,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { carregarKit, casaExemplo, casaAleatoria, quarteirao } from './construtor_casas.js';
+import { carregarKit, casaExemplo, casaAleatoria, quarteirao, GLSL_NOISE } from './construtor_casas.js';
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -67,6 +67,14 @@ const gt = texL.load('tex/chao_grama_v3.webp'); gt.colorSpace = THREE.SRGBColorS
 gt.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
 const ground = new THREE.Mesh(new THREE.CircleGeometry(80, 48), new THREE.MeshStandardMaterial({ map: gt, roughness: 1 }));
 ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+// chão sem repetição aparente: mesma técnica das paredes, sobre o UV do mapa
+ground.material.onBeforeCompile = (sh) => {
+  sh.fragmentShader = GLSL_NOISE + sh.fragmentShader.replace('#include <map_fragment>', `
+    vec3 g = semRep(map, vMapUv);
+    float a = vnoise(vMapUv * 0.09), b = vnoise(vMapUv * 0.31 + 5.0);
+    g *= vec3(0.9 + 0.18 * a, 0.92 + 0.12 * a + 0.04 * b, 0.9 + 0.08 * b);
+    diffuseColor.rgb *= g;`);
+};
 
 const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.1, 200);
 const controls = new OrbitControls(camera, renderer.domElement);

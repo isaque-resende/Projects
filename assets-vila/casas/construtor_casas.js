@@ -41,6 +41,19 @@ float h21(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); 
 float vnoise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
   return mix(mix(h21(i), h21(i + vec2(1, 0)), f.x), mix(h21(i + vec2(0, 1)), h21(i + vec2(1, 1)), f.x), f.y); }
 vec2 planar(vec3 w, vec3 n){ return abs(n.y) > 0.6 ? w.xz : (abs(n.x) > abs(n.z) ? vec2(w.z, w.y) : vec2(w.x, w.y)); }
+// textura SEM repetição aparente: duas amostras (uma girada e em outra escala) trocadas por um ruído grande
+vec3 semRep(sampler2D t, vec2 uv){
+  float n = vnoise(uv * 0.45 + 7.3) * 0.7 + vnoise(uv * 1.3) * 0.3;
+  vec2 uv2 = mat2(0.788, -0.616, 0.616, 0.788) * uv * 1.17 + vec2(0.37, 0.71);
+  vec2 uv3 = mat2(-0.342, -0.94, 0.94, -0.342) * uv * 0.87 + vec2(0.13, 0.52);
+  vec3 a = texture2D(t, uv).rgb, b = texture2D(t, uv2).rgb, c = texture2D(t, uv3).rgb;
+  return mix(mix(a, b, smoothstep(0.3, 0.6, n)), c, smoothstep(0.55, 0.85, n));
+}
+// variação larga de tom (alguns metros): quebra a uniformidade
+vec3 macro(vec3 w){
+  float a = vnoise(w.xz * 0.11 + w.y * 0.07), b = vnoise(w.xz * 0.37 + 11.0);
+  return vec3(0.9 + 0.16 * a + 0.05 * b, 0.9 + 0.13 * a + 0.04 * b, 0.9 + 0.1 * a);
+}
 `;
 function materialMundo(tipo, tex) {
   const m = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.95, metalness: 0 });
@@ -51,8 +64,10 @@ function materialMundo(tipo, tex) {
     const corpo = tipo === 'alvenaria' ? `
       vec3 nW = normalize(cross(dFdx(vWPos), dFdy(vWPos)));
       vec2 p = planar(vWPos, nW);
-      vec3 pedra = mix(texture2D(tPedra, p / 1.5).rgb, texture2D(tCantaria, p / 1.9).rgb, step(0.5, vParede.y)) * vec3(1.0, 0.9, 0.76);
-      vec3 reboco = texture2D(tReboco, p / 2.6).rgb * vec3(1.0, 0.93, 0.82);
+      vec3 pedra = mix(semRep(tPedra, p / 1.5), semRep(tCantaria, p / 1.9), step(0.5, vParede.y)) * vec3(1.0, 0.9, 0.76);
+      vec3 rb = semRep(tReboco, p / 2.9);
+      // reboco: menos contraste (as rachaduras repetidas eram o que mais aparecia) e mais calor
+      vec3 reboco = mix(vec3(0.8, 0.67, 0.5), rb * vec3(1.0, 0.92, 0.8), 0.45);
       float nn = vnoise(p * 0.85) * 0.62 + vnoise(p * 2.6) * 0.38;
       float baseY = vParede.z + (vnoise(vec2(p.x * 1.7, 3.1)) - 0.5) * 0.32;
       float acima = smoothstep(baseY - 0.025, baseY + 0.025, vWPos.y);
@@ -63,14 +78,19 @@ function materialMundo(tipo, tex) {
       float borda = (1.0 - smoothstep(0.0, 0.07, abs(vWPos.y - baseY))) + (1.0 - smoothstep(0.0, 0.05, abs(nn - vParede.x)));
       borda = clamp(borda, 0.0, 1.0) * step(vCodigo, 0.5) * acima;
       vec3 col = mix(pedra, reboco, m) * (1.0 - 0.22 * borda);
-      // blocos de pedra 3D: cor do vértice (areia) + grão suave
-      float grao = dot(texture2D(tReboco, p / 0.9).rgb, vec3(0.333));
+      float grao = dot(semRep(tReboco, p / 0.9), vec3(0.333));
       col = mix(col, vec3(1.0, 0.92, 0.8) * (0.74 + 0.2 * grao), bloco);
+      // por andar: sombra suave sob o beiral e escorridos de sujeira descendo do topo (só por fora)
+      float t = mod(vWPos.y, 2.8);
+      float fora = step(vCodigo, 0.5) * (1.0 - bloco);
+      float beiral = smoothstep(2.35, 2.78, t) * 0.22 * fora;
+      float esc = smoothstep(0.62, 0.92, vnoise(vec2(p.x * 2.3, floor(vWPos.y / 2.8) * 5.0))) * smoothstep(0.9, 2.6, t) * 0.16 * fora;
+      col *= (1.0 - beiral) * (1.0 - esc) * macro(vWPos);
       float ao = 0.72 + 0.28 * smoothstep(0.0, 0.9, vWPos.y);
       diffuseColor.rgb *= col * ao;` : `
       vec3 nW = normalize(cross(dFdx(vWPos), dFdy(vWPos)));
       vec2 p = planar(vWPos, nW);
-      diffuseColor.rgb *= texture2D(tTeto, p / 2.2).rgb;`;
+      diffuseColor.rgb *= mix(vec3(0.6, 0.47, 0.33), semRep(tTeto, p / 2.4), 0.65) * macro(vWPos);`;
     sh.fragmentShader = 'uniform sampler2D tReboco, tPedra, tCantaria, tTeto; varying vec3 vParede; varying float vCodigo; varying vec3 vWPos;\n' + GLSL_NOISE +
       sh.fragmentShader.replace('#include <map_fragment>', corpo);
   };
@@ -79,6 +99,7 @@ function materialMundo(tipo, tex) {
 }
 
 // ------------------------------------------------------------------ kit
+export { GLSL_NOISE };
 export async function carregarKit(url, texDir = 'tex/') {
   const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(url);
   gltf.scene.updateMatrixWorld(true);
@@ -268,6 +289,9 @@ function construir(kit, mapa, casas, rnd) {
           pilar(no, a.nivel, 'Pilar', casa);
         }
         M.naAresta(nome, a.lado, no, a.nivel, 0, 0, a.tipo === 'muro' ? 'base' : camada, a.tipo === 'muro' ? null : casa.tom, casa.parede);
+        // pedrinhas soltas no pé das paredes de fora (não na frente da porta nem do lado da escada)
+        if (a.tipo === 'ext' && a.nivel === 0 && nome !== 'Parede_Porta' && !(casa.escada && casa.escada.lado === a.lado) && rnd() < 0.2)
+          M.naAresta('Pedrisco_' + (1 + Math.floor(rnd() * 3)), a.lado, no, 0, 0.3 + rnd() * (n - 0.6), 0.6, 'base');
         const fim = [no[0] + L.dir[0] * n, no[1] + L.dir[1] * n];
         pilar(fim, a.nivel, a.tipo === 'muro' ? 'Pilar_Patio' : a.tipo === 'mureta' ? 'Pilar_Mureta' : 'Pilar', casa);
         if (a.tipo !== 'mureta') M.colisao.push({ lado: a.lado, de: no, comp: n, nivel: a.nivel, altura: a.tipo === 'muro' ? 1.2 : H });
@@ -385,6 +409,7 @@ export function quarteirao(kit, semente, W = 18, D = 14) {
   for (const [, casa] of casas) {
     const l = casa.lote; if (rnd() < 0.5) continue;
     const c = mapa.get(l.x + ',' + l.z); const y = c.andares * H + 0.2;
+    if (rnd() < 0.4) M.por('Pedrisco_' + (1 + Math.floor(rnd() * 3)), l.x + l.w - 1.0, y - 0.2, l.z + l.d - 1.0, rnd() * 6, 'cima');
     if (rnd() < 0.5) M.por('Esteira_Enrolada', l.x + 0.5, y, l.z + 0.6, rnd() * 3, 'cima');
     else M.por('Jarro_Grande', l.x + 0.6, y, l.z + 0.6, 0, 'cima', casa.tom);
   }
