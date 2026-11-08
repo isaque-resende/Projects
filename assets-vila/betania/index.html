@@ -25,15 +25,17 @@
 </head>
 <body>
 <div id="bar">
-  <button data-v="geral">Vila</button><button data-v="terreiro">Terreiro</button><button data-v="cisterna">Cisterna</button>
-  <button data-v="curral">Curral</button><button data-v="trigal">Trigal</button><button data-v="tumulo">Túmulo</button><button data-v="saida">Saída</button><button data-v="vale">Vale</button>
+  <button data-v="geral">Vila</button><button data-v="terreiro">Terreiro</button><button data-v="baixo">Curral</button>
+  <button data-v="alto">Túmulo</button><button data-v="trigal">Trigal</button><button data-v="saida">Saída</button><button data-v="vale">Vale</button>
 </div>
 <div id="carga">Carregando Betânia…</div>
 <div id="dica">Toque no chão para andar até lá. Arraste para girar.</div>
 <script type="module">
-// PRÉ-VILA DE BETÂNIA (sem pessoas e sem animais): encosta leste do Monte das Oliveiras.
-// Leste (+x) desce para o deserto da Judeia e Jericó; oeste (-x) sobe o monte rumo a Betfagé = fim da fase.
-// Tudo vem da biblioteca de assets (../<asset>/), montado aqui por código: terreno, estrada, patamares e peças.
+// PRÉ-VILA DE BETÂNIA, em formato de FASE (diorama compacto, estilo RPG): três patamares de terra presos por
+// muros de arrimo de pedra, ligados por rampas (a estrada) e escadas.
+//   nível 0 (leste, mais baixo): curral e aprisco; a estrada chega de Jericó por uma rampa.
+//   nível 1 (centro): terreiro, 4 casas, cisterna, forno, eira.
+//   nível 2 (oeste, mais alto): casa, trigal, túmulo de Lázaro; a estrada sai subindo o Monte das Oliveiras (fim da fase).
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -57,7 +59,7 @@ scene.background = (() => {
   g.fillStyle = gr; g.fillRect(0, 0, 2, 256);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
 })();
-scene.fog = new THREE.Fog(0xe7dfcf, 28, 150);
+scene.fog = new THREE.Fog(0xe7dfcf, 45, 170);
 scene.add(new THREE.HemisphereLight(0xcfe6ff, 0xc9a47a, 1.3));
 const sun = new THREE.DirectionalLight(0xffe4bc, 3.1);
 sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
@@ -65,10 +67,11 @@ sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.04;
 scene.add(sun); scene.add(sun.target);
 const SUN_DIR = new THREE.Vector3(9, 11, 6).normalize();
 
-const camera = new THREE.PerspectiveCamera(innerHeight > innerWidth ? 55 : 42, innerWidth / innerHeight, 0.1, 700);
+const retrato = () => innerHeight > innerWidth;
+const camera = new THREE.PerspectiveCamera(retrato() ? 40 : 30, innerWidth / innerHeight, 0.3, 800);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true; controls.dampingFactor = 0.08;
-controls.minDistance = 2; controls.maxDistance = 70; controls.maxPolarAngle = Math.PI * 0.48;
+controls.minDistance = 4; controls.maxDistance = 95; controls.maxPolarAngle = Math.PI * 0.42;
 
 const TL = new THREE.TextureLoader();
 function tex(url, repeat = true) {
@@ -79,13 +82,12 @@ function tex(url, repeat = true) {
 }
 const T = {
   terra: tex('tex/terra_batida.webp'), seco: tex('tex/campo_seco.webp'), verde: tex('tex/campo_verde.webp'),
-  estrada: tex('tex/estrada_terra.webp'), rocha: tex('../tumulo/tex/rocha_encosta.webp'),
+  estrada: tex('tex/estrada_terra.webp'), rocha: tex('../tumulo/tex/rocha_encosta.webp'), pedra: tex('../casas/tex/pedra.webp'),
   capim: tex('tex/capim_tufo.webp', false), horiz: tex('tex/horizonte.webp', false),
 };
 T.estrada.wrapS = THREE.ClampToEdgeWrapping;
 
-// ================================================================== TERRENO
-// relevo: desce para leste; sobe forte a oeste (monte); flancos sobem ao norte e ao sul (a vila fica num "ombro")
+// ------------------------------------------------------------------ util
 function hsh(x, z) { const s = Math.sin(x * 127.1 + z * 311.7) * 43758.5453; return s - Math.floor(s); }
 function vnoise(x, z) {
   const ix = Math.floor(x), iz = Math.floor(z); let fx = x - ix, fz = z - iz;
@@ -94,33 +96,93 @@ function vnoise(x, z) {
   return a + (b - a) * fx + (c - a) * fz + (a - b - c + d) * fx * fz;
 }
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
-function base(x, z) {
-  let h = -0.1 * x;
-  h += 14 * (1 - Math.exp(-Math.max(0, -x - 16) / 34));           // subida para o Monte das Oliveiras (suave: a estrada sobe)
-  const az = Math.abs(z);
-  h += 8 * (1 - Math.exp(-Math.max(0, az - 17) / 20)) * (0.75 + 0.25 * Math.sin(x * 0.03));
-  h += 1.6 * (vnoise(x * 0.025 + 3, z * 0.025) - 0.5) + 0.7 * (vnoise(x * 0.07, z * 0.07 + 9) - 0.5);
-  h -= 6 * smooth(70, 160, x) * (0.6 + 0.4 * vnoise(z * 0.02, 1));  // o vale para leste
-  return h;
+function dentro(pts, x, z) {
+  let c = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const [xi, zi] = pts[i], [xj, zj] = pts[j];
+    if ((zi > z) !== (zj > z) && x < (xj - xi) * (z - zi) / (zj - zi) + xi) c = !c;
+  }
+  return c;
+}
+function distBorda(pts, x, z) {
+  let best = 1e9;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const [ax, az] = pts[j], [bx, bz] = pts[i]; const dx = bx - ax, dz = bz - az;
+    const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz)));
+    best = Math.min(best, Math.hypot(ax + dx * t - x, az + dz * t - z));
+  }
+  return best;
+}
+// contorno de patamar: retângulo com a borda levemente irregular (pedra assentada à mão)
+function contorno(x0, x1, z0, z1, semente, jit = 0.3, passo = 1.6) {
+  const pts = []; let k = semente;
+  const lado = (ax, az, bx, bz, nx, nz) => {
+    const L = Math.hypot(bx - ax, bz - az), n = Math.max(1, Math.round(L / passo));
+    for (let i = 0; i < n; i++) {
+      const t = i / n; const j = i === 0 ? 0 : (hsh(k++, 3.7) - 0.5) * 2 * jit;
+      pts.push([ax + (bx - ax) * t + nx * j, az + (bz - az) * t + nz * j]);
+    }
+  };
+  lado(x0, z0, x1, z0, 0, -1); lado(x1, z0, x1, z1, 1, 0); lado(x1, z1, x0, z1, 0, 1); lado(x0, z1, x0, z0, -1, 0);
+  return pts;
 }
 
-// estrada: vem de leste (de Jericó, mais baixa), cruza o terreiro e sobe a oeste (limite da fase)
-const ESTRADA = [[240, 26], [120, 14], [60, 8], [32, 5], [17, 2.5], [7, 1.2], [-4, 1.6], [-12, 2.6], [-20, 1], [-28, -2.5], [-36, -5.5], [-46, -8], [-70, -12], [-140, -20]];
-const RW = 1.9;  // meia-largura
-const RP = []; // pontos densos {x,z,s,h}
+// ================================================================== DESENHO DA FASE
+const NIVEIS = [
+  { nome: 'baixo', pts: contorno(-24, 22, -17, 17, 11, 0.35), top: 0.0, fundo: -4.5, lado: 'rocha' },
+  { nome: 'meio', pts: contorno(-23.6, 7, -16.6, 16.6, 23, 0.3), top: 1.4, fundo: 0.0, lado: 'pedra' },
+  { nome: 'alto', pts: contorno(-23.2, -12, -16.2, 16.2, 37, 0.3), top: 2.8, fundo: 1.4, lado: 'pedra' },
+];
+// rampas (a estrada) e a escada: [x baixo, x alto, z centro, meia-largura, y baixo, y alto]
+const RAMPAS = [
+  { xa: 12.2, xb: 7.0, zc: 2.0, hw: 1.9, ya: 0.0, yb: 1.4 },
+  { xa: -7.6, xb: -12.0, zc: 2.0, hw: 1.9, ya: 1.4, yb: 2.8 },
+  { xa: 29.0, xb: 22.0, zc: 2.4, hw: 1.9, ya: null, yb: 0.0 },   // saída leste: desce para o vale
+];
+const ESCADA = { x: 7.0, z: 13.2, w: 1.7, n: 7, rise: 0.2, run: 0.34 };
+
+// fora da fase: encosta (sobe forte para oeste = Monte das Oliveiras; desce para leste = vale de Jericó)
+function fora(x, z) {
+  let h = -3 + 5.8 * smooth(22, -23, x);
+  if (x < -23) h = 2.8 + 0.34 * (-x - 23);
+  if (x > 22) h = -3 - 0.05 * (x - 22);
+  h += 1.2 * (vnoise(x * 0.05, z * 0.05) - 0.5) + 0.5 * (vnoise(x * 0.13 + 5, z * 0.13) - 0.5);
+  // um degrau em volta do bloco da vila (os muros aparecem), menos onde a estrada entra e sai
+  const dx = Math.max(-24 - x, 0, x - 22), dz = Math.max(-17 - z, 0, z - 17);
+  const dOut = Math.hypot(dx, dz), perto = Math.abs(z - 2) < 6 && (x > 20 || x < -22);
+  if (!perto) h -= 1.6 * (1 - smooth(0, 9, dOut)) * smooth(-23, -15, x) ** 0.3;
+  // o morrote do túmulo (canto noroeste) se apoia num ombro de terra que desce suave
+  const dtm = Math.hypot(x + 18, z + 19); h = Math.max(h, 2.75 - 0.3 * Math.max(0, dtm - 6));
+  return h;
+}
+RAMPAS[2].ya = fora(RAMPAS[2].xa + 0.5, RAMPAS[2].zc);
+function naRampa(x, z) {
+  for (const r of RAMPAS) {
+    const lo = Math.min(r.xa, r.xb), hi = Math.max(r.xa, r.xb);
+    if (x >= lo && x <= hi && Math.abs(z - r.zc) <= r.hw) return r.ya + (r.yb - r.ya) * (x - r.xa) / (r.xb - r.xa);
+  }
+  return null;
+}
+// altura do chão em qualquer ponto (para apoiar peças e capim)
+function nivel(x, z) {
+  const r = naRampa(x, z); if (r !== null) return r;
+  for (let i = NIVEIS.length - 1; i >= 0; i--) if (dentro(NIVEIS[i].pts, x, z)) return NIVEIS[i].top;
+  return fora(x, z);
+}
+const L = { baixo: 0, meio: 1.4, alto: 2.8 };
+
+// estrada: chega do leste, sobe ao terreiro, sobe ao patamar alto e sai a oeste pela encosta
+const ESTRADA = [[90, 5], [40, 3.5], [29, 2.4], [22, 2.4], [12.2, 2], [7, 2], [-1, 2.2], [-7.6, 2], [-12, 2], [-18, 1.6], [-23.2, 1], [-34, -1.5], [-60, -6], [-120, -12]];
+const RW = 1.9;
+const RP = [];
 {
   let s = 0;
   for (let i = 0; i < ESTRADA.length - 1; i++) {
-    const [ax, az] = ESTRADA[i], [bx, bz] = ESTRADA[i + 1]; const L = Math.hypot(bx - ax, bz - az); const n = Math.ceil(L);
-    for (let k = 0; k < n; k++) { const t = k / n; RP.push({ x: ax + (bx - ax) * t, z: az + (bz - az) * t, s: s + L * t }); }
-    s += L;
+    const [ax, az] = ESTRADA[i], [bx, bz] = ESTRADA[i + 1]; const Ls = Math.hypot(bx - ax, bz - az); const n = Math.ceil(Ls);
+    for (let k = 0; k < n; k++) { const t = k / n; RP.push({ x: ax + (bx - ax) * t, z: az + (bz - az) * t, s: s + Ls * t }); }
+    s += Ls;
   }
   const last = ESTRADA[ESTRADA.length - 1]; RP.push({ x: last[0], z: last[1], s });
-  const h0 = RP.map((p) => base(p.x, p.z));
-  for (let i = 0; i < RP.length; i++) {         // perfil suavizado (sem degraus)
-    let a = 0, n = 0; for (let k = -7; k <= 7; k++) { const j = i + k; if (j >= 0 && j < RP.length) { a += h0[j]; n++; } }
-    RP[i].h = a / n;
-  }
 }
 function naEstrada(x, z) {
   let best = 1e9, bi = 0, bt = 0;
@@ -132,145 +194,204 @@ function naEstrada(x, z) {
   }
   const a = RP[bi], b = RP[bi + 1];
   const dx = b.x - a.x, dz = b.z - a.z; const side = Math.sign(dx * (z - a.z) - dz * (x - a.x)) || 1;
-  return { d: Math.sqrt(best), sd: Math.sqrt(best) * side, s: a.s + (b.s - a.s) * bt, h: a.h + (b.h - a.h) * bt };
+  return { d: Math.sqrt(best), sd: Math.sqrt(best) * side, s: a.s + (b.s - a.s) * bt };
 }
 
-// patamares (aplainados): terreiro, casas, curral, aprisco, trigal, eira, túmulo...
-const PADS = [];
-function pad(o) { o.blend = o.blend ?? 3.5; o.dirt = o.dirt ?? 0; o.rot = o.rot ?? 0; PADS.push(o); return o; }
-function padDist(p, x, z) {             // distância "fora" do patamar (0 dentro)
-  if (p.r) return Math.max(0, Math.hypot(x - p.x, z - p.z) - p.r);
-  const c = Math.cos(p.rot), s = Math.sin(p.rot); const lx = (x - p.x) * c - (z - p.z) * s, lz = (x - p.x) * s + (z - p.z) * c;
-  return Math.hypot(Math.max(0, Math.abs(lx) - p.w / 2), Math.max(0, Math.abs(lz) - p.d / 2));
-}
-function semPads(x, z) {
-  let h = base(x, z);
-  const r = naEstrada(x, z); const w = 1 - smooth(RW + 0.4, RW + 3.2, r.d);
-  return { h: h + (r.h - h) * w, r };
-}
-function altura(x, z) {
-  let { h } = semPads(x, z);
-  for (const p of PADS) { const w = 1 - smooth(0, p.blend, padDist(p, x, z)); h += (p.h - h) * w; }
-  return h;
-}
-
-// ================================================================== LAYOUT DA VILA
-const PLAZA = pad({ x: 0, z: 0, r: 5.5, blend: 4, dirt: 1 });
+// lugares
+const PLAZA = { x: -1, z: 0, r: 3.8 };
 const CASAS = [
-  { x: -8, z: -8.5, semente: 3 }, { x: 8, z: -9, semente: 11 }, { x: -9, z: 9, semente: 27 },
-  { x: 9, z: 9.5, semente: 42 }, { x: -0.5, z: -16, semente: 77 },
+  { x: -6.4, z: -7.6, semente: 3 }, { x: 3.2, z: -8.2, semente: 11 }, { x: -6.6, z: 8.4, semente: 27 },
+  { x: 3.4, z: 8.6, semente: 42 }, { x: -17.6, z: -5.0, semente: 77 },
 ];
-const CISTERNA = { x: 2.6, z: -3.6 };
-const FORNO = { x: 13.5, z: -4.5 };
-const CURRAL = { x: 19, z: 14 };
-const APRISCO = { x: 20, z: -14 };
-const TRIGAL = { x: -10, z: 18.5, w: 10, d: 6 };
-const EIRA = { x: -20, z: 11 };
-const TUMULO = { x: 4, z: -25 };
-const ROMAS = [[3.5, -10.5, 'Romanzeira2_Pomar_ComFruta'], [-3, 9, 'Romanzeira1_Jovem_ComFruta'], [13.5, 6, 'Romanzeira4_Aberta_ComFruta'], [-14, -3.5, 'Romanzeira3_Retorcida_ComFruta'], [15, 8, 'Romanzeira1_Jovem_SemFruta']];
-const OLIVAS = [[-22, -8, 'Oliveira2_Retorcida'], [-25, 6, 'Oliveira1_Jovem'], [-31, 3, 'Oliveira4_Ancia'], [-33, -14, 'Oliveira3_Vaso'], [-17, -12, 'Oliveira1_Jovem'], [-29, 12, 'Oliveira2_Retorcida']];
-const FIGOS = [[-38, -1, 'Figueira4_Grande_SemFruta'], [-42, -12.5, 'Figueira2_Larga_SemFruta'], [-47, -3, 'Figueira1_Jovem_ComFruta']];
+const CISTERNA = { x: 1.7, z: -2.7 };
+const FORNO = { x: 5.4, z: -13.4 };
+const EIRA = { x: -1.5, z: 13.6 };
+const CURRAL = { x: 15.5, z: 11 };
+const APRISCO = { x: 15.5, z: -11 };
+const TRIGAL = { x: -18, z: 10, w: 8, d: 4.6 };
+const TUMULO = { x: -18, z: -15.2 };
+const ROMAS = [[-1.2, -12.6, 'Romanzeira2_Pomar_ComFruta'], [-10.4, 6.6, 'Romanzeira1_Jovem_ComFruta'], [10.2, -4.5, 'Romanzeira4_Aberta_ComFruta'], [-11, -12.2, 'Romanzeira3_Retorcida_ComFruta'], [19.5, 5.8, 'Romanzeira1_Jovem_SemFruta'], [6, 5.6, 'Romanzeira2_Pomar_SemFruta']];
+const OLIVAS = [[-29, -10, 'Oliveira2_Retorcida'], [-30, 9, 'Oliveira1_Jovem'], [-27.5, 15.5, 'Oliveira4_Ancia'], [-32, -18, 'Oliveira3_Vaso'], [-21.5, 15, 'Oliveira1_Jovem']];
+const FIGOS = [[-31, -5.2, 'Figueira4_Grande_SemFruta'], [-35.5, 3.6, 'Figueira2_Larga_SemFruta'], [-40, -7, 'Figueira1_Jovem_ComFruta']];
 
-for (const c of CASAS) c.pad = pad({ x: c.x, z: c.z, w: 8.5, d: 8.5, blend: 3, dirt: 0.9, rot: 0 });
-pad({ x: CISTERNA.x, z: CISTERNA.z, r: 2.6, blend: 2, dirt: 1 });
-pad({ x: FORNO.x, z: FORNO.z, r: 2.4, blend: 2.5, dirt: 1 });
-const PCUR = pad({ x: CURRAL.x, z: CURRAL.z, w: 9, d: 7, blend: 3.5, dirt: 0.85 });
-const PAPR = pad({ x: APRISCO.x, z: APRISCO.z, w: 9, d: 9, blend: 3.5, dirt: 0.6 });
-const PTRI = pad({ x: TRIGAL.x, z: TRIGAL.z, w: TRIGAL.w + 2, d: TRIGAL.d + 2, blend: 3, dirt: 0.25 });
-const PEIR = pad({ x: EIRA.x, z: EIRA.z, r: 4.5, blend: 3.5, dirt: 0.7 });
-const PTUM = pad({ x: TUMULO.x, z: TUMULO.z + 3, w: 7, d: 7, blend: 3.5, dirt: 0.35 });
-// alturas dos patamares (pela encosta já com a estrada)
-for (const p of PADS) p.h = semPads(p.x, p.z).h;
-PTUM.h = semPads(TUMULO.x, TUMULO.z + 5).h;   // na altura do chão da frente: o morrote fica encaixado na encosta
+// chão batido (pátios, terreiro, caminhos): círculos e cápsulas suaves
+const TERRA = [
+  ['c', PLAZA.x, PLAZA.z, PLAZA.r + 1.2, 2.2], ['c', CISTERNA.x, CISTERNA.z, 2, 1], ['c', FORNO.x, FORNO.z, 2.2, 1.2], ['c', EIRA.x, EIRA.z, 3.4, 1.5],
+  ['c', CURRAL.x, CURRAL.z, 3.6, 1.5], ['c', APRISCO.x, APRISCO.z, 3.4, 1.2], ['c', TUMULO.x, TUMULO.z + 2.4, 2.6, 1.5],
+  ['s', -1, 0, ESCADA.x + 1, ESCADA.z, 1.1, 1.0], ['s', -1, 0, EIRA.x, EIRA.z, 1, 1], ['s', -18, 2, TUMULO.x, TUMULO.z + 3, 1, 1.2],
+  ['s', 10, 2, CURRAL.x - 2, CURRAL.z - 2, 0.9, 1], ['s', 10, 2, APRISCO.x - 1, APRISCO.z + 3, 0.9, 1], ['s', -1, 0, FORNO.x, FORNO.z, 0.9, 1],
+  ...CASAS.map((c) => ['s', c.x, c.z, PLAZA.x + (c.x < -12 ? -17 : 0), c.x < -12 ? 2 : 0, 1.0, 1.2]),
+  ...CASAS.map((c) => ['c', c.x, c.z, 3.6, 1.6]),
+];
+function terraEm(x, z) {
+  let m = 0;
+  for (const t of TERRA) {
+    let d;
+    if (t[0] === 'c') d = Math.hypot(x - t[1], z - t[2]) - t[3];
+    else {
+      const [, ax, az, bx, bz, w] = t; const dx = bx - ax, dz = bz - az;
+      const u = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz)));
+      d = Math.hypot(ax + dx * u - x, az + dz * u - z) - w;
+    }
+    m = Math.max(m, 1 - smooth(0, t[t.length - 1], d));
+  }
+  return m;
+}
 
-// buracos no chão (o chão some onde há câmara, sulco e poço)
+// buracos no chão: câmara do túmulo, sulco da pedra e poço da cisterna
 const HOLES = { tumulo: [TUMULO.x - 1.75, TUMULO.z - 6.4, TUMULO.x + 1.75, TUMULO.z], sulco: [TUMULO.x - 2.65, TUMULO.z + 0.18, TUMULO.x + 0.98, TUMULO.z + 0.64], poco: [CISTERNA.x, CISTERNA.z, 0.5] };
 
-// ------------------------------------------------------------------ malha do terreno (grade fina no centro, larga longe)
+// ------------------------------------------------------------------ máscara do chão (estrada, terra, verde, posição na estrada)
+const MK = { min: -64, size: 128, res: 512 };
+const mascara = (() => {
+  const n = MK.res, data = new Uint8Array(n * n * 4);
+  for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+    const x = MK.min + (i + 0.5) / n * MK.size, z = MK.min + (j + 0.5) / n * MK.size;
+    const r = naEstrada(x, z);
+    const road = 1 - smooth(RW - 0.25, RW + 0.6, r.d);
+    const across = Math.max(0, Math.min(1, 0.5 + r.sd / (2 * RW + 0.8)));
+    const dirt = terraEm(x, z);
+    const green = Math.min(1, 0.25 + 0.5 * vnoise(x * 0.06 + 7, z * 0.06) + 0.2 * smooth(10, 40, x));
+    const k = (j * n + i) * 4;
+    data[k] = road * 255; data[k + 1] = dirt * 255; data[k + 2] = green * 255; data[k + 3] = across * 255;
+  }
+  const t = new THREE.DataTexture(data, n, n, THREE.RGBAFormat); t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearFilter; t.needsUpdate = true;
+  return t;
+})();
+
+// ------------------------------------------------------------------ materiais do chão e dos muros
+const UNI_CHAO = {
+  tTerra: { value: T.terra }, tSeco: { value: T.seco }, tVerde: { value: T.verde }, tEstr: { value: T.estrada }, tRocha: { value: T.rocha }, tMask: { value: mascara },
+  uHoleA: { value: new THREE.Vector4(...HOLES.tumulo) }, uHoleB: { value: new THREE.Vector4(...HOLES.sulco) }, uPoco: { value: new THREE.Vector3(...HOLES.poco) },
+  uMK: { value: new THREE.Vector2(MK.min, MK.size) },
+};
+const matChao = new THREE.MeshStandardMaterial({ roughness: 1, metalness: 0 });
+matChao.onBeforeCompile = (sh) => {
+  Object.assign(sh.uniforms, UNI_CHAO);
+  sh.vertexShader = 'varying vec3 vW;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vW = (modelMatrix * vec4(position, 1.0)).xyz;');
+  sh.fragmentShader = 'uniform sampler2D tTerra, tSeco, tVerde, tEstr, tRocha, tMask; uniform vec4 uHoleA, uHoleB; uniform vec3 uPoco; uniform vec2 uMK; varying vec3 vW;\n' + GLSL_NOISE
+    + sh.fragmentShader.replace('#include <map_fragment>', `
+    if (vW.x > uHoleA.x && vW.x < uHoleA.z && vW.z > uHoleA.y && vW.z < uHoleA.w) discard;
+    if (vW.x > uHoleB.x && vW.x < uHoleB.z && vW.z > uHoleB.y && vW.z < uHoleB.w) discard;
+    if (distance(vW.xz, uPoco.xy) < uPoco.z) discard;
+    vec2 p = vW.xz;
+    vec4 mk = texture2D(tMask, (p - uMK.x) / uMK.y);
+    vec3 seco = semRep(tSeco, p / 5.0), verde = semRep(tVerde, p / 5.5), terra = semRep(tTerra, p / 4.0);
+    float n = vnoise(p * 0.09) * 0.6 + vnoise(p * 0.27 + 4.0) * 0.4;
+    vec3 c = mix(seco, verde, smoothstep(0.45, 0.8, mk.b + (n - 0.5) * 0.8));
+    c = mix(c, terra, smoothstep(0.3, 0.65, mk.g + (vnoise(p * 0.5) - 0.5) * 0.5));
+    vec3 nW = normalize(cross(dFdx(vW), dFdy(vW)));
+    float rk = smoothstep(0.8, 0.62, abs(nW.y)) * (1.0 - mk.r) * 0.9;
+    c = mix(c, semRep(tRocha, planar(vW, nW) / 3.2) * 0.98, rk);
+    float rm = smoothstep(0.25, 0.75, mk.r + (vnoise(p * 1.4) - 0.5) * 0.35);
+    c = mix(c, texture2D(tEstr, vec2(clamp(mk.a, 0.02, 0.98), vW.x / 4.5)).rgb, rm);
+    c *= macro(vec3(vW.x, 0.0, vW.z));
+    c = mix(c, vec3(0.95, 0.92, 0.86), smoothstep(-2.5, -9.0, vW.y) * 0.5);
+    diffuseColor.rgb *= c;`);
+};
+matChao.customProgramCacheKey = () => 'chao_betania_fase';
+// muro: pedra (arrimo assentado) ou rocha (borda natural); textura pelo mundo, mais escura no pé, musgo seco no topo
+function matMuro(tipo) {
+  const m = new THREE.MeshStandardMaterial({ roughness: 1, metalness: 0, flatShading: true });
+  m.onBeforeCompile = (sh) => {
+    sh.uniforms.tMuro = { value: tipo === 'pedra' ? T.pedra : T.rocha };
+    sh.vertexShader = 'varying vec3 vW;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vW = (modelMatrix * vec4(position, 1.0)).xyz;');
+    sh.fragmentShader = 'uniform sampler2D tMuro; varying vec3 vW;\n' + GLSL_NOISE + sh.fragmentShader.replace('#include <map_fragment>', `
+      vec3 nW = normalize(cross(dFdx(vW), dFdy(vW)));
+      vec3 c = semRep(tMuro, planar(vW, nW) / ${tipo === 'pedra' ? '2.4' : '3.4'});
+      ${tipo === 'pedra' ? 'float l = dot(c, vec3(0.333)); c = mix(c, vec3(l) * vec3(1.0, 0.97, 0.92), 0.35) * 1.12;' : ''}
+      c *= macro(vW);
+      c = mix(c, vec3(0.95, 0.92, 0.86), smoothstep(-2.5, -9.0, vW.y) * 0.5);
+      diffuseColor.rgb *= c;`);
+  };
+  m.customProgramCacheKey = () => 'muro_' + tipo;
+  return m;
+}
+const MUROS = { pedra: matMuro('pedra'), rocha: matMuro('rocha') };
+
+// ------------------------------------------------------------------ patamares (extrusão do contorno: topo = chão, lados = muro)
+for (const nv of NIVEIS) {
+  const sh = new THREE.Shape(nv.pts.map(([x, z]) => new THREE.Vector2(x, -z)));
+  const bev = 0.14, h = nv.top - nv.fundo;
+  const g = new THREE.ExtrudeGeometry(sh, { depth: h - 2 * bev, bevelEnabled: true, bevelThickness: bev, bevelSize: bev, bevelSegments: 1, steps: 1, curveSegments: 1 });
+  g.rotateX(-Math.PI / 2); g.translate(0, nv.fundo + bev, 0);
+  const mesh = new THREE.Mesh(g, [matChao, MUROS[nv.lado]]);
+  mesh.castShadow = true; mesh.receiveShadow = true; mesh.userData.chao = true; scene.add(mesh);
+}
+// rampas: topo inclinado (chão) e laterais de muro
+for (const r of RAMPAS) {
+  const lo = Math.min(r.ya, r.yb) - 3.5;
+  const P = [], I = [], grp = [];
+  const v = (x, y, z) => { P.push(x, y, z); return P.length / 3 - 1; };
+  const z0 = r.zc - r.hw - 0.15, z1 = r.zc + r.hw + 0.15;
+  const a0 = v(r.xa, r.ya, z0), a1 = v(r.xa, r.ya, z1), b0 = v(r.xb, r.yb, z0), b1 = v(r.xb, r.yb, z1);
+  const dir = Math.sign(r.xb - r.xa);
+  I.push(...(dir < 0 ? [a0, b0, a1, a1, b0, b1] : [a0, a1, b0, a1, b1, b0]));
+  grp.push([0, 6, 0]);
+  const s0 = [v(r.xa, r.ya, z0), v(r.xb, r.yb, z0), v(r.xb, lo, z0), v(r.xa, lo, z0)];
+  const s1 = [v(r.xa, r.ya, z1), v(r.xb, r.yb, z1), v(r.xb, lo, z1), v(r.xa, lo, z1)];
+  const quad = (q, flip) => I.push(...(flip ? [q[0], q[2], q[1], q[0], q[3], q[2]] : [q[0], q[1], q[2], q[0], q[2], q[3]]));
+  quad(s0, dir < 0); quad(s1, dir > 0);
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setIndex(I);
+  g.addGroup(0, 6, 0); g.addGroup(6, 12, 1); g.computeVertexNormals();
+  const mesh = new THREE.Mesh(g, [matChao, MUROS.pedra]); mesh.castShadow = true; mesh.receiveShadow = true; mesh.userData.chao = true; scene.add(mesh);
+}
+// escada de pedra do nível baixo para o terreiro
+{
+  const e = ESCADA;
+  for (let k = 1; k <= e.n; k++) {
+    const x0 = e.x + (e.n - k) * e.run, hgt = k * e.rise;
+    const g = new THREE.BoxGeometry(e.run + 0.02, hgt, e.w); g.translate(x0 + e.run / 2, hgt / 2, e.z);
+    const m = new THREE.Mesh(g, MUROS.pedra); m.castShadow = true; m.receiveShadow = true; scene.add(m);
+  }
+}
+
+// ------------------------------------------------------------------ encosta em volta (fora da fase)
 function eixo(min, max, a, b, step) {
   const v = []; for (let x = a; x <= b + 1e-6; x += step) v.push(x);
-  let x = a, d = step; while (x > min) { d *= 1.35; x -= d; v.unshift(Math.max(min, x)); }
-  x = b; d = step; while (x < max) { d *= 1.35; x += d; v.push(Math.min(max, x)); }
+  let x = a, d = step; while (x > min) { d *= 1.3; x -= d; v.unshift(Math.max(min, x)); }
+  x = b; d = step; while (x < max) { d *= 1.3; x += d; v.push(Math.min(max, x)); }
   return v;
 }
-const XS = eixo(-240, 240, -58, 52, 1.2), ZS = eixo(-240, 240, -40, 40, 1.2);
 const terreno = (() => {
-  const nx = XS.length, nz = ZS.length, n = nx * nz;
-  const pos = new Float32Array(n * 3), mask = new Float32Array(n * 4), ruv = new Float32Array(n * 2);
+  const XS = eixo(-260, 260, -60, 50, 1.4), ZS = eixo(-260, 260, -40, 40, 1.4);
+  const nx = XS.length, nz = ZS.length; const pos = new Float32Array(nx * nz * 3);
+  const base = NIVEIS[0].pts;
   let k = 0;
   for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++, k++) {
     const x = XS[i], z = ZS[j];
-    const sp = semPads(x, z); let h = sp.h; let dirt = 0;
-    for (const p of PADS) { const dd = padDist(p, x, z); const w = 1 - smooth(0, p.blend, dd); h += (p.h - h) * w; dirt = Math.max(dirt, p.dirt * (1 - smooth(0, p.blend * 0.8, dd))); }
+    let h = fora(x, z);
+    if (dentro(base, x, z) || (Math.abs(x) < 30 && Math.abs(z) < 22 && distBorda(base, x, z) < 0.9)) h = -4.6;
+    const r = naRampa(x, z); if (r !== null && x > 22) h = Math.min(h, r - 0.05);
     pos[k * 3] = x; pos[k * 3 + 1] = h; pos[k * 3 + 2] = z;
-    const r = sp.r;
-    const road = 1 - smooth(RW - 0.25, RW + 0.7, r.d);
-    // verde: mais nas baixadas do leste, em manchas, e nos terraços de oliveiras
-    const green = Math.min(1, 0.25 + 0.5 * vnoise(x * 0.035 + 7, z * 0.035) + 0.25 * smooth(10, 60, x) - 0.25 * dirt);
-    mask[k * 4] = road; mask[k * 4 + 1] = dirt; mask[k * 4 + 2] = green; mask[k * 4 + 3] = 0;
-    ruv[k * 2] = 0.5 + r.sd / (2 * RW + 0.8); ruv[k * 2 + 1] = r.s / 4.5;
   }
   const idx = [];
-  for (let j = 0; j < nz - 1; j++) for (let i = 0; i < nx - 1; i++) {
-    const a = j * nx + i, b = a + 1, c = a + nx, d = c + 1; idx.push(a, c, b, b, c, d);
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  g.setAttribute('aMask', new THREE.BufferAttribute(mask, 4));
-  g.setAttribute('aRoad', new THREE.BufferAttribute(ruv, 2));
-  g.setIndex(idx); g.computeVertexNormals();
-  const m = new THREE.MeshStandardMaterial({ roughness: 1, metalness: 0 });
-  m.onBeforeCompile = (sh) => {
-    Object.assign(sh.uniforms, { tTerra: { value: T.terra }, tSeco: { value: T.seco }, tVerde: { value: T.verde }, tEstr: { value: T.estrada }, tRocha: { value: T.rocha },
-      uHoleA: { value: new THREE.Vector4(...HOLES.tumulo) }, uHoleB: { value: new THREE.Vector4(...HOLES.sulco) }, uPoco: { value: new THREE.Vector3(...HOLES.poco) } });
-    sh.vertexShader = 'attribute vec4 aMask; attribute vec2 aRoad; varying vec4 vMask; varying vec2 vRoad; varying vec3 vW;\n' + sh.vertexShader
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\n vMask = aMask; vRoad = aRoad; vW = (modelMatrix * vec4(position, 1.0)).xyz;');
-    sh.fragmentShader = 'uniform sampler2D tTerra, tSeco, tVerde, tEstr, tRocha; uniform vec4 uHoleA, uHoleB; uniform vec3 uPoco; varying vec4 vMask; varying vec2 vRoad; varying vec3 vW;\n' + GLSL_NOISE
-      + sh.fragmentShader.replace('#include <map_fragment>', `
-      if (vW.x > uHoleA.x && vW.x < uHoleA.z && vW.z > uHoleA.y && vW.z < uHoleA.w) discard;
-      if (vW.x > uHoleB.x && vW.x < uHoleB.z && vW.z > uHoleB.y && vW.z < uHoleB.w) discard;
-      if (distance(vW.xz, uPoco.xy) < uPoco.z) discard;
-      vec2 p = vW.xz;
-      vec3 seco = semRep(tSeco, p / 5.0), verde = semRep(tVerde, p / 5.5), terra = semRep(tTerra, p / 4.0);
-      float n = vnoise(p * 0.07) * 0.6 + vnoise(p * 0.23 + 4.0) * 0.4;
-      vec3 c = mix(seco, verde, smoothstep(0.45, 0.8, vMask.z + (n - 0.5) * 0.8));
-      float dm = vMask.y + (vnoise(p * 0.45) - 0.5) * 0.55;
-      c = mix(c, terra, smoothstep(0.3, 0.65, dm));
-      vec3 nW = normalize(cross(dFdx(vW), dFdy(vW)));
-      float rk = smoothstep(0.8, 0.62, abs(nW.y)) * (1.0 - vMask.x) * 0.9;
-      c = mix(c, semRep(tRocha, planar(vW, nW) / 3.2) * 0.98, rk);
-      float rm = smoothstep(0.25, 0.75, vMask.x + (vnoise(p * 1.4) - 0.5) * 0.35);
-      c = mix(c, texture2D(tEstr, vec2(clamp(vRoad.x, 0.02, 0.98), vRoad.y)).rgb, rm);
-      c *= macro(vec3(vW.x, 0.0, vW.z));
-      c = mix(c, vec3(0.95, 0.92, 0.86), smoothstep(-1.5, -9.0, vW.y) * 0.5);   // névoa que assenta na baixada
-      diffuseColor.rgb *= c;`);
-  };
-  m.customProgramCacheKey = () => 'terreno_betania';
-  const mesh = new THREE.Mesh(g, m); mesh.receiveShadow = true;
-  scene.add(mesh);
+  for (let j = 0; j < nz - 1; j++) for (let i = 0; i < nx - 1; i++) { const a = j * nx + i, b = a + 1, c = a + nx, d = c + 1; idx.push(a, c, b, b, c, d); }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+  const mesh = new THREE.Mesh(g, matChao); mesh.receiveShadow = true; mesh.userData.chao = true; scene.add(mesh);
   return mesh;
 })();
+const CHAO = []; scene.traverse((o) => { if (o.userData.chao) CHAO.push(o); });
 
-// horizonte: colinas do deserto da Judeia pintadas, num cilindro bem longe
+// horizonte e neblina
 {
   const g = new THREE.CylinderGeometry(300, 300, 60, 72, 1, true);
   T.horiz.wrapS = THREE.MirroredRepeatWrapping; T.horiz.wrapT = THREE.ClampToEdgeWrapping; T.horiz.repeat.set(4, 1);
   const m = new THREE.MeshBasicMaterial({ map: T.horiz, transparent: true, side: THREE.BackSide, depthWrite: false, fog: false });
-  m.onBeforeCompile = (sh) => {   // a pintura recebe a mesma bruma da cena, mais forte no pé dos morros
+  m.onBeforeCompile = (sh) => {
     sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
       diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.906, 0.875, 0.812), 0.25 + 0.75 * smoothstep(0.64, 0.38, vMapUv.y));`);
   };
   const h = new THREE.Mesh(g, m); h.position.y = -10; h.renderOrder = -1; scene.add(h);
 }
-// bancos de neblina baixa nas bordas (gradiente gerado: sem textura pintada), andando devagar
 const NEVOAS = [];
 {
   const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d');
   const gr = x.createRadialGradient(64, 64, 4, 64, 64, 64); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.5, 'rgba(255,255,255,0.45)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
   x.fillStyle = gr; x.fillRect(0, 0, 128, 128);
   const t = new THREE.CanvasTexture(c);
-  const m = new THREE.MeshBasicMaterial({ map: t, color: 0xf1ebe0, transparent: true, opacity: 0.24, depthWrite: false });
-  for (const [px, pz, w, d, dy] of [[46, -6, 60, 34, 1.2], [36, 26, 46, 26, 1.5], [36, -30, 46, 26, 1.5], [0, 40, 70, 24, 2.0], [-6, -40, 70, 24, 2.0], [-58, -10, 40, 40, 2.5], [70, 18, 70, 40, 0.8]]) {
+  const m = new THREE.MeshBasicMaterial({ map: t, color: 0xf1ebe0, transparent: true, opacity: 0.26, depthWrite: false });
+  for (const [px, pz, w, d, dy] of [[44, -2, 46, 40, 1.0], [10, 30, 60, 18, 1.2], [6, -30, 60, 18, 1.2], [70, 22, 60, 40, 0.8], [62, -28, 60, 40, 0.8]]) {
     const pl = new THREE.Mesh(new THREE.PlaneGeometry(w, d), m); pl.rotation.x = -Math.PI / 2;
     pl.position.set(px, 0, pz); pl.userData = { x0: px, z0: pz, dy, f: Math.random() * 6 }; pl.renderOrder = 2; scene.add(pl); NEVOAS.push(pl);
   }
@@ -285,7 +406,6 @@ const [gVila, gTum, gCol, gTri, gFor, gRom, gFig, gOli, kit] = await Promise.all
 const N = {};
 for (const g of [gVila, gTum, gCol, gTri, gFor, gRom, gFig, gOli]) g.scene.traverse((o) => { if (o.name && !N[o.name]) N[o.name] = o; });
 
-// grupo de peças com os deslocamentos originais entre elas (origem = primeira peça ou 'origem')
 function grupo(nomes, x, z, rot = 0, origem = null, y = null) {
   const g = new THREE.Group();
   const o0 = (origem ? N[origem] : N[nomes[0]]).position;
@@ -295,54 +415,45 @@ function grupo(nomes, x, z, rot = 0, origem = null, y = null) {
     c.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } });
     g.add(c); g.userData[n] = c;
   }
-  g.position.set(x, y ?? altura(x, z), z); g.rotation.y = rot;
+  g.position.set(x, y ?? nivel(x, z), z); g.rotation.y = rot;
   scene.add(g); return g;
 }
 const prefixo = (p) => Object.keys(N).filter((n) => n === p || n.startsWith(p + '_'));
-// módulo de 2 m entre dois nós (cercas, muros), apoiado no chão
-function aresta(nome, ax, az, bx, bz, y = null) {
-  return grupo([nome], ax, az, Math.atan2(-(bz - az), bx - ax), null, y);
-}
+function aresta(nome, ax, az, bx, bz, y) { return grupo([nome], ax, az, Math.atan2(-(bz - az), bx - ax), null, y); }
 
-// ------------------------------------------------------------------ casas (kit modular + construtor)
+// ------------------------------------------------------------------ casas
 for (const c of CASAS) {
   const casa = casaAleatoria(kit, c.semente);
   const box = new THREE.Box3().setFromObject(casa); const ctr = box.getCenter(new THREE.Vector3());
   const w = new THREE.Group(); casa.position.set(-ctr.x, 0, -ctr.z); w.add(casa);
-  // a porta (lado +z da casa) vira para o terreiro
-  const ang = Math.atan2(PLAZA.x - c.x, PLAZA.z - c.z);
-  w.rotation.y = Math.round(ang / (Math.PI / 2)) * (Math.PI / 2) + (c.semente % 3 - 1) * 0.06;
-  w.position.set(c.x, c.pad.h + 0.02, c.z);
+  const alvo = c.x < -12 ? { x: -17.6, z: 2 } : PLAZA;   // a casa do alto olha para a estrada
+  const ang = Math.atan2(alvo.x - c.x, alvo.z - c.z);
+  w.rotation.y = Math.round(ang / (Math.PI / 2)) * (Math.PI / 2);
+  w.position.set(c.x, nivel(c.x, c.z) + 0.02, c.z);
   scene.add(w);
 }
-
-// ------------------------------------------------------------------ cisterna (boca de pedra, corda e balde), forno
+// ------------------------------------------------------------------ cisterna, forno, eira
 {
-  const nomes = prefixo('Poco_1').concat(['NPC_Poco_1_Puxar', 'NPC_Poco_1_Encher']);
-  const g = grupo(nomes, CISTERNA.x, CISTERNA.z, 0.3, 'Poco_1');
+  const g = grupo(prefixo('Poco_1').concat(['NPC_Poco_1_Puxar', 'NPC_Poco_1_Encher']), CISTERNA.x, CISTERNA.z, 0.3, 'Poco_1');
   g.userData.Poco_1_BaldeAgua.visible = false; g.userData.Poco_1_CantaroAgua.visible = false;
+  grupo(['Forno_Corpo', 'Forno_Boca', 'Forno_Nicho', 'Forno_Brasa', 'Forno_Mesa', 'Forno_Massa_1', 'Forno_Massa_2', 'Forno_Pao_3'], FORNO.x, FORNO.z, 2.4, 'Forno_Corpo');
+  grupo(['Eira', 'Feixe_Deitado', 'Feixe_EmPe', 'Feixe_Pilha', 'Forcado', 'Peneira', 'Mo_Base', 'Mo_Cima', 'Jarro_Farinha', 'Cesto_Espigas', 'Cesto_Graos', 'Carroca', 'Carroca_Carga'], EIRA.x, EIRA.z, 0.25, 'Eira', L.meio);
 }
+// ------------------------------------------------------------------ curral e aprisco (nível baixo)
 {
-  const nomes = ['Forno_Corpo', 'Forno_Boca', 'Forno_Nicho', 'Forno_Brasa', 'Forno_Mesa', 'Forno_Massa_1', 'Forno_Massa_2', 'Forno_Pao_3'];
-  grupo(nomes, FORNO.x, FORNO.z, -0.9, 'Forno_Corpo');
-}
-
-// ------------------------------------------------------------------ curral (cercas + porteira), manjedoura e bebedouro
-{
-  const { x, z } = CURRAL, y = PCUR.h;
+  const { x, z } = CURRAL, y = L.baixo;
   const X = [x - 3, x - 1, x + 1, x + 3], Zn = z - 2, Zs = z + 2;
-  for (let i = 0; i < 3; i++) aresta('Cerca_Varas', X[i], Zn, X[i + 1], Zn, y);
-  aresta('Cerca_Rustica', X[0], Zs, X[1], Zs, y); aresta('Cerca_Rustica', X[2], Zs, X[3], Zs, y);
+  for (let i = 0; i < 3; i++) aresta('Cerca_Varas', X[i], Zs, X[i + 1], Zs, y);
+  aresta('Cerca_Rustica', X[0], Zn, X[1], Zn, y); aresta('Cerca_Rustica', X[2], Zn, X[3], Zn, y);
   for (const xx of [X[0], X[3]]) { aresta('Cerca_Trancada', xx, Zn, xx, Zn + 2, y); aresta('Cerca_Trancada', xx, Zn + 2, xx, Zs, y); }
-  for (const xx of X) { grupo(['Cerca_Rustica_Poste'], xx, Zn, 0, null, y); grupo(['Cerca_Rustica_Poste'], xx, Zs, 0, null, y); }
+  for (const xx of X) { grupo(['Cerca_Rustica_Poste'], xx, Zn, 0, null, y); grupo(['Cerca_Varas_Poste'], xx, Zs, 0, null, y); }
   grupo(['Cerca_Trancada_Poste'], X[0], z, 0, null, y); grupo(['Cerca_Trancada_Poste'], X[3], z, 0, null, y);
-  const gate = grupo(['Porteira_Amarras', 'Porteira_Folha'], X[1], Zs, 0, null, y); gate.userData.Porteira_Folha.rotation.y = 0.5;
-  grupo(['Manjedoura', 'Manjedoura_Feno', 'Manjedoura_FenoChao'], x - 1.8, z - 1.1, 0, null, y);
-  grupo(['Bebedouro', 'Bebedouro_Agua'], x + 2.2, z - 0.4, Math.PI / 2, null, y);
+  const gate = grupo(['Porteira_Amarras', 'Porteira_Folha'], X[1], Zn, 0, null, y); gate.userData.Porteira_Folha.rotation.y = -0.6;
+  grupo(['Manjedoura', 'Manjedoura_Feno', 'Manjedoura_FenoChao'], x + 1.6, z + 1.1, Math.PI, null, y);
+  grupo(['Bebedouro', 'Bebedouro_Agua'], x - 2.1, z + 0.4, Math.PI / 2, null, y);
 }
-// ------------------------------------------------------------------ aprisco de pedra seca (entrada para o sul)
 {
-  const { x, z } = APRISCO, y = PAPR.h;
+  const { x, z } = APRISCO, y = L.baixo;
   const X = [x - 3, x - 1, x + 1, x + 3], Z = [z - 3, z - 1, z + 1, z + 3];
   const muro = (i) => (i % 2 ? 'Aprisco_Muro_B' : 'Aprisco_Muro_A');
   for (let i = 0; i < 3; i++) aresta(muro(i), X[i], Z[0], X[i + 1], Z[0], y);
@@ -354,132 +465,106 @@ for (const c of CASAS) {
   grupo(['Aprisco_Barreira'], X[1] + 0.25, Z[3] + 0.9, 1.1, null, y);
   grupo(['Manjedoura', 'Manjedoura_Feno'], x + 1.2, z - 1.8, 0, null, y);
 }
-
-// ------------------------------------------------------------------ trigal (touceiras instanciadas) e eira com o processo do pão
+// ------------------------------------------------------------------ trigal (nível alto)
 {
-  const tipos = ['Trigo_Maduro', 'Trigo_Cheio', 'Trigo_Ralo'];
+  const { x, z, w, d } = TRIGAL, y = L.alto;
   const listas = { Trigo_Maduro: [], Trigo_Cheio: [], Trigo_Ralo: [] };
-  const { x, z, w, d } = TRIGAL, y = PTRI.h;
   for (let gx = -w / 2; gx <= w / 2; gx += 0.34) for (let gz = -d / 2; gz <= d / 2; gz += 0.34) {
     const px = x + gx + (hsh(gx, gz) - 0.5) * 0.2, pz = z + gz + (hsh(gz, gx) - 0.5) * 0.2;
     const edge = Math.min(w / 2 - Math.abs(gx), d / 2 - Math.abs(gz));
-    const t = edge < 0.6 ? 'Trigo_Ralo' : (hsh(px * 3, pz * 3) < 0.55 ? 'Trigo_Maduro' : 'Trigo_Cheio');
-    listas[t].push([px, pz]);
+    listas[edge < 0.5 ? 'Trigo_Ralo' : (hsh(px * 3, pz * 3) < 0.55 ? 'Trigo_Maduro' : 'Trigo_Cheio')].push([px, pz]);
   }
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0);
-  for (const t of tipos) {
+  for (const [t, lst] of Object.entries(listas)) {
     let src = null; N[t].traverse((o) => { if (o.isMesh && !src) src = o; });
-    const inst = new THREE.InstancedMesh(src.geometry, src.material, listas[t].length);
-    listas[t].forEach(([px, pz], i) => {
-      q.setFromAxisAngle(up, hsh(px, pz) * 6.28); const s = 0.85 + hsh(pz, px) * 0.3;
-      m4.compose(new THREE.Vector3(px, y, pz), q, new THREE.Vector3(s, s, s)); inst.setMatrixAt(i, m4);
-    });
+    const inst = new THREE.InstancedMesh(src.geometry, src.material, lst.length);
+    lst.forEach(([px, pz], i) => { q.setFromAxisAngle(up, hsh(px, pz) * 6.28); const s = 0.85 + hsh(pz, px) * 0.3; m4.compose(new THREE.Vector3(px, y, pz), q, new THREE.Vector3(s, s, s)); inst.setMatrixAt(i, m4); });
     inst.castShadow = true; inst.receiveShadow = true; scene.add(inst);
   }
-  grupo(['Foice'], x + w / 2 + 0.6, z + 1.2, 0.4, null, y + 0.01);
-  // eira, feixes, forcado, peneira, mó, farinha e a carroça (composição original da colheita)
-  const nomes = ['Eira', 'Feixe_Deitado', 'Feixe_EmPe', 'Feixe_Pilha', 'Forcado', 'Peneira', 'Mo_Base', 'Mo_Cima', 'Jarro_Farinha', 'Cesto_Espigas', 'Cesto_Graos', 'Carroca', 'Carroca_Carga'];
-  grupo(nomes, EIRA.x, EIRA.z, 0.4, 'Eira', PEIR.h);
+  grupo(['Foice'], x + w / 2 + 0.5, z - 1.4, 0.4, null, y + 0.01);
 }
-
 // ------------------------------------------------------------------ árvores
 function arvore(nome, x, z, rot) { const g = grupo([nome], x, z, rot); g.position.y -= 0.05; return g; }
 for (const [x, z, n] of ROMAS) arvore(n, x, z, hsh(x, z) * 6.28);
 for (const [x, z, n] of OLIVAS) arvore(n, x, z, hsh(z, x) * 6.28);
 for (const [x, z, n] of FIGOS) arvore(n, x, z, hsh(x, -z) * 6.28);
-
-// ------------------------------------------------------------------ túmulo de Lázaro, fora da vila, cavado na encosta norte (entrada para o sul)
+// ------------------------------------------------------------------ túmulo de Lázaro (canto noroeste do patamar alto; o morrote passa da borda)
 {
-  const g = grupo(['Tumulo_Massa_Grama', 'Tumulo_Interior', 'Tumulo_Patio', 'Tumulo_Pedra'], TUMULO.x, TUMULO.z, 0, 'Tumulo_Interior', PTUM.h);
-  // a grama do morrote passa a usar o mesmo campo do terreno
+  const g = grupo(['Tumulo_Massa_Grama', 'Tumulo_Interior', 'Tumulo_Patio', 'Tumulo_Pedra'], TUMULO.x, TUMULO.z, 0, 'Tumulo_Interior', L.alto);
   g.traverse((o) => { if (o.isMesh && o.material.name === 'Tumulo_Grama') { const m = o.material.clone(); const t = T.seco.clone(); t.flipY = false; t.needsUpdate = true; m.map = t; o.material = m; } });
 }
-
-// ------------------------------------------------------------------ muretas de pedra na beira da estrada (entrada leste e subida oeste)
-function muretasAoLongo(s0, s1, lado) {
-  const pts = RP.filter((p) => p.s >= s0 && p.s <= s1);
-  for (let i = 0; i + 2 < pts.length; i += 2) {
-    const a = pts[i], b = pts[i + 2];
-    const dx = b.x - a.x, dz = b.z - a.z, L = Math.hypot(dx, dz); const nx = -dz / L * lado, nz = dx / L * lado;
-    const off = RW + 0.7;
-    const ax = a.x + nx * off, az = a.z + nz * off, bx = b.x + nx * off, bz = b.z + nz * off;
-    const y = Math.min(altura(ax, az), altura(bx, bz)) - 0.08;
-    aresta(i % 6 === 4 ? 'Mureta_Fim' : 'Mureta_Reta', ax, az, bx, bz, y);
-  }
+// ------------------------------------------------------------------ parapeitos de pedra na borda dos patamares
+function parapeito(x, z0, z1, y, dx) {
+  for (let z = z0; z + 2 <= z1 + 0.01; z += 2) aresta('Mureta_Reta', x + dx, z, x + dx, z + 2, y - 0.06);
 }
-const sDe = (x) => { let best = RP[0]; for (const p of RP) if (Math.abs(p.x - x) < Math.abs(best.x - x)) best = p; return best.s; };
-muretasAoLongo(sDe(34), sDe(20), 1); muretasAoLongo(sDe(36), sDe(22), -1);
-muretasAoLongo(sDe(-17), sDe(-33), 1); muretasAoLongo(sDe(-22), sDe(-36), -1);
+parapeito(-12, -10.2, -0.2, L.alto, -0.45); parapeito(-12, 4.2, 6.2, L.alto, -0.45);
+parapeito(7, -12.2, -0.2, L.meio, -0.45); parapeito(7, 4.2, 10.2, L.meio, -0.45);
 
-// ------------------------------------------------------------------ capim em 3D (cards cruzados, instanciados) só no campo
+// ------------------------------------------------------------------ capim em 3D: denso no pé e na borda dos muros, em manchas no campo
 {
-  const geo = new THREE.BufferGeometry();
-  const P = [], UV = [], I = [];
+  const geo = new THREE.BufferGeometry(); const P = [], UV = [], I = [];
   for (let k = 0; k < 2; k++) {
     const a = k * Math.PI / 2, c = Math.cos(a) * 0.5, s = Math.sin(a) * 0.5, b = P.length / 3;
     P.push(-c, 0, -s, c, 0, s, c, 1, s, -c, 1, -s); UV.push(0, 0, 1, 0, 1, 1, 0, 1); I.push(b, b + 1, b + 2, b, b + 2, b + 3);
   }
   geo.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(UV, 2)); geo.setIndex(I);
-  geo.computeVertexNormals();
   const mat = new THREE.MeshStandardMaterial({ map: T.capim, alphaTest: 0.45, side: THREE.DoubleSide, roughness: 1 });
   mat.onBeforeCompile = (sh) => {
     sh.uniforms.uTime = { value: 0 }; mat.userData.sh = sh;
     sh.vertexShader = 'uniform float uTime;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
       vec4 wp = instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0);
       float sw = sin(uTime * 1.7 + wp.x * 0.35 + wp.z * 0.21) * 0.07 + sin(uTime * 3.1 + wp.x) * 0.025;
-      transformed.x += sw * position.y; transformed.z += sw * 0.6 * position.y;`);
-    // normal para cima: o capim recebe a luz como o chão (sem faces escuras)
-    sh.vertexShader = sh.vertexShader.replace('#include <beginnormal_vertex>', 'vec3 objectNormal = vec3(0.0, 1.0, 0.0);');
+      transformed.x += sw * position.y; transformed.z += sw * 0.6 * position.y;`).replace('#include <beginnormal_vertex>', 'vec3 objectNormal = vec3(0.0, 1.0, 0.0);');
   };
-  const MAX = 1800, inst = new THREE.InstancedMesh(geo, mat, MAX);
+  const MAX = 2600, inst = new THREE.InstancedMesh(geo, mat, MAX);
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), col = new THREE.Color();
+  const ocupado = (x, z) => {
+    if (naEstrada(x, z).d < RW + 0.5 || terraEm(x, z) > 0.35) return true;
+    for (const c of CASAS) if (Math.abs(x - c.x) < 3.6 && Math.abs(z - c.z) < 3.8) return true;
+    if (Math.abs(x - TRIGAL.x) < TRIGAL.w / 2 + 0.4 && Math.abs(z - TRIGAL.z) < TRIGAL.d / 2 + 0.4) return true;
+    if (Math.hypot(x - TUMULO.x, z - TUMULO.z + 1) < 7.2) return true;
+    if (Math.abs(x - ESCADA.x - 1.2) < 1.6 && Math.abs(z - ESCADA.z) < 1.2) return true;
+    return false;
+  };
   let n = 0, tries = 0;
-  while (n < MAX && tries < 40000) {
+  while (n < MAX && tries < 60000) {
     tries++;
-    const x = -52 + Math.random() * 100, z = -36 + Math.random() * 72;
-    const r = naEstrada(x, z); if (r.d < RW + 0.8) continue;
-    let ok = true; for (const p of PADS) if (padDist(p, x, z) < (p.dirt > 0.5 ? 1.2 : 0.2)) { ok = false; break; }
-    if (!ok) continue;
-    if (Math.hypot(x - TUMULO.x, z - TUMULO.z + 2) < 6.5) continue;
-    const hC = altura(x, z), gr = Math.hypot(altura(x + 1, z) - hC, altura(x, z + 1) - hC); if (gr > 0.45) continue;
-    let borda = 0; for (const p of PADS) { const dd = padDist(p, x, z); if (dd > 0.8 && dd < 3) borda = 1; }
-    const dens = Math.max(smooth(0.55, 0.8, vnoise(x * 0.07, z * 0.07)), borda * 0.7); if (Math.random() > dens) continue;
-    const s = 0.45 + Math.random() * 0.5;
+    const x = -48 + Math.random() * 86, z = -34 + Math.random() * 68;
+    if (ocupado(x, z)) continue;
+    let borda = 0;   // perto do pé ou da beira de um muro de patamar
+    for (const nv of NIVEIS) { const d = distBorda(nv.pts, x, z); if (d < 1.3) borda = Math.max(borda, 1 - d / 1.3); }
+    const campo = smooth(0.5, 0.78, vnoise(x * 0.09, z * 0.09));
+    if (Math.random() > Math.max(campo * 0.8, borda)) continue;
+    const y = nivel(x, z), s = 0.4 + Math.random() * 0.5 + borda * 0.2;
     q.setFromAxisAngle(up, Math.random() * 6.28);
-    m4.compose(new THREE.Vector3(x, hC - 0.03, z), q, new THREE.Vector3(s * 1.1, s, s * 1.1)); inst.setMatrixAt(n, m4);
+    m4.compose(new THREE.Vector3(x, y - 0.03, z), q, new THREE.Vector3(s * 1.1, s, s * 1.1)); inst.setMatrixAt(n, m4);
     const g = 1.08 + Math.random() * 0.22; inst.setColorAt(n, col.setRGB(g, g * (0.98 + Math.random() * 0.04), g * 0.9)); n++;
   }
   inst.count = n; inst.instanceMatrix.needsUpdate = true; if (inst.instanceColor) inst.instanceColor.needsUpdate = true;
-  inst.receiveShadow = true; scene.add(inst);
-  window.__capim = mat;
+  inst.receiveShadow = true; scene.add(inst); window.__capim = mat;
 }
-
-// esconde os pontos de NPC
 scene.traverse((o) => { if (o.name && o.name.startsWith('NPC_')) o.visible = false; });
 
-// ================================================================== CÂMERA, VISTAS E ANDAR
-const V3 = (x, z, dy = 1.6) => new THREE.Vector3(x, altura(x, z) + dy, z);
+// ================================================================== CÂMERA (quase isométrica, de cima) E VISTAS
+const V3 = (x, z, dy = 1.2) => new THREE.Vector3(x, nivel(x, z) + dy, z);
+const ISO = new THREE.Vector3(1, 1.15, 1.05).normalize();
 const VISTAS = {
-  geral: [V3(-3, 0, 2), new THREE.Vector3(20, 21, 30)],
-  terreiro: [V3(0, 0, 1.4), new THREE.Vector3(7, 5, 10)],
-  cisterna: [V3(CISTERNA.x, CISTERNA.z, 1.2), new THREE.Vector3(4, 3.2, 5.5)],
-  curral: [V3(CURRAL.x, CURRAL.z, 1), new THREE.Vector3(-6, 6, 11)],
-  trigal: [V3(TRIGAL.x - 4, TRIGAL.z - 2, 1), new THREE.Vector3(11, 7, 11)],
-  tumulo: [V3(TUMULO.x, TUMULO.z + 1.5, 1.4), new THREE.Vector3(9, 5, 9)],
-  saida: [V3(-36, -5, 2), new THREE.Vector3(18, 7, 10)],
-  vale: [V3(22, 3, 2.5), new THREE.Vector3(-16, 5, -2)],
+  geral: [new THREE.Vector3(-2, 1.4, 0), ISO.clone().multiplyScalar(66)],
+  terreiro: [V3(-1, 0), ISO.clone().multiplyScalar(26)],
+  baixo: [V3(14, 0), new THREE.Vector3(0.75, 1.0, 0.9).normalize().multiplyScalar(30)],
+  alto: [V3(-17, -9), new THREE.Vector3(0.55, 1.0, 1.0).normalize().multiplyScalar(28)],
+  trigal: [V3(-12, 11), new THREE.Vector3(0.9, 1.0, 0.75).normalize().multiplyScalar(28)],
+  saida: [V3(-28, 0, 2), new THREE.Vector3(0.95, 0.75, 0.6).normalize().multiplyScalar(30)],
+  vale: [V3(18, 2, 2.5), new THREE.Vector3(-1, 0.38, -0.12).normalize().multiplyScalar(18)],
 };
 let anim = null;
 function irPara(alvo, off, dur = 1.6) {
-  const f = innerHeight > innerWidth ? 1.35 : 1;
+  const f = retrato() ? 1.25 : 1;
   anim = { t: 0, dur, t0: controls.target.clone(), p0: camera.position.clone(), t1: alvo.clone(), p1: alvo.clone().add(off.clone().multiplyScalar(f)) };
 }
-function vista(k) {
-  const [t, o] = VISTAS[k]; irPara(t, o);
-  document.querySelectorAll('#bar button').forEach((b) => b.classList.toggle('on', b.dataset.v === k));
-}
+function vista(k) { const [t, o] = VISTAS[k]; irPara(t, o); document.querySelectorAll('#bar button').forEach((b) => b.classList.toggle('on', b.dataset.v === k)); }
 document.querySelectorAll('#bar button').forEach((b) => b.onclick = () => vista(b.dataset.v));
-{ const [t, o] = VISTAS.geral; controls.target.copy(t); camera.position.copy(t).add(o.clone().multiplyScalar(innerHeight > innerWidth ? 1.35 : 1)); }
+{ const [t, o] = VISTAS.geral; controls.target.copy(t); camera.position.copy(t).add(o.clone().multiplyScalar(retrato() ? 1.25 : 1)); }
 document.querySelector('[data-v=geral]').classList.add('on');
 
 const ray = new THREE.Raycaster(), ptr = new THREE.Vector2(); let down = null;
@@ -488,32 +573,31 @@ renderer.domElement.addEventListener('pointerup', (e) => {
   if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 8) return;
   ptr.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
   ray.setFromCamera(ptr, camera);
-  const hit = ray.intersectObject(terreno, false)[0]; if (!hit) return;
-  const p = hit.point; if (Math.abs(p.x) > 60 || Math.abs(p.z) > 42) return;
+  const hit = ray.intersectObjects(CHAO, false)[0]; if (!hit) return;
+  const p = hit.point; if (Math.abs(p.x + 1) > 42 || Math.abs(p.z) > 30) return;
   const off = camera.position.clone().sub(controls.target);
-  irPara(new THREE.Vector3(p.x, p.y + 1.4, p.z), off.divideScalar(innerHeight > innerWidth ? 1.35 : 1), 1.2);
+  irPara(new THREE.Vector3(p.x, p.y + 1.2, p.z), off.divideScalar(retrato() ? 1.25 : 1), 1.1);
   document.querySelectorAll('#bar button').forEach((b) => b.classList.remove('on'));
   document.getElementById('dica').style.opacity = 0;
 });
 setTimeout(() => { document.getElementById('dica').style.opacity = 0; }, 10000);
-addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.fov = innerHeight > innerWidth ? 55 : 42; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.fov = retrato() ? 40 : 30; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
 
 const ease = (t) => t * t * (3 - 2 * t);
 const clock = new THREE.Clock();
 renderer.setAnimationLoop(() => {
-  const raw = clock.getDelta(), adt = Math.min(0.25, raw);
-  for (const n of NEVOAS) { const u = n.userData; n.position.x = u.x0 + Math.sin(clock.elapsedTime * 0.05 + u.f) * 4; n.position.y = altura(n.position.x, u.z0) + u.dy; }
-  if (window.__capim.userData.sh) window.__capim.userData.sh.uniforms.uTime.value = clock.elapsedTime;
+  const raw = clock.getDelta(), adt = Math.min(0.25, raw), T0 = clock.elapsedTime;
+  for (const nb of NEVOAS) { const u = nb.userData; nb.position.x = u.x0 + Math.sin(T0 * 0.05 + u.f) * 4; nb.position.y = fora(nb.position.x, u.z0) + u.dy; }
+  if (window.__capim.userData.sh) window.__capim.userData.sh.uniforms.uTime.value = T0;
   if (anim) {
     anim.t = Math.min(1, anim.t + adt / anim.dur); const k = ease(anim.t);
     controls.target.lerpVectors(anim.t0, anim.t1, k); camera.position.lerpVectors(anim.p0, anim.p1, k);
     if (anim.t >= 1) anim = null;
   }
   controls.update();
-  // sombra acompanha o alvo (caixa modesta: nítida no celular)
-  const tg = controls.target; const s = Math.min(45, 14 + camera.position.distanceTo(tg) * 0.45);
-  sun.position.copy(tg).addScaledVector(SUN_DIR, 60); sun.target.position.copy(tg);
-  Object.assign(sun.shadow.camera, { left: -s, right: s, top: s, bottom: -s, near: 10, far: 140 }); sun.shadow.camera.updateProjectionMatrix();
+  const tg = controls.target; const s = Math.min(42, 12 + camera.position.distanceTo(tg) * 0.42);
+  sun.position.copy(tg).addScaledVector(SUN_DIR, 70); sun.target.position.copy(tg);
+  Object.assign(sun.shadow.camera, { left: -s, right: s, top: s, bottom: -s, near: 10, far: 160 }); sun.shadow.camera.updateProjectionMatrix();
   renderer.render(scene, camera);
 });
 document.getElementById('carga').remove();
