@@ -133,7 +133,7 @@ const retrato = () => innerHeight > innerWidth;
 function verCasa() { modo = 'casa'; olhar(CASA_POS.clone().add(new THREE.Vector3(2.5, 1.4, 2)), retrato() ? 19 : 13, new THREE.Vector3(0.55, 0.65, 1)); marca(); }
 function verQuart() {
   modo = 'quart'; const [W, D] = quart.userData.tamanho;
-  olhar(QUART_POS.clone().add(new THREE.Vector3(W / 2, 1.6, 8.5)), retrato() ? 30 : 22, new THREE.Vector3(-1, 0.42, 0.28)); marca();
+  olhar(QUART_POS.clone().add(new THREE.Vector3(W / 2, 1.6, 8.5)), retrato() ? 34 : 25, new THREE.Vector3(-0.75, 0.9, 0.12)); marca();
 }
 const bCasa = document.getElementById('bCasa'), bQuart = document.getElementById('bQuart'), bDentro = document.getElementById('bDentro');
 function marca() { bCasa.classList.toggle('on', modo === 'casa'); bQuart.classList.toggle('on', modo === 'quart'); bDentro.classList.toggle('on', dentro); const bi = document.getElementById('bIA'); if (bi) bi.classList.toggle('on', modo === 'ia'); }
