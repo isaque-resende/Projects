@@ -9,10 +9,10 @@
   html, body { margin: 0; height: 100%; overflow: hidden; background: #c6e0ef; font-family: system-ui, sans-serif; }
   canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; opacity: 0; transition: opacity .8s; }
   canvas.on { opacity: 1; }
-  #bar { position: fixed; top: max(10px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; width: 94vw; }
+  #bar { z-index: 2; position: fixed; top: max(10px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; width: 94vw; }
   #bar button { border: 0; border-radius: 14px; padding: 7px 12px; background: #f6efe2e6; color: #4a3a28; font-size: 13px; }
   #bar button.on { background: #8a5a35; color: #fff7ea; }
-  #dica { position: fixed; left: 50%; bottom: max(14px, env(safe-area-inset-bottom)); transform: translateX(-50%); color: #4a3a28;
+  #dica { z-index: 2; position: fixed; left: 50%; bottom: max(14px, env(safe-area-inset-bottom)); transform: translateX(-50%); color: #4a3a28;
           background: #f6efe2d9; padding: 7px 13px; border-radius: 16px; font-size: 13px; transition: opacity 1.2s; pointer-events: none; white-space: nowrap; }
 </style>
 <script type="importmap">
@@ -74,7 +74,6 @@ root.traverse((o) => {
   if (o.name) N[o.name] = o;
 });
 N.Tumulo_Interior.castShadow = false;
-N.Aba_Grama.castShadow = false;
 for (const o of Object.values(N)) if (o.name && o.name.startsWith('NPC_')) o.visible = false;
 
 // ------------------------------------------------------------------ chão de grama, com um buraco sobre a câmara
@@ -104,23 +103,22 @@ const flame = new THREE.Mesh(new THREE.IcosahedronGeometry(0.035, 0), new THREE.
 flame.position.copy(lamp.position); scene.add(flame);
 
 // ------------------------------------------------------------------ terreno e corte
-let terreno = 'grama', corte = false;
+let terreno = 'grama', corte = false, fechada = false;
 function aplicar() {
-  N.Aba_Grama.visible = terreno === 'grama' && !corte;
-  N.Aba_Rocha.visible = terreno === 'monte' && !corte;
-  N.Monte_Encaixe.visible = terreno === 'monte' && !corte;
-  N.Tumulo_Massa.visible = !corte;
+  N.Tumulo_Massa_Grama.visible = terreno === 'grama' && !corte;
+  N.Tumulo_Massa_Monte.visible = terreno === 'monte' && !corte;
+  N.Rochas_Soltas.visible = terreno === 'monte' && !corte;
   document.getElementById('bCorte').classList.toggle('on', corte);
   document.getElementById('bTerreno').textContent = 'Terreno: ' + (terreno === 'grama' ? 'grama' : 'monte');
 }
-document.getElementById('bCorte').onclick = () => { corte = !corte; aplicar(); if (corte) vista('corte'); };
+document.getElementById('bCorte').onclick = () => { corte = !corte; aplicar(); vista(corte ? 'corte' : 'fora'); };
 document.getElementById('bTerreno').onclick = () => { terreno = terreno === 'grama' ? 'monte' : 'grama'; aplicar(); vista('fora'); };
 aplicar();
 
 // ------------------------------------------------------------------ pedra que rola
 const pedra = N.Tumulo_Pedra;
 const xAberta = pedra.position.x, xFechada = 0, R = 0.85;
-let fechada = false, px = xAberta;
+let px = xAberta;
 function alternarPedra() { fechada = !fechada; document.getElementById('bPedra').textContent = fechada ? 'Abrir a pedra' : 'Fechar a pedra'; }
 document.getElementById('bPedra').onclick = alternarPedra;
 
@@ -132,24 +130,38 @@ controls.minDistance = 0.25; controls.maxDistance = 30;
 controls.maxPolarAngle = Math.PI * 0.49;
 // posições em coordenadas do Blender (x, y, z) -> three (x, z, -y)
 const B = (x, y, z) => new THREE.Vector3(x, z, -y);
+// cada vista é um caminho: lista de [alvo, posição]; entrar e sair passam pela porta
+const PORTA_FORA = [B(0, 2.5, 1.0), B(0, -1.6, 1.25)];
+const PORTA_DENTRO = [B(0, 4.6, 0.8), B(0, 1.1, 1.2)];
 const VISTAS = {
-  fora: [B(0, 0.5, 1.2), B(3.6, -7.2, 3.4)],
-  entrar: [B(0, 2.6, 0.95), B(0, -0.5, 1.2)],
-  camara: [B(0, 5.0, 0.8), B(0, 2.9, 1.25)],
-  corte: [B(0, 2.9, 0.4), B(3.0, -2.2, 8.2)],
+  fora: [[B(0, 1.0, 1.3), B(4.8, -10.5, 4.6)]],
+  entrar: [PORTA_FORA, PORTA_DENTRO],
+  camara: [PORTA_FORA, PORTA_DENTRO, [B(0.4, 5.1, 0.5), B(0, 3.05, 1.15)]],
+  corte: [[B(0, 2.9, 0.4), B(3.0, -2.2, 8.2)]],
 };
-let anim = null;
+const dentro = () => -camera.position.z > 0.3 && Math.abs(camera.position.x) < 1.6 && camera.position.y < 2.1;
+let fila = [], anim = null;
 function vista(k) {
-  const [t, p] = VISTAS[k]; const f = (k === 'fora' && innerHeight > innerWidth) ? 1.5 : 1;
-  anim = { t: 0, t0: controls.target.clone(), p0: camera.position.clone(), t1: t.clone(),
-           p1: t.clone().add(p.clone().sub(t).multiplyScalar(f)) };
-  if (k === 'entrar' && fechada) alternarPedra();
-  if (k !== 'fora' && k !== 'corte' && corte) { corte = false; aplicar(); }
+  let pts = VISTAS[k].map(([t, p]) => [t.clone(), p.clone()]);
+  if (k === 'fora' && innerHeight > innerWidth) pts = pts.map(([t, p]) => [t, t.clone().add(p.clone().sub(t).multiplyScalar(1.45))]);
+  if (k === 'entrar' || k === 'camara') {
+    if (fechada) alternarPedra();
+    if (corte) { corte = false; aplicar(); }
+    if (dentro()) pts = pts.slice(1);          // já está dentro: não volta para a porta
+  } else if (dentro() && k !== 'corte') {
+    pts = [PORTA_DENTRO, PORTA_FORA].map(([t, p]) => [t.clone(), p.clone()]).concat(pts);   // sai pela porta
+  }
+  fila = pts; anim = null; proximo();
   document.querySelectorAll('#bar button[data-v]').forEach((b) => b.classList.toggle('on', b.dataset.v === k));
 }
+function proximo() {
+  const nx = fila.shift(); if (!nx) { anim = null; return; }
+  const d = camera.position.distanceTo(nx[1]);
+  anim = { t: 0, dur: Math.min(2.2, 0.6 + d * 0.22), t0: controls.target.clone(), p0: camera.position.clone(), t1: nx[0], p1: nx[1] };
+}
 document.querySelectorAll('#bar button[data-v]').forEach((b) => b.onclick = () => vista(b.dataset.v));
-{ const [t, p] = VISTAS.fora; controls.target.copy(t);
-  camera.position.copy(t.clone().add(p.clone().sub(t).multiplyScalar(innerHeight > innerWidth ? 1.5 : 1)));
+{ const [t, p] = VISTAS.fora[0]; controls.target.copy(t);
+  camera.position.copy(t.clone().add(p.clone().sub(t).multiplyScalar(innerHeight > innerWidth ? 1.45 : 1)));
   document.querySelector('[data-v=fora]').classList.add('on'); }
 
 const ray = new THREE.Raycaster(), ptr = new THREE.Vector2();
@@ -177,9 +189,9 @@ renderer.setAnimationLoop(() => {
   lamp.intensity = 5 + Math.sin(T * 9) * 0.35 + Math.sin(T * 23) * 0.2;
   flame.scale.setScalar(1 + Math.sin(T * 11) * 0.15);
   if (anim) {
-    anim.t = Math.min(1, anim.t + dt / 1.4); const k = ease(anim.t);
+    anim.t = Math.min(1, anim.t + dt / anim.dur); const k = fila.length ? anim.t : ease(anim.t);
     controls.target.lerpVectors(anim.t0, anim.t1, k); camera.position.lerpVectors(anim.p0, anim.p1, k);
-    if (anim.t >= 1) anim = null;
+    if (anim.t >= 1) proximo();
   }
   controls.update();
   renderer.render(scene, camera);
