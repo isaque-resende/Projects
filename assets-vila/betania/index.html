@@ -96,9 +96,9 @@ function vnoise(x, z) {
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 function base(x, z) {
   let h = -0.1 * x;
-  h += 24 * (1 - Math.exp(-Math.max(0, -x - 36) / 22));           // subida para o Monte das Oliveiras
+  h += 15 * (1 - Math.exp(-Math.max(0, -x - 30) / 48));           // subida para o Monte das Oliveiras (suave: a estrada sobe)
   const az = Math.abs(z);
-  h += 13 * (1 - Math.exp(-Math.max(0, az - 30) / 16)) * (0.75 + 0.25 * Math.sin(x * 0.03));
+  h += 9 * (1 - Math.exp(-Math.max(0, az - 28) / 26)) * (0.75 + 0.25 * Math.sin(x * 0.03));
   h += 1.6 * (vnoise(x * 0.025 + 3, z * 0.025) - 0.5) + 0.7 * (vnoise(x * 0.07, z * 0.07 + 9) - 0.5);
   h -= 6 * smooth(70, 160, x) * (0.6 + 0.4 * vnoise(z * 0.02, 1));  // o vale para leste
   return h;
@@ -158,7 +158,7 @@ function altura(x, z) {
 const PLAZA = pad({ x: 0, z: 0, r: 8.5, blend: 5, dirt: 1 });
 const CASAS = [
   { x: -12, z: -11, semente: 3 }, { x: 11.5, z: -12, semente: 11 }, { x: -16, z: 12.5, semente: 27 },
-  { x: 14, z: 13.5, semente: 42 }, { x: -1, z: -20, semente: 77 },
+  { x: 14, z: 13.5, semente: 42 }, { x: -4, z: -20, semente: 77 },
 ];
 const CISTERNA = { x: 3.2, z: -5.2 };
 const FORNO = { x: 18.5, z: -6.5 };
@@ -181,7 +181,7 @@ const PEIR = pad({ x: EIRA.x, z: EIRA.z, r: 5.5, blend: 3.5, dirt: 0.7 });
 const PTUM = pad({ x: TUMULO.x, z: TUMULO.z + 3, w: 7, d: 7, blend: 3.5, dirt: 0.35 });
 // alturas dos patamares (pela encosta já com a estrada)
 for (const p of PADS) p.h = semPads(p.x, p.z).h;
-PTUM.h = semPads(TUMULO.x, TUMULO.z).h;
+PTUM.h = semPads(TUMULO.x, TUMULO.z + 5).h;   // na altura do chão da frente: o morrote fica encaixado na encosta
 
 // buracos no chão (o chão some onde há câmara, sulco e poço)
 const HOLES = { tumulo: [TUMULO.x - 1.75, TUMULO.z - 6.4, TUMULO.x + 1.75, TUMULO.z], sulco: [TUMULO.x - 2.65, TUMULO.z + 0.18, TUMULO.x + 0.98, TUMULO.z + 0.64], poco: [CISTERNA.x, CISTERNA.z, 0.5] };
@@ -237,7 +237,7 @@ const terreno = (() => {
       float dm = vMask.y + (vnoise(p * 0.45) - 0.5) * 0.55;
       c = mix(c, terra, smoothstep(0.3, 0.65, dm));
       vec3 nW = normalize(cross(dFdx(vW), dFdy(vW)));
-      float rk = smoothstep(0.86, 0.72, abs(nW.y)) * (1.0 - vMask.x);
+      float rk = smoothstep(0.8, 0.62, abs(nW.y)) * (1.0 - vMask.x) * 0.9;
       c = mix(c, semRep(tRocha, planar(vW, nW) / 3.2) * 0.98, rk);
       float rm = smoothstep(0.25, 0.75, vMask.x + (vnoise(p * 1.4) - 0.5) * 0.35);
       c = mix(c, texture2D(tEstr, vec2(clamp(vRoad.x, 0.02, 0.98), vRoad.y)).rgb, rm);
@@ -392,8 +392,6 @@ function muretasAoLongo(s0, s1, lado) {
 const sDe = (x) => { let best = RP[0]; for (const p of RP) if (Math.abs(p.x - x) < Math.abs(best.x - x)) best = p; return best.s; };
 muretasAoLongo(sDe(50), sDe(30), 1); muretasAoLongo(sDe(52), sDe(34), -1);
 muretasAoLongo(sDe(-28), sDe(-52), 1); muretasAoLongo(sDe(-36), sDe(-58), -1);
-// terraços de oliveiras na subida: muros de arrimo
-for (const [x, z, rot] of [[-40, 7, 1.57], [-40, 9, 1.57], [-44, -13, 1.57], [-44, -15, 1.57], [-52, 2, 1.62], [-52, 4.1, 1.62]]) grupo(['Arrimo_Reta'], x, z, rot, null, altura(x, z) - 0.6);
 
 // ------------------------------------------------------------------ capim em 3D (cards cruzados, instanciados) só no campo
 {
@@ -415,7 +413,7 @@ for (const [x, z, rot] of [[-40, 7, 1.57], [-40, 9, 1.57], [-44, -13, 1.57], [-4
     // normal para cima: o capim recebe a luz como o chão (sem faces escuras)
     sh.vertexShader = sh.vertexShader.replace('#include <beginnormal_vertex>', 'vec3 objectNormal = vec3(0.0, 1.0, 0.0);');
   };
-  const MAX = 4200, inst = new THREE.InstancedMesh(geo, mat, MAX);
+  const MAX = 2600, inst = new THREE.InstancedMesh(geo, mat, MAX);
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), col = new THREE.Color();
   let n = 0, tries = 0;
   while (n < MAX && tries < 40000) {
@@ -425,11 +423,13 @@ for (const [x, z, rot] of [[-40, 7, 1.57], [-40, 9, 1.57], [-44, -13, 1.57], [-4
     let ok = true; for (const p of PADS) if (padDist(p, x, z) < (p.dirt > 0.5 ? 1.2 : 0.2)) { ok = false; break; }
     if (!ok) continue;
     if (Math.hypot(x - TUMULO.x, z - TUMULO.z + 2) < 6.5) continue;
-    const dens = 0.35 + 0.65 * vnoise(x * 0.08, z * 0.08); if (Math.random() > dens) continue;
-    const s = 0.35 + Math.random() * 0.45;
+    const hC = altura(x, z), gr = Math.hypot(altura(x + 1, z) - hC, altura(x, z + 1) - hC); if (gr > 0.45) continue;
+    let borda = 0; for (const p of PADS) { const dd = padDist(p, x, z); if (dd > 0.8 && dd < 3) borda = 1; }
+    const dens = Math.max(smooth(0.55, 0.8, vnoise(x * 0.07, z * 0.07)), borda * 0.7); if (Math.random() > dens) continue;
+    const s = 0.45 + Math.random() * 0.5;
     q.setFromAxisAngle(up, Math.random() * 6.28);
-    m4.compose(new THREE.Vector3(x, altura(x, z) - 0.03, z), q, new THREE.Vector3(s * 1.1, s, s * 1.1)); inst.setMatrixAt(n, m4);
-    const g = 0.8 + Math.random() * 0.25; inst.setColorAt(n, col.setRGB(g, g * (0.97 + Math.random() * 0.05), g * 0.92)); n++;
+    m4.compose(new THREE.Vector3(x, hC - 0.03, z), q, new THREE.Vector3(s * 1.1, s, s * 1.1)); inst.setMatrixAt(n, m4);
+    const g = 1.08 + Math.random() * 0.22; inst.setColorAt(n, col.setRGB(g, g * (0.98 + Math.random() * 0.04), g * 0.9)); n++;
   }
   inst.count = n; inst.instanceMatrix.needsUpdate = true; if (inst.instanceColor) inst.instanceColor.needsUpdate = true;
   inst.receiveShadow = true; scene.add(inst);
@@ -447,8 +447,8 @@ const VISTAS = {
   cisterna: [V3(CISTERNA.x, CISTERNA.z, 1.2), new THREE.Vector3(4, 3.2, 5.5)],
   curral: [V3(CURRAL.x, CURRAL.z, 1), new THREE.Vector3(-6, 6, 11)],
   trigal: [V3(TRIGAL.x - 6, TRIGAL.z - 2, 1), new THREE.Vector3(14, 8, 14)],
-  tumulo: [V3(TUMULO.x, TUMULO.z + 1.5, 1.4), new THREE.Vector3(5, 4.5, 13)],
-  saida: [V3(-62, -8, 2), new THREE.Vector3(26, 9, 14)],
+  tumulo: [V3(TUMULO.x, TUMULO.z + 1.5, 1.4), new THREE.Vector3(9, 5, 9)],
+  saida: [V3(-58, -7, 2), new THREE.Vector3(24, 8, 12)],
 };
 let anim = null;
 function irPara(alvo, off, dur = 1.6) {
