@@ -59,7 +59,7 @@ scene.background = (() => {
   g.fillStyle = gr; g.fillRect(0, 0, 2, 256);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
 })();
-scene.fog = new THREE.Fog(0xe7dfcf, 45, 170);
+scene.fog = new THREE.Fog(0xe7dfcf, 100, 260);
 scene.add(new THREE.HemisphereLight(0xcfe6ff, 0xc9a47a, 1.3));
 const sun = new THREE.DirectionalLight(0xffe4bc, 3.1);
 sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
