@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#86b9df">
+<title>Lagar</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #c6e0ef; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; opacity: 0; transition: opacity .8s; }
+  canvas.on { opacity: 1; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<script type="module">
+// Lagar em tela cheia, sem texto, luz de manhã.
+// Líquido animado: o fio corre, as superfícies ondulam.
+// Toque nas uvas para pisar: o monte afunda, respinga, faz onda, o suco sobe e o tanque de baixo enche.
+// Quando todas as uvas forem pisadas, tudo volta ao começo depois de alguns segundos.
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const sky = (() => {
+  const c = document.createElement('canvas'); c.width = 2; c.height = 256;
+  const g = c.getContext('2d'); const gr = g.createLinearGradient(0, 0, 0, 256);
+  gr.addColorStop(0, '#86b9df'); gr.addColorStop(0.55, '#c6e0ef'); gr.addColorStop(1, '#f2e6d0');
+  g.fillStyle = gr; g.fillRect(0, 0, 2, 256);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+})();
+scene.background = sky;
+scene.fog = new THREE.Fog(0xeae4d6, 14, 40);
+
+scene.add(new THREE.HemisphereLight(0xcfe6ff, 0xc9a47a, 1.35));
+const sun = new THREE.DirectionalLight(0xffe4bc, 3.2);
+sun.position.set(7, 6.5, 4.5);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -4, right: 4, top: 4, bottom: -4, near: 0.5, far: 25 });
+sun.shadow.bias = -0.0004;
+sun.shadow.normalBias = 0.02;
+scene.add(sun);
+
+const groundTex = new THREE.TextureLoader().load('tex/chao_grama_v3.webp');
+groundTex.colorSpace = THREE.SRGBColorSpace;
+groundTex.wrapS = groundTex.wrapT = THREE.RepeatWrapping;
+groundTex.repeat.set(16, 16);
+groundTex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+const ground = new THREE.Mesh(new THREE.CircleGeometry(40, 48), new THREE.MeshStandardMaterial({ map: groundTex, roughness: 1 }));
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+const camera = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 0.05, 100);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 1.5;
+controls.maxDistance = 12;
+controls.maxPolarAngle = Math.PI * 0.47;
+controls.target.set(0, 0.25, 0.1);
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.5;
+renderer.domElement.addEventListener('pointerdown', () => { controls.autoRotate = false; }, { once: true });
+function frame() {
+  const dist = innerHeight > innerWidth ? 6.8 : 4.6;
+  camera.position.set(0.45, 0.75, 1).normalize().multiplyScalar(dist).add(controls.target);
+  controls.update();
+}
+
+// ------------------------------------------------------------------ modelo
+const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync('lagar.glb');
+const root = gltf.scene;
+root.position.z = 48;               // no Blender o lagar fica em y = 48
+scene.add(root);
+const N = {};
+root.traverse((o) => {
+  if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; }
+  if (o.name) N[o.name] = o;
+});
+
+// material de líquido: o mesmo atlas, com a textura correndo (u) e a superfície ondulando
+const clock = { t: 0 };
+function liquidMat(base, flow, amp, wobble = 0) {
+  const m = base.clone();
+  m.userData.u = { uTime: { value: 0 }, uFlow: { value: flow }, uAmp: { value: amp }, uWob: { value: wobble } };
+  m.onBeforeCompile = (sh) => {
+    Object.assign(sh.uniforms, m.userData.u);
+    sh.vertexShader = 'uniform float uTime, uFlow, uAmp, uWob;\n' + sh.vertexShader
+      .replace('#include <uv_vertex>', '#include <uv_vertex>\n#ifdef USE_MAP\n vMapUv.x += uTime * uFlow;\n#endif')
+      .replace('#include <begin_vertex>', `#include <begin_vertex>
+        transformed.y += uAmp * (sin(position.x * 11.0 + uTime * 2.3) + cos(position.z * 9.0 + uTime * 1.9) + 0.6 * sin((position.x + position.z) * 17.0 - uTime * 3.1)) * 0.4;
+        transformed.x += uWob * sin(position.y * 38.0 - uTime * 14.0);
+        transformed.z += uWob * cos(position.y * 31.0 - uTime * 12.0);`);
+  };
+  m.customProgramCacheKey = () => 'liq' + flow + amp + wobble;
+  return m;
+}
+const baseMat = N.Lagar_Rocha.material;
+const matSurf = liquidMat(baseMat, 0.035, 0.006);
+const matJar = liquidMat(baseMat, 0.02, 0.003);
+const matFio = liquidMat(baseMat, 1.4, 0.0, 0.004);
+N.Lagar_SucoTanque.material = matSurf;
+N.Lagar_SucoColeta.material = matSurf;
+N.Lagar_SucoJarro.material = matJar;
+N.Lagar_Fio.material = matFio;
+for (const k of ['Lagar_SucoTanque', 'Lagar_SucoColeta', 'Lagar_SucoJarro', 'Lagar_Fio']) N[k].castShadow = false;
+
+// ------------------------------------------------------------------ estado
+const heaps = Object.keys(N).filter((k) => k.startsWith('Lagar_Uvas_')).map((k) => N[k]);
+heaps.forEach((h) => { h.userData.k = 1; h.userData.kv = 1; h.userData.p0 = h.position.clone(); });
+const tank = N.Lagar_SucoTanque, coleta = N.Lagar_SucoColeta, fio = N.Lagar_Fio, bag = N.Lagar_Bagaco;
+const tank0 = tank.position.y, coleta0 = coleta.position.y;
+let pressed = 0, pressedV = 0, flowBoost = 0, resetAt = 0;
+const total = heaps.length * 3;   // 3 pisadas por monte
+
+// respingos e ondas
+const dropGeo = new THREE.IcosahedronGeometry(0.018, 0);
+const dropMat = new THREE.MeshStandardMaterial({ color: 0x6a1e50, roughness: 0.6, flatShading: true });
+const drops = [];
+const ringGeo = new THREE.RingGeometry(0.8, 1.0, 20); ringGeo.rotateX(-Math.PI / 2);
+const ringMat = new THREE.MeshBasicMaterial({ color: 0xc890b0, transparent: true, opacity: 0.6, depthWrite: false });
+const ripples = [];
+
+function splash(p) {
+  for (let i = 0; i < 10; i++) {
+    const d = new THREE.Mesh(dropGeo, dropMat);
+    d.position.copy(p).add(new THREE.Vector3(0, 0.03, 0));
+    const a = Math.random() * Math.PI * 2, s = 0.5 + Math.random() * 0.9;
+    d.userData.v = new THREE.Vector3(Math.cos(a) * s * 0.6, 1.0 + Math.random() * 1.0, Math.sin(a) * s * 0.6);
+    d.userData.life = 1;
+    d.scale.setScalar(0.6 + Math.random() * 0.9);
+    scene.add(d); drops.push(d);
+  }
+  const r = new THREE.Mesh(ringGeo, ringMat.clone());
+  r.position.copy(p); r.position.y = tank.getWorldPosition(new THREE.Vector3()).y + 0.012;
+  r.userData.t = 0; r.scale.setScalar(0.05);
+  scene.add(r); ripples.push(r);
+}
+
+function stomp(hitPoint) {
+  // o monte mais perto do toque afunda
+  let best = null, bd = 1e9;
+  const w = new THREE.Vector3();
+  for (const h of heaps) {
+    if (h.userData.k <= 0.01) continue;
+    const d = h.getWorldPosition(w).distanceTo(hitPoint);
+    if (d < bd) { bd = d; best = h; }
+  }
+  splash(hitPoint);
+  if (!best || bd > 0.6) return;
+  best.userData.k = Math.max(0, best.userData.k - 0.34);
+  pressed = Math.min(total, pressed + 1);
+  flowBoost = 1;
+  if (heaps.every((h) => h.userData.k <= 0.01)) resetAt = clock.t + 4;
+}
+
+// ------------------------------------------------------------------ toque (tap sem arrastar = pisar)
+const ray = new THREE.Raycaster(), ptr = new THREE.Vector2();
+let down = null;
+renderer.domElement.addEventListener('pointerdown', (e) => { down = { x: e.clientX, y: e.clientY, t: performance.now() }; });
+renderer.domElement.addEventListener('pointerup', (e) => {
+  if (!down) return;
+  const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y);
+  if (moved > 8 || performance.now() - down.t > 350) { down = null; return; }
+  down = null;
+  ptr.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+  ray.setFromCamera(ptr, camera);
+  const hit = ray.intersectObjects([...heaps.filter((h) => h.visible), tank, bag], false)[0];
+  if (hit) stomp(hit.point);
+});
+
+// ------------------------------------------------------------------ grama em volta (fora da rocha e do tanque de baixo)
+{
+  const tex = new THREE.TextureLoader().load('tex/grama_tufo.webp');
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const a = new THREE.PlaneGeometry(0.62, 0.62); a.translate(0, 0.29, 0);
+  const b = a.clone(); b.rotateY(Math.PI / 2);
+  const geo = mergeGeometries([a, b]);
+  const n = geo.attributes.normal;
+  for (let i = 0; i < n.count; i++) n.setXYZ(i, 0, 1, 0);
+  const mat = new THREE.MeshStandardMaterial({ map: tex, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 1 });
+  let seed = 17;
+  const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  const COUNT = 420;
+  const grass = new THREE.InstancedMesh(geo, mat, COUNT);
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3(), c = new THREE.Color();
+  let i = 0;
+  while (i < COUNT) {
+    const ang = rnd() * Math.PI * 2, d = 1.7 + Math.sqrt(rnd()) * 13;
+    p.set(Math.cos(ang) * d, 0, Math.sin(ang) * d);
+    if (Math.hypot(p.x, p.z - 1.42) < 0.9 || Math.hypot(p.x - 0.92, p.z - 1.25) < 0.5) continue;
+    q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rnd() * Math.PI);
+    const k = 0.5 + rnd() * 0.7;
+    s.set(k, k * (0.8 + rnd() * 0.5), k);
+    grass.setMatrixAt(i, m4.compose(p, q, s));
+    const t = 0.82 + rnd() * 0.25;
+    grass.setColorAt(i, c.setRGB(t, t * (0.96 + rnd() * 0.06), t * 0.9));
+    i++;
+  }
+  grass.receiveShadow = true;
+  scene.add(grass);
+}
+
+// ------------------------------------------------------------------ laço
+frame();
+addEventListener('resize', () => {
+  renderer.setSize(innerWidth, innerHeight);
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+});
+const last = { t: performance.now() };
+renderer.setAnimationLoop(() => {
+  const now = performance.now();
+  const dt = Math.min(0.05, (now - last.t) / 1000); last.t = now;
+  clock.t += dt;
+  for (const m of [matSurf, matJar, matFio]) m.userData.u.uTime.value = clock.t;
+
+  // volta ao começo depois de pisar tudo
+  if (resetAt && clock.t > resetAt) {
+    resetAt = 0; pressed = 0;
+    heaps.forEach((h) => { h.userData.k = 1; });
+  }
+
+  // montes: encolhem/afundam suavemente até o alvo
+  for (const h of heaps) {
+    h.userData.kv += (h.userData.k - h.userData.kv) * Math.min(1, dt * 6);
+    const k = h.userData.kv, sq = 1 - k;
+    h.scale.set(1 + sq * 0.35, Math.max(0.02, k), 1 + sq * 0.35);
+    h.position.y = h.userData.p0.y - sq * 0.03;
+    h.visible = k > 0.03;
+  }
+  // nível do suco, bagaço, fio e tanque de baixo
+  pressedV += (pressed - pressedV) * Math.min(1, dt * 1.5);
+  const f = pressedV / total;
+  tank.position.y = tank0 + f * 0.06;
+  bag.scale.set(1 + f * 0.9, 1 + f * 0.6, 1 + f * 0.9);
+  bag.position.y = tank.position.y;
+  flowBoost = Math.max(0, flowBoost - dt * 0.35);
+  const fw = 1 + f * 0.6 + flowBoost * 0.9;
+  fio.scale.set(fw, 1, fw);
+  matFio.userData.u.uFlow.value = 1.4 + flowBoost * 1.6;
+  coleta.position.y = coleta0 + f * 0.17;
+
+  // respingos
+  for (let i = drops.length - 1; i >= 0; i--) {
+    const d = drops[i];
+    d.userData.v.y -= 9.8 * dt;
+    d.position.addScaledVector(d.userData.v, dt);
+    if (d.position.y < tank.getWorldPosition(new THREE.Vector3()).y) { scene.remove(d); drops.splice(i, 1); }
+  }
+  // ondas
+  for (let i = ripples.length - 1; i >= 0; i--) {
+    const r = ripples[i];
+    r.userData.t += dt;
+    const t = r.userData.t / 0.9;
+    r.scale.setScalar(0.05 + t * 0.32);
+    r.material.opacity = 0.6 * (1 - t);
+    if (t >= 1) { scene.remove(r); r.material.dispose(); ripples.splice(i, 1); }
+  }
+
+  controls.update();
+  renderer.render(scene, camera);
+});
+requestAnimationFrame(() => renderer.domElement.classList.add('on'));
+</script>
+</body>
+</html>
