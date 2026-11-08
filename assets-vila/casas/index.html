@@ -24,7 +24,7 @@
 <body>
 <div id="ui">
   <button id="bCasa" class="on">Casa</button>
-  <button id="bQuart">Quarteirão</button>
+  <button id="bQuart">Rua</button>
   <button id="bSort">Sortear</button>
   <button id="bDentro">Ver dentro</button>
   <button id="bIA">Teste IA</button>
@@ -38,7 +38,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { carregarKit, casaExemplo, casaAleatoria, quarteirao, GLSL_NOISE } from './construtor_casas.js';
+import { carregarKit, casaExemplo, casaAleatoria, rua as quarteirao, GLSL_NOISE } from './construtor_casas.js';
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -97,7 +97,7 @@ function boneco(cor) {
 
 // ------------------------------------------------------------------ cena
 const kit = await carregarKit('casas_kit.glb', 'tex/');
-const CASA_POS = new THREE.Vector3(0, 0, 0), QUART_POS = new THREE.Vector3(26, 0, -6);
+const CASA_POS = new THREE.Vector3(0, 0, 0), QUART_POS = new THREE.Vector3(14, 0, -24);
 let casa = null, quart = null, dentro = false, modo = 'casa', semente = 1;
 const pessoa = boneco(0x8a6a4a); pessoa.position.set(2.0, 0, 4.9); scene.add(pessoa);
 const pessoa2 = boneco(0x6e5a8a); scene.add(pessoa2);
@@ -110,7 +110,7 @@ function porQuart(g) {
   if (quart) scene.remove(quart);
   quart = g; quart.position.copy(QUART_POS); scene.add(quart); aplicaDentro();
   const [W, D] = g.userData.tamanho;
-  pessoa2.position.set(QUART_POS.x + W / 2, 0, QUART_POS.z + D + 1.2);
+  pessoa2.position.set(QUART_POS.x + W / 2, 0, QUART_POS.z + 8.5);
 }
 function aplicaDentro() {
   for (const g of [casa, quart]) if (g && g.userData.camadas.cima) g.userData.camadas.cima.visible = !dentro;
@@ -126,14 +126,14 @@ function olhar(alvo, dist, dir) {
   // sol fixo em direção, a ~30 m do alvo; caixa de sombra fixa e modesta (o chão escurecia no celular com a caixa grande)
   sun.position.copy(alvo).add(new THREE.Vector3(9, 11, 6).normalize().multiplyScalar(30)); sun.target.position.copy(alvo);
   sun.target.updateMatrixWorld();
-  const s = modo === 'quart' ? 16 : modo === 'ia' ? 22 : 10; Object.assign(sun.shadow.camera, { left: -s, right: s, top: s, bottom: -s, near: 5, far: 60 }); sun.shadow.camera.updateProjectionMatrix();
+  const s = modo === 'quart' ? 22 : modo === 'ia' ? 22 : 10; Object.assign(sun.shadow.camera, { left: -s, right: s, top: s, bottom: -s, near: 5, far: 60 }); sun.shadow.camera.updateProjectionMatrix();
   controls.update();
 }
 const retrato = () => innerHeight > innerWidth;
 function verCasa() { modo = 'casa'; olhar(CASA_POS.clone().add(new THREE.Vector3(2.5, 1.4, 2)), retrato() ? 19 : 13, new THREE.Vector3(0.55, 0.65, 1)); marca(); }
 function verQuart() {
   modo = 'quart'; const [W, D] = quart.userData.tamanho;
-  olhar(QUART_POS.clone().add(new THREE.Vector3(W / 2, 2, D / 2)), retrato() ? 44 : 30, new THREE.Vector3(0.5, 0.75, 1)); marca();
+  olhar(QUART_POS.clone().add(new THREE.Vector3(W / 2, 1.6, 8.5)), retrato() ? 30 : 22, new THREE.Vector3(-1, 0.42, 0.28)); marca();
 }
 const bCasa = document.getElementById('bCasa'), bQuart = document.getElementById('bQuart'), bDentro = document.getElementById('bDentro');
 function marca() { bCasa.classList.toggle('on', modo === 'casa'); bQuart.classList.toggle('on', modo === 'quart'); bDentro.classList.toggle('on', dentro); const bi = document.getElementById('bIA'); if (bi) bi.classList.toggle('on', modo === 'ia'); }
@@ -219,7 +219,7 @@ renderer.domElement.addEventListener('pointerup', (e) => {
   while (i < 700) {
     p.set(-25 + rnd() * 80, 0, -28 + rnd() * 50);
     const naCasa = (p.x > -2.5 && p.x < 7 && p.z > -1.5 && p.z < 7.5) || (p.x > -37 && p.x < -1 && p.z > -26 && p.z < 7);
-    const noQuart = p.x > QUART_POS.x - 2 && p.x < QUART_POS.x + 20 && p.z > QUART_POS.z - 2 && p.z < QUART_POS.z + 16.5;
+    const noQuart = p.x > QUART_POS.x - 2 && p.x < QUART_POS.x + 32 && p.z > QUART_POS.z - 1 && p.z < QUART_POS.z + 18;
     if (naCasa || noQuart) continue;
     q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rnd() * Math.PI);
     const k = 0.5 + rnd() * 0.7; s.set(k, k, k);

@@ -430,3 +430,69 @@ export function quarteirao(kit, semente, W = 18, D = 14) {
   const g = M.grupo(); g.userData.tamanho = [W, D];
   return g;
 }
+
+// ------------------------------------------------------------------ rua com becos (no lugar do quarteirão)
+// Duas fileiras de casas frente a frente, com a rua calçada no meio. Entre os lotes, às vezes um beco de 2 m
+// (com escada externa subindo pelo beco); senão as casas ficam geminadas. Portas sempre para a rua.
+export function rua(kit, semente, W = 30) {
+  let s = (semente % 2147483646) + 1; const rnd = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
+  const RUA0 = 7, RUA1 = 10;            // a rua ocupa z de 7 a 10
+  const mapa = new Map(); const casas = new Map(); const becos = [];
+  let id = 1;
+  for (const lado of ['N', 'S']) {
+    let x = 0;
+    while (x < W - 2) {
+      const w = Math.min(3 + Math.floor(rnd() * 3), W - x);
+      if (w < 3) break;
+      const d = 4 + Math.floor(rnd() * 3);
+      const z0 = lado === 'N' ? RUA0 - d - Math.floor(rnd() * 2) * 0 : RUA1;
+      const r = rnd(); const and = r < 0.25 ? 2 : 1; const parcial = r >= 0.25 && r < 0.55;
+      for (let i = x; i < x + w; i++) for (let k = z0; k < z0 + d; k++) {
+        const up = parcial && i >= x + w - 2 && (lado === 'N' ? k < z0 + 2 : k >= z0 + d - 2);
+        mapa.set(i + ',' + k, { casa: id, andares: up ? 2 : and });
+      }
+      const casa = { parede: sorteiaVariante(rnd), tom: tomDaCasa(rnd), portas: [], lote: { x, z: z0, w, d } };
+      const pi = x + Math.floor(rnd() * (w - 1));
+      casa.portas.push(lado === 'N' ? { nivel: 0, lado: 'S', i: pi, k: z0 + d - 1 } : { nivel: 0, lado: 'N', i: pi + 1, k: z0 });
+      casas.set(id, casa);
+      id++;
+      x += w;
+      if (rnd() < 0.4 && x < W - 4) {             // beco
+        becos.push({ x, lado }); x += 2;
+      }
+    }
+  }
+  // escada externa subindo pelo beco (lado oeste da casa logo depois do beco), se a coluna for térrea
+  for (const [, casa] of casas) {
+    const l = casa.lote;
+    if (!becos.some((b) => b.x + 2 === l.x)) continue;
+    let ok = l.d >= 4;
+    for (let k = l.z; k < l.z + 4; k++) { const c = mapa.get(l.x + ',' + k); if (!c || c.andares !== 1) ok = false; }
+    if (ok && rnd() < 0.8) casa.escada = { lado: 'W', i: l.x, k: l.z };
+  }
+  const M = construir(kit, mapa, casas, rnd);
+  // calçamento da rua e entrada dos becos
+  for (let i = 0; i < W; i++) for (let k = RUA0; k < RUA1; k++) M.por('Piso_Patio', i, 0, k + 1);
+  for (const b of becos) {
+    for (let i = b.x; i < b.x + 2; i++) for (let k = 0; k < 2; k++) {
+      const kk = b.lado === 'N' ? RUA0 - 1 - k : RUA1 + k;
+      if (rnd() < 0.7) M.por('Piso_Patio', i, 0, kk + 1);
+    }
+    if (rnd() < 0.6) M.por('Pedrisco_' + (1 + Math.floor(rnd() * 3)), b.x + 1, 0, b.lado === 'N' ? RUA0 - 3 : RUA1 + 3, rnd() * 6);
+    if (rnd() < 0.5) M.por(rnd() < 0.5 ? 'Cantaro' : 'Jarro_Grande', b.x + 0.5, 0, b.lado === 'N' ? RUA0 - 1.6 : RUA1 + 1.6, 0);
+  }
+  // vida: toldos e varais nos terraços, jarros na porta
+  for (const [, casa] of casas) {
+    const l = casa.lote; const c = mapa.get(l.x + ',' + l.z); const y = c.andares * H + 0.2;
+    const r2 = rnd();
+    if (r2 < 0.4) M.por(['Toldo', 'Toldo_Vermelho', 'Toldo_Azul', 'Toldo_Ocre'][Math.floor(rnd() * 4)], l.x + 0.5, y - 0.2, l.z + l.d - 0.5, 0, 'cima', null, 0.8);
+    else if (r2 < 0.7) M.por('Varal', l.x + 0.5, y - 0.2, l.z + 1.5, 0, 'cima', null, Math.min(1, (l.w - 1) / 2.4));
+    else M.por('Esteira_Enrolada', l.x + 0.6, y - 0.2, l.z + 0.8, rnd() * 3, 'cima');
+    if (rnd() < 0.5) {
+      const p = casa.portas[0]; const zf = p.lado === 'S' ? RUA0 + 0.35 : RUA1 - 0.35;
+      M.por(rnd() < 0.5 ? 'Cantaro' : 'Jarro_Grande', p.i + (p.lado === 'S' ? 1.8 : -0.8), 0, zf, rnd() * 3);
+    }
+  }
+  const g = M.grupo(); g.userData.tamanho = [W, RUA1 + 6];
+  return g;
+}
