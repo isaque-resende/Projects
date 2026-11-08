@@ -246,8 +246,9 @@ function construir(kit, mapa, casas, rnd) {
     if (casa.escada) {
       const e = casa.escada, L = LADOS[e.lado];
       let ci = e.i, ck = e.k;
-      for (let s = 0; s < 3; s++) { ci += L.dir[0]; ck += L.dir[1]; }
+      for (let s = 0; s < 2; s++) { ci += L.dir[0]; ck += L.dir[1]; }
       marca.set([e.lado, ci, ck, 0, 'mureta'].join('|'), 'vao');
+      marca.set([e.lado, ci + L.dir[0], ck + L.dir[1], 0, 'mureta'].join('|'), 'vao');
       M.naAresta('Escada_Externa', e.lado, L.start(e.i, e.k), 0, 0, 0, 'base', casa.tom, casa.parede);
     }
     if (casa.escadaMao) {
@@ -291,7 +292,7 @@ function construir(kit, mapa, casas, rnd) {
         else if (a.tipo === 'mureta') {
           if (m === 'vao') {
             M.naAresta('Laje_Borda', a.lado, no, a.nivel, 0, 0, 'cima', casa.tom, casa.parede);
-            semPilar.add(no[0] + ',' + no[1] + '|' + (a.nivel + 1)); pilar([no[0] + L.dir[0], no[1] + L.dir[1]], a.nivel, 'Pilar_Mureta', casa);
+            semPilar.add(no[0] + ',' + no[1] + '|' + (a.nivel + 1)); semPilar.add((no[0] + L.dir[0]) + ',' + (no[1] + L.dir[1]) + '|' + (a.nivel + 1));
             x += 1; continue;
           }
           n = run.length - x >= 2 && !prox ? 2 : 1;
@@ -336,6 +337,7 @@ function construir(kit, mapa, casas, rnd) {
     const quad = [[0, -1], [-1, -1], [-1, 0], [0, 0]].filter(([dx, dz]) => ocup(cel(no[0] + dx, no[1] + dz), nivel));
     if (quad.length !== 1) continue;
     const dono = casas.get(cel(no[0] + quad[0][0], no[1] + quad[0][1]).casa);
+    if (dono.parede[0] < 0.3) continue;
     M.por('Cunhal', no[0], nivel * H, no[1], giro[quad[0].join(',')], nivel > 0 ? 'cima' : 'base', dono.tom, 1, dono.parede);
   }
   for (const k of semPilar) { const pp = pilares.get(k); if (pp && pp[0] === 'Pilar_Mureta') pilares.delete(k); }
