@@ -79,7 +79,9 @@ function materialMundo(tipo, tex) {
       borda = clamp(borda, 0.0, 1.0) * step(vCodigo, 0.5) * acima;
       vec3 col = mix(pedra, reboco, m) * (1.0 - 0.22 * borda);
       float grao = dot(semRep(tReboco, p / 0.9), vec3(0.333));
-      col = mix(col, vec3(1.0, 0.92, 0.8) * (0.74 + 0.2 * grao), bloco);
+      // pedras 3D: cor do vértice + pinceladas (a textura de pedra, larga e suave) + grão
+      float pinc = dot(semRep(tPedra, p / 2.2), vec3(0.333));
+      col = mix(col, vec3(1.0, 0.92, 0.8) * (0.62 + 0.18 * grao + 0.22 * pinc), bloco);
       // por andar: sombra suave sob o beiral e escorridos de sujeira descendo do topo (só por fora)
       float t = mod(vWPos.y, 2.8);
       float fora = step(vCodigo, 0.5) * (1.0 - bloco);
@@ -273,7 +275,7 @@ function construir(kit, mapa, casas, rnd) {
           nome = 'Mureta_' + n; pilar(no, a.nivel, 'Pilar_Mureta', casa);
         } else {
           if (m === 'porta' && x + 1 < run.length) {
-            n = 2; nome = 'Parede_Porta';
+            n = 2; nome = (casa.parede[0] < 0.3 ? 'ParedePedra' : 'Parede') + '_Porta';
             const folha = new THREE.Group();
             for (const [mn, g] of Object.entries(kit.pecas.Porta)) { const me = new THREE.Mesh(g, kit.materiais[mn]); me.castShadow = true; folha.add(me); }
             const piv = new THREE.Group(); piv.add(folha);
@@ -284,14 +286,19 @@ function construir(kit, mapa, casas, rnd) {
           } else {
             n = run.length - x >= 2 && prox !== 'porta' ? 2 : 1;
             const janela = a.tipo === 'ext' && rnd() < (a.nivel ? 0.5 : 0.3);
-            nome = janela ? 'Parede_Janela_' + n : 'Parede_' + n;
+            const pp = casa.parede[0] < 0.3 ? 'ParedePedra' : 'Parede';
+            nome = janela ? pp + '_Janela_' + n : pp + '_' + n;
           }
           pilar(no, a.nivel, 'Pilar', casa);
         }
         M.naAresta(nome, a.lado, no, a.nivel, 0, 0, a.tipo === 'muro' ? 'base' : camada, a.tipo === 'muro' ? null : casa.tom, casa.parede);
         // pedrinhas soltas no pé das paredes de fora (não na frente da porta nem do lado da escada)
-        if (a.tipo === 'ext' && a.nivel === 0 && nome !== 'Parede_Porta' && !(casa.escada && casa.escada.lado === a.lado) && rnd() < 0.2)
-          M.naAresta('Pedrisco_' + (1 + Math.floor(rnd() * 3)), a.lado, no, 0, 0.3 + rnd() * (n - 0.6), 0.6, 'base');
+        const ladoEscada = casa.escada && casa.escada.lado === a.lado;
+        if (a.tipo === 'ext' && a.nivel === 0 && !nome.endsWith('_Porta') && !ladoEscada) {
+          // calçada de pedras chatas encostada na parede, e às vezes um montinho de pedrinhas
+          for (let q = 0; q < n; q++) if (rnd() < 0.55) M.naAresta('Calcada_' + (1 + Math.floor(rnd() * 3)), a.lado, no, 0, q, 0, 'base');
+          if (rnd() < 0.2) M.naAresta('Pedrisco_' + (1 + Math.floor(rnd() * 3)), a.lado, no, 0, 0.3 + rnd() * (n - 0.6), 1.1, 'base');
+        }
         const fim = [no[0] + L.dir[0] * n, no[1] + L.dir[1] * n];
         pilar(fim, a.nivel, a.tipo === 'muro' ? 'Pilar_Patio' : a.tipo === 'mureta' ? 'Pilar_Mureta' : 'Pilar', casa);
         if (a.tipo !== 'mureta') M.colisao.push({ lado: a.lado, de: no, comp: n, nivel: a.nivel, altura: a.tipo === 'muro' ? 1.2 : H });
