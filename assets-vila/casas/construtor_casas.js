@@ -1,111 +1,177 @@
-// Construtor de casas da Judeia do século I a partir do kit modular (casas_kit.glb).
+// Construtor de casas da Judeia do século I a partir do kit modular (casas_kit.glb). Versão 2.
 // É o mesmo módulo que o jogo vai usar para montar vilas e a cidade.
 //
 // Grade de 1 m. A célula (i, k) ocupa x ∈ [i, i+1] e z ∈ [k, k+1] (three.js: Y para cima). Andar = 2,8 m.
-// Uma "planta" é um mapa de células -> { casa, andares } ou { patio: true }. As casas encostadas (geminadas)
-// dividem a mesma parede: ela é colocada uma vez só. Cada casa (ou o quarteirão inteiro) vira poucas malhas
-// fundidas (1 draw call por camada), com tom de cor próprio por casa.
+// As paredes NÃO têm textura própria: o material "alvenaria" pinta pela posição no mundo (contínuo, sem emendas
+// entre peças): reboco em cima, base de pedra embaixo com borda irregular, e reboco gasto mostrando a pedra.
+// Cada casa tem seus parâmetros (cobertura do reboco, tipo de pedra, altura da base) e um tom de cor.
 //
 //   import { carregarKit, casaExemplo, casaAleatoria, quarteirao } from './construtor_casas.js';
-//   const kit = await carregarKit('casas_kit.glb');
-//   const casa = casaExemplo(kit);       // THREE.Group { userData: { camadas: {base, cima}, portas: [...], npc: [...] } }
+//   const kit = await carregarKit('casas_kit.glb', 'tex/');
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const H = 2.8;
-export const VARIANTES = ['Pedra', 'Gasta', 'Caiada', 'Cantaria'];
 const LADOS = {
   S: { di: 0, dk: 1, theta: 0, dir: [1, 0], start: (i, k) => [i, k + 1], key: (i, k) => 'z' + (k + 1), ord: (i, k) => i },
   N: { di: 0, dk: -1, theta: Math.PI, dir: [-1, 0], start: (i, k) => [i + 1, k], key: (i, k) => 'z' + k, ord: (i, k) => -i },
   E: { di: 1, dk: 0, theta: Math.PI / 2, dir: [0, -1], start: (i, k) => [i + 1, k + 1], key: (i, k) => 'x' + (i + 1), ord: (i, k) => -k },
   W: { di: -1, dk: 0, theta: -Math.PI / 2, dir: [0, 1], start: (i, k) => [i, k], key: (i, k) => 'x' + i, ord: (i, k) => k },
 };
+const MATS = ['Casa_Alvenaria', 'Casa_Teto', 'Casa_Atlas'];
+
+// variantes de parede: [cobertura do reboco 0..1, pedra 0 bruta / 1 cantaria, altura da base de pedra]
+export const VARIANTES = {
+  Rebocada: (r) => [1.0, 0, 0.45 + r() * 0.45],
+  Gasta: (r) => [0.5 + r() * 0.2, 0, 0.5 + r() * 0.3],
+  Pedra: () => [0.0, 0, 0.0],
+  Cantaria: (r) => [r() < 0.5 ? 0.0 : 0.35, 1, 0.0],
+};
+function sorteiaVariante(rnd) {
+  const x = rnd();
+  const nome = x < 0.45 ? 'Rebocada' : x < 0.7 ? 'Gasta' : x < 0.85 ? 'Pedra' : 'Cantaria';
+  return VARIANTES[nome](rnd);
+}
+
+// ------------------------------------------------------------------ materiais
+const GLSL_NOISE = `
+float h21(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+float vnoise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(h21(i), h21(i + vec2(1, 0)), f.x), mix(h21(i + vec2(0, 1)), h21(i + vec2(1, 1)), f.x), f.y); }
+vec2 planar(vec3 w, vec3 n){ return abs(n.y) > 0.6 ? w.xz : (abs(n.x) > abs(n.z) ? vec2(w.z, w.y) : vec2(w.x, w.y)); }
+`;
+function materialMundo(tipo, tex) {
+  const m = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.95, metalness: 0 });
+  m.onBeforeCompile = (sh) => {
+    Object.assign(sh.uniforms, { tReboco: { value: tex.reboco }, tPedra: { value: tex.pedra }, tCantaria: { value: tex.cantaria }, tTeto: { value: tex.teto } });
+    sh.vertexShader = 'attribute vec3 parede; attribute float aCodigo; varying vec3 vParede; varying float vCodigo; varying vec3 vWPos;\n' +
+      sh.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>\n vWPos = (modelMatrix * vec4(transformed, 1.0)).xyz; vParede = parede; vCodigo = aCodigo;');
+    const corpo = tipo === 'alvenaria' ? `
+      vec3 nW = normalize(cross(dFdx(vWPos), dFdy(vWPos)));
+      vec2 p = planar(vWPos, nW);
+      vec3 pedra = mix(texture2D(tPedra, p / 1.5).rgb, texture2D(tCantaria, p / 1.9).rgb, step(0.5, vParede.y));
+      vec3 reboco = texture2D(tReboco, p / 2.6).rgb;
+      float nn = vnoise(p * 0.85) * 0.62 + vnoise(p * 2.6) * 0.38;
+      float baseY = vParede.z + (vnoise(vec2(p.x * 1.7, 3.1)) - 0.5) * 0.32;
+      float acima = smoothstep(baseY - 0.025, baseY + 0.025, vWPos.y);
+      float gasto = smoothstep(vParede.x - 0.035, vParede.x + 0.035, nn);
+      float m = acima * (1.0 - gasto);
+      if (vCodigo > 1.5) m = 0.0; else if (vCodigo > 0.5) m = 1.0;
+      float borda = (1.0 - smoothstep(0.0, 0.07, abs(vWPos.y - baseY))) + (1.0 - smoothstep(0.0, 0.05, abs(nn - vParede.x)));
+      borda = clamp(borda, 0.0, 1.0) * step(vCodigo, 0.5) * acima;
+      vec3 col = mix(pedra, reboco, m) * (1.0 - 0.22 * borda);
+      float ao = 0.72 + 0.28 * smoothstep(0.0, 0.9, vWPos.y);
+      diffuseColor.rgb *= col * ao;` : `
+      vec3 nW = normalize(cross(dFdx(vWPos), dFdy(vWPos)));
+      vec2 p = planar(vWPos, nW);
+      diffuseColor.rgb *= texture2D(tTeto, p / 2.2).rgb;`;
+    sh.fragmentShader = 'uniform sampler2D tReboco, tPedra, tCantaria, tTeto; varying vec3 vParede; varying float vCodigo; varying vec3 vWPos;\n' + GLSL_NOISE +
+      sh.fragmentShader.replace('#include <map_fragment>', corpo);
+  };
+  m.customProgramCacheKey = () => 'casa_' + tipo;
+  return m;
+}
 
 // ------------------------------------------------------------------ kit
-export async function carregarKit(url) {
+export async function carregarKit(url, texDir = 'tex/') {
   const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(url);
   gltf.scene.updateMatrixWorld(true);
-  const pecas = {}; let material = null;
-  gltf.scene.traverse((o) => {
-    if (!o.isMesh) return;
-    const g = toFloat(o.geometry.clone()); g.applyMatrix4(o.matrixWorld);
-    pecas[o.name] = g; material = material || o.material;
-  });
-  material = material.clone(); material.vertexColors = true;
-  return { pecas, material };
+  const tl = new THREE.TextureLoader();
+  const tex = {};
+  for (const n of ['reboco', 'pedra', 'cantaria', 'teto']) {
+    const t = tl.load(texDir + n + '.webp'); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; tex[n] = t;
+  }
+  const pecas = {}; let atlas = null;
+  for (const no of gltf.scene.children) {
+    const porMat = {};
+    no.traverse((o) => {
+      if (!o.isMesh) return;
+      const mn = MATS.includes(o.material.name) ? o.material.name : 'Casa_Atlas';
+      if (mn === 'Casa_Atlas') atlas = atlas || o.material;
+      const g = toFloat(o.geometry.clone()); g.applyMatrix4(o.matrixWorld);
+      if (mn !== 'Casa_Atlas') {
+        const uv = g.attributes.uv, n = g.attributes.position.count, cod = new Float32Array(n);
+        for (let i = 0; i < n; i++) cod[i] = uv ? Math.round(uv.getX(i)) : 0;
+        g.setAttribute('aCodigo', new THREE.BufferAttribute(cod, 1));
+        g.setAttribute('parede', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
+      }
+      porMat[mn] = porMat[mn] ? mergeGeometries([porMat[mn], g]) : g;
+    });
+    pecas[no.name] = porMat;
+  }
+  const atl = atlas.clone(); atl.vertexColors = true;
+  const materiais = { Casa_Alvenaria: materialMundo('alvenaria', tex), Casa_Teto: materialMundo('teto', tex), Casa_Atlas: atl };
+  return { pecas, materiais, tex };
 }
 function toFloat(g) {
   for (const name of Object.keys(g.attributes)) {
     const a = g.attributes[name];
-    if (a.array instanceof Float32Array && !a.isInterleavedBufferAttribute) continue;
-    const out = new Float32Array(a.count * a.itemSize);
-    for (let i = 0; i < a.count; i++) for (let c = 0; c < a.itemSize; c++) out[i * a.itemSize + c] = a.getComponent ? a.getComponent(i, c) : [a.getX, a.getY, a.getZ, a.getW][c].call(a, i);
-    g.setAttribute(name, new THREE.BufferAttribute(out, a.itemSize));
-  }
-  if (g.attributes.color && g.attributes.color.itemSize === 4) {   // RGBA -> RGB
-    const a = g.attributes.color, out = new Float32Array(a.count * 3);
-    for (let i = 0; i < a.count; i++) { out[i * 3] = a.getX(i); out[i * 3 + 1] = a.getY(i); out[i * 3 + 2] = a.getZ(i); }
-    g.setAttribute('color', new THREE.BufferAttribute(out, 3));
+    if (a.array instanceof Float32Array && !a.isInterleavedBufferAttribute && !(name === 'color' && a.itemSize === 4)) continue;
+    const k = name === 'color' ? 3 : a.itemSize;
+    const out = new Float32Array(a.count * k);
+    const get = [a.getX, a.getY, a.getZ, a.getW];
+    for (let i = 0; i < a.count; i++) for (let c = 0; c < k; c++) out[i * k + c] = get[c].call(a, i);
+    g.setAttribute(name, new THREE.BufferAttribute(out, k));
   }
   return g;
 }
 
 // ------------------------------------------------------------------ montagem
 class Montador {
-  constructor(kit) { this.kit = kit; this.camadas = { base: [], cima: [] }; this.portas = []; this.npc = []; this.colisao = []; }
-  por(nome, x, y, z, theta = 0, camada = 'base', tom = null, escala = 1) {
-    const g0 = this.kit.pecas[nome]; if (!g0) { console.warn('peça faltando', nome); return; }
-    const g = g0.clone();
+  constructor(kit) { this.kit = kit; this.camadas = { base: {}, cima: {} }; this.portas = []; this.npc = []; this.colisao = []; }
+  por(nome, x, y, z, theta = 0, camada = 'base', tom = null, escala = 1, parede = null) {
+    const peca = this.kit.pecas[nome]; if (!peca) { console.warn('peça faltando', nome); return; }
     const m = new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), theta), new THREE.Vector3(escala, escala, escala));
-    g.applyMatrix4(m);
-    if (tom) { const c = g.attributes.color; for (let i = 0; i < c.count; i++) c.setXYZ(i, c.getX(i) * tom[0], c.getY(i) * tom[1], c.getZ(i) * tom[2]); }
-    this.camadas[camada].push(g);
+    for (const [mn, g0] of Object.entries(peca)) {
+      const g = g0.clone(); g.applyMatrix4(m);
+      if (tom) { const c = g.attributes.color; for (let i = 0; i < c.count; i++) c.setXYZ(i, c.getX(i) * tom[0], c.getY(i) * tom[1], c.getZ(i) * tom[2]); }
+      if (g.attributes.parede && parede) { const a = g.attributes.parede; for (let i = 0; i < a.count; i++) a.setXYZ(i, parede[0], parede[1], parede[2]); }
+      (this.camadas[camada][mn] = this.camadas[camada][mn] || []).push(g);
+    }
   }
-  // peça presa a uma aresta da grade (mesmo transform das paredes): desloca 'ao' longo do lado e 'fora' para fora
-  naAresta(nome, lado, no, nivel, ao = 0, fora = 0, camada = 'base', tom = null) {
-    const L = LADOS[lado];
-    const out = [Math.sin(L.theta), Math.cos(L.theta)];
-    this.por(nome, no[0] + L.dir[0] * ao + out[0] * fora, nivel * H, no[1] + L.dir[1] * ao + out[1] * fora, L.theta, camada, tom);
+  naAresta(nome, lado, no, nivel, ao = 0, fora = 0, camada = 'base', tom = null, parede = null) {
+    const L = LADOS[lado]; const out = [Math.sin(L.theta), Math.cos(L.theta)];
+    this.por(nome, no[0] + L.dir[0] * ao + out[0] * fora, nivel * H, no[1] + L.dir[1] * ao + out[1] * fora, L.theta, camada, tom, 1, parede);
   }
   grupo() {
     const grp = new THREE.Group(); const camadas = {};
-    for (const [nome, lista] of Object.entries(this.camadas)) {
-      if (!lista.length) continue;
-      const mesh = new THREE.Mesh(mergeGeometries(lista, false), this.kit.material);
-      mesh.castShadow = true; mesh.receiveShadow = true; mesh.name = 'casas_' + nome;
-      grp.add(mesh); camadas[nome] = mesh;
+    for (const [nome, porMat] of Object.entries(this.camadas)) {
+      const sub = new THREE.Group(); sub.name = 'casas_' + nome;
+      for (const [mn, lista] of Object.entries(porMat)) {
+        if (!lista.length) continue;
+        const mesh = new THREE.Mesh(mergeGeometries(lista, false), this.kit.materiais[mn]);
+        mesh.castShadow = true; mesh.receiveShadow = true; sub.add(mesh);
+      }
+      grp.add(sub); camadas[nome] = sub;
     }
     for (const p of this.portas) grp.add(p);
-    grp.userData = { camadas, portas: this.portas, npc: this.npc, colisao: this.colisao };
     for (const n of this.npc) grp.add(n);
+    grp.userData = { camadas, portas: this.portas, npc: this.npc, colisao: this.colisao };
     return grp;
   }
 }
-
 function tomDaCasa(rnd) {
-  const t = 0.9 + rnd() * 0.16;
-  return [t * (0.98 + rnd() * 0.05), t, t * (0.94 + rnd() * 0.06)];
+  const t = 0.93 + rnd() * 0.12;
+  return [t * (1.0 + rnd() * 0.04), t, t * (0.93 + rnd() * 0.06)];
 }
 
-// mapa: Map 'i,k' -> { casa, andares } | { patio: true }.  casas: Map id -> { variante, tom, portas:[{nivel,lado,i,k}],
-//        escada:{lado,i,k} (externa, 4 arestas) | escadaMao:{lado,i,k} }
-function construir(kit, mapa, casas, rnd, opts = {}) {
+// mapa: Map 'i,k' -> { casa, andares } | { patio: true }.
+// casas: Map id -> { parede:[cob, pedra, base], tom, portas:[{nivel,lado,i,k}], escada:{lado,i,k}, escadaMao:{lado,i,k} }
+function construir(kit, mapa, casas, rnd) {
   const M = new Montador(kit);
   const cel = (i, k) => mapa.get(i + ',' + k);
   const ocup = (c, n) => c && !c.patio && c.andares > n;
   const lados = Object.keys(LADOS);
-  const arestas = [];   // {lado, i, k, nivel, tipo: 'ext'|'div'|'mureta'|'muro', dono}
-  let maxN = 0;
+  const arestas = [];
   for (const [key, c] of mapa) {
     const [i, k] = key.split(',').map(Number);
     if (c.patio) {
       M.por('Piso_Patio', i, 0, k + 1);
-      for (const s of lados) { const L = LADOS[s]; const v = cel(i + L.di, k + L.dk); if (!v) arestas.push({ lado: s, i, k, nivel: 0, tipo: 'muro', dono: -1 }); }
+      for (const s of lados) { const L = LADOS[s]; if (!cel(i + L.di, k + L.dk)) arestas.push({ lado: s, i, k, nivel: 0, tipo: 'muro', dono: -1 }); }
       continue;
     }
-    maxN = Math.max(maxN, c.andares);
     const casa = casas.get(c.casa);
     M.por('Piso_Terra', i, 0, k + 1, 0, 'base', casa.tom);
     for (let n = 0; n < c.andares; n++) {
@@ -116,27 +182,24 @@ function construir(kit, mapa, casas, rnd, opts = {}) {
         else if (v.casa !== c.casa && c.casa < v.casa) arestas.push({ lado: s, i, k, nivel: n, tipo: 'div', dono: c.casa });
       }
     }
-    // mureta do terraço no topo
     const t = c.andares - 1;
     for (const s of lados) {
       const L = LADOS[s]; const v = cel(i + L.di, k + L.dk);
-      if (ocup(v, t + 1)) continue;                                  // parede do vizinho continua para cima
+      if (ocup(v, t + 1)) continue;
       if (v && !v.patio && v.casa === c.casa && v.andares === c.andares) continue;
-      if (v && !v.patio && v.casa !== c.casa && v.andares === c.andares && c.casa > v.casa) continue;   // mureta dividida: só uma
+      if (v && !v.patio && v.casa !== c.casa && v.andares === c.andares && c.casa > v.casa) continue;
       arestas.push({ lado: s, i, k, nivel: t, tipo: 'mureta', dono: c.casa });
     }
   }
-  // marcas de porta, escada e vão da mureta
   const marca = new Map();
-  for (const [id, casa] of casas) {
+  for (const [, casa] of casas) {
     for (const p of casa.portas || []) marca.set([p.lado, p.i, p.k, p.nivel, 'ext'].join('|'), 'porta');
     if (casa.escada) {
       const e = casa.escada, L = LADOS[e.lado];
-      // a 4ª aresta a partir do começo, no sentido do lado
       let ci = e.i, ck = e.k;
-      for (let s = 0; s < 3; s++) { ci += L.dir[0] !== 0 ? L.dir[0] : 0; ck += L.dir[1] !== 0 ? L.dir[1] : 0; }
+      for (let s = 0; s < 3; s++) { ci += L.dir[0]; ck += L.dir[1]; }
       marca.set([e.lado, ci, ck, 0, 'mureta'].join('|'), 'vao');
-      const no = L.start(e.i, e.k); M.naAresta('Escada_Externa', e.lado, no, 0, 0, 0, 'base', casa.tom);
+      M.naAresta('Escada_Externa', e.lado, L.start(e.i, e.k), 0, 0, 0, 'base', casa.tom, casa.parede);
     }
     if (casa.escadaMao) {
       const e = casa.escadaMao, L = LADOS[e.lado];
@@ -144,76 +207,75 @@ function construir(kit, mapa, casas, rnd, opts = {}) {
       M.naAresta('Escada_Mao', e.lado, L.start(e.i, e.k), 0, 0.5, 0, 'base');
     }
   }
-  // agrupa em trechos contínuos e escolhe peças
   const trechos = new Map();
   for (const a of arestas) {
-    const L = LADOS[a.lado];
-    const key = [a.lado, L.key(a.i, a.k), a.nivel, a.tipo, a.dono].join('|');
+    const key = [a.lado, LADOS[a.lado].key(a.i, a.k), a.nivel, a.tipo, a.dono].join('|');
     if (!trechos.has(key)) trechos.set(key, []);
     trechos.get(key).push(a);
   }
+  // um pilar por nó e faixa de altura; parede > mureta > pátio
   const pilares = new Map();
-  // um pilar por nó e faixa de altura; parede > mureta > pátio (nunca dois pilares no mesmo lugar)
-  const pilar = (no, nivel, nome, tom) => {
-    const tipo = nome.startsWith('Pilar_Mureta') ? 1 : nome === 'Pilar_Patio' ? 0 : 2;
-    const faixa = tipo === 1 ? nivel + 1 : nivel;
-    const k = no[0] + ',' + no[1] + '|' + faixa;
+  const pilar = (no, nivel, nome, casa) => {
+    const tipo = nome === 'Pilar_Mureta' ? 1 : nome === 'Pilar_Patio' ? 0 : 2;
+    const k = no[0] + ',' + no[1] + '|' + (tipo === 1 ? nivel + 1 : nivel);
     const atual = pilares.get(k);
-    if (!atual || atual[4] < tipo) pilares.set(k, [nome, no, nivel, tom, tipo]);
+    if (!atual || atual[4] < tipo) pilares.set(k, [nome, no, nivel, casa, tipo]);
   };
   for (const lista of trechos.values()) {
     const L = LADOS[lista[0].lado];
     lista.sort((a, b) => L.ord(a.i, a.k) - L.ord(b.i, b.k));
-    // quebra onde há buraco
     const runs = [[lista[0]]];
     for (let x = 1; x < lista.length; x++) {
-      const p = lista[x - 1], a = lista[x];
-      if (Math.abs(L.ord(a.i, a.k) - L.ord(p.i, p.k)) === 1) runs[runs.length - 1].push(a); else runs.push([a]);
+      if (Math.abs(L.ord(lista[x].i, lista[x].k) - L.ord(lista[x - 1].i, lista[x - 1].k)) === 1) runs[runs.length - 1].push(lista[x]); else runs.push([lista[x]]);
     }
     for (const run of runs) {
-      const a0 = run[0]; const casa = casas.get(a0.dono) || { variante: 'Pedra', tom: null };
-      const V = casa.variante; const tom = casa.tom; const camada = a0.nivel > 0 || a0.tipo === 'mureta' ? 'cima' : 'base';
+      const a0 = run[0]; const casa = casas.get(a0.dono) || { parede: [0, 0, 0], tom: null };
+      const camada = a0.nivel > 0 || a0.tipo === 'mureta' ? 'cima' : 'base';
       let x = 0;
       while (x < run.length) {
         const a = run[x]; const no = L.start(a.i, a.k);
         const m = marca.get([a.lado, a.i, a.k, a.nivel, a.tipo].join('|'));
+        const prox = run[x + 1] ? marca.get([a.lado, run[x + 1].i, run[x + 1].k, a.nivel, a.tipo].join('|')) : 'fim';
         let n = 1, nome;
-        if (a.tipo === 'muro') { n = run.length - x >= 2 ? 2 : 1; nome = 'Muro_Patio_' + n; pilar(no, 0, 'Pilar_Patio', null); }
+        if (a.tipo === 'muro') { n = run.length - x >= 2 ? 2 : 1; nome = 'Muro_Patio_' + n; pilar(no, 0, 'Pilar_Patio', casa); }
         else if (a.tipo === 'mureta') {
-          if (m === 'vao') { M.naAresta('Laje_Borda', a.lado, no, a.nivel, 0, 0, 'cima', tom); pilar(no, a.nivel, 'Pilar_Mureta_' + V, tom); x += 1;
-            const fim = [no[0] + L.dir[0], no[1] + L.dir[1]]; pilar(fim, a.nivel, 'Pilar_Mureta_' + V, tom); continue; }
-          n = run.length - x >= 2 && !marca.get([a.lado, run[x + 1].i, run[x + 1].k, a.nivel, a.tipo].join('|')) ? 2 : 1;
-          nome = 'Mureta_' + V + '_' + n; pilar(no, a.nivel, 'Pilar_Mureta_' + V, tom);
-          if (rnd() < 0.3) for (let q = 0; q < n; q++) M.naAresta('Vigas_1', a.lado, no, a.nivel, q, 0, 'cima', tom);
+          if (m === 'vao') {
+            M.naAresta('Laje_Borda', a.lado, no, a.nivel, 0, 0, 'cima', casa.tom, casa.parede);
+            pilar(no, a.nivel, 'Pilar_Mureta', casa); pilar([no[0] + L.dir[0], no[1] + L.dir[1]], a.nivel, 'Pilar_Mureta', casa);
+            x += 1; continue;
+          }
+          n = run.length - x >= 2 && !prox ? 2 : 1;
+          nome = 'Mureta_' + n; pilar(no, a.nivel, 'Pilar_Mureta', casa);
+          if (rnd() < 0.35) for (let q = 0; q < n; q++) M.naAresta('Vigas_1', a.lado, no, a.nivel, q, 0, 'cima', casa.tom);
         } else {
           if (m === 'porta' && x + 1 < run.length) {
-            n = 2; nome = 'Parede_' + V + '_Porta';
-            const folha = new THREE.Mesh(kit.pecas.Porta, kit.material); folha.castShadow = true;
+            n = 2; nome = 'Parede_Porta';
+            const folha = new THREE.Group();
+            for (const [mn, g] of Object.entries(kit.pecas.Porta)) { const me = new THREE.Mesh(g, kit.materiais[mn]); me.castShadow = true; folha.add(me); }
             const piv = new THREE.Group(); piv.add(folha);
             const out = [Math.sin(L.theta), Math.cos(L.theta)];
             piv.position.set(no[0] + L.dir[0] * 0.55 - out[0] * 0.12, a.nivel * H, no[1] + L.dir[1] * 0.55 - out[1] * 0.12);
-            piv.rotation.y = L.theta; piv.userData = { fechada: L.theta, aberta: L.theta + 1.6, alvo: L.theta, porta: true };   // abre para dentro
+            piv.rotation.y = L.theta; piv.userData = { fechada: L.theta, aberta: L.theta + 1.6, alvo: L.theta, porta: true };
             M.portas.push(piv);
-            M.naAresta('Soleira', a.lado, no, a.nivel, 0.5, 0.42, 'base');
+            M.naAresta('Soleira', a.lado, no, a.nivel, 0.5, 0.42, 'base', null, casa.parede);
           } else {
-            n = run.length - x >= 2 && marca.get([a.lado, run[x + 1].i, run[x + 1].k, a.nivel, a.tipo].join('|')) !== 'porta' ? 2 : 1;
+            n = run.length - x >= 2 && prox !== 'porta' ? 2 : 1;
             const janela = a.tipo === 'ext' && rnd() < (a.nivel ? 0.5 : 0.3);
-            nome = 'Parede_' + V + (janela ? '_Janela_' + n : '_' + n);
+            nome = janela ? 'Parede_Janela_' + n : 'Parede_' + n;
           }
-          pilar(no, a.nivel, 'Pilar_' + V, tom);
+          pilar(no, a.nivel, 'Pilar', casa);
         }
-        const camadaP = a.tipo === 'muro' ? 'base' : camada;
-        M.naAresta(nome, a.lado, no, a.nivel, 0, 0, camadaP, a.tipo === 'muro' ? null : tom);
+        M.naAresta(nome, a.lado, no, a.nivel, 0, 0, a.tipo === 'muro' ? 'base' : camada, a.tipo === 'muro' ? null : casa.tom, casa.parede);
         const fim = [no[0] + L.dir[0] * n, no[1] + L.dir[1] * n];
-        if (a.tipo === 'muro') pilar(fim, 0, 'Pilar_Patio', null);
-        else pilar(fim, a.nivel, (a.tipo === 'mureta' ? 'Pilar_Mureta_' : 'Pilar_') + V, tom);
-        // colisão (caixa da parede) para o jogo
+        pilar(fim, a.nivel, a.tipo === 'muro' ? 'Pilar_Patio' : a.tipo === 'mureta' ? 'Pilar_Mureta' : 'Pilar', casa);
         if (a.tipo !== 'mureta') M.colisao.push({ lado: a.lado, de: no, comp: n, nivel: a.nivel, altura: a.tipo === 'muro' ? 1.2 : H });
         x += n;
       }
     }
   }
-  for (const [nome, no, nivel, tom] of pilares.values()) M.por(nome, no[0], nivel * H, no[1], 0, nome.includes('Mureta') || nivel > 0 ? 'cima' : 'base', tom);
+  for (const [nome, no, nivel, casa] of pilares.values()) {
+    M.por(nome, no[0], nivel * H, no[1], 0, nome === 'Pilar_Mureta' || nivel > 0 ? 'cima' : 'base', nome === 'Pilar_Patio' ? null : casa.tom, 1, casa.parede);
+  }
   return M;
 }
 
@@ -227,12 +289,11 @@ export function casaExemplo(kit) {
   let s = 7; const rnd = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
   const mapa = new Map();
   for (let i = 0; i < 5; i++) for (let k = 0; k < 4; k++) mapa.set(i + ',' + k, { casa: 1, andares: (i >= 2 && k <= 1) ? 2 : 1 });
-  const casas = new Map([[1, { variante: 'Pedra', tom: [1, 1, 1],
+  const casas = new Map([[1, { parede: [1.0, 0, 0.75], tom: [1, 0.99, 0.96],
     portas: [{ nivel: 0, lado: 'S', i: 1, k: 3 }, { nivel: 1, lado: 'W', i: 2, k: 0 }],
     escada: { lado: 'W', i: 0, k: 0 } }]]);
   const M = construir(kit, mapa, casas, rnd);
-  // térreo
-  M.por('Banco_Cama', 0.3, 0, 1.0, 0);
+  M.por('Banco_Cama', 0.3, 0, 1.0, 0, 'base', null, 1, [1, 0, 0.3]);
   M.por('Mesa_Baixa', 2.2, 0, 2.2, 0.1);
   M.por('Candeia', 2.35, 0.355, 2.1, 0.5);
   M.por('Banquinho', 3.0, 0, 2.45, 0);
@@ -242,7 +303,6 @@ export function casaExemplo(kit) {
   M.por('Bau', 2.5, 0, 0.55, 0); M.por('Bau_Tampa', 2.5, 0.42, 0.78, 0);
   M.por('Tear', 4.55, 0, 2.4, -Math.PI / 2);
   M.por('Esteira_Enrolada', 0.3, 0, 3.55, 0);
-  // quarto de cima (aliyá) e terraço
   M.por('Cama_Esteira', 2.9, 3.0, 0.35, -Math.PI / 2, 'cima');
   M.por('Toldo', 2.6, 3.0, 3.78, 0, 'cima', null, 0.78);
   M.por('Cama_Esteira', 2.7, 3.0, 2.5, -Math.PI / 2, 'cima');
@@ -262,21 +322,17 @@ export function casaAleatoria(kit, semente) {
   const cima = rnd() < 0.45;
   const cw = Math.min(w - 1, 2 + Math.floor(rnd() * 2)), cd = 2;
   for (let i = 0; i < w; i++) for (let k = 0; k < d; k++) mapa.set(i + ',' + k, { casa: 1, andares: cima && i >= w - cw && k < cd ? 2 : 1 });
-  if (rnd() < 0.5) for (let i = 0; i < 2; i++) for (let k = d; k < d + 2; k++) mapa.set(i + ',' + k, { casa: 1, andares: 1 });   // forma de L
-  const dd = Math.max(...[...mapa.keys()].map((q) => +q.split(',')[1])) + 1;
-  const casa = { variante: VARIANTES[Math.floor(rnd() * 4)], tom: tomDaCasa(rnd), portas: [] };
-  // porta no lado sul de uma fileira que tenha 2 células seguidas
+  if (rnd() < 0.5) for (let i = 0; i < 2; i++) for (let k = d; k < d + 2; k++) mapa.set(i + ',' + k, { casa: 1, andares: 1 });
+  const casa = { parede: sorteiaVariante(rnd), tom: tomDaCasa(rnd), portas: [] };
   const sul = [...mapa.keys()].map((q) => q.split(',').map(Number)).filter(([i, k]) => !mapa.has(i + ',' + (k + 1)));
   const op = sul.filter(([i, k]) => mapa.has((i + 1) + ',' + k) && !mapa.has((i + 1) + ',' + (k + 1)));
   if (op.length) { const [i, k] = op[Math.floor(rnd() * op.length)]; casa.portas.push({ nivel: 0, lado: 'S', i, k }); }
   if (cima) casa.portas.push({ nivel: 1, lado: 'W', i: w - cw, k: 0 });
-  // escada: lado oeste se tiver 4 células em coluna; senão escada de mão
   let colW = 0; while (mapa.has('0,' + colW) && mapa.get('0,' + colW).andares === 1) colW++;
-  if (colW >= 4) casa.escada = { lado: 'W', i: 0, k: 0 };
-  else casa.escadaMao = { lado: 'N', i: 0, k: 0 };
+  if (colW >= 4) casa.escada = { lado: 'W', i: 0, k: 0 }; else casa.escadaMao = { lado: 'N', i: 0, k: 0 };
   const M = construir(kit, mapa, new Map([[1, casa]]), rnd);
-  M.por('Mesa_Baixa', w / 2, 0, dd / 2, rnd());
-  M.por('Cama_Esteira', 0.4, 0, 0.3 + 1.9, 0);
+  M.por('Mesa_Baixa', w / 2, 0, d / 2, rnd());
+  M.por('Cama_Esteira', 0.4, 0, 2.2, 0);
   M.por('Jarro_Grande', w - 0.6, 0, d - 0.6, 0);
   return M.grupo();
 }
@@ -284,7 +340,6 @@ export function casaAleatoria(kit, semente) {
 // ------------------------------------------------------------------ quarteirão de fundo (casas geminadas)
 export function quarteirao(kit, semente, W = 18, D = 14) {
   let s = (semente % 2147483646) + 1; const rnd = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
-  // divide o quarteirão em lotes (BSP)
   const lotes = [];
   (function divide(x, z, w, d) {
     const podeW = w >= 6, podeD = d >= 6;
@@ -292,7 +347,6 @@ export function quarteirao(kit, semente, W = 18, D = 14) {
     if (podeW && (!podeD || w > d || (w === d && rnd() < 0.5))) { const c = 3 + Math.floor(rnd() * (w - 5)); divide(x, z, c, d); divide(x + c, z, w - c, d); }
     else { const c = 3 + Math.floor(rnd() * (d - 5)); divide(x, z, w, c); divide(x, z + c, w, d - c); }
   })(0, 0, W, D);
-  // pátio: o lote mais central que não encosta na borda
   const interno = lotes.filter((l) => l.x > 0 && l.z > 0 && l.x + l.w < W && l.z + l.d < D);
   const patios = new Set();
   if (interno.length) patios.add(interno[Math.floor(rnd() * interno.length)]);
@@ -300,16 +354,11 @@ export function quarteirao(kit, semente, W = 18, D = 14) {
   lotes.forEach((l, id) => {
     if (patios.has(l)) { for (let i = l.x; i < l.x + l.w; i++) for (let k = l.z; k < l.z + l.d; k++) mapa.set(i + ',' + k, { patio: true }); return; }
     const r = rnd(); const and = r < 0.2 ? 2 : 1; const parcial = r >= 0.2 && r < 0.45;
-    for (let i = l.x; i < l.x + l.w; i++) for (let k = l.z; k < l.z + l.d; k++) {
-      const up = parcial && i < l.x + 2 && k < l.z + 2;
-      mapa.set(i + ',' + k, { casa: id + 1, andares: up ? 2 : and });
-    }
-    casas.set(id + 1, { variante: VARIANTES[Math.floor(rnd() * 4)], tom: tomDaCasa(rnd), portas: [], lote: l });
+    for (let i = l.x; i < l.x + l.w; i++) for (let k = l.z; k < l.z + l.d; k++) mapa.set(i + ',' + k, { casa: id + 1, andares: parcial && i < l.x + 2 && k < l.z + 2 ? 2 : and });
+    casas.set(id + 1, { parede: sorteiaVariante(rnd), tom: tomDaCasa(rnd), portas: [], lote: l });
   });
-  // portas: no lado do lote que dá para a rua (borda do quarteirão) ou para o pátio
-  for (const [id, casa] of casas) {
-    const l = casa.lote;
-    const ops = [];
+  for (const [, casa] of casas) {
+    const l = casa.lote; const ops = [];
     const livre = (i, k) => { const c = mapa.get(i + ',' + k); return !c || c.patio; };
     for (let i = l.x; i < l.x + l.w - 1; i++) {
       if (livre(i, l.z + l.d) && livre(i + 1, l.z + l.d)) ops.push({ nivel: 0, lado: 'S', i, k: l.z + l.d - 1 });
@@ -322,8 +371,7 @@ export function quarteirao(kit, semente, W = 18, D = 14) {
     if (ops.length) casa.portas.push(ops[Math.floor(rnd() * ops.length)]);
   }
   const M = construir(kit, mapa, casas, rnd);
-  // um pouco de vida nos terraços e no pátio
-  for (const [id, casa] of casas) {
+  for (const [, casa] of casas) {
     const l = casa.lote; if (rnd() < 0.5) continue;
     const c = mapa.get(l.x + ',' + l.z); const y = c.andares * H + 0.2;
     if (rnd() < 0.5) M.por('Esteira_Enrolada', l.x + 0.5, y, l.z + 0.6, rnd() * 3, 'cima');

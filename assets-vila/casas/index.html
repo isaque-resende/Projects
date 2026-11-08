@@ -43,7 +43,7 @@ renderer.setSize(innerWidth, innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.NeutralToneMapping;
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.PCFShadowMap;
 document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
@@ -59,7 +59,7 @@ scene.fog = new THREE.Fog(0xeae4d6, 40, 95);
 scene.add(new THREE.HemisphereLight(0xcfe6ff, 0xc9a47a, 1.35));
 const sun = new THREE.DirectionalLight(0xffe4bc, 3.2);
 sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
-sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.03;
+sun.shadow.bias = -0.0008; sun.shadow.normalBias = 0.05;
 scene.add(sun); scene.add(sun.target);
 
 const texL = new THREE.TextureLoader();
@@ -85,7 +85,7 @@ function boneco(cor) {
 }
 
 // ------------------------------------------------------------------ cena
-const kit = await carregarKit('casas_kit.glb');
+const kit = await carregarKit('casas_kit.glb', 'tex/');
 const CASA_POS = new THREE.Vector3(0, 0, 0), QUART_POS = new THREE.Vector3(26, 0, -6);
 let casa = null, quart = null, dentro = false, modo = 'casa', semente = 1;
 const pessoa = boneco(0x8a6a4a); pessoa.position.set(2.0, 0, 4.9); scene.add(pessoa);
@@ -112,8 +112,10 @@ porQuart(quarteirao(kit, 7));
 function olhar(alvo, dist, dir) {
   controls.target.copy(alvo);
   camera.position.copy(alvo).add(dir.clone().normalize().multiplyScalar(dist));
-  sun.position.copy(alvo).add(new THREE.Vector3(9, 11, 6)); sun.target.position.copy(alvo);
-  const s = dist * 0.75; Object.assign(sun.shadow.camera, { left: -s, right: s, top: s, bottom: -s, near: 0.5, far: 60 }); sun.shadow.camera.updateProjectionMatrix();
+  // sol fixo em direção, a ~30 m do alvo; caixa de sombra fixa e modesta (o chão escurecia no celular com a caixa grande)
+  sun.position.copy(alvo).add(new THREE.Vector3(9, 11, 6).normalize().multiplyScalar(30)); sun.target.position.copy(alvo);
+  sun.target.updateMatrixWorld();
+  const s = modo === 'quart' ? 16 : 10; Object.assign(sun.shadow.camera, { left: -s, right: s, top: s, bottom: -s, near: 5, far: 60 }); sun.shadow.camera.updateProjectionMatrix();
   controls.update();
 }
 const retrato = () => innerHeight > innerWidth;
