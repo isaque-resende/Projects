@@ -126,7 +126,7 @@ function olhar(alvo, dist, dir) {
   // sol fixo em direção, a ~30 m do alvo; caixa de sombra fixa e modesta (o chão escurecia no celular com a caixa grande)
   sun.position.copy(alvo).add(new THREE.Vector3(9, 11, 6).normalize().multiplyScalar(30)); sun.target.position.copy(alvo);
   sun.target.updateMatrixWorld();
-  const s = modo === 'quart' ? 16 : modo === 'ia' ? 18 : 10; Object.assign(sun.shadow.camera, { left: -s, right: s, top: s, bottom: -s, near: 5, far: 60 }); sun.shadow.camera.updateProjectionMatrix();
+  const s = modo === 'quart' ? 16 : modo === 'ia' ? 22 : 10; Object.assign(sun.shadow.camera, { left: -s, right: s, top: s, bottom: -s, near: 5, far: 60 }); sun.shadow.camera.updateProjectionMatrix();
   controls.update();
 }
 const retrato = () => innerHeight > innerWidth;
@@ -162,9 +162,30 @@ async function carregaIA() {
     c.rotation.y = r; if (k % 2) c.scale.x = -1; scene.add(c);
   });
 }
+// casa "stone cottage" (Tripo, 14 mil triângulos, sem textura): pintada por material + pincelada no mundo
+let cot = null;
+async function carregaCottage() {
+  if (cot) return;
+  const g = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync('casa_cottage.glb');
+  const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92 });
+  mat.onBeforeCompile = (sh) => {
+    sh.uniforms.tPedra = { value: kit.tex.pedra }; sh.uniforms.tReboco = { value: kit.tex.reboco };
+    sh.vertexShader = 'varying vec3 vWPos2;\n' + sh.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>\n vWPos2 = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+    sh.fragmentShader = 'uniform sampler2D tPedra, tReboco; varying vec3 vWPos2;\n' + GLSL_NOISE + sh.fragmentShader.replace('#include <map_fragment>', `
+      vec3 nW = normalize(cross(dFdx(vWPos2), dFdy(vWPos2)));
+      vec2 p = planar(vWPos2, nW);
+      float a = dot(semRep(tPedra, p / 1.6), vec3(0.333)), b = dot(semRep(tReboco, p / 0.8), vec3(0.333));
+      diffuseColor.rgb *= (0.7 + 0.22 * a + 0.16 * b) * macro(vWPos2);`);
+  };
+  cot = g.scene;
+  cot.traverse((o) => { if (o.isMesh) { o.material = mat; o.castShadow = true; o.receiveShadow = true; } });
+  cot.position.set(-23, 0, 2); scene.add(cot);
+  [[-23, -10, Math.PI / 2], [-32, 2, Math.PI]].forEach(([x, z, r], k) => { const c = cot.clone(); c.position.set(x, 0, z); c.rotation.y = r; if (k) c.scale.x = -1; scene.add(c); });
+}
 document.getElementById('bIA').onclick = async () => {
+  await carregaCottage();
   await carregaIA(); modo = 'ia'; marca();
-  olhar(new THREE.Vector3(-7, 1.6, -4), retrato() ? 36 : 25, new THREE.Vector3(0.35, 0.6, 1));
+  olhar(new THREE.Vector3(-14, 1.6, -3), retrato() ? 42 : 30, new THREE.Vector3(0.3, 0.6, 1));
 };
 
 // toque numa porta: abre ou fecha
@@ -197,7 +218,7 @@ renderer.domElement.addEventListener('pointerup', (e) => {
   let i = 0;
   while (i < 700) {
     p.set(-25 + rnd() * 80, 0, -28 + rnd() * 50);
-    const naCasa = (p.x > -2.5 && p.x < 7 && p.z > -1.5 && p.z < 7.5) || (p.x > -21 && p.x < -1 && p.z > -26 && p.z < 7);
+    const naCasa = (p.x > -2.5 && p.x < 7 && p.z > -1.5 && p.z < 7.5) || (p.x > -37 && p.x < -1 && p.z > -26 && p.z < 7);
     const noQuart = p.x > QUART_POS.x - 2 && p.x < QUART_POS.x + 20 && p.z > QUART_POS.z - 2 && p.z < QUART_POS.z + 16.5;
     if (naCasa || noQuart) continue;
     q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rnd() * Math.PI);
