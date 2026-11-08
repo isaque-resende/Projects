@@ -99,8 +99,11 @@ const LAYOUT = [{ x: 0, z: 0 }];
 
 // fogo: brasa e respiro acesos, chamas que dançam, luz alaranjada piscando
 function glow(mesh, k) { const m = mesh.material.clone(); m.emissive = new THREE.Color(0xffffff); m.emissiveMap = m.map; m.emissiveIntensity = k; mesh.material = m; mesh.castShadow = false; return m; }
-const mBrasa = glow(N.Forno_Brasa, 1.4), mBoca = glow(N.Forno_Boca, 1.2), mChama = glow(N.Forno_Chamas, 2.2);
-mChama.side = THREE.DoubleSide;
+const mBrasa = glow(N.Forno_Brasa, 1.4), mBoca = glow(N.Forno_Boca, 1.2), mChama = glow(N.Forno_Chamas, 2.2), mChamaBoca = glow(N.Forno_ChamaBoca, 2.0);
+mChama.side = THREE.DoubleSide; mChamaBoca.side = THREE.DoubleSide;
+// luz pequena no respiro da base (o nicho de barro brilha por dentro)
+const fireBoca = new THREE.PointLight(0xff7a2a, 0.8, 0.9, 2);
+fireBoca.position.copy(N.Forno_Boca.getWorldPosition(new THREE.Vector3())).add(new THREE.Vector3(0, 0.06, -0.12)); scene.add(fireBoca);
 const fire = new THREE.PointLight(0xff8a3a, 2.5, 3.2, 1.6);
 const ovenTop = N.Forno_Corpo.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, 0.95, 0));
 fire.position.copy(ovenTop).add(new THREE.Vector3(0, -0.45, 0)); scene.add(fire);
@@ -157,7 +160,9 @@ function tickForno(dt) {
   tNow += dt;
   const f = 0.75 + 0.25 * Math.sin(tNow * 13.0) * Math.sin(tNow * 7.3 + 1.0) + 0.1 * Math.sin(tNow * 23.0);
   fire.intensity = 2.2 * f; glowTop.intensity = 1.1 * f;
-  mBrasa.emissiveIntensity = 1.2 + 0.4 * f; mBoca.emissiveIntensity = 1.0 + 0.5 * f;
+  mBrasa.emissiveIntensity = 1.2 + 0.4 * f; mBoca.emissiveIntensity = 0.9 + 0.7 * f; mChamaBoca.emissiveIntensity = 1.6 + 0.8 * f;
+  fireBoca.intensity = 0.8 * f;
+  const cb = N.Forno_ChamaBoca; cb.scale.set(1 + 0.12 * Math.sin(tNow * 11), 0.75 + 0.4 * f, 1);
   const ch = N.Forno_Chamas; ch.scale.set(1 + 0.08 * Math.sin(tNow * 9), 0.85 + 0.3 * f, 1 + 0.08 * Math.cos(tNow * 8)); ch.rotation.y += dt * 0.6;
   // fumaça constante
   smokeT -= dt;
@@ -184,6 +189,12 @@ function tickForno(dt) {
     massas.forEach((m) => { m.visible = true; m.userData.busy = false; m.position.copy(m.userData.home); m.rotation.set(0, 0, 0); });
   }
 }
+
+// grama nunca nasce dentro dos objetos: caixas dos objetos (com folga) bloqueiam os tufos
+const blockers = [];
+root.updateMatrixWorld(true);
+root.traverse((o) => { if (o.isMesh) { const b = new THREE.Box3().setFromObject(o); b.expandByScalar(0.35); blockers.push(b); } });
+const blocked = (p) => blockers.some((b) => p.x > b.min.x && p.x < b.max.x && p.z > b.min.z && p.z < b.max.z);
 
 // tufos de grama em pé: 2 planos cruzados (4 triângulos) com o seu recorte de grama, todos num só draw call.
 // Normais apontando para cima: a grama recebe a mesma luz do chão, sem escurecer de lado.
@@ -213,6 +224,7 @@ function tickForno(dt) {
     q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rnd() * Math.PI);
     const k = 0.55 + rnd() * 0.8;
     s.set(k, k * (0.8 + rnd() * 0.5), k);
+    if (blocked(p)) s.set(0, 0, 0);
     grass.setMatrixAt(i, m4.compose(p, q, s));
     const t = 0.82 + rnd() * 0.25;
     grass.setColorAt(i, c.setRGB(t, t * (0.96 + rnd() * 0.06), t * 0.9));

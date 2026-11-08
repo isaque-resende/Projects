@@ -136,6 +136,12 @@ function tickPuffs(dt) {
   }
 }
 
+// grama nunca nasce dentro dos objetos: caixas dos objetos (com folga) bloqueiam os tufos
+const blockers = [];
+root.updateMatrixWorld(true);
+root.traverse((o) => { if (o.isMesh) { const b = new THREE.Box3().setFromObject(o); b.expandByScalar(0.35); blockers.push(b); } });
+const blocked = (p) => blockers.some((b) => p.x > b.min.x && p.x < b.max.x && p.z > b.min.z && p.z < b.max.z);
+
 // tufos de grama em pé: 2 planos cruzados (4 triângulos) com o seu recorte de grama, todos num só draw call.
 // Normais apontando para cima: a grama recebe a mesma luz do chão, sem escurecer de lado.
 {
@@ -164,6 +170,7 @@ function tickPuffs(dt) {
     q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rnd() * Math.PI);
     const k = 0.55 + rnd() * 0.8;
     s.set(k, k * (0.8 + rnd() * 0.5), k);
+    if (blocked(p)) s.set(0, 0, 0);
     grass.setMatrixAt(i, m4.compose(p, q, s));
     const t = 0.82 + rnd() * 0.25;
     grass.setColorAt(i, c.setRGB(t, t * (0.96 + rnd() * 0.06), t * 0.9));
