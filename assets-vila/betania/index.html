@@ -253,14 +253,14 @@ const terreno = (() => {
 
 // horizonte: colinas do deserto da Judeia pintadas, num cilindro bem longe
 {
-  const g = new THREE.CylinderGeometry(300, 300, 85, 72, 1, true);
+  const g = new THREE.CylinderGeometry(300, 300, 60, 72, 1, true);
   T.horiz.wrapS = THREE.MirroredRepeatWrapping; T.horiz.wrapT = THREE.ClampToEdgeWrapping; T.horiz.repeat.set(4, 1);
   const m = new THREE.MeshBasicMaterial({ map: T.horiz, transparent: true, side: THREE.BackSide, depthWrite: false, fog: false });
   m.onBeforeCompile = (sh) => {   // a pintura recebe a mesma bruma da cena, mais forte no pé dos morros
     sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
-      diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.906, 0.875, 0.812), 0.28 + 0.5 * (1.0 - smoothstep(0.05, 0.6, vMapUv.y)));`);
+      diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.906, 0.875, 0.812), 0.25 + 0.75 * smoothstep(0.64, 0.38, vMapUv.y));`);
   };
-  const h = new THREE.Mesh(g, m); h.position.y = -6; h.renderOrder = -1; scene.add(h);
+  const h = new THREE.Mesh(g, m); h.position.y = -10; h.renderOrder = -1; scene.add(h);
 }
 // bancos de neblina baixa nas bordas (gradiente gerado: sem textura pintada), andando devagar
 const NEVOAS = [];
@@ -269,7 +269,7 @@ const NEVOAS = [];
   const gr = x.createRadialGradient(64, 64, 4, 64, 64, 64); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.5, 'rgba(255,255,255,0.45)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
   x.fillStyle = gr; x.fillRect(0, 0, 128, 128);
   const t = new THREE.CanvasTexture(c);
-  const m = new THREE.MeshBasicMaterial({ map: t, color: 0xf1ebe0, transparent: true, opacity: 0.38, depthWrite: false });
+  const m = new THREE.MeshBasicMaterial({ map: t, color: 0xf1ebe0, transparent: true, opacity: 0.24, depthWrite: false });
   for (const [px, pz, w, d, dy] of [[46, -6, 60, 34, 1.2], [36, 26, 46, 26, 1.5], [36, -30, 46, 26, 1.5], [0, 40, 70, 24, 2.0], [-6, -40, 70, 24, 2.0], [-58, -10, 40, 40, 2.5], [70, 18, 70, 40, 0.8]]) {
     const pl = new THREE.Mesh(new THREE.PlaneGeometry(w, d), m); pl.rotation.x = -Math.PI / 2;
     pl.position.set(px, 0, pz); pl.userData = { x0: px, z0: pz, dy, f: Math.random() * 6 }; pl.renderOrder = 2; scene.add(pl); NEVOAS.push(pl);
