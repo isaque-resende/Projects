@@ -51,17 +51,21 @@ function materialMundo(tipo, tex) {
     const corpo = tipo === 'alvenaria' ? `
       vec3 nW = normalize(cross(dFdx(vWPos), dFdy(vWPos)));
       vec2 p = planar(vWPos, nW);
-      vec3 pedra = mix(texture2D(tPedra, p / 1.5).rgb, texture2D(tCantaria, p / 1.9).rgb, step(0.5, vParede.y));
-      vec3 reboco = texture2D(tReboco, p / 2.6).rgb;
+      vec3 pedra = mix(texture2D(tPedra, p / 1.5).rgb, texture2D(tCantaria, p / 1.9).rgb, step(0.5, vParede.y)) * vec3(1.0, 0.9, 0.76);
+      vec3 reboco = texture2D(tReboco, p / 2.6).rgb * vec3(1.0, 0.93, 0.82);
       float nn = vnoise(p * 0.85) * 0.62 + vnoise(p * 2.6) * 0.38;
       float baseY = vParede.z + (vnoise(vec2(p.x * 1.7, 3.1)) - 0.5) * 0.32;
       float acima = smoothstep(baseY - 0.025, baseY + 0.025, vWPos.y);
       float gasto = smoothstep(vParede.x - 0.035, vParede.x + 0.035, nn);
       float m = acima * (1.0 - gasto);
       if (vCodigo > 1.5) m = 0.0; else if (vCodigo > 0.5) m = 1.0;
+      float bloco = step(2.5, vCodigo);
       float borda = (1.0 - smoothstep(0.0, 0.07, abs(vWPos.y - baseY))) + (1.0 - smoothstep(0.0, 0.05, abs(nn - vParede.x)));
       borda = clamp(borda, 0.0, 1.0) * step(vCodigo, 0.5) * acima;
       vec3 col = mix(pedra, reboco, m) * (1.0 - 0.22 * borda);
+      // blocos de pedra 3D: cor do vértice (areia) + grão suave
+      float grao = dot(texture2D(tReboco, p / 0.9).rgb, vec3(0.333));
+      col = mix(col, vec3(1.0, 0.92, 0.8) * (0.74 + 0.2 * grao), bloco);
       float ao = 0.72 + 0.28 * smoothstep(0.0, 0.9, vWPos.y);
       diffuseColor.rgb *= col * ao;` : `
       vec3 nW = normalize(cross(dFdx(vWPos), dFdy(vWPos)));
@@ -246,7 +250,6 @@ function construir(kit, mapa, casas, rnd) {
           }
           n = run.length - x >= 2 && !prox ? 2 : 1;
           nome = 'Mureta_' + n; pilar(no, a.nivel, 'Pilar_Mureta', casa);
-          if (rnd() < 0.35) for (let q = 0; q < n; q++) M.naAresta('Vigas_1', a.lado, no, a.nivel, q, 0, 'cima', casa.tom);
         } else {
           if (m === 'porta' && x + 1 < run.length) {
             n = 2; nome = 'Parede_Porta';
@@ -257,7 +260,6 @@ function construir(kit, mapa, casas, rnd) {
             piv.position.set(no[0] + L.dir[0] * 0.55 - out[0] * 0.12, a.nivel * H, no[1] + L.dir[1] * 0.55 - out[1] * 0.12);
             piv.rotation.y = L.theta; piv.userData = { fechada: L.theta, aberta: L.theta + 1.6, alvo: L.theta, porta: true };
             M.portas.push(piv);
-            M.naAresta('Soleira', a.lado, no, a.nivel, 0.5, 0.42, 'base', null, casa.parede);
           } else {
             n = run.length - x >= 2 && prox !== 'porta' ? 2 : 1;
             const janela = a.tipo === 'ext' && rnd() < (a.nivel ? 0.5 : 0.3);
@@ -272,6 +274,15 @@ function construir(kit, mapa, casas, rnd) {
         x += n;
       }
     }
+  }
+  // cunhais (pedras de canto) nos cantos externos: nó com exatamente 1 das 4 células ocupada naquele andar
+  const giro = { '0,-1': 0, '-1,-1': Math.PI / 2, '-1,0': Math.PI, '0,0': -Math.PI / 2 };
+  for (const [nome, no, nivel, casa, tipo] of pilares.values()) {
+    if (tipo !== 2) continue;
+    const quad = [[0, -1], [-1, -1], [-1, 0], [0, 0]].filter(([dx, dz]) => ocup(cel(no[0] + dx, no[1] + dz), nivel));
+    if (quad.length !== 1) continue;
+    const dono = casas.get(cel(no[0] + quad[0][0], no[1] + quad[0][1]).casa);
+    M.por('Cunhal', no[0], nivel * H, no[1], giro[quad[0].join(',')], nivel > 0 ? 'cima' : 'base', dono.tom, 1, dono.parede);
   }
   for (const [nome, no, nivel, casa] of pilares.values()) {
     M.por(nome, no[0], nivel * H, no[1], 0, nome === 'Pilar_Mureta' || nivel > 0 ? 'cima' : 'base', nome === 'Pilar_Patio' ? null : casa.tom, 1, casa.parede);
