@@ -22,6 +22,7 @@
 // Trigal em tela cheia, sem texto, luz de manhã.
 // As 4 touceiras do trigo.glb são clonadas ao acaso (instâncias). O vento balança o trigo,
 // e o trigo se abre e se curva em volta do personagem. Toque no chão para o personagem andar até lá.
+// A foice (também do trigo.glb) fica no chão, na entrada da trilha.
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -126,6 +127,14 @@ function wheatMat(base) {
   m.customProgramCacheKey = () => 'trigo';
   return m;
 }
+// foice largada na beira do trigal, perto da trilha (peça do trigo.glb, pivô no meio do cabo)
+if (kinds.Foice) {
+  const f = kinds.Foice; f.removeFromParent();
+  f.position.set(-FW / 2 - 0.7, 0, 1.25); f.rotation.y = 0.6;
+  f.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  scene.add(f);
+}
+delete kinds.Foice;
 let seed = 11;
 const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
 const noise = (x, z) => Math.sin(x * 0.45 + 1.3) * Math.cos(z * 0.6 - 0.4) + 0.5 * Math.sin((x + z) * 0.9);
