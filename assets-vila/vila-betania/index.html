@@ -1,0 +1,1063 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#e6dfcd">
+<title>Betânia</title>
+<style>
+  :root { --papel: #f6ecd6; --tinta: #3d2e1f; --ouro: #c98a2b; --borda: #d9c49a; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #e6dfcd; font-family: Georgia, 'Times New Roman', serif; color: var(--tinta);
+    -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  #carga { position: fixed; inset: 0; display: grid; place-items: center; z-index: 5; background: #e6dfcd; transition: opacity .9s; }
+  #carga h1 { font-weight: normal; letter-spacing: .14em; margin: 0 0 6px; font-size: 30px; text-align: center; }
+  #carga p { margin: 0; text-align: center; font-size: 14px; opacity: .7; font-style: italic; }
+  #barra { width: 180px; height: 3px; background: #d8ccb0; margin: 14px auto 0; border-radius: 2px; overflow: hidden; }
+  #barra i { display: block; height: 100%; width: 0; background: var(--ouro); transition: width .3s; }
+  #erro { color: #8a2b1b; font-size: 13px; margin-top: 10px; text-align: center; max-width: 80vw; }
+  #titulo { position: fixed; z-index: 2; left: max(14px, env(safe-area-inset-left)); top: max(12px, env(safe-area-inset-top));
+    pointer-events: none; text-shadow: 0 1px 0 rgba(255,250,235,.85); }
+  #titulo b { display: block; font-weight: normal; font-size: 22px; letter-spacing: .1em; }
+  #titulo span { font-size: 12.5px; opacity: .75; font-style: italic; }
+  #zoom { position: fixed; z-index: 2; right: max(12px, env(safe-area-inset-right)); top: max(12px, env(safe-area-inset-top)); display: flex; flex-direction: column; gap: 6px; }
+  .bt { appearance: none; border: 1px solid var(--borda); background: rgba(246,236,214,.94); color: var(--tinta); font: inherit; border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(60,40,20,.18); cursor: pointer; }
+  .bt:active { transform: translateY(1px); }
+  #zoom .bt { width: 40px; height: 40px; font-size: 22px; line-height: 1; padding: 0; }
+  #interagir { position: fixed; z-index: 2; left: 50%; bottom: max(18px, env(safe-area-inset-bottom)); transform: translate(-50%, 160%);
+    padding: 11px 20px; font-size: 16px; transition: transform .3s; white-space: nowrap; max-width: 92vw; overflow: hidden; text-overflow: ellipsis; }
+  #interagir.on { transform: translate(-50%, 0); }
+  #interagir::before { content: '◆  '; color: var(--ouro); }
+  #dlg { position: fixed; z-index: 3; left: 50%; bottom: max(14px, env(safe-area-inset-bottom)); width: min(94vw, 560px); transform: translate(-50%, 130%);
+    background: var(--papel); border: 1px solid var(--borda); border-radius: 16px; box-shadow: 0 8px 30px rgba(60,40,20,.28);
+    padding: 16px 18px 14px; box-sizing: border-box; transition: transform .35s cubic-bezier(.2,.8,.2,1); }
+  #dlg.on { transform: translate(-50%, 0); }
+  #dlg h2 { margin: 0 0 6px; font-weight: normal; font-size: 19px; letter-spacing: .03em; }
+  #dlg h2::before { content: '◆ '; color: var(--ouro); font-size: 14px; vertical-align: 2px; }
+  #dlg p { margin: 0 0 6px; font-size: 15.5px; line-height: 1.45; }
+  #dlg .ref { font-size: 12.5px; font-style: italic; opacity: .7; margin-bottom: 10px; }
+  #dlg .acoes { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+  #dlg .acoes .bt { padding: 8px 14px; font-size: 15px; }
+  #dlg .acoes .bt.pri { background: #ebcb8f; border-color: #c9a160; }
+  #dica { position: fixed; z-index: 2; left: 50%; top: max(66px, calc(env(safe-area-inset-top) + 58px)); transform: translateX(-50%);
+    background: rgba(246,236,214,.92); border: 1px solid var(--borda); border-radius: 20px; padding: 7px 14px; font-size: 13.5px;
+    transition: opacity 1.2s; pointer-events: none; white-space: nowrap; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="carga"><div><h1>BETÂNIA</h1><p>a quinze estádios de Jerusalém</p><div id="barra"><i></i></div><div id="erro"></div></div></div>
+<div id="titulo"><b>Betânia</b><span>encosta leste do Monte das Oliveiras</span></div>
+<div id="zoom"><button class="bt" id="zMais" aria-label="Aproximar">+</button><button class="bt" id="zMenos" aria-label="Afastar">−</button></div>
+<div id="dica">Toque no chão para andar · toque nos ◆ para ver de perto</div>
+<button class="bt" id="interagir"></button>
+<div id="dlg"><h2></h2><p class="txt"></p><div class="ref"></div><div class="acoes"></div></div>
+
+<script type="module">
+// Vila de Betânia jogável: diorama isométrico compacto, montado do zero com os assets de assets-vila.
+// Eixos: +x = leste (estrada de Jericó), -x = oeste; -z = norte (o caminho sobe para Betfagé e Jerusalém); +z = frente da câmera.
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { carregarKit, casaExemplo, casaAleatoria, GLSL_NOISE } from '../casas/construtor_casas.js';
+
+addEventListener('error', (e) => { const el = document.getElementById('erro'); if (el) el.textContent = 'Erro: ' + (e.message || e); });
+addEventListener('unhandledrejection', (e) => { const el = document.getElementById('erro'); if (el) el.textContent = 'Erro: ' + (e.reason && e.reason.message || e.reason); });
+
+const $ = (s) => document.querySelector(s);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const smooth = (a, b, v) => { const t = clamp((v - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const hsh = (a, b) => { const s = Math.sin(a * 127.1 + b * 311.7) * 43758.5453; return s - Math.floor(s); };
+let semente = 1234;
+const rnd = () => { semente = (semente * 16807) % 2147483647; return semente / 2147483647; };
+const MOBILE = matchMedia('(pointer: coarse)').matches;
+
+// ================================================================== renderer, cena, luz
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, MOBILE ? 1.75 : 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.prepend(renderer.domElement);
+
+const FUNDO_SRGB = new THREE.Vector3(0xe6 / 255, 0xdf / 255, 0xcd / 255);
+const scene = new THREE.Scene();
+scene.background = (() => {
+  const c = document.createElement('canvas'); c.width = 2; c.height = 256;
+  const g = c.getContext('2d'); const gr = g.createLinearGradient(0, 0, 0, 256);
+  gr.addColorStop(0, '#a6c8e2'); gr.addColorStop(0.42, '#d4e2e6'); gr.addColorStop(0.75, '#ebe3d0'); gr.addColorStop(1, '#e6dfcd');
+  g.fillStyle = gr; g.fillRect(0, 0, 2, 256);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+})();
+scene.fog = new THREE.Fog(0xe6dfcd, 110, 220);
+
+scene.add(new THREE.HemisphereLight(0xd6e8ff, 0xc9a47a, 1.3));
+const sun = new THREE.DirectionalLight(0xffe2b8, 3.1);
+const SOL_DIR = new THREE.Vector3(10, 13, 6).normalize();
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -22, right: 22, top: 22, bottom: -22, near: 1, far: 100 });
+sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.035;
+scene.add(sun, sun.target);
+
+// ================================================================== carga
+const manager = new THREE.LoadingManager();
+manager.onProgress = (u, a, b) => { $('#barra i').style.width = Math.round(100 * a / b) + '%'; };
+const texL = new THREE.TextureLoader(manager);
+const tex = (url, rep = true) => { const t = texL.load(url); t.colorSpace = THREE.SRGBColorSpace; if (rep) t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; return t; };
+const T = {
+  campo: tex('../discipulo/tex/campo_seco.webp'),
+  terra: tex('../vila/tex/chao_grama_v3.webp'),
+  arada: tex('../trigal/tex/terra_arada.webp'),
+  rocha: tex('../tumulo/tex/rocha_encosta.webp'),
+  pedra: tex('../casas/tex/pedra.webp'),
+  cantaria: tex('../casas/tex/cantaria.webp'),
+  capim: tex('../discipulo/tex/capim_tufo.webp', false),
+};
+const loader = new GLTFLoader(manager).setMeshoptDecoder(MeshoptDecoder);
+const GLB = {};
+const ARQ = {
+  vila: '../vila/vila.glb', tumulo: '../tumulo/tumulo.glb', forno: '../forno-pao/forno.glb', colheita: '../colheita-trigo/colheita.glb',
+  trigo: '../trigal/trigo.glb', oliveiras: '../oliveiras/oliveiras.glb', figueiras: '../figueiras/figueiras.glb',
+  romanzeiras: '../romanzeiras/romanzeiras.glb', amendoeiras: '../amendoeiras/amendoeiras.glb', carvalhos: '../carvalhos/carvalhos.glb',
+  lentiscos: '../lentiscos/lentiscos.glb', esteva: '../esteva/esteva.glb', sarco: '../sarcopoterium/sarcopoterium.glb',
+  tomilho: '../tomilho/tomilho.glb', flores: '../flores/flores.glb', parreiras: '../parreiras/parreiras_v2.glb',
+  discipulo: '../discipulo/discipulo.glb',
+};
+const [kit] = await Promise.all([
+  carregarKit('../casas/casas_kit.glb', '../casas/tex/'),
+  ...Object.entries(ARQ).map(([k, u]) => loader.loadAsync(u).then((g) => { GLB[k] = g; g.scene.updateMatrixWorld(true); })),
+]);
+
+function prep(o) {
+  o.traverse((m) => {
+    if (m.name && m.name.startsWith('NPC_')) m.visible = false;
+    if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; }
+  });
+  return o;
+}
+function no(g, nome) { let r = null; g.scene.traverse((o) => { if (!r && o.name === nome) r = o; }); if (!r) console.warn('sem nó', nome); return r; }
+// cópia de um nó do catálogo, com a posição de catálogo zerada em x/z
+function copia(g, nome) { const o = no(g, nome).clone(true); o.position.x = 0; o.position.z = 0; return prep(o); }
+// peças do catálogo que andam juntas (ex.: Poco_1 e Poco_1_*), relativas à peça base
+function conjunto(g, prefixo, base) {
+  const b = no(g, base).position.clone(); const grp = new THREE.Group();
+  for (const c of g.scene.children) if (c.name === base || c.name.startsWith(prefixo)) { const k = c.clone(true); k.position.sub(b); grp.add(k); }
+  return prep(grp);
+}
+function por(o, x, z, rot = 0, y = null) { o.position.set(x, y === null ? H(x, z) : y, z); o.rotation.y = rot; scene.add(o); return o; }
+// geometria (com a transformação do nó, sem a posição) de um nó de uma peça só
+function geoDe(g, nome) {
+  const n = no(g, nome); let mesh = n.isMesh ? n : null; n.traverse((o) => { if (!mesh && o.isMesh) mesh = o; });
+  const m = new THREE.Matrix4().compose(new THREE.Vector3(0, n.position.y, 0), n.quaternion, n.scale);
+  if (mesh !== n) m.multiply(mesh.matrix);
+  const geo = mesh.geometry.clone(); geo.applyMatrix4(m);
+  return { geo, mat: mesh.material };
+}
+
+// ================================================================== relevo: uma só função para o desenho e para os passos
+// Diorama: x de -22 a 22, z de -16 a 16. Dois níveis: a vila (0) e o patamar de trás (1,5 m), com rampa e escada.
+const X0 = -22, X1 = 22, Z0 = -16, Z1 = 16, TOPO = 1.5;
+const zFrente = (x) => (x < -13 ? -1 : x < -11 ? lerp(-1, -4.5, (x + 13) / 2) : x <= 12 ? -4.5 : -99);
+const RAMPA = { x0: 1.75, x1: 4.75, z0: -8.5, z1: -2.5 };
+const ESCADA = { x0: -10.5, x1: -9.0, z0: -6.5, z1: -3.5 };
+const naRampa = (x, z) => x >= RAMPA.x0 && x <= RAMPA.x1 && z >= RAMPA.z0 && z <= RAMPA.z1;
+const naEscada = (x, z) => x >= ESCADA.x0 && x <= ESCADA.x1 && z >= ESCADA.z0 && z <= ESCADA.z1;
+function hBase(x, z) {
+  if (naRampa(x, z)) return TOPO * clamp((RAMPA.z1 - z) / (RAMPA.z1 - RAMPA.z0), 0, 1);
+  if (naEscada(x, z)) return z > ESCADA.z1 - 1e-6 ? 0 : 0.25 * clamp(Math.floor((ESCADA.z1 - z) / 0.5 + 1e-6) + 1, 1, 6);
+  return z < zFrente(x) ? TOPO : 0;
+}
+// lotes das casas e do aprisco [x0, z0, x1, z1] (terra batida em volta e bloqueio)
+const CASAS = [
+  { nome: 'lazaro', x: -6.5, z: -4.3, w: 5, d: 4 },
+  { nome: 'norte', x: 6.5, z: -4.3, w: 5, d: 4, semente: 253421 },
+  { nome: 'leste', x: 13.6, z: -3.4, w: 5, d: 4, semente: 229664 },
+  { nome: 'sul', x: -4.6, z: 4.6, w: 4, d: 4, semente: 300935 },
+  { nome: 'sudeste', x: 6.4, z: 5.8, w: 5, d: 3, semente: 237583 },
+];
+const APRISCO = { x0: -18.6, z0: 3.8, x1: -13.0, z1: 10.2 };
+const CURRAL = { x0: -13.0, z0: 4.6, x1: -9.0, z1: 9.6 };
+const LOTES = [...CASAS.map((c) => [c.x, c.z, c.x + c.w, c.z + c.d]), [APRISCO.x0, APRISCO.z0, CURRAL.x1, APRISCO.z1]];
+// caminhos
+const ESTRADA = [[23, 3.4], [14, 3.0], [8.5, 2.2], [5.2, 0.6], [3.25, -2.2], [3.25, -8.5], [3.25, -17]];
+const TRILHAS = [
+  [[-5, 0.4], [-3.2, 1.6], [-0.6, 2.4]],                 // porta de Lázaro -> praça
+  [[-9.75, -3.2], [-7.8, -0.6], [-5, 0.4]],              // pé da escada -> porta de Lázaro
+  [[-9.75, -6.8], [-11.2, -6.0], [-12.6, -4.6]],         // topo da escada -> túmulo
+  [[-2.6, 8.9], [-0.2, 6.0], [0.4, 3.6]],                // casa do sul -> praça
+  [[-8.6, 7.1], [-5.6, 4.0], [-1.8, 3.2]],               // curral -> praça
+  [[8.8, 10.6], [5.6, 9.6], [5.3, 6.0], [5.9, 2.6]],     // eira -> estrada
+  [[16.1, 0.8], [15.8, 2.7]],                            // casa do leste -> estrada
+];
+const PRACA = { x: 0.9, z: 2.4, r: 3.4 };
+const CAMPO = { x0: 12.6, x1: 20.4, z0: 6.8, z1: 13.8 };
+function distSeg(px, pz, ax, az, bx, bz) {
+  const dx = bx - ax, dz = bz - az; const t = clamp(((px - ax) * dx + (pz - az) * dz) / (dx * dx + dz * dz || 1), 0, 1);
+  return Math.hypot(px - ax - dx * t, pz - az - dz * t);
+}
+const distLinha = (x, z, L) => { let d = 1e9; for (let i = 0; i < L.length - 1; i++) d = Math.min(d, distSeg(x, z, ...L[i], ...L[i + 1])); return d; };
+const ruido = (x, z) => Math.sin(x * 1.31 + z * 0.73) * 0.5 + Math.sin(z * 1.67 - x * 0.41 + 1.3) * 0.5;
+function mascaraCaminho(x, z) {
+  const borda = 0.25 * ruido(x * 1.7, z * 1.7);
+  let m = 1 - smooth(1.15, 1.6, distLinha(x, z, ESTRADA) + borda);
+  for (const t of TRILHAS) m = Math.max(m, 1 - smooth(0.45, 0.85, distLinha(x, z, t) + borda * 0.7));
+  m = Math.max(m, 1 - smooth(PRACA.r - 0.6, PRACA.r + 0.2, Math.hypot(x - PRACA.x, z - PRACA.z) + borda));
+  if (naRampa(x, z)) m = 1;
+  return m;
+}
+function terraCasas(x, z) {
+  let m = 0;
+  for (const [x0, z0, x1, z1] of LOTES) {
+    const dx = Math.max(x0 - x, 0, x - x1), dz = Math.max(z0 - z, 0, z - z1);
+    m = Math.max(m, 1 - smooth(0.3, 1.5, Math.hypot(dx, dz) + 0.35 * ruido(x * 2.1, z * 2.1)));
+  }
+  return m;
+}
+const noCampo = (x, z) => x > CAMPO.x0 && x < CAMPO.x1 && z > CAMPO.z0 && z < CAMPO.z1;
+// ondulação suave fora dos caminhos e longe das bordas e dos degraus
+function ondula(x, z) {
+  const longe = smooth(0, 1.2, Math.min(x - X0, X1 - x, z - Z0, Z1 - z));
+  const plano = (1 - mascaraCaminho(x, z)) * (1 - terraCasas(x, z));
+  const perto = (Math.abs(z - zFrente(x)) < 0.8 || Math.abs(x - 12) < 0.8 && z < -4 || naEscada(x, z) || naRampa(x, z) || noCampo(x, z)) ? 0 : 1;
+  return 0.08 * ruido(x * 0.9, z * 0.9) * longe * plano * perto;
+}
+const H = (x, z) => hBase(x, z) + ondula(x, z);
+
+// ================================================================== túmulo (definido antes do chão, que tem furo sobre a câmara)
+const TUM = { x: -14.6, z: -8.4, y: TOPO, rot: 0.55 };
+const tumParaLocal = (x, z) => { const dx = x - TUM.x, dz = z - TUM.z, c = Math.cos(TUM.rot), s = Math.sin(TUM.rot); return [dx * c - dz * s, dx * s + dz * c]; };
+const tumParaMundo = (lx, lz) => { const c = Math.cos(TUM.rot), s = Math.sin(TUM.rot); return [TUM.x + lx * c + lz * s, TUM.z - lx * s + lz * c]; };
+const noFuroTumulo = (x, z) => { const [lx, lz] = tumParaLocal(x, z); return (lx > -1.7 && lx < 1.7 && lz < 0.05 && lz > -6.3) || (lx > -2.62 && lx < 0.95 && lz > 0.2 && lz < 0.62); };
+const POCO = { x: 1.2, z: 2.0 };
+const poco = conjunto(GLB.vila, 'Poco_1_', 'Poco_1');
+let POCO_R;
+{ const bb = new THREE.Box3().setFromObject(pecaUnica(poco, 'Poco_1')); POCO_R = Math.min(bb.max.x - bb.min.x, bb.max.z - bb.min.z) * 0.5 * 0.6; }
+function pecaUnica(grp, nome) { return grp.getObjectByName(nome); }
+
+// ================================================================== materiais (textura sem repetição aparente)
+const GLSL_W = `varying vec3 vW;\n`;
+function comMundo(sh) {
+  sh.vertexShader = GLSL_W + sh.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>\n vW = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+}
+function matChao() {
+  const m = new THREE.MeshStandardMaterial({ roughness: 1, flatShading: true });
+  m.onBeforeCompile = (sh) => {
+    Object.assign(sh.uniforms, { tCampo: { value: T.campo }, tTerra: { value: T.terra }, tArada: { value: T.arada }, tPedra: { value: T.pedra }, tCant: { value: T.cantaria } });
+    comMundo(sh);
+    sh.vertexShader = 'attribute vec4 aMask; varying vec4 vM;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vM = aMask;');
+    sh.fragmentShader = 'uniform sampler2D tCampo, tTerra, tArada, tPedra, tCant; varying vec4 vM;\n' + GLSL_W + GLSL_NOISE +
+      sh.fragmentShader.replace('#include <map_fragment>', `
+      vec3 nW = normalize(cross(dFdx(vW), dFdy(vW)));
+      float verde = vnoise(vW.xz * 0.13 + 3.0);
+      vec3 campo = semRep(tCampo, vW.xz / 4.2) * mix(vec3(0.6, 0.97, 0.4), vec3(0.8, 1.0, 0.5), verde) * 1.06;
+      vec3 terra = semRep(tTerra, vW.xz / 3.4) * vec3(1.02, 0.99, 0.93);
+      vec3 arada = semRep(tArada, vW.xz / 2.6) * vec3(1.05, 0.98, 0.9);
+      vec3 cant = semRep(tCant, vW.xz / 1.6);
+      vec3 col = mix(campo, terra, clamp(vM.x, 0.0, 1.0));
+      col = mix(col, arada, vM.z);
+      col = mix(col, cant, vM.w);
+      float ingreme = 1.0 - smoothstep(0.45, 0.62, abs(nW.y));
+      vec3 muro = semRep(tPedra, planar(vW, nW) / 1.3) * vec3(1.0, 0.95, 0.86);
+      col = mix(col, muro, ingreme);
+      diffuseColor.rgb *= col * macro(vW);`);
+  };
+  return m;
+}
+// rocha: paredes com a rocha da encosta, topos com capim; embaixo some na bruma (nunca se vê o fundo da fase)
+const uFundo = { value: FUNDO_SRGB };
+function matRocha() {
+  const m = new THREE.MeshStandardMaterial({ roughness: 1, flatShading: true });
+  m.onBeforeCompile = (sh) => {
+    Object.assign(sh.uniforms, { tRocha: { value: T.rocha }, tCampo: { value: T.campo }, tTerra: { value: T.terra }, uFundo });
+    comMundo(sh);
+    sh.fragmentShader = 'uniform sampler2D tRocha, tCampo, tTerra; uniform vec3 uFundo;\n' + GLSL_W + GLSL_NOISE +
+      sh.fragmentShader.replace('#include <map_fragment>', `
+      vec3 nW = normalize(cross(dFdx(vW), dFdy(vW)));
+      vec3 rocha = semRep(tRocha, planar(vW, nW) / 3.0) * vec3(1.03, 0.95, 0.84);
+      float faixa = smoothstep(-0.9, -0.25, vW.y) * (1.0 - smoothstep(0.1, 0.4, vW.y));
+      rocha = mix(rocha, semRep(tTerra, planar(vW, nW) / 2.0) * vec3(0.8, 0.68, 0.55), faixa * 0.8);
+      vec3 topo = semRep(tCampo, vW.xz / 4.2) * vec3(0.6, 0.95, 0.4);
+      vec3 col = mix(rocha, topo, smoothstep(0.74, 0.88, abs(nW.y)));
+      diffuseColor.rgb *= col * macro(vW);`)
+      .replace('#include <fog_fragment>', `#include <fog_fragment>
+      gl_FragColor.rgb = mix(gl_FragColor.rgb, uFundo, smoothstep(-0.6, -7.5, vW.y));`);
+  };
+  return m;
+}
+const MAT_ROCHA = matRocha();
+
+// ================================================================== chão (grade de 25 cm, facetada), com furos no túmulo e no poço
+let chao;
+{
+  const S = 0.25, NI = Math.round((X1 - X0) / S), NK = Math.round((Z1 - Z0) / S);
+  const pos = [], mask = [], idx = [];
+  for (let k = 0; k <= NK; k++) for (let i = 0; i <= NI; i++) {
+    const x = X0 + i * S, z = Z0 + k * S;
+    pos.push(x, H(x, z), z);
+    const cam = mascaraCaminho(x, z);
+    mask.push(Math.max(cam, terraCasas(x, z)), 0, noCampo(x, z) ? 1 - cam : 0, naEscada(x, z) ? 1 : 0);
+  }
+  for (let k = 0; k < NK; k++) for (let i = 0; i < NI; i++) {
+    const cx = X0 + (i + 0.5) * S, cz = Z0 + (k + 0.5) * S;
+    if (noFuroTumulo(cx, cz) || Math.hypot(cx - POCO.x, cz - POCO.z) < POCO_R) continue;
+    const a = k * (NI + 1) + i, b = a + 1, c = a + NI + 1, d = c + 1;
+    idx.push(a, c, b, b, c, d);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('aMask', new THREE.Float32BufferAttribute(mask, 4));
+  g.setIndex(idx); g.computeVertexNormals();
+  chao = new THREE.Mesh(g, matChao()); chao.receiveShadow = true; chao.name = 'chao';
+  scene.add(chao);
+}
+
+// ================================================================== bordas do diorama: barranco de terra e rocha que some na bruma
+{
+  const LADOS = [
+    { a: [X0, Z1], b: [X1, Z1], n: [0, 1] },
+    { a: [X1, Z1], b: [X1, Z0], n: [1, 0] },
+    { a: [X1, Z0], b: [X0, Z0], n: [0, -1] },
+    { a: [X0, Z0], b: [X0, Z1], n: [-1, 0] },
+  ];
+  const LIN = [[0, 0], [-0.45, 0.05], [-1.5, 0.3], [-2.9, 0.06], [-4.5, 0.42], [-6.4, 0.12], [-9.5, 0.35]];
+  const geos = [];
+  LADOS.forEach((L, li) => {
+    const len = Math.hypot(L.b[0] - L.a[0], L.b[1] - L.a[1]); const N = Math.round(len / 0.5);
+    const pos = [], idx = [];
+    for (let j = 0; j <= N; j++) {
+      const t = j / N, x = lerp(L.a[0], L.b[0], t), z = lerp(L.a[1], L.b[1], t);
+      const top = H(x, z);
+      LIN.forEach(([dy, off], r) => {
+        let y = r === 0 ? top : r === 1 ? top - 0.45 : dy + (hsh(j * 0.37 + li, r) - 0.5) * 0.5;
+        let o = off + (r >= 2 ? (hsh(j + li * 31, r * 7) - 0.5) * 0.55 + 0.25 * ruido(j * 0.4, r) : 0);
+        if (r === 1) o += (hsh(j, li) - 0.5) * 0.08;
+        // nas pontas, a borda avança também ao longo do lado: os dois lados se cruzam e o canto fica fechado
+        const ux = (L.b[0] - L.a[0]) / len, uz = (L.b[1] - L.a[1]) / len, e = j === 0 ? -Math.max(o, 0) : j === N ? Math.max(o, 0) : 0;
+        pos.push(x + L.n[0] * o + ux * e, y, z + L.n[1] * o + uz * e);
+      });
+    }
+    const R = LIN.length;
+    for (let j = 0; j < N; j++) for (let r = 0; r < R - 1; r++) {
+      const a = j * R + r, b = a + 1, c = a + R, d = c + 1;
+      idx.push(a, b, c, c, b, d);
+    }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx);
+    geos.push(g.toNonIndexed());
+  });
+  const g = mergeGeometries(geos); g.computeVertexNormals();
+  const m = new THREE.Mesh(g, MAT_ROCHA); m.receiveShadow = true; scene.add(m);
+}
+
+// ================================================================== rochedo em colunas (fundo norte e oeste), como um paredão facetado
+const OBST = { circ: [], seg: [], box: [] };
+const rochaPerto = [], rochaLonge = [];
+function coluna(x, z, r, h, lista, base = null) {
+  const seg = 4 + Math.floor(hsh(x, z) * 3);
+  const g = new THREE.CylinderGeometry(r * (0.72 + 0.15 * hsh(z, x)), r, h, seg, 1);
+  const p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const vx = p.getX(i), vy = p.getY(i), vz = p.getZ(i);
+    if (vy > 0) p.setY(i, vy + (hsh(Math.round(vx * 100) + x, Math.round(vz * 100) + z) - 0.5) * Math.min(0.9, r * 0.6));
+  }
+  g.rotateY(hsh(x * 3.1, z) * 6.28);
+  g.rotateX((hsh(x, z * 2.3) - 0.5) * 0.08); g.rotateZ((hsh(x * 1.7, z) - 0.5) * 0.08);
+  const y0 = base === null ? H(x, z) : base;
+  g.translate(x, y0 - 1.2 + h / 2, z);
+  lista.push(g.index ? g.toNonIndexed() : g);
+  OBST.circ.push([x, z, r * 0.95]);
+}
+{
+  const exclui = (x, z, r) => { const [lx, lz] = tumParaLocal(x, z); return lx > -2.6 - r && lx < 2.6 + r && lz > -7.4 - r && lz < 3.5; };
+  const GAP = [0.4, 6.1];
+  for (let z = Z0 + 0.4; z < 2.2; z += 1.35) for (let x = X0 + 0.4; x < X1; x += 1.35) {
+    const jx = x + (hsh(x, z) - 0.5) * 0.7, jz = z + (hsh(z, x) - 0.5) * 0.7;
+    let h = 0, banda = false;
+    const dN = (-12.4 - jz) / 3.6;                     // 0 na frente da faixa norte, 1 no fundo
+    const dW = (-18.4 - jx) / 3.6;
+    const noroeste = smooth(-4, -22, jx) * smooth(2, -16, jz);
+    if (dN > -0.05 && !(jx > GAP[0] && jx < GAP[1])) { banda = true; h = Math.max(h, 1.6 + 4.2 * clamp(dN, 0, 1) + 4.0 * noroeste); }
+    if (dW > -0.05 && jz < 1.8) { banda = true; h = Math.max(h, 1.4 + 4.0 * clamp(dW, 0, 1) + 4.0 * noroeste - (jz > -2 ? 1.2 : 0)); }
+    if (!banda) continue;
+    const dGap = Math.min(Math.abs(jx - GAP[0]), Math.abs(jx - GAP[1]));
+    if (jz < -12 && jx > GAP[0] - 3 && jx < GAP[1] + 3) h *= 0.55 + 0.45 * smooth(0, 3, dGap);
+    if (jx > 12) h *= 0.75;
+    h *= 0.8 + 0.4 * hsh(jx * 2.1, jz * 1.3);
+    const r = 0.85 + 0.55 * hsh(jz * 3.3, jx);
+    if (exclui(jx, jz, r)) continue;
+    const [lx, lz] = tumParaLocal(jx, jz);
+    coluna(jx, jz, r, h + 1.2, Math.hypot(lx, lz + 3) < 7.5 ? rochaPerto : rochaLonge);
+  }
+  // afloramentos baixos nos cantos da frente, para emoldurar
+  for (const [cx, cz, n] of [[-20.6, 14.6, 5], [20.8, 14.4, 4], [21.0, -1.5, 3], [-20.9, 6.5, 3]]) {
+    for (let i = 0; i < n; i++) {
+      const a = hsh(cx, i) * 6.28, d = hsh(i, cz) * 1.4;
+      coluna(clamp(cx + Math.cos(a) * d, X0 + 0.6, X1 - 0.6), clamp(cz + Math.sin(a) * d, Z0 + 0.6, Z1 - 0.6), 0.6 + hsh(i, cx) * 0.5, 1.6 + hsh(cz, i) * 1.6, rochaLonge);
+    }
+  }
+}
+const rochedo = new THREE.Mesh(mergeGeometries(rochaLonge), MAT_ROCHA);
+const rochedoPerto = new THREE.Mesh(rochaPerto.length ? mergeGeometries(rochaPerto) : new THREE.BufferGeometry(), MAT_ROCHA);
+for (const m of [rochedo, rochedoPerto]) { m.geometry.computeVertexNormals(); m.castShadow = true; m.receiveShadow = true; scene.add(m); }
+
+// ================================================================== túmulo de Lázaro: no pé do rochedo, fora da vila
+const tumulo = new THREE.Group();
+const tumRaiz = GLB.tumulo.scene; tumRaiz.position.z = 200; tumulo.add(prep(tumRaiz));
+const TN = {}; tumRaiz.traverse((o) => { if (o.name) TN[o.name] = o; });
+TN.Tumulo_Massa_Grama.visible = false;
+TN.Tumulo_Interior.castShadow = false;
+tumulo.updateMatrixWorld(true);
+const MONTE = new THREE.Box3().setFromObject(TN.Tumulo_Massa_Monte);   // em coordenadas locais do túmulo
+tumulo.position.set(TUM.x, TUM.y, TUM.z); tumulo.rotation.y = TUM.rot; scene.add(tumulo); tumulo.updateMatrixWorld(true);
+{
+  const tampa = (x0, x1, z0, z1) => { const g = new THREE.BoxGeometry(x1 - x0, 2.5, z1 - z0); g.translate((x0 + x1) / 2, -1.25 - 0.03, (z0 + z1) / 2); return g; };
+  const m = new THREE.Mesh(mergeGeometries([tampa(-1.95, 1.95, -6.55, 0.2), tampa(-2.85, 1.2, 0.0, 0.85)]), MAT_ROCHA);
+  m.position.set(TUM.x, TUM.y, TUM.z); m.rotation.y = TUM.rot; m.receiveShadow = true; scene.add(m);
+}
+const pedra = TN.Tumulo_Pedra, PEDRA_ABERTA = pedra.position.x, PEDRA_R = 0.85;
+let pedraX = 0, pedraAlvo = 0, aoParar = null, navAberto = false;                 // começa fechada (Jo 11:38)
+const tumuloAberto = () => pedraAlvo !== 0 && Math.abs(pedraX - pedraAlvo) < 0.05;
+const corteTumulo = [TN.Tumulo_Massa_Monte, TN.Rochas_Soltas, rochedoPerto];
+const lampada = new THREE.PointLight(0xffb060, 0, 7, 1.6);
+{ const [x, z] = tumParaMundo(-1.2, -1.55); lampada.position.set(x, TUM.y + 1.15, z); scene.add(lampada); }
+const naZonaTumulo = (x, z) => { const [lx, lz] = tumParaLocal(x, z); return lx > -1.05 && lx < 1.05 && lz > -5.9 && lz < 4.6; };
+const pisoTumulo = [TN.Tumulo_Interior, TN.Tumulo_Patio];
+const rayChao = new THREE.Raycaster(); rayChao.far = 4;
+function alturaTumulo(x, z, yRef = TUM.y + 1.0) {
+  rayChao.set(new THREE.Vector3(x, yRef, z), new THREE.Vector3(0, -1, 0));
+  const hit = rayChao.intersectObjects(pisoTumulo, true).find((h) => h.face && h.face.normal.y > -0.2);
+  return hit ? hit.point.y : H(x, z);
+}
+
+// ================================================================== casas (kit modular)
+const casas = {};
+for (const c of CASAS) {
+  const g = c.nome === 'lazaro' ? casaExemplo(kit) : casaAleatoria(kit, c.semente);
+  prep(g); g.position.set(c.x, 0, c.z); scene.add(g); casas[c.nome] = g;
+  OBST.box.push([c.x - 0.1, c.z - 0.1, c.x + c.w + 0.1, c.z + c.d + 0.1]);
+}
+// a casa de Lázaro tem escada externa no lado oeste
+OBST.box.push([CASAS[0].x - 1.25, CASAS[0].z, CASAS[0].x, CASAS[0].z + 2.2]);
+const portaLazaro = casas.lazaro.userData.portas.find((p) => p.position.y < 1) || { userData: { alvo: 0, aberta: 1, fechada: 0 } };
+
+// ================================================================== cisterna / poço na praça
+por(poco, POCO.x, POCO.z, 0.4, 0);
+{
+  const poçoBB = new THREE.Box3().setFromObject(pecaUnica(poco, 'Poco_1'));
+  OBST.circ.push([POCO.x, POCO.z, Math.max(poçoBB.max.x - poçoBB.min.x, poçoBB.max.z - poçoBB.min.z) * 0.5 + 0.25]);
+  const poçoMat = new THREE.MeshStandardMaterial({ color: 0x5b4e40, roughness: 1, side: THREE.BackSide });
+  const fosso = new THREE.Mesh(new THREE.CylinderGeometry(POCO_R + 0.02, POCO_R + 0.02, 3.6, 12, 1, true), poçoMat);
+  fosso.position.set(POCO.x, -1.8, POCO.z); scene.add(fosso);
+}
+const balde = pecaUnica(poco, 'Poco_1_Balde'), baldeAgua = pecaUnica(poco, 'Poco_1_BaldeAgua'), corda = pecaUnica(poco, 'Poco_1_Corda');
+const BALDE_Y0 = balde.position.y, CORDA_Y = corda.position.y;
+baldeAgua.visible = false;
+let baldeAnim = null;
+
+// ================================================================== forno (tannur) ao lado da casa do sul
+const forno = conjunto(GLB.forno, 'Forno_', 'Forno_Corpo');
+por(forno, 1.5, 7.7, 0, 0);
+OBST.circ.push([1.5, 7.7, 0.95], [2.8, 7.55, 0.6]);
+const FN = {}; forno.traverse((o) => { if (o.name) FN[o.name] = o; });
+for (let i = 1; i <= 3; i++) FN['Forno_Pao_' + i].visible = false;
+let fogo = 1;
+
+// ================================================================== aprisco de pedra e curral de varas
+function linha(g, nome, a, b, poste = null) {
+  const proto = copia(g, nome); proto.rotation.set(0, 0, 0); proto.updateMatrixWorld(true);
+  const bb = new THREE.Box3().setFromObject(proto); const sx = bb.max.x - bb.min.x, sz = bb.max.z - bb.min.z;
+  const eixoX = sx >= sz; const L = Math.max(sx, sz); const cx = (bb.min.x + bb.max.x) / 2, cz = (bb.min.z + bb.max.z) / 2;
+  const dx = b[0] - a[0], dz = b[1] - a[1], dist = Math.hypot(dx, dz);
+  const n = Math.max(1, Math.round(dist / L)), k = dist / (n * L);
+  const th = eixoX ? Math.atan2(-dz, dx) : Math.atan2(dx, dz);
+  for (let i = 0; i < n; i++) {
+    const t = (i + 0.5) / n, x = a[0] + dx * t, z = a[1] + dz * t;
+    const piv = new THREE.Group(); const o = proto.clone(true); o.position.set(-cx, o.position.y, -cz); piv.add(o);
+    if (eixoX) piv.scale.x = k; else piv.scale.z = k;
+    por(piv, x, z, th, H(x, z) - 0.02);
+  }
+  if (poste) for (let i = 0; i <= n; i++) { const t = i / n, x = a[0] + dx * t, z = a[1] + dz * t; por(copia(g, poste), x, z, th); }
+  OBST.seg.push([a[0], a[1], b[0], b[1], 0.32]);
+}
+{
+  const A = APRISCO, C = CURRAL, V = GLB.vila;
+  // aprisco: muro de pedra seca, porta para o curral
+  linha(V, 'Aprisco_Muro_A', [A.x0, A.z0], [A.x1, A.z0]);
+  linha(V, 'Aprisco_Muro_A', [A.x0, A.z1], [A.x0, A.z0]);
+  linha(V, 'Aprisco_Muro_A', [A.x1, A.z1], [A.x0, A.z1]);
+  linha(V, 'Aprisco_Muro_B', [A.x1, A.z0], [A.x1, 6.4]);
+  linha(V, 'Aprisco_Muro_B', [A.x1, 7.8], [A.x1, A.z1]);
+  // curral de varas, com porteira para a vila
+  linha(V, 'Cerca_Varas', [C.x0, C.z0], [C.x1, C.z0], 'Cerca_Varas_Poste');
+  linha(V, 'Cerca_Varas', [C.x1, C.z1], [C.x0, C.z1], 'Cerca_Varas_Poste');
+  linha(V, 'Cerca_Varas', [C.x1, C.z0], [C.x1, 6.5], 'Cerca_Varas_Poste');
+  linha(V, 'Cerca_Varas', [C.x1, 7.7], [C.x1, C.z1], 'Cerca_Varas_Poste');
+  const porteira = new THREE.Group(); porteira.add(copia(V, 'Porteira_Folha'), copia(V, 'Porteira_Amarras'));
+  por(porteira, C.x1, 6.5, -Math.PI / 2 - 0.9);
+  por(copia(V, 'Bebedouro'), -10.6, 8.7, 0.1); por(copia(V, 'Bebedouro_Agua'), -10.6, 8.7, 0.1, H(-10.6, 8.7) + 0.4);
+  por(copia(V, 'Manjedoura'), -16.9, 9.2, 0); por(copia(V, 'Manjedoura_Feno'), -16.9, 9.2, 0, H(-16.9, 9.2) + 0.5);
+  por(copia(V, 'Manjedoura_FenoChao'), -15.6, 9.0, 0.6);
+  OBST.box.push([-11.3, 8.3, -9.9, 9.1], [-17.8, 8.7, -16.0, 9.7]);
+}
+
+// ================================================================== eira, feixes e carroça, perto do trigal
+{
+  const C = GLB.colheita;
+  por(copia(C, 'Eira'), 9.0, 11.6, 0.2);
+  por(copia(C, 'Forcado'), 9.4, 11.3, 1.1, H(9.4, 11.3) + 0.1);
+  por(copia(C, 'Peneira'), 10.2, 12.2, 0.4);
+  por(copia(C, 'Cesto_Graos'), 7.7, 12.6, 0);
+  por(copia(C, 'Feixe_Pilha'), 11.4, 10.0, 0.6); OBST.circ.push([11.4, 10.0, 0.9]);
+  por(copia(C, 'Feixe_EmPe'), 12.0, 11.6, 0.2);
+  por(copia(C, 'Feixe_Deitado'), 11.6, 12.8, 1.3);
+  por(copia(C, 'Cesto_Espigas'), 7.9, 10.3, 0.5);
+  const carroca = new THREE.Group(); carroca.add(copia(C, 'Carroca'), copia(C, 'Carroca_Carga'));
+  por(carroca, 10.6, 14.4, Math.PI / 2 + 0.25); OBST.circ.push([10.6, 14.4, 1.3]);
+  por(copia(C, 'Mo_Base'), 6.0, 11.4, 0); por(copia(C, 'Mo_Cima'), 6.0, 11.4, 0.7, H(6, 11.4) + no(C, 'Mo_Cima').position.y);
+  por(copia(C, 'Jarro_Farinha'), 6.8, 12.1, 0);
+  OBST.circ.push([6.0, 11.4, 0.6]);
+}
+
+// ================================================================== trigal (cartões cruzados instanciados)
+const instanciados = [];
+function instancia(g, nome, pontos, escala = [1, 1]) {
+  const { geo, mat } = geoDe(g, nome);
+  const im = new THREE.InstancedMesh(geo, mat, pontos.length);
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
+  pontos.forEach(([x, z, yaw, sc], i) => {
+    p.set(x, H(x, z), z); q.setFromAxisAngle(up, yaw); const k = sc || lerp(escala[0], escala[1], rnd()); s.set(k, k, k);
+    im.setMatrixAt(i, m4.compose(p, q, s));
+  });
+  im.castShadow = true; im.receiveShadow = true; scene.add(im); instanciados.push(im);
+  return im;
+}
+{
+  const bb = new THREE.Box3().setFromBufferAttribute(geoDe(GLB.trigo, 'Trigo_Maduro').geo.attributes.position);
+  const passo = Math.max(0.35, Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z) * 0.72);
+  const A = [], B = [];
+  for (let z = CAMPO.z0 + 0.4; z < CAMPO.z1 - 0.2; z += passo) for (let x = CAMPO.x0 + 0.4; x < CAMPO.x1 - 0.2; x += passo) {
+    const jx = x + (rnd() - 0.5) * passo * 0.5, jz = z + (rnd() - 0.5) * passo * 0.5;
+    (rnd() < 0.7 ? A : B).push([jx, jz, rnd() * 6.28, 0.85 + rnd() * 0.3]);
+  }
+  instancia(GLB.trigo, 'Trigo_Maduro', A); instancia(GLB.trigo, 'Trigo_Cheio', B);
+  OBST.box.push([CAMPO.x0, CAMPO.z0, CAMPO.x1, CAMPO.z1]);
+}
+
+// ================================================================== mureta no alto do patamar
+{
+  const V = GLB.vila, y = TOPO - 0.02;
+  const mur = (a, b) => linha(V, 'Mureta_Reta', a, b);
+  mur([-8.7, -4.72], [-1.6, -4.72]); mur([-1.6, -4.72], [1.55, -4.72]);
+  mur([4.95, -4.72], [11.8, -4.72]); mur([11.8, -4.72], [11.8, -10.0]);
+  mur([-13.0, -1.25], [-11.2, -4.4]);
+  // as muretas ficam em cima do patamar: corrige a altura (linha() usa H no centro, que já é o topo)
+}
+
+// ================================================================== árvores, arbustos, flores
+function arvore(g, nome, x, z, raio = 0.5, rot = null, esc = 1) {
+  const o = copia(g, nome); o.scale.setScalar(esc); por(o, x, z, rot === null ? rnd() * 6.28 : rot); OBST.circ.push([x, z, raio]); return o;
+}
+{
+  const O = GLB.oliveiras, F = GLB.figueiras, R = GLB.romanzeiras, A = GLB.amendoeiras, C = GLB.carvalhos, L = GLB.lentiscos, P = GLB.parreiras;
+  // olival no patamar, entre a vila e o rochedo
+  arvore(O, 'Oliveira4_Ancia', -5.0, -8.8, 0.7);
+  arvore(O, 'Oliveira1_Jovem', -9.4, -9.6, 0.4);
+  arvore(O, 'Oliveira2_Retorcida', -1.0, -10.6, 0.55);
+  arvore(O, 'Oliveira3_Vaso', 8.4, -8.9, 0.5);
+  arvore(O, 'Oliveira1_Jovem', 10.3, -6.5, 0.4);
+  arvore(O, 'Oliveira2_Retorcida', -7.2, -11.8, 0.5);
+  arvore(O, 'Oliveira3_Vaso', 16.6, -6.9, 0.5);
+  // figueiras na saída: o caminho de Betfagé (Mc 11:12-13: folhas, sem fruto, não era tempo de figos)
+  arvore(F, 'Figueira2_Larga_SemFruta', 0.6, -11.0, 0.55);
+  arvore(F, 'Figueira4_Grande_SemFruta', 6.6, -10.2, 0.6);
+  arvore(F, 'Figueira1_Jovem_SemFruta', 6.0, -13.4, 0.4);
+  // romãzeiras junto das casas
+  arvore(R, 'Romanzeira1_Jovem_SemFruta', -0.4, -2.1, 0.35);
+  arvore(R, 'Romanzeira2_Pomar_SemFruta', -7.9, 2.4, 0.4);
+  arvore(R, 'Romanzeira4_Aberta_SemFruta', 12.2, 5.4, 0.4);
+  // amendoeiras e carvalhos nas bordas
+  arvore(A, 'Amendoeira3_Selvagem_Verao', -17.2, -2.8, 0.45);
+  arvore(A, 'Amendoeira2_Pomar_Verao', 20.0, -6.6, 0.45);
+  arvore(C, 'Carvalho4_Anciao', -19.2, 13.0, 0.8);
+  arvore(C, 'Carvalho2_Jovem', 19.6, 14.0, 0.55);
+  arvore(C, 'Carvalho1_Moita', -20.0, 2.6, 0.7);
+  arvore(L, 'Lentisco2_MoitaMedia', 20.6, -9.6, 0.6);
+  arvore(L, 'Lentisco1_MoitaBaixa', -3.0, -12.4, 0.5);
+  arvore(L, 'Lentisco3_ArbustoAlto', -16.4, 14.2, 0.5);
+  arvore(L, 'Lentisco1_MoitaBaixa', 16.5, 15.0, 0.5);
+  // parreiras encostadas nas casas
+  arvore(P, 'Parreira2_Poste', -5.8, 6.4, 0.3, 0);
+  arvore(P, 'Parreira4_Braco', 11.95, -2.0, 0.3, -Math.PI / 2);
+}
+// pode-se pôr aqui? (sem caminho, sem casa, sem campo, sem obstáculo, sem degrau)
+function livreParaPlanta(x, z, folga = 0.6) {
+  if (x < X0 + 0.5 || x > X1 - 0.5 || z < Z0 + 0.5 || z > Z1 - 0.5) return false;
+  if (mascaraCaminho(x, z) > 0.15 || terraCasas(x, z) > 0.35 || noCampo(x, z)) return false;
+  if (Math.abs(z - zFrente(x)) < 0.6 || naEscada(x, z) || naRampa(x, z) || (Math.abs(x - 12) < 0.5 && z < -4.4)) return false;
+  if (noFuroTumulo(x, z)) return false;
+  return !bloqueado(x, z, folga);
+}
+{
+  const ESP = [
+    [GLB.esteva, ['Esteva1_Pequena_Florida', 'Esteva2_Media_Florida', 'Esteva3_Larga_Florida', 'Esteva4_Grupo_Florida']],
+    [GLB.sarco, ['Sarco1_Pequena_Primavera', 'Sarco2_Media_Primavera', 'Sarco3_Larga_Primavera']],
+    [GLB.tomilho, ['Tomilho1_Pequena_Folhagem', 'Tomilho2_Media_Folhagem', 'Tomilho3_Larga_Florida']],
+  ];
+  let n = 0, tent = 0;
+  while (n < 30 && tent++ < 2000) {
+    // mais perto do rochedo e das bordas
+    const x = lerp(X0 + 1, X1 - 1, rnd()), z = lerp(Z0 + 1, Z1 - 1, rnd());
+    const borda = Math.min(x - X0, X1 - x, Z1 - z, z - Z0);
+    if (borda > 4.5 && rnd() < 0.75) continue;
+    if (!livreParaPlanta(x, z, 0.9)) continue;
+    const [g, nomes] = ESP[Math.floor(rnd() * ESP.length)];
+    const o = copia(g, nomes[Math.floor(rnd() * nomes.length)]); o.scale.setScalar(0.8 + rnd() * 0.35); por(o, x, z, rnd() * 6.28); n++;
+  }
+  // flores silvestres da primavera em manchas
+  const FL = ['Anemona', 'Margarida', 'Tremoco', 'Ciclame', 'Asfodelo'];
+  const pts = {};
+  let m = 0; tent = 0;
+  while (m < 70 && tent++ < 3000) {
+    const x = lerp(X0 + 1, X1 - 1, rnd()), z = lerp(Z0 + 1, Z1 - 1, rnd());
+    if (!livreParaPlanta(x, z, 0.3)) continue;
+    const esp = FL[Math.floor(Math.abs(ruido(x * 0.21, z * 0.19)) * 5) % 5];
+    const tipo = rnd() < 0.35 ? 'Mancha' : rnd() < 0.6 ? 'Touceira' : 'Tufo';
+    const k = 'Flor_' + esp + '_' + tipo; (pts[k] = pts[k] || []).push([x, z, rnd() * 6.28, 0.8 + rnd() * 0.4]); m++;
+  }
+  for (const [k, p] of Object.entries(pts)) instancia(GLB.flores, k, p).castShadow = false;
+}
+// capim em tufos (2 planos cruzados, num só draw call), mais denso nas bordas e no pé das pedras
+{
+  const a = new THREE.PlaneGeometry(0.7, 0.6); a.translate(0, 0.28, 0);
+  const b = a.clone(); b.rotateY(Math.PI / 2);
+  const geo = mergeGeometries([a, b]);
+  const nrm = geo.attributes.normal; for (let i = 0; i < nrm.count; i++) nrm.setXYZ(i, 0, 1, 0);
+  const N = MOBILE ? 1100 : 1700;
+  const capim = new THREE.InstancedMesh(geo, new THREE.MeshStandardMaterial({ map: T.capim, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 1 }), N);
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3(), c = new THREE.Color(), up = new THREE.Vector3(0, 1, 0);
+  let i = 0, tent = 0;
+  while (i < N && tent++ < N * 12) {
+    const x = lerp(X0 + 0.3, X1 - 0.3, rnd()), z = lerp(Z0 + 0.3, Z1 - 0.3, rnd());
+    if (mascaraCaminho(x, z) > 0.25 || terraCasas(x, z) > 0.5 || noCampo(x, z) || naEscada(x, z) || naRampa(x, z) || noFuroTumulo(x, z)) continue;
+    if (Math.abs(z - zFrente(x)) < 0.2 || Math.hypot(x - POCO.x, z - POCO.z) < 1.5) continue;
+    const ruidoMancha = ruido(x * 0.35, z * 0.31);
+    if (ruidoMancha < -0.2 && rnd() < 0.8) continue;
+    p.set(x, H(x, z) - 0.03, z); q.setFromAxisAngle(up, rnd() * Math.PI);
+    const k = 0.55 + rnd() * 0.75; s.set(k, k * (0.8 + rnd() * 0.5), k);
+    capim.setMatrixAt(i, m4.compose(p, q, s));
+    const t = 0.78 + rnd() * 0.28; capim.setColorAt(i, c.setRGB(t * 0.86, t, t * 0.66));
+    i++;
+  }
+  capim.count = i; capim.receiveShadow = true; scene.add(capim);
+}
+
+// ================================================================== obstáculos e grade de caminhada (0,5 m) com A*
+function bloqueado(x, z, folga = 0) {
+  for (const [cx, cz, r] of OBST.circ) if (Math.hypot(x - cx, z - cz) < r + folga) return true;
+  for (const [ax, az, bx, bz, r] of OBST.seg) if (distSeg(x, z, ax, az, bx, bz) < r + folga) return true;
+  for (const [x0, z0, x1, z1] of OBST.box) if (x > x0 - folga && x < x1 + folga && z > z0 - folga && z < z1 + folga) return true;
+  // morro do túmulo (elipse da caixa do monte), menos o corredor da porta
+  const [lx, lz] = tumParaLocal(x, z);
+  const mx = (MONTE.min.x + MONTE.max.x) / 2, mz = (MONTE.min.z + MONTE.max.z) / 2 + 0;
+  const hx = (MONTE.max.x - MONTE.min.x) / 2 * 0.86 + folga, hz = (MONTE.max.z - MONTE.min.z) / 2 * 0.86 + folga;
+  // a caixa do monte está em coordenadas do grupo do túmulo, com o z da cena do Blender deslocado em +200 pela raiz
+  if (((lx - mx) / hx) ** 2 + ((lz - mz) / hz) ** 2 < 1 && !naZonaTumulo(x, z)) return true;
+  return false;
+}
+const NS = 0.5, NNI = Math.round((X1 - X0) / NS), NNK = Math.round((Z1 - Z0) / NS);
+const anda = new Uint8Array(NNI * NNK), alt = new Float32Array(NNI * NNK), zonaT = new Uint8Array(NNI * NNK);
+const celX = (i) => X0 + (i + 0.5) * NS, celZ = (k) => Z0 + (k + 0.5) * NS;
+const celDe = (x, z) => [clamp(Math.floor((x - X0) / NS), 0, NNI - 1), clamp(Math.floor((z - Z0) / NS), 0, NNK - 1)];
+function construirNav() {
+  for (let k = 0; k < NNK; k++) for (let i = 0; i < NNI; i++) {
+    const x = celX(i), z = celZ(k), id = k * NNI + i;
+    const zt = naZonaTumulo(x, z); zonaT[id] = zt ? 1 : 0;
+    if (zt) {
+      const [, lz] = tumParaLocal(x, z);
+      anda[id] = (lz < 0.5 && !tumuloAberto()) ? 0 : 1;
+      alt[id] = alturaTumulo(x, z);
+      continue;
+    }
+    let ok = x > X0 + 0.7 && x < X1 - 0.7 && z > Z0 + 0.7 && z < Z1 - 0.7 && z > -12.6;
+    if (ok && (noFuroTumulo(x, z) || Math.hypot(x - POCO.x, z - POCO.z) < POCO_R + 0.3)) ok = false;
+    if (ok && bloqueado(x, z, 0.22)) ok = false;
+    anda[id] = ok ? 1 : 0; alt[id] = H(x, z);
+  }
+}
+construirNav();
+const passa = (a, b) => anda[a] && anda[b] && Math.abs(alt[a] - alt[b]) <= ((zonaT[a] || zonaT[b]) ? 0.7 : 0.34);
+function caminho(x0, z0, x1, z1) {
+  const [si, sk] = celDe(x0, z0); let [ti, tk] = celDe(x1, z1);
+  const ini = sk * NNI + si; let fim = tk * NNI + ti;
+  if (!anda[fim]) { // célula livre mais próxima do toque
+    let melhor = -1, md = 1e9;
+    for (let r = 1; r < 10 && melhor < 0; r++) for (let dk = -r; dk <= r; dk++) for (let di = -r; di <= r; di++) {
+      const i = ti + di, k = tk + dk; if (i < 0 || k < 0 || i >= NNI || k >= NNK) continue;
+      const id = k * NNI + i; if (!anda[id]) continue; const d = di * di + dk * dk; if (d < md) { md = d; melhor = id; }
+    }
+    if (melhor < 0) return null; fim = melhor; ti = fim % NNI; tk = Math.floor(fim / NNI);
+  }
+  const N = NNI * NNK, g = new Float32Array(N).fill(1e9), veio = new Int32Array(N).fill(-1), fechado = new Uint8Array(N);
+  const heap = []; const hf = (id) => g[id] + Math.hypot(id % NNI - ti, Math.floor(id / NNI) - tk);
+  const push = (id, f) => { heap.push([f, id]); let c = heap.length - 1; while (c > 0) { const p = (c - 1) >> 1; if (heap[p][0] <= heap[c][0]) break; [heap[p], heap[c]] = [heap[c], heap[p]]; c = p; } };
+  const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let c = 0; for (;;) { const l = 2 * c + 1, r = l + 1; let m = c; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === c) break; [heap[m], heap[c]] = [heap[c], heap[m]]; c = m; } } return top; };
+  if (!anda[ini]) { // saiu da grade (empurrado): procura vizinho
+    g[ini] = 0;
+  } else g[ini] = 0;
+  push(ini, hf(ini));
+  const V8 = [[1, 0, 1], [-1, 0, 1], [0, 1, 1], [0, -1, 1], [1, 1, 1.414], [1, -1, 1.414], [-1, 1, 1.414], [-1, -1, 1.414]];
+  let achou = false;
+  while (heap.length) {
+    const [, id] = pop(); if (fechado[id]) continue; fechado[id] = 1;
+    if (id === fim) { achou = true; break; }
+    const i = id % NNI, k = Math.floor(id / NNI);
+    for (const [di, dk, c] of V8) {
+      const ni = i + di, nk = k + dk; if (ni < 0 || nk < 0 || ni >= NNI || nk >= NNK) continue;
+      const nid = nk * NNI + ni;
+      if (!(passa(id, nid) || (id === ini && anda[nid]))) continue;
+      if (di && dk && !(anda[k * NNI + ni] && anda[nk * NNI + i])) continue;
+      const ng = g[id] + c; if (ng < g[nid]) { g[nid] = ng; veio[nid] = id; push(nid, hf(nid)); }
+    }
+  }
+  if (!achou) return null;
+  const ids = []; for (let id = fim; id !== -1; id = veio[id]) ids.push(id); ids.reverse();
+  const pts = ids.map((id) => [celX(id % NNI), celZ(Math.floor(id / NNI))]);
+  if (fim === (tk * NNI + ti) && anda[fim]) pts[pts.length - 1] = celDe(x1, z1)[0] === ti && celDe(x1, z1)[1] === tk ? [x1, z1] : pts[pts.length - 1];
+  // corta cantos: pula para o ponto mais distante que se vê em linha reta
+  const out = []; let a = [x0, z0], j = 0;
+  while (j < pts.length - 1) {
+    let m = j + 1; for (let t = pts.length - 1; t > j + 1; t--) if (visivel(a, pts[t])) { m = t; break; }
+    out.push(pts[m]); a = pts[m]; j = m;
+  }
+  if (!out.length) out.push(pts[pts.length - 1]);
+  return out;
+}
+function visivel(a, b) {
+  const d = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.ceil(d / 0.2);
+  let [pi, pk] = celDe(a[0], a[1]); let prev = pk * NNI + pi;
+  for (let s = 1; s <= n; s++) {
+    const x = lerp(a[0], b[0], s / n), z = lerp(a[1], b[1], s / n); const [i, k] = celDe(x, z); const id = k * NNI + i;
+    if (id !== prev) { if (!passa(prev, id)) return false; prev = id; }
+  }
+  return true;
+}
+
+// ================================================================== o discípulo (jogador)
+const heroi = GLB.discipulo.scene;
+heroi.traverse((o) => { o.layers.enable(1); if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; } });
+// silhueta: segunda passada só do jogador, desenhada onde ele está atrás de algo
+const matSilhueta = new THREE.MeshBasicMaterial({ color: 0x6b4a2a, transparent: true, opacity: 0.42, depthFunc: THREE.GreaterDepth, depthWrite: false, fog: false });
+scene.add(heroi);
+const mixer = new THREE.AnimationMixer(heroi);
+const clips = Object.fromEntries(GLB.discipulo.animations.map((c) => [c.name, c]));
+let acaoAtual = null, animAtual = '';
+function toca(n, fade = 0.25) {
+  if (animAtual === n) return; animAtual = n;
+  const a = mixer.clipAction(clips[n]); a.reset(); a.setLoop(THREE.LoopRepeat); a.enabled = true; a.setEffectiveWeight(1);
+  if (acaoAtual && acaoAtual !== a) acaoAtual.crossFadeTo(a, fade, false);
+  a.play(); acaoAtual = a;
+}
+toca('Parado', 0);
+const VEL = { Andar: 1.25, Trote: 2.7 };
+const P = { x: 4.6, z: 1.9, y: 0, rot: -Math.PI / 2 - 0.4, rota: [], aoChegar: null };
+P.y = H(P.x, P.z);
+
+// ================================================================== pontos de interesse
+const xyz = ([x, z], y) => [x, y, z];
+const POIS = [
+  { id: 'tumulo', nome: 'Túmulo de Lázaro', pe: tumParaMundo(0.1, 3.0), alvo: [...tumParaMundo(0, 0.5), 3.4], marca: xyz(tumParaMundo(0, 0.2), TUM.y + 3.2),
+    foco: xyz(tumParaMundo(0, -0.5), TUM.y + 0.8), dist: 13 },
+  { id: 'casa', nome: 'Casa de Marta, Maria e Lázaro', pe: [-4.9, 1.0], alvo: [-4, -2.3, 3.2], marca: [-4.0, 6.6, -2.3], foco: [-4.2, 1.4, -1.6], dist: 15 },
+  { id: 'forno', nome: 'O forno de barro', pe: [1.6, 9.0], alvo: [1.9, 7.7, 1.6], marca: [1.5, 2.2, 7.7], foco: [1.9, 0.7, 7.7], dist: 10 },
+  { id: 'poco', nome: 'A cisterna', pe: [POCO.x + 1.0, POCO.z + 1.5], alvo: [POCO.x, POCO.z, 1.8], marca: [POCO.x, 3.2, POCO.z], foco: [POCO.x, 0.9, POCO.z], dist: 10.5 },
+  { id: 'eira', nome: 'A eira', pe: [8.4, 10.0], alvo: [9.0, 11.6, 2.4], marca: [9.0, 2.2, 11.6], foco: [10.0, 0.6, 11.6], dist: 15 },
+  { id: 'aprisco', nome: 'O aprisco', pe: [-8.1, 7.1], alvo: [-14, 7, 4], marca: [-15.8, 2.4, 7.0], foco: [-13.2, 0.6, 7.0], dist: 17 },
+  { id: 'saida', nome: 'O caminho de Jerusalém', pe: [3.25, -11.8], alvo: [3.3, -13, 2.6], marca: [3.3, TOPO + 3.0, -13.6], foco: [3.3, TOPO + 1.4, -12.6], dist: 15 },
+];
+const geoMarca = new THREE.OctahedronGeometry(0.24, 0); geoMarca.scale(1, 1.5, 1);
+const matMarca = new THREE.MeshBasicMaterial({ color: 0xf2b648, transparent: true, opacity: 0.95, fog: false });
+const toques = [];
+for (const p of POIS) {
+  const m = new THREE.Mesh(geoMarca, matMarca); m.position.set(...p.marca); m.userData.poi = p; scene.add(m); p.m = m;
+  const hit = new THREE.Mesh(new THREE.SphereGeometry(0.9, 8, 6), new THREE.MeshBasicMaterial({ visible: false })); m.add(hit); hit.userData.poi = p; toques.push(hit);
+  p.y0 = p.marca[1];
+}
+
+const TEXTOS = {
+  tumulo() {
+    if (dentroTumulo()) return { t: 'O sepulcro vazio', p: 'Só ficou a pedra do banco, talhada na rocha. Seis dias antes da Páscoa, Lázaro estava à mesa com Jesus, numa ceia em Betânia, e muitos vinham para ver aquele que tinha sido ressuscitado.',
+      r: 'João 12:1-2, 9', a: [['Sair', () => irPara(tumParaMundo(0.1, 2.6), () => abrir('tumulo'))]] };
+    if (pedraAlvo === 0) return { t: 'Túmulo de Lázaro', p: 'Uma gruta cavada na rocha, com uma pedra redonda fechando a entrada. Aqui Lázaro foi sepultado e ficou quatro dias. Jesus chegou, comoveu-se e disse: “Tirai a pedra.”',
+      r: 'João 11:17, 38-39', a: [['Rolar a pedra', () => { pedraAlvo = PEDRA_ABERTA; aoParar = () => abrir('tumulo'); fecharDlg(false); }, 1], ['Voltar', fecharDlg]] };
+    return { t: 'Túmulo de Lázaro', p: 'Tiraram a pedra. Jesus levantou os olhos e orou; depois clamou em alta voz: “Lázaro, vem para fora!” E o que estivera morto saiu, com as mãos e os pés envoltos em faixas.',
+      r: 'João 11:41-44', a: [['Entrar', () => { fecharDlg(false); irPara(tumParaMundo(0, -3.4), () => abrir('tumulo')); }, 1],
+        ['Fechar a pedra', () => { pedraAlvo = 0; construirNav(); aoParar = () => abrir('tumulo'); fecharDlg(false); }], ['Voltar', fecharDlg]] };
+  },
+  casa() {
+    const aberta = Math.abs(portaLazaro.userData.alvo - portaLazaro.userData.aberta) < 0.01;
+    return { t: 'Casa de Marta, Maria e Lázaro', p: 'Marta recebeu Jesus em sua casa. Maria, sentada aos pés do Senhor, ouvia a sua palavra, enquanto Marta se afadigava com muito serviço. “Maria escolheu a boa parte”, disse Jesus.',
+      r: 'Lucas 10:38-42; João 11:1-5', a: [[aberta ? 'Fechar a porta' : 'Abrir a porta', () => { portaLazaro.userData.alvo = aberta ? portaLazaro.userData.fechada : portaLazaro.userData.aberta; abrir('casa'); }, 1], ['Voltar', fecharDlg]] };
+  },
+  forno() {
+    const assado = FN.Forno_Pao_1.visible;
+    return { t: 'O forno de barro', p: 'No tannur, a massa é colada na parede quente e em poucos minutos sai o pão do dia. “O pão nosso de cada dia dá-nos hoje.”',
+      r: 'Mateus 6:11', a: [[assado ? 'Fazer mais massa' : 'Assar o pão', () => { assar(!assado); abrir('forno'); }, 1], ['Atiçar o fogo', () => { fogo = 2.2; }], ['Voltar', fecharDlg]] };
+  },
+  poco() {
+    return { t: 'A cisterna', p: 'Betânia não tem rio nem fonte por perto. A chuva do inverno é recolhida em cisternas cavadas na rocha, e delas se tira a água o ano inteiro.',
+      r: 'cf. Deuteronômio 11:14', a: [['Tirar água', () => { if (!baldeAnim) baldeAnim = { t: 0 }; }, 1], ['Voltar', fecharDlg]] };
+  },
+  eira() {
+    return { t: 'A eira', p: 'Na eira, o trigo ceifado é pisado e depois lançado ao vento com a pá: a palha voa, o grão cai. João Batista falou daquele que traz a pá na mão e limpará a sua eira.',
+      r: 'Mateus 3:12', a: [['Voltar', fecharDlg]] };
+  },
+  aprisco() {
+    return { t: 'O aprisco', p: 'À noite as ovelhas são recolhidas no aprisco. O pastor entra pela porta, chama as suas ovelhas pelo nome e as conduz para fora; elas o seguem, porque conhecem a sua voz.',
+      r: 'João 10:1-4', a: [['Voltar', fecharDlg]] };
+  },
+  saida() {
+    return { t: 'O caminho de Jerusalém', p: 'Daqui o caminho sobe o Monte das Oliveiras, passa por Betfagé e chega a Jerusalém, a uns quinze estádios. Foi saindo de Betânia, de manhã, que Jesus teve fome e viu de longe uma figueira com folhas. (O caminho continua na próxima fase.)',
+      r: 'João 11:18; Marcos 11:1, 12-13', a: [['Voltar', fecharDlg]] };
+  },
+};
+const dentroTumulo = () => { const [lx, lz] = tumParaLocal(P.x, P.z); return lz < -0.6 && Math.abs(lx) < 1.8; };
+function assar(sim) {
+  for (let i = 1; i <= 3; i++) { FN['Forno_Massa_' + i].visible = !sim; FN['Forno_Pao_' + i].visible = sim; }
+}
+
+// ------------------------------------------------------------------ diálogo
+let poiAberto = null, poiPerto = null;
+const dlg = $('#dlg');
+function abrir(id) {
+  const poi = POIS.find((p) => p.id === id); poiAberto = poi;
+  const T2 = TEXTOS[id]();
+  dlg.querySelector('h2').textContent = T2.t; dlg.querySelector('.txt').textContent = T2.p; dlg.querySelector('.ref').textContent = T2.r;
+  const ac = dlg.querySelector('.acoes'); ac.innerHTML = '';
+  for (const [rot, fn, pri] of T2.a) { const b = document.createElement('button'); b.className = 'bt' + (pri ? ' pri' : ''); b.textContent = rot; b.onclick = (e) => { e.stopPropagation(); fn(); }; ac.appendChild(b); }
+  dlg.classList.add('on'); $('#interagir').classList.remove('on');
+  // vira para o ponto de interesse
+  P.rotAlvo = Math.atan2(poi.alvo[0] - P.x, poi.alvo[1] - P.z);
+}
+function fecharDlg(soltaCamera = true) {
+  dlg.classList.remove('on');
+  if (soltaCamera !== false) poiAberto = null;
+}
+$('#interagir').onclick = (e) => { e.stopPropagation(); if (poiPerto) abrir(poiPerto.id); };
+
+// ================================================================== câmera isométrica presa
+const camera = new THREE.PerspectiveCamera(24, innerWidth / innerHeight, 1, 400);
+const AZ = Math.PI * 0.25, EL = 0.66;
+const DIR = new THREE.Vector3(Math.sin(AZ) * Math.cos(EL), Math.sin(EL), Math.cos(AZ) * Math.cos(EL));
+const retrato = () => innerHeight > innerWidth * 1.05;
+let zoomT = 0.45;
+const camAlvo = new THREE.Vector3(P.x, 1, P.z); let camDist = 40;
+function distZoom() { return retrato() ? lerp(34, 108, zoomT) : lerp(24, 82, zoomT); }
+function ajustaFov() { camera.fov = retrato() ? 30 : 24; camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
+ajustaFov();
+function alvoCamera() {
+  if (poiAberto) {
+    let f = poiAberto.foco, d = poiAberto.dist;
+    if (poiAberto.id === 'tumulo' && dentroTumulo()) { const [x, z] = tumParaMundo(0, -3.0); f = [x, TUM.y + 0.6, z]; d = 12; }
+    return [new THREE.Vector3(...f), d * (retrato() ? 1.45 : 1)];
+  }
+  if (dentroTumulo()) { const [x, z] = tumParaMundo(0, -3.0); return [new THREE.Vector3(x, TUM.y + 0.6, z), retrato() ? 15 : 10.5]; }
+  // segue o jogador, mas o alvo fica preso numa caixa que encolhe quando se afasta: nunca sai da área montada
+  const hx = lerp(13, 0.5, zoomT) * (retrato() ? 0.8 : 1), hz = lerp(9.5, 0.5, zoomT);
+  const v = new THREE.Vector3(clamp(P.x, -hx, hx), P.y * 0.6 + 0.8, clamp(P.z, -hz - 1, hz));
+  return [v, distZoom()];
+}
+{ const [v, d] = alvoCamera(); camAlvo.copy(v); camDist = d; }
+const zoom = (dz) => { zoomT = clamp(zoomT + dz, 0, 1); };
+$('#zMais').onclick = (e) => { e.stopPropagation(); zoom(-0.2); };
+$('#zMenos').onclick = (e) => { e.stopPropagation(); zoom(0.2); };
+renderer.domElement.addEventListener('wheel', (e) => { e.preventDefault(); zoom(Math.sign(e.deltaY) * 0.1); }, { passive: false });
+
+// ================================================================== entrada: tocar para andar, pinça para zoom, teclado
+const ray = new THREE.Raycaster(), ptr = new THREE.Vector2();
+const dedos = new Map(); let pinca = null, toque0 = null;
+const cv = renderer.domElement;
+cv.addEventListener('pointerdown', (e) => {
+  dedos.set(e.pointerId, [e.clientX, e.clientY]);
+  if (dedos.size === 2) { const [a, b] = [...dedos.values()]; pinca = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), z: zoomT }; toque0 = null; }
+  else toque0 = { x: e.clientX, y: e.clientY, t: performance.now() };
+});
+cv.addEventListener('pointermove', (e) => {
+  if (!dedos.has(e.pointerId)) return; dedos.set(e.pointerId, [e.clientX, e.clientY]);
+  if (pinca && dedos.size === 2) { const [a, b] = [...dedos.values()]; const d = Math.hypot(a[0] - b[0], a[1] - b[1]); zoomT = clamp(pinca.z - (d / pinca.d - 1) * 0.9, 0, 1); }
+});
+const solta = (e) => {
+  dedos.delete(e.pointerId); if (dedos.size < 2) pinca = null;
+  if (!toque0 || e.type !== 'pointerup') { toque0 = null; return; }
+  const ok = Math.hypot(e.clientX - toque0.x, e.clientY - toque0.y) < 10 && performance.now() - toque0.t < 450; toque0 = null;
+  if (ok) tocar(e.clientX, e.clientY);
+};
+cv.addEventListener('pointerup', solta); cv.addEventListener('pointercancel', solta);
+
+function tocar(cx, cy) {
+  $('#dica').style.opacity = 0;
+  ptr.set((cx / innerWidth) * 2 - 1, -(cy / innerHeight) * 2 + 1);
+  ray.setFromCamera(ptr, camera);
+  let poi = null;
+  const hm = ray.intersectObjects(toques, false)[0]; if (hm) poi = hm.object.userData.poi;
+  const hc = ray.intersectObject(chao, false)[0];
+  if (!poi && hc) poi = POIS.find((p) => Math.hypot(hc.point.x - p.alvo[0], hc.point.z - p.alvo[1]) < p.alvo[2]) || null;
+  if (!poi) { // casas, árvores e objetos: o primeiro que o raio pega, projetado no chão
+    const hs = ray.intersectObjects(scene.children, true).find((h) => h.object !== chao && h.object.visible && !h.object.isInstancedMesh);
+    if (hs) poi = POIS.find((p) => Math.hypot(hs.point.x - p.alvo[0], hs.point.z - p.alvo[1]) < p.alvo[2] + 1.2) || null;
+  }
+  if (poi) {
+    if (poiAberto) fecharDlg(false);
+    if (poi.id === 'tumulo' && dentroTumulo()) { abrir('tumulo'); return; }
+    irPara(poi.pe, () => abrir(poi.id));
+    return;
+  }
+  if (poiAberto) fecharDlg();
+  if (hc) irPara([hc.point.x, hc.point.z], null);
+}
+function irPara([x, z], aoChegar) {
+  const r = caminho(P.x, P.z, x, z);
+  P.aoChegar = aoChegar;
+  if (!r) { P.rota = []; if (aoChegar && Math.hypot(P.x - x, P.z - z) < 1.5) aoChegar(); return; }
+  P.rota = r;
+  // marca no chão
+  const fim = r[r.length - 1]; alvoMarca.position.set(fim[0], alturaEm(fim[0], fim[1]) + 0.04, fim[1]); alvoMarca.material.opacity = 0.9; alvoMarca.scale.setScalar(1);
+}
+const alvoMarca = new THREE.Mesh(new THREE.RingGeometry(0.22, 0.32, 20).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xfff1cf, transparent: true, opacity: 0, depthWrite: false }));
+scene.add(alvoMarca);
+
+const teclas = new Set();
+addEventListener('keydown', (e) => {
+  teclas.add(e.key.toLowerCase());
+  if ((e.key === 'e' || e.key === 'E' || e.key === 'Enter' || e.key === ' ') && poiPerto && !dlg.classList.contains('on')) { abrir(poiPerto.id); e.preventDefault(); }
+  if (e.key === 'Escape') fecharDlg();
+  if (e.key === '+' || e.key === '=') zoom(-0.15);
+  if (e.key === '-') zoom(0.15);
+});
+addEventListener('keyup', (e) => teclas.delete(e.key.toLowerCase()));
+function alturaEm(x, z) {
+  if (naZonaTumulo(x, z)) return alturaTumulo(x, z, Math.max(P.y, TUM.y - 0.5) + 0.9);
+  return H(x, z);
+}
+function podePisar(x0, z0, x1, z1) {
+  const [i0, k0] = celDe(x0, z0), [i1, k1] = celDe(x1, z1);
+  const a = k0 * NNI + i0, b = k1 * NNI + i1;
+  if (a === b) return !!anda[b] || !anda[a];
+  return passa(a, b) || (!anda[a] && anda[b]);
+}
+
+// ================================================================== laço
+const relogio = new THREE.Clock();
+let tempo = 0;
+const FRENTE = new THREE.Vector2(-Math.sin(AZ), -Math.cos(AZ)), DIREITA = new THREE.Vector2(Math.cos(AZ), -Math.sin(AZ));
+function passo(dt) {
+  tempo += dt;
+  // ---- movimento por teclado
+  let kx = 0, kz = 0;
+  if (teclas.has('w') || teclas.has('arrowup')) { kx += FRENTE.x; kz += FRENTE.y; }
+  if (teclas.has('s') || teclas.has('arrowdown')) { kx -= FRENTE.x; kz -= FRENTE.y; }
+  if (teclas.has('d') || teclas.has('arrowright')) { kx += DIREITA.x; kz += DIREITA.y; }
+  if (teclas.has('a') || teclas.has('arrowleft')) { kx -= DIREITA.x; kz -= DIREITA.y; }
+  let vel = 0;
+  if (kx || kz) {
+    P.rota = []; P.aoChegar = null;
+    if (poiAberto) fecharDlg();
+    const l = Math.hypot(kx, kz); kx /= l; kz /= l; vel = VEL.Trote;
+    const nx = P.x + kx * vel * dt, nz = P.z + kz * vel * dt;
+    if (podePisar(P.x, P.z, nx, nz)) { P.x = nx; P.z = nz; }
+    else if (podePisar(P.x, P.z, nx, P.z)) P.x = nx;
+    else if (podePisar(P.x, P.z, P.x, nz)) P.z = nz;
+    P.rotAlvo = Math.atan2(kx, kz);
+  } else if (P.rota.length) {
+    // ---- seguindo a rota do toque
+    const [tx, tz] = P.rota[0]; const dx = tx - P.x, dz = tz - P.z, d = Math.hypot(dx, dz);
+    let resto = d; for (let i = 1; i < P.rota.length; i++) resto += Math.hypot(P.rota[i][0] - P.rota[i - 1][0], P.rota[i][1] - P.rota[i - 1][1]);
+    vel = resto > 2.2 ? VEL.Trote : VEL.Andar;
+    const s = vel * dt;
+    if (d <= s) { P.x = tx; P.z = tz; P.rota.shift(); if (!P.rota.length) { vel = 0; const f = P.aoChegar; P.aoChegar = null; if (f) f(); } }
+    else { P.x += dx / d * s; P.z += dz / d * s; P.rotAlvo = Math.atan2(dx, dz); }
+  }
+  toca(vel === 0 ? 'Parado' : vel > 2 ? 'Trote' : 'Andar');
+  let dr = (P.rotAlvo ?? P.rot) - P.rot; dr = Math.atan2(Math.sin(dr), Math.cos(dr)); P.rot += dr * Math.min(1, dt * 10);
+  const yAlvo = alturaEm(P.x, P.z); P.y += (yAlvo - P.y) * Math.min(1, dt * 14);
+  heroi.position.set(P.x, P.y, P.z); heroi.rotation.y = P.rot;
+  mixer.update(dt);
+  alvoMarca.material.opacity = Math.max(0, alvoMarca.material.opacity - dt * (P.rota.length ? 0.3 : 2)); alvoMarca.scale.setScalar(1 + (1 - alvoMarca.material.opacity) * 0.6);
+
+  // ---- ponto de interesse perto
+  poiPerto = null;
+  for (const p of POIS) if (Math.hypot(P.x - p.pe[0], P.z - p.pe[1]) < 2.4) poiPerto = p;
+  if (dentroTumulo()) poiPerto = POIS[0];
+  const bi = $('#interagir');
+  if (poiPerto && !dlg.classList.contains('on') && !P.rota.length) { bi.textContent = poiPerto.nome; bi.classList.add('on'); } else bi.classList.remove('on');
+  for (const p of POIS) {
+    p.m.position.y = p.y0 + Math.sin(tempo * 2 + p.marca[0]) * 0.12; p.m.rotation.y = tempo * 1.2;
+    p.m.visible = !(poiAberto === p && dlg.classList.contains('on'));
+  }
+
+  // ---- túmulo: pedra, corte e lâmpada
+  pedraX += clamp(pedraAlvo - pedraX, -dt * 1.0, dt * 1.0);
+  pedra.position.x = pedraX; pedra.rotation.z = -(pedraX - PEDRA_ABERTA) / PEDRA_R;
+  if (Math.abs(pedraX - pedraAlvo) < 1e-4) {
+    if (tumuloAberto() !== navAberto) { navAberto = tumuloAberto(); construirNav(); }
+    if (aoParar) { const f = aoParar; aoParar = null; f(); }
+  }
+  const corte = dentroTumulo();
+  for (const o of corteTumulo) o.visible = !corte;
+  lampada.intensity += ((corte ? 6 : 0) - lampada.intensity) * Math.min(1, dt * 4);
+
+  // ---- porta da casa de Lázaro
+  for (const g of Object.values(casas)) for (const p of g.userData.portas) p.rotation.y += (p.userData.alvo - p.rotation.y) * Math.min(1, dt * 5);
+
+  // ---- forno: chama que tremula
+  fogo += (1 - fogo) * Math.min(1, dt * 0.6);
+  const ch = 0.85 + 0.15 * Math.sin(tempo * 17) * Math.sin(tempo * 7.3);
+  if (FN.Forno_Chamas) FN.Forno_Chamas.scale.set(1, ch * fogo, 1);
+  if (FN.Forno_ChamaBoca) FN.Forno_ChamaBoca.scale.set(1, (0.9 + 0.2 * Math.sin(tempo * 13)) * Math.min(1.4, fogo), 1);
+
+  // ---- balde da cisterna: desce, enche, sobe
+  if (baldeAnim) {
+    baldeAnim.t += dt; const t = baldeAnim.t;
+    const fundo = -2.7; let y;
+    if (t < 2) y = lerp(BALDE_Y0, fundo, smooth(0, 2, t));
+    else if (t < 2.7) { y = fundo; baldeAgua.visible = true; }
+    else if (t < 4.9) y = lerp(fundo, BALDE_Y0, smooth(2.7, 4.9, t));
+    else { y = BALDE_Y0; baldeAnim = null; }
+    balde.position.y = y; baldeAgua.position.y = y;
+    corda.scale.y = Math.max(0.05, (CORDA_Y - y) / Math.max(0.01, CORDA_Y - BALDE_Y0));
+  }
+
+  // ---- câmera
+  const [v, d] = alvoCamera();
+  const k = 1 - Math.exp(-dt * 3.2);
+  camAlvo.lerp(v, k); camDist += (d - camDist) * k;
+  camera.position.copy(camAlvo).addScaledVector(DIR, camDist);
+  camera.lookAt(camAlvo);
+  sun.position.copy(camAlvo).addScaledVector(SOL_DIR, 45); sun.target.position.copy(camAlvo);
+}
+
+addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); ajustaFov(); });
+renderer.autoClear = false; renderer.shadowMap.autoUpdate = false;
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(0.05, relogio.getDelta()); passo(dt);
+  renderer.shadowMap.needsUpdate = true; renderer.clear(); renderer.render(scene, camera);
+  const bg = scene.background; scene.background = null; scene.overrideMaterial = matSilhueta; camera.layers.set(1);
+  renderer.render(scene, camera);
+  scene.background = bg; scene.overrideMaterial = null; camera.layers.set(0);
+});
+renderer.compile(scene, camera);
+setTimeout(() => { $('#carga').style.opacity = 0; setTimeout(() => $('#carga').remove(), 1000); }, 250);
+setTimeout(() => { $('#dica').style.opacity = 0; }, 9000);
+window.__vila = { camera, camAlvo, get camDist() { return camDist; }, alturaTumulo, naZonaTumulo, tumParaLocal, P, POIS, construirNav, anda, alt, caminho, abrir, irPara, tumParaMundo, get zoomT() { return zoomT; }, set zoomT(v) { zoomT = v; } };
+</script>
+</body>
+</html>
