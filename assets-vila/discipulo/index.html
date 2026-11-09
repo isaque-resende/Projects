@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#86b9df">
+<title>Discípulo animado</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #c6e0ef; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; opacity: 0; transition: opacity .8s; }
+  canvas.on { opacity: 1; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<script type="module">
+// O discípulo (modelo do Tripo) vestido no esqueleto da Universal Animation Library (Quaternius, CC0).
+// Luz padrão: manhã no deserto.
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const sky = (() => {
+  const c = document.createElement('canvas'); c.width = 2; c.height = 256;
+  const g = c.getContext('2d'); const gr = g.createLinearGradient(0, 0, 0, 256);
+  gr.addColorStop(0, '#86b9df'); gr.addColorStop(0.55, '#c6e0ef'); gr.addColorStop(1, '#f2e6d0');
+  g.fillStyle = gr; g.fillRect(0, 0, 2, 256);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+})();
+scene.background = sky;
+scene.fog = new THREE.Fog(0xeae4d6, 60, 150);
+
+// manhã no deserto: céu azul claro, sol branco-quente vindo do leste a uns 35°, luz rebatida da areia
+scene.add(new THREE.HemisphereLight(0xcfe6ff, 0xc9a47a, 1.35));
+const sun = new THREE.DirectionalLight(0xffe4bc, 3.2);
+sun.position.set(14, 13, 9);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -8, right: 8, top: 8, bottom: -8, near: 0.5, far: 60 });
+sun.shadow.bias = -0.0004;
+sun.shadow.normalBias = 0.02;
+scene.add(sun);
+
+// chão: sua textura de terra clara com grama, repetida (~5 m por repetição)
+const groundTex = new THREE.TextureLoader().load('tex/campo_seco.webp');
+groundTex.colorSpace = THREE.SRGBColorSpace;
+groundTex.wrapS = groundTex.wrapT = THREE.RepeatWrapping;
+groundTex.repeat.set(44, 44);
+groundTex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+const ground = new THREE.Mesh(new THREE.CircleGeometry(110, 48), new THREE.MeshStandardMaterial({ map: groundTex, roughness: 1, color: 0xffffff }));
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+const camera = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 0.1, 260);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 1.5;
+controls.maxDistance = 30;
+controls.maxPolarAngle = Math.PI * 0.48;
+controls.target.set(0, 0.9, 0);
+controls.autoRotate = false;
+controls.autoRotateSpeed = 0.6;
+const stopSpin = () => { controls.autoRotate = false; };
+renderer.domElement.addEventListener('pointerdown', stopSpin, { once: true });
+
+function frame() {
+  const portrait = innerHeight > innerWidth;
+  const dist = portrait ? 9 : 6.5;
+  camera.position.set(0.7, 0.75, 1).normalize().multiplyScalar(dist).add(controls.target);
+  controls.update();
+}
+
+const LAYOUT = [{ x: 0, z: 0 }];
+const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync('discipulo.glb');
+const heroi = gltf.scene;
+heroi.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; } });
+scene.add(heroi);
+const mixer = new THREE.AnimationMixer(heroi);
+const clips = Object.fromEntries(gltf.animations.map((c) => [c.name, c]));
+const acao = (n) => mixer.clipAction(clips[n]);
+// velocidades de deslocamento (m/s), já na escala de 1,70 m
+const VEL = { Parado: 0, Conversando: 0, Andar: 1.2, Trote: 2.7, Correr: 4.6 };
+let atual = null, base = 'Parado', pulando = false;
+function toca(n, fade = 0.25) {
+  const a = acao(n); a.reset(); a.setLoop(THREE.LoopRepeat); a.enabled = true;
+  if (atual && atual !== a) atual.crossFadeTo(a, fade, false);
+  a.play(); atual = a;
+}
+function pulo() {
+  // Pulo_Inicio: agacha e sai do chão em ~0,12 s; Pulo_Queda: toca o chão em ~0,13 s e se recompõe até ~0,8 s
+  if (pulando) return; pulando = true;
+  const ini = acao('Pulo_Inicio'), cai = acao('Pulo_Queda');
+  for (const x of [ini, cai]) { x.setLoop(THREE.LoopOnce); x.clampWhenFinished = true; }
+  ini.reset(); ini.play(); if (atual) atual.crossFadeTo(ini, 0.1, false); atual = ini;
+  const AR = 0.54, SAI = 0.12, TOCA = 0.13;
+  salto = { t: 0, t0: SAI, t1: SAI + AR + TOCA };
+  setTimeout(() => { cai.reset(); cai.play(); ini.crossFadeTo(cai, 0.08, false); atual = cai; }, (SAI + AR) * 1000);
+  setTimeout(() => { pulando = false; toca(base, 0.35); }, (SAI + AR + 0.75) * 1000);
+}
+let salto = null;
+// botões
+const barra = document.createElement('div');
+Object.assign(barra.style, { position: 'fixed', zIndex: 2, left: '50%', bottom: 'max(14px, env(safe-area-inset-bottom))', transform: 'translateX(-50%)',
+  display: 'flex', flexWrap: 'wrap', gap: '6px', justifyContent: 'center', width: 'min(96vw, 640px)' });
+const BOT = [['Parado', 'Parado'], ['Conversando', 'Conversando'], ['Andar', 'Andar'], ['Trote', 'Trote'], ['Correr', 'Correr'],
+  ['Pulo parado', 'PULO_PARADO'], ['Pulo correndo', 'PULO_CORRENDO']];
+const botoes = {};
+for (const [rot, id] of BOT) {
+  const b = document.createElement('button'); b.textContent = rot;
+  Object.assign(b.style, { border: '0', borderRadius: '14px', padding: '9px 14px', background: '#f6efe2e6', color: '#4a3a28',
+    fontSize: '14px', fontFamily: 'system-ui, sans-serif' });
+  b.onclick = () => {
+    if (id === 'PULO_PARADO') { if (!pulando) { base = 'Parado'; toca('Parado', 0.15); pulo(); } }
+    else if (id === 'PULO_CORRENDO') { if (!pulando) { if (base === 'Parado' || base === 'Conversando') { base = 'Trote'; toca('Trote'); setTimeout(pulo, 700); } else pulo(); } }
+    else { base = id; if (!pulando) toca(id); }
+    for (const k in botoes) botoes[k].style.background = '#f6efe2e6';
+    if (botoes[base]) botoes[base].style.background = '#e8c98a';
+  };
+  barra.appendChild(b); botoes[id] = b;
+}
+document.body.appendChild(barra);
+toca('Parado'); botoes.Parado.style.background = '#e8c98a';
+// deslocamento em círculo e câmera que acompanha
+const R = 4.5; let ang = 0;
+const clock = new THREE.Clock();
+function passo() {
+  const dt = Math.min(0.05, clock.getDelta());
+  mixer.update(dt);
+  const v = pulando ? (VEL[base] || 0) : (VEL[base] || 0);
+  if (v > 0) {
+    ang += v * dt / R;
+    const px = Math.sin(ang) * R, pz = Math.cos(ang) * R - R;
+    const dx = px - heroi.position.x, dz = pz - heroi.position.z;
+    heroi.position.x = px; heroi.position.z = pz;
+    heroi.rotation.y = Math.atan2(dx, dz);
+    camera.position.x += dx; camera.position.z += dz;
+    controls.target.x += dx; controls.target.z += dz;
+  }
+  let y = 0;
+  if (salto) {
+    salto.t += dt;
+    if (salto.t > salto.t0 && salto.t < salto.t1) { const u = (salto.t - salto.t0) / (salto.t1 - salto.t0); y = 4 * u * (1 - u) * 0.5; }
+    if (salto.t > salto.t1) salto = null;
+  }
+  heroi.position.y = y;
+  controls.update(); renderer.render(scene, camera);
+}
+
+// tufos de grama em pé: 2 planos cruzados (4 triângulos) com o seu recorte de grama, todos num só draw call.
+// Normais apontando para cima: a grama recebe a mesma luz do chão, sem escurecer de lado.
+{
+  const tex = new THREE.TextureLoader().load('tex/capim_tufo.webp');
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const a = new THREE.PlaneGeometry(0.8, 0.8); a.translate(0, 0.38, 0);
+  const b = a.clone(); b.rotateY(Math.PI / 2);
+  const geo = mergeGeometries([a, b]);
+  const n = geo.attributes.normal;
+  for (let i = 0; i < n.count; i++) n.setXYZ(i, 0, 1, 0);
+  const mat = new THREE.MeshStandardMaterial({ map: tex, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 1 });
+  let seed = 17;
+  const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  const N = 520;
+  const grass = new THREE.InstancedMesh(geo, mat, N);
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3(), c = new THREE.Color();
+  for (let i = 0; i < N; i++) {
+    if (i < N * 0.55) {               // mais grama ao redor das oliveiras
+      const L = LAYOUT[i % LAYOUT.length];
+      const ang = rnd() * Math.PI * 2, d = 1.5 + rnd() * 3.5;
+      p.set(L.x + Math.cos(ang) * d, 0, L.z + Math.sin(ang) * d);
+    } else {                          // e espalhada pelo campo
+      const ang = rnd() * Math.PI * 2, d = Math.sqrt(rnd()) * 30;
+      p.set(Math.cos(ang) * d, 0, Math.sin(ang) * d);
+    }
+    q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rnd() * Math.PI);
+    const k = 0.55 + rnd() * 0.8;
+    s.set(k, k * (0.8 + rnd() * 0.5), k);
+    grass.setMatrixAt(i, m4.compose(p, q, s));
+    const t = 0.82 + rnd() * 0.25;
+    grass.setColorAt(i, c.setRGB(t, t * (0.96 + rnd() * 0.06), t * 0.9));
+  }
+  grass.receiveShadow = true;
+  scene.add(grass);
+}
+
+frame();
+addEventListener('resize', () => {
+  renderer.setSize(innerWidth, innerHeight);
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+});
+renderer.setAnimationLoop(passo);
+requestAnimationFrame(() => renderer.domElement.classList.add('on'));
+</script>
+</body>
+</html>
