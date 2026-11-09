@@ -113,10 +113,11 @@ function pulo() {
   ini.reset(); ini.play(); if (atual) atual.crossFadeTo(ini, 0.1, false); atual = ini;
   const AR = 0.54, SAI = 0.12, TOCA = 0.13;
   salto = { t: 0, t0: SAI, t1: SAI + AR + TOCA };
+  pouso = { t: 0, toca: SAI + AR + TOCA };
   setTimeout(() => { cai.reset(); cai.play(); ini.crossFadeTo(cai, 0.08, false); atual = cai; }, (SAI + AR) * 1000);
   setTimeout(() => { pulando = false; toca(base, 0.35); }, (SAI + AR + 0.75) * 1000);
 }
-let salto = null;
+let salto = null, pouso = null, velF = 1;
 // botões
 const barra = document.createElement('div');
 Object.assign(barra.style, { position: 'fixed', zIndex: 2, left: '50%', bottom: 'max(14px, env(safe-area-inset-bottom))', transform: 'translateX(-50%)',
@@ -145,7 +146,12 @@ const clock = new THREE.Clock();
 function passo() {
   const dt = Math.min(0.05, clock.getDelta());
   mixer.update(dt);
-  const v = pulando ? (VEL[base] || 0) : (VEL[base] || 0);
+  // no pouso do salto correndo, os pés ficam plantados: a velocidade cai a zero ao tocar o chão
+  // e só volta (com uma rampa curta) quando a animação de pouso termina
+  let alvo = 1;
+  if (pouso) { pouso.t += dt; if (pouso.t > pouso.toca - 0.02) alvo = 0; if (!pulando) pouso = null; }
+  velF += (alvo - velF) * Math.min(1, dt * (alvo < velF ? 22 : 5));
+  const v = (VEL[base] || 0) * velF;
   if (v > 0) {
     ang += v * dt / R;
     const px = Math.sin(ang) * R, pz = Math.cos(ang) * R - R;
