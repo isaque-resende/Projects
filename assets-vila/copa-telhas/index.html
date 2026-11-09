@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#86b9df">
-<title>Copa em telhas</title>
+<title>Comparar copas</title>
 <style>
   html, body { margin: 0; height: 100%; overflow: hidden; background: #c6e0ef; }
   canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; opacity: 0; transition: opacity .8s; }
@@ -76,7 +76,7 @@ controls.dampingFactor = 0.08;
 controls.minDistance = 2;
 controls.maxDistance = 90;
 controls.maxPolarAngle = Math.PI * 0.48;
-controls.target.set(0, 2.6, 0);
+controls.target.set(0, 3.0, 0);
 controls.autoRotate = true;
 controls.autoRotateSpeed = 0.6;
 const stopSpin = () => { controls.autoRotate = false; };
@@ -84,25 +84,25 @@ renderer.domElement.addEventListener('pointerdown', stopSpin, { once: true });
 
 function frame() {
   const portrait = innerHeight > innerWidth;
-  const dist = portrait ? 26 : 17;
+  const dist = portrait ? 46 : 26;
   camera.position.set(0.35, 0.42, 1).normalize().multiplyScalar(dist).add(controls.target);
   controls.update();
 }
 
 // as 4 alfarrobeiras num pequeno bosque: duas na frente, duas atrás
-// à esquerda a alfarrobeira atual (raminhos espetados); à direita o teste com a copa "em telhas"
-const LAYOUT = [{ x: -3.4, z: 0 }, { x: 3.4, z: 0 }];
-const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync('teste_telhas.glb');
+// da esquerda para a direita: alfarrobeira atual · copa em telhas · nossa alfarrobeira no estilo do pacote · árvore original do pacote (Quaternius)
+const ORDEM = ['C_Atual', 'C_Telhas', 'C_EstiloPacote', 'C_Pacote'];
+const XS = [-9, -3, 3, 9.5];
+const LAYOUT = XS.map((x) => ({ x, z: 0 }));
+const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync('comparacao.glb');
 gltf.scene.children.forEach((n) => {
-  const telhas = /Telhas/.test(n.name);
-  n.position.set(telhas ? 3.4 : -3.4, 0, 0);
-  n.rotation.set(0, telhas ? 0 : 0.4, 0);
+  const i = ORDEM.indexOf(n.name);
+  n.position.set(XS[i] ?? 0, 0, 0);
   n.traverse((o) => {
     if (!o.isMesh) return;
     o.castShadow = true; o.receiveShadow = true;
-    if (telhas && o.material.alphaTest > 0) {
-      // copa em telhas: sombreamento suave e o verso do prato com a mesma luz da frente
-      const m = o.material.clone(); m.flatShading = false;
+    if (n.name !== 'C_Atual' && o.material.alphaTest > 0) {
+      const m = o.material.clone(); m.flatShading = false; m.side = THREE.DoubleSide;
       m.onBeforeCompile = (sh) => { sh.fragmentShader = sh.fragmentShader.replace('#include <normal_fragment_begin>',
         THREE.ShaderChunk.normal_fragment_begin.replace('gl_FrontFacing ? 1.0 : - 1.0', '1.0')); };
       o.material = m;
