@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#86b9df">
+<title>Pinheiros-de-alepo</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #c6e0ef; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; opacity: 0; transition: opacity .8s; }
+  canvas.on { opacity: 1; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<script type="module">
+// Os 4 pinheiros-de-alepo, em tela cheia e sem texto.
+// Luz padrão: manhã no deserto.
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const sky = (() => {
+  const c = document.createElement('canvas'); c.width = 2; c.height = 256;
+  const g = c.getContext('2d'); const gr = g.createLinearGradient(0, 0, 0, 256);
+  gr.addColorStop(0, '#86b9df'); gr.addColorStop(0.55, '#c6e0ef'); gr.addColorStop(1, '#f2e6d0');
+  g.fillStyle = gr; g.fillRect(0, 0, 2, 256);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+})();
+scene.background = sky;
+scene.fog = new THREE.Fog(0xeae4d6, 60, 150);
+
+// manhã no deserto: céu azul claro, sol branco-quente vindo do leste a uns 35°, luz rebatida da areia
+scene.add(new THREE.HemisphereLight(0xcfe6ff, 0xc9a47a, 1.35));
+const sun = new THREE.DirectionalLight(0xffe4bc, 3.2);
+sun.position.set(14, 13, 9);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -20, right: 20, top: 20, bottom: -20, near: 0.5, far: 60 });
+sun.shadow.bias = -0.0004;
+sun.shadow.normalBias = 0.02;
+scene.add(sun);
+
+// chão: sua textura de terra clara com grama, repetida (~5 m por repetição)
+const groundTex = new THREE.TextureLoader().load('tex/campo_seco.webp');
+groundTex.colorSpace = THREE.SRGBColorSpace;
+groundTex.wrapS = groundTex.wrapT = THREE.RepeatWrapping;
+groundTex.repeat.set(44, 44);
+groundTex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+const ground = new THREE.Mesh(new THREE.CircleGeometry(110, 48), new THREE.MeshStandardMaterial({ map: groundTex, roughness: 1, color: 0xffffff }));
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+const camera = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 0.1, 260);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 2;
+controls.maxDistance = 90;
+controls.maxPolarAngle = Math.PI * 0.48;
+controls.target.set(0, 4.5, 0);
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.6;
+const stopSpin = () => { controls.autoRotate = false; };
+renderer.domElement.addEventListener('pointerdown', stopSpin, { once: true });
+
+function frame() {
+  const portrait = innerHeight > innerWidth;
+  const dist = portrait ? 46 : 32;
+  camera.position.set(0.35, 0.42, 1).normalize().multiplyScalar(dist).add(controls.target);
+  controls.update();
+}
+
+// os 4 pinheiros num pequeno bosque: dois na frente, dois atrás
+const LAYOUT = [
+  { x: -3.5, z: 5.0, yaw: 0.3 },   // jovem
+  { x: 4.5, z: 4.0, yaw: -0.2 },   // tronco reto
+  { x: -6.5, z: -4.5, yaw: 0.9 },  // inclinado
+  { x: 6.0, z: -6.0, yaw: -0.5 },  // velho
+];
+const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync('pinheiros.glb');
+const nodes = [...gltf.scene.children].sort((a, b) => a.name.localeCompare(b.name));
+nodes.forEach((n, i) => {
+  const L = LAYOUT[i] || { x: 0, z: 0, yaw: 0 };
+  n.position.set(L.x, 0, L.z);
+  n.rotation.set(0, L.yaw, 0);
+  n.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+});
+scene.add(gltf.scene);
+
+// tufos de grama em pé: 2 planos cruzados (4 triângulos) com o seu recorte de grama, todos num só draw call.
+// Normais apontando para cima: a grama recebe a mesma luz do chão, sem escurecer de lado.
+{
+  const tex = new THREE.TextureLoader().load('tex/capim_tufo.webp');
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const a = new THREE.PlaneGeometry(0.8, 0.8); a.translate(0, 0.38, 0);
+  const b = a.clone(); b.rotateY(Math.PI / 2);
+  const geo = mergeGeometries([a, b]);
+  const n = geo.attributes.normal;
+  for (let i = 0; i < n.count; i++) n.setXYZ(i, 0, 1, 0);
+  const mat = new THREE.MeshStandardMaterial({ map: tex, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 1 });
+  let seed = 17;
+  const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  const N = 520;
+  const grass = new THREE.InstancedMesh(geo, mat, N);
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3(), c = new THREE.Color();
+  for (let i = 0; i < N; i++) {
+    if (i < N * 0.55) {               // mais grama ao redor das oliveiras
+      const L = LAYOUT[i % LAYOUT.length];
+      const ang = rnd() * Math.PI * 2, d = 1.5 + rnd() * 3.5;
+      p.set(L.x + Math.cos(ang) * d, 0, L.z + Math.sin(ang) * d);
+    } else {                          // e espalhada pelo campo
+      const ang = rnd() * Math.PI * 2, d = Math.sqrt(rnd()) * 30;
+      p.set(Math.cos(ang) * d, 0, Math.sin(ang) * d);
+    }
+    q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rnd() * Math.PI);
+    const k = 0.55 + rnd() * 0.8;
+    s.set(k, k * (0.8 + rnd() * 0.5), k);
+    grass.setMatrixAt(i, m4.compose(p, q, s));
+    const t = 0.82 + rnd() * 0.25;
+    grass.setColorAt(i, c.setRGB(t, t * (0.96 + rnd() * 0.06), t * 0.9));
+  }
+  grass.receiveShadow = true;
+  scene.add(grass);
+}
+
+frame();
+addEventListener('resize', () => {
+  renderer.setSize(innerWidth, innerHeight);
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+});
+renderer.setAnimationLoop(() => { controls.update(); renderer.render(scene, camera); });
+requestAnimationFrame(() => renderer.domElement.classList.add('on'));
+</script>
+</body>
+</html>
