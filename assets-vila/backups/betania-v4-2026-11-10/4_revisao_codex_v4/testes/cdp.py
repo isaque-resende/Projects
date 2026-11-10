@@ -29,4 +29,3 @@ if __name__=='__main__':
  print(json.dumps(c.ev('window.__vila ? __vila.estado() : document.body.innerText'), ensure_ascii=True))
  c.shot('M:/Claude/backup_betania_2026-11-10/4_revisao_codex_v4/testes/saida/depois/desktop.png')
  pathlib.Path('M:/Claude/backup_betania_2026-11-10/4_revisao_codex_v4/testes/saida/depois/events.json').write_text(json.dumps(c.events,ensure_ascii=False,indent=2),encoding='utf-8')
-

@@ -17,4 +17,3 @@ Primary request: hand-troweled pale warm ivory lime plaster with broad clearly v
 ## Integração
 
 Originais PNG preservados em 2_fontes/melhorias_pintadas_v4/texturas/originais. Versões WebP RGB 1024 × 1024, qualidade 88, em 1_jogo_e_assets_publicados/vila-betania/tex. Repetição espelhada nas texturas novas para continuidade das bordas, combinada ao shader existente semRep. Nenhuma alteração nos GLBs, UVs ou atlas originais.
-
