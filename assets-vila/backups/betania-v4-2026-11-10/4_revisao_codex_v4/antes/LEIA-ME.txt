@@ -1,0 +1,36 @@
+BACKUP DO JOGO BETÂNIA E DOS ASSETS DA VILA — 10/11/2026
+(estado da v3, commit e6619f2 em github.com/isaque-resende/Projects)
+
+1_jogo_e_assets_publicados\   (41 MB)
+   Tudo o que roda no navegador: o jogo (vila-betania\), a galeria (index.html) e
+   os viewers de cada asset, com os GLBs e as texturas. É a mesma pasta publicada
+   no GitHub Pages, sem o histórico do git.
+
+2_fontes\   (635 MB)
+   Os arquivos de trabalho: .blend, scripts Python de modelagem e exportação,
+   texturas originais, referências. Uma pasta por família de assets
+   (casas, tumulo, vila, forno, lagar, árvores, flores...) e personagem_tripo\
+   (discipulo_rig.blend é a fonte do discípulo animado).
+   lib_vila.py e exportar_glb.py são as bibliotecas usadas pelos scripts.
+
+3_anotacoes_e_skill\
+   memoria\  - as anotações do projeto (decisões, estado de cada asset, cuidados).
+   skill_asset-lowpoly-vila\  - a skill com o padrão visual dos assets.
+
+COMO ABRIR O JOGO
+O jogo usa módulos do navegador, então não abre com duplo clique no index.html.
+Abra um terminal DENTRO da pasta 1_jogo_e_assets_publicados e rode:
+
+    python -m http.server 8000
+
+(se um GLB grande falhar, use um servidor Node simples no lugar; o do Python às
+vezes derruba arquivos grandes). Depois abra no navegador:
+
+    http://localhost:8000/vila-betania/
+
+É preciso internet na primeira abertura: o three.js é carregado de um CDN
+(cdn.jsdelivr.net, versão 3.170.0 e three-mesh-bvh 0.8.3).
+
+CONTROLES
+Arrastar à esquerda = andar · arrastar à direita = girar o mapa · botão ◆ = ação
+· pular · correr · +/− = zoom. No PC: WASD, E, espaço, shift, Q/R.

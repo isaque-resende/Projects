@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#86b9df">
+<title>Prensa de azeite</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #c6e0ef; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; opacity: 0; transition: opacity .8s; }
+  canvas.on { opacity: 1; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<script type="module">
+// Prensa de azeite em tela cheia, sem texto, luz de manhã.
+// Toque no moinho (esquerda): a mó dá uma volta, esmaga as azeitonas por onde passa e a pasta sobe.
+// Toque na prensa (direita): a viga desce, os cestos achatam, o azeite sai na laje, escorre pela bica e enche o tanque.
+// Quando tudo estiver esmagado e o tanque cheio, volta ao começo depois de alguns segundos.
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const sky = (() => {
+  const c = document.createElement('canvas'); c.width = 2; c.height = 256;
+  const g = c.getContext('2d'); const gr = g.createLinearGradient(0, 0, 0, 256);
+  gr.addColorStop(0, '#86b9df'); gr.addColorStop(0.55, '#c6e0ef'); gr.addColorStop(1, '#f2e6d0');
+  g.fillStyle = gr; g.fillRect(0, 0, 2, 256);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+})();
+scene.background = sky;
+scene.fog = new THREE.Fog(0xeae4d6, 16, 45);
+
+scene.add(new THREE.HemisphereLight(0xcfe6ff, 0xc9a47a, 1.35));
+const sun = new THREE.DirectionalLight(0xffe4bc, 3.2);
+sun.position.set(7, 6.5, 4.5);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -5, right: 5, top: 5, bottom: -5, near: 0.5, far: 25 });
+sun.shadow.bias = -0.0004;
+sun.shadow.normalBias = 0.02;
+scene.add(sun);
+
+const groundTex = new THREE.TextureLoader().load('tex/chao_grama_v3.webp');
+groundTex.colorSpace = THREE.SRGBColorSpace;
+groundTex.wrapS = groundTex.wrapT = THREE.RepeatWrapping;
+groundTex.repeat.set(16, 16);
+groundTex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+const ground = new THREE.Mesh(new THREE.CircleGeometry(40, 48), new THREE.MeshStandardMaterial({ map: groundTex, roughness: 1 }));
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+const camera = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 0.05, 100);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 1.5;
+controls.maxDistance = 16;
+controls.maxPolarAngle = Math.PI * 0.47;
+controls.target.set(0.1, 0.4, 0.1);
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.4;
+renderer.domElement.addEventListener('pointerdown', () => { controls.autoRotate = false; }, { once: true });
+function frame() {
+  const dist = innerHeight > innerWidth ? 10.5 : 7.0;
+  camera.position.set(0.3, 0.7, 1).normalize().multiplyScalar(dist).add(controls.target);
+  controls.update();
+}
+
+// ------------------------------------------------------------------ modelo
+const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync('prensa.glb');
+const root = gltf.scene;
+root.position.z = 56;               // no Blender a prensa fica em y = 56
+scene.add(root);
+const N = {};
+root.traverse((o) => {
+  if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; }
+  if (o.name) N[o.name] = o;
+});
+
+// líquido: o mesmo atlas, com a textura correndo (u) e a superfície ondulando
+function liquidMat(base, flow, amp, wobble = 0) {
+  const m = base.clone();
+  m.userData.u = { uTime: { value: 0 }, uFlow: { value: flow }, uAmp: { value: amp }, uWob: { value: wobble } };
+  m.onBeforeCompile = (sh) => {
+    Object.assign(sh.uniforms, m.userData.u);
+    sh.vertexShader = 'uniform float uTime, uFlow, uAmp, uWob;\n' + sh.vertexShader
+      .replace('#include <uv_vertex>', '#include <uv_vertex>\n#ifdef USE_MAP\n vMapUv.x -= uTime * uFlow;   // a textura corre para baixo no fio\n#endif')
+      .replace('#include <begin_vertex>', `#include <begin_vertex>
+        transformed.y += uAmp * (sin(position.x * 9.0 + uTime * 1.4) + cos(position.z * 8.0 + uTime * 1.1)) * 0.5;
+        transformed.x += uWob * sin(position.y * 30.0 - uTime * 8.0);
+        transformed.z += uWob * cos(position.y * 26.0 - uTime * 7.0);`);
+  };
+  m.customProgramCacheKey = () => 'liq' + flow + amp + wobble;
+  return m;
+}
+const baseMat = N.Prensa_Pedra.material;
+const matSurf = liquidMat(baseMat, 0.02, 0.004);       // azeite é grosso: corre devagar
+const matJar = liquidMat(baseMat, 0.012, 0.002);
+const matFio = liquidMat(baseMat, 0.7, 0.0, 0.003);
+N.Prensa_AzeiteTanque.material = matSurf;
+N.Prensa_AzeiteLaje.material = matSurf;
+N.Prensa_AzeiteJarro.material = matJar;
+N.Prensa_Fio.material = matFio;
+for (const k of ['Prensa_AzeiteTanque', 'Prensa_AzeiteLaje', 'Prensa_AzeiteJarro', 'Prensa_Fio']) N[k].castShadow = false;
+
+// ------------------------------------------------------------------ estado
+const mo = N.Prensa_Mo, viga = N.Prensa_Viga, cestos = N.Prensa_Cestos, pasta = N.Prensa_Pasta;
+const laje = N.Prensa_AzeiteLaje, fio = N.Prensa_Fio, tanque = N.Prensa_AzeiteTanque;
+const heaps = Object.keys(N).filter((k) => k.startsWith('Prensa_Azeitonas_')).map((k) => N[k]);
+const moC = mo.position.clone();
+heaps.forEach((h) => {
+  h.userData.k = 1; h.userData.kv = 1;
+  h.userData.ang = Math.atan2(-(h.position.z - moC.z), h.position.x - moC.x);
+});
+const pasta0 = pasta.position.y, tanque0 = tanque.position.y;
+let tanqueFill = 0, rippleT = 0;
+tanque.visible = false; fio.visible = false; laje.visible = false;
+let moTarget = 0, crushed = 0, crushedV = 0;
+let press = 0, pressPhase = 0, pressT = 0, oil = 0, resetAt = 0;
+// pressPhase: 0 parado, 1 descendo, 2 segurando, 3 subindo
+const BEAM_DROP = 0.085;   // rad
+const H_CESTOS = 0.35;     // altura da pilha de cestos (m)
+const ARM = 1.05;          // distância do apoio até os cestos (m)
+
+
+// ponto onde o fio cai (vértice mais baixo do fio), para as ondinhas no tanque de baixo
+function landingOf(mesh) {
+  const pos = mesh.geometry.attributes.position, v = new THREE.Vector3();
+  let best = null;
+  for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i); if (!best || v.y < best.y) best = v.clone(); }
+  return best;   // em coordenadas locais do fio
+}
+
+const fioLand = landingOf(fio);
+const ringGeo = new THREE.RingGeometry(0.8, 1.0, 20); ringGeo.rotateX(-Math.PI / 2);
+const ringMat = new THREE.MeshBasicMaterial({ color: 0xe6da8a, transparent: true, opacity: 0.6, depthWrite: false });
+const ripples = [];
+function ripple(p, y) { const r = new THREE.Mesh(ringGeo, ringMat.clone()); r.position.set(p.x, y, p.z); r.userData.t = 0; r.scale.setScalar(0.02); scene.add(r); ripples.push(r); }
+
+function wrap(a) { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; }
+
+// respingos de azeite e pedacinhos de azeitona
+const bitGeo = new THREE.IcosahedronGeometry(0.016, 0);
+const bitMats = [new THREE.MeshStandardMaterial({ color: 0x6e6a3a, roughness: 0.7, flatShading: true }),
+                 new THREE.MeshStandardMaterial({ color: 0x4a3448, roughness: 0.7, flatShading: true })];
+const oilDrop = new THREE.MeshStandardMaterial({ color: 0xa8962e, roughness: 0.4, flatShading: true });
+const bits = [];
+function burst(p, mats, n, up = 1) {
+  for (let i = 0; i < n; i++) {
+    const d = new THREE.Mesh(bitGeo, mats[i % mats.length]);
+    d.position.copy(p);
+    const a = Math.random() * Math.PI * 2, s = 0.3 + Math.random() * 0.6;
+    d.userData.v = new THREE.Vector3(Math.cos(a) * s * 0.5, (0.6 + Math.random() * 0.8) * up, Math.sin(a) * s * 0.5);
+    d.userData.floor = p.y - 0.02;
+    d.scale.setScalar(0.6 + Math.random() * 0.8);
+    scene.add(d); bits.push(d);
+  }
+}
+
+function turnMill() { moTarget += Math.PI * 2; }
+function startPress() { if (pressPhase === 0) { pressPhase = 1; pressT = 0; } }
+
+// ------------------------------------------------------------------ toque (tap sem arrastar)
+const ray = new THREE.Raycaster(), ptr = new THREE.Vector2();
+const pickables = [];
+root.traverse((o) => { if (o.isMesh) pickables.push(o); });
+let down = null;
+renderer.domElement.addEventListener('pointerdown', (e) => { down = { x: e.clientX, y: e.clientY, t: performance.now() }; });
+renderer.domElement.addEventListener('pointerup', (e) => {
+  if (!down) return;
+  const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y);
+  const quick = performance.now() - down.t < 350;
+  down = null;
+  if (moved > 8 || !quick) return;
+  ptr.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+  ray.setFromCamera(ptr, camera);
+  const hit = ray.intersectObjects(pickables, false)[0];
+  if (!hit) return;
+  if (hit.point.x < -0.45) turnMill(); else startPress();
+});
+
+// ------------------------------------------------------------------ grama em volta
+{
+  const tex = new THREE.TextureLoader().load('tex/grama_tufo.webp');
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const a = new THREE.PlaneGeometry(0.62, 0.62); a.translate(0, 0.29, 0);
+  const b = a.clone(); b.rotateY(Math.PI / 2);
+  const geo = mergeGeometries([a, b]);
+  const n = geo.attributes.normal;
+  for (let i = 0; i < n.count; i++) n.setXYZ(i, 0, 1, 0);
+  const mat = new THREE.MeshStandardMaterial({ map: tex, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 1 });
+  let seed = 23;
+  const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  const COUNT = 460;
+  const grass = new THREE.InstancedMesh(geo, mat, COUNT);
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3(), c = new THREE.Color();
+  let i = 0;
+  while (i < COUNT) {
+    const ang = rnd() * Math.PI * 2, d = 1.0 + Math.sqrt(rnd()) * 15;
+    p.set(Math.cos(ang) * d, 0, Math.sin(ang) * d);
+    if (p.x > -2.9 && p.x < 3.4 && p.z > -1.3 && p.z < 1.6) continue;   // área da prensa
+    q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rnd() * Math.PI);
+    const k = 0.5 + rnd() * 0.7;
+    s.set(k, k * (0.8 + rnd() * 0.5), k);
+    grass.setMatrixAt(i, m4.compose(p, q, s));
+    const t = 0.82 + rnd() * 0.25;
+    grass.setColorAt(i, c.setRGB(t, t * (0.96 + rnd() * 0.06), t * 0.9));
+    i++;
+  }
+  grass.receiveShadow = true;
+  scene.add(grass);
+}
+
+// ------------------------------------------------------------------ laço
+frame();
+addEventListener('resize', () => {
+  renderer.setSize(innerWidth, innerHeight);
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+});
+let t = 0, last = performance.now();
+const tmp = new THREE.Vector3();
+renderer.setAnimationLoop(() => {
+  const now = performance.now();
+  const dt = Math.min(0.05, (now - last) / 1000); last = now; t += dt;
+  for (const m of [matSurf, matJar, matFio]) m.userData.u.uTime.value = t;
+
+  // --- moinho: a mó gira até o alvo (uma volta por toque, ~3,5 s)
+  const before = mo.rotation.y;
+  const step = Math.sign(moTarget - mo.rotation.y) * Math.min(Math.abs(moTarget - mo.rotation.y), dt * 1.8);
+  mo.rotation.y += step;
+  if (step !== 0) {
+    const stoneAng = Math.PI + mo.rotation.y;
+    for (const h of heaps) {
+      if (h.userData.k > 0 && Math.abs(wrap(stoneAng - h.userData.ang)) < 0.3) {
+        h.userData.k = 0; crushed++;
+        burst(h.getWorldPosition(tmp).clone().add(new THREE.Vector3(0, 0.04, 0)), bitMats, 8);
+      }
+    }
+  }
+  for (const h of heaps) {
+    h.userData.kv += (h.userData.k - h.userData.kv) * Math.min(1, dt * 7);
+    const k = h.userData.kv;
+    h.scale.set(1 + (1 - k) * 0.4, Math.max(0.02, k), 1 + (1 - k) * 0.4);
+    h.visible = k > 0.03;
+  }
+  crushedV += (crushed - crushedV) * Math.min(1, dt * 2);
+  pasta.position.y = pasta0 - 0.05 + 0.065 * (crushedV / heaps.length);
+  pasta.visible = crushedV > 0.05;
+
+  // --- prensa: desce (2 s), segura (3 s), sobe (2 s)
+  if (pressPhase) {
+    pressT += dt;
+    if (pressPhase === 1) { press = Math.min(1, pressT / 2); if (pressT >= 2) { pressPhase = 2; pressT = 0; } }
+    else if (pressPhase === 2) { press = 1; if (pressT >= 3) { pressPhase = 3; pressT = 0; } }
+    else { press = Math.max(0, 1 - pressT / 2); if (pressT >= 2) { pressPhase = 0; press = 0; } }
+  }
+  const ease = press * press * (3 - 2 * press);
+  viga.rotation.z = -BEAM_DROP * ease;
+  cestos.scale.y = 1 - (ARM * Math.sin(BEAM_DROP * ease)) / H_CESTOS;
+  // azeite sai enquanto prensa
+  const flowing = pressPhase === 1 || pressPhase === 2 ? ease : ease * 0.4;
+  oil += (flowing - oil) * Math.min(1, dt * 2.5);
+  laje.visible = oil > 0.02;
+  laje.scale.set(0.6 + oil * 0.4, 1, 0.6 + oil * 0.4);
+  fio.visible = oil > 0.05;
+  fio.scale.set(oil, 1, oil);
+  // tanque de pedra: começa vazio e enche enquanto o azeite cai
+  if (fio.visible) tanqueFill = Math.min(1, tanqueFill + dt * 0.045 * oil);
+  tanque.visible = tanqueFill > 0.01;
+  tanque.position.y = tanque0 + tanqueFill * 0.085;
+  const ts = 0.8 + tanqueFill * 0.22;
+  tanque.scale.set(ts, 1, ts);
+  rippleT -= dt;
+  if (fio.visible && rippleT <= 0) {
+    rippleT = 0.5;
+    const lp = fio.localToWorld(fioLand.clone());
+    const y = tanque.visible ? tanque.getWorldPosition(new THREE.Vector3()).y + 0.008 : lp.y + 0.008;
+    ripple(lp, y);
+    if (Math.random() < 0.5) burst(new THREE.Vector3(lp.x, y, lp.z), [oilDrop], 2, 0.35);
+  }
+  for (let i = ripples.length - 1; i >= 0; i--) {
+    const r = ripples[i]; r.userData.t += dt; const k = r.userData.t / 1.1;
+    r.scale.setScalar(0.02 + k * 0.14); r.material.opacity = 0.55 * (1 - k);
+    if (k >= 1) { scene.remove(r); r.material.dispose(); ripples.splice(i, 1); }
+  }
+
+  // --- volta ao começo
+  if (!resetAt && crushed >= heaps.length && tanqueFill > 0.6 && pressPhase === 0) resetAt = t + 5;
+  if (resetAt && t > resetAt) {
+    resetAt = 0; crushed = 0;
+    heaps.forEach((h) => { h.userData.k = 1; });
+    tanqueFill = 0;
+  }
+
+  // pedacinhos e gotas
+  for (let i = bits.length - 1; i >= 0; i--) {
+    const d = bits[i];
+    d.userData.v.y -= 9.8 * dt;
+    d.position.addScaledVector(d.userData.v, dt);
+    if (d.position.y < d.userData.floor) { scene.remove(d); bits.splice(i, 1); }
+  }
+
+  controls.update();
+  renderer.render(scene, camera);
+});
+requestAnimationFrame(() => renderer.domElement.classList.add('on'));
+</script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+[
+  {
+    "teste": "Joystick preserva rota durante interacao",
+    "ok": true,
+    "detalhe": null
+  },
+  {
+    "teste": "Pinca modifica zoom sem iniciar caminhada",
+    "ok": true,
+    "detalhe": 0.10000000000000009
+  },
+  {
+    "teste": "Perda de foco encerra repeticao de zoom",
+    "ok": true,
+    "detalhe": null
+  },
+  {
+    "teste": "Voltar a vila acessivel com rolagem em paisagem",
+    "ok": true,
+    "detalhe": {
+      "top": 338.5,
+      "bottom": 383.5
+    }
+  },
+  {
+    "teste": "Falha de textura mostra mensagem e tentar novamente",
+    "ok": true,
+    "detalhe": "Não foi possível abrir a vila. Confira sua conexão e tente novamente. Recurso indisponível: tex/reboco_pintado_v4.webp"
+  }
+]

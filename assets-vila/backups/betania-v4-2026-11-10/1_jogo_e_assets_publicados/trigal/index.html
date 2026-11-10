@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#86b9df">
+<title>Trigal</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #c6e0ef; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; opacity: 0; transition: opacity .8s; }
+  canvas.on { opacity: 1; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<script type="module">
+// Trigal em tela cheia, sem texto, luz de manhã.
+// As 4 touceiras do trigo.glb são clonadas ao acaso (instâncias). O vento balança o trigo,
+// e o trigo se abre e se curva em volta do personagem. Toque no chão para o personagem andar até lá.
+// A foice (também do trigo.glb) fica no chão, na entrada da trilha.
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const sky = (() => {
+  const c = document.createElement('canvas'); c.width = 2; c.height = 256;
+  const g = c.getContext('2d'); const gr = g.createLinearGradient(0, 0, 0, 256);
+  gr.addColorStop(0, '#86b9df'); gr.addColorStop(0.55, '#c6e0ef'); gr.addColorStop(1, '#f2e6d0');
+  g.fillStyle = gr; g.fillRect(0, 0, 2, 256);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+})();
+scene.background = sky;
+scene.fog = new THREE.Fog(0xeae4d6, 18, 55);
+scene.add(new THREE.HemisphereLight(0xcfe6ff, 0xc9a47a, 1.35));
+const sun = new THREE.DirectionalLight(0xffe4bc, 3.2);
+sun.position.set(7, 6.5, 4.5);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -6, right: 6, top: 6, bottom: -6, near: 0.5, far: 30 });
+sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.02;
+scene.add(sun); scene.add(sun.target);
+
+// chão: grama em volta, terra arada no trigal
+const texL = new THREE.TextureLoader();
+function tiled(url, rep) {
+  const t = texL.load(url); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(rep[0], rep[1]); t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()); return t;
+}
+const ground = new THREE.Mesh(new THREE.CircleGeometry(45, 48), new THREE.MeshStandardMaterial({ map: tiled('tex/chao_grama_v3.webp', [18, 18]), roughness: 1 }));
+ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+const FW = 16, FD = 11;   // tamanho do trigal (m)
+const field = new THREE.Mesh(new THREE.PlaneGeometry(FW + 1, FD + 1), new THREE.MeshStandardMaterial({ map: tiled('tex/terra_arada.webp', [(FW + 1) / 2.5, (FD + 1) / 2.5]), roughness: 1 }));
+field.rotation.x = -Math.PI / 2; field.position.y = 0.01; field.receiveShadow = true; scene.add(field);
+
+const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.1, 150);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = 0.08;
+controls.minDistance = 2.5; controls.maxDistance = 30;
+controls.maxPolarAngle = Math.PI * 0.46;
+controls.target.set(0, 0.8, 0);
+camera.position.set(3.5, 4.5, 8.5);
+
+// ------------------------------------------------------------------ personagem (marcador simples, só para testar)
+const player = new THREE.Group();
+{
+  const robe = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.3, 1.25, 7), new THREE.MeshStandardMaterial({ color: 0x8a6a4a, roughness: 1, flatShading: true }));
+  robe.position.y = 0.63;
+  const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.15, 0), new THREE.MeshStandardMaterial({ color: 0xc9a07a, roughness: 1, flatShading: true }));
+  head.position.y = 1.42;
+  const scarf = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.25, 7), new THREE.MeshStandardMaterial({ color: 0xd9cbb0, roughness: 1, flatShading: true }));
+  scarf.position.y = 1.5;
+  for (const m of [robe, head, scarf]) { m.castShadow = true; player.add(m); }
+}
+player.position.set(-FW / 2 - 1.2, 0, 0.5);
+scene.add(player);
+const goal = player.position.clone();
+
+// ------------------------------------------------------------------ trigal
+const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync('trigo.glb');
+const kinds = {};
+gltf.scene.traverse((o) => { if (o.isMesh) kinds[o.name] = o; });
+const U = { uTime: { value: 0 }, uPlayer: { value: new THREE.Vector3() }, uRadius: { value: 1.1 } };
+function wheatMat(base) {
+  const m = base.clone();
+  m.alphaTest = 0.5; m.side = THREE.DoubleSide;
+  m.onBeforeCompile = (sh) => {
+    Object.assign(sh.uniforms, U);
+    sh.vertexShader = 'uniform float uTime, uRadius; uniform vec3 uPlayer;\n' + sh.vertexShader.replace('#include <project_vertex>', `
+      vec4 wp = vec4(transformed, 1.0);
+      #ifdef USE_INSTANCING
+        wp = instanceMatrix * wp;
+        vec3 base = (modelMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+      #else
+        vec3 base = (modelMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+      #endif
+      wp = modelMatrix * wp;
+      float h = clamp(position.y / 1.1, 0.0, 1.0); float b = h * h;
+      // vento: ondas que passam pelo campo
+      float gust = 0.6 + 0.4 * sin(uTime * 0.5 + base.x * 0.15);
+      wp.x += sin(uTime * 1.7 + base.x * 0.55 + base.z * 0.35) * 0.09 * b * gust;
+      wp.z += cos(uTime * 1.3 + base.x * 0.3 + base.z * 0.7) * 0.05 * b * gust;
+      // personagem: abre e curva o trigo em volta
+      vec2 d = base.xz - uPlayer.xz; float dist = length(d);
+      float k = clamp(1.0 - dist / uRadius, 0.0, 1.0); k = k * k * (3.0 - 2.0 * k);
+      vec2 dir = dist > 0.001 ? d / dist : vec2(1.0, 0.0);
+      wp.xz += dir * k * 0.75 * b; wp.y -= k * 0.35 * b;
+      vec4 mvPosition = viewMatrix * wp;
+      gl_Position = projectionMatrix * mvPosition;`);
+  };
+  m.customProgramCacheKey = () => 'trigo';
+  return m;
+}
+// foice largada na beira do trigal, perto da trilha (peça do trigo.glb, pivô no meio do cabo)
+if (kinds.Foice) {
+  const f = kinds.Foice; f.removeFromParent();
+  f.position.set(-FW / 2 - 0.7, 0, 1.25); f.rotation.y = 0.6;
+  f.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  scene.add(f);
+}
+delete kinds.Foice;
+let seed = 11;
+const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+const noise = (x, z) => Math.sin(x * 0.45 + 1.3) * Math.cos(z * 0.6 - 0.4) + 0.5 * Math.sin((x + z) * 0.9);
+// distribuição: maduro e cheio na maior parte, manchas de verde, ralo nas bordas
+const pick = (x, z) => {
+  const edge = Math.min(FW / 2 - Math.abs(x), FD / 2 - Math.abs(z));
+  if (edge < 0.7 && rnd() < 0.6) return 'Trigo_Ralo';
+  const n = noise(x, z);
+  if (n > 0.85) return 'Trigo_Verde';
+  return rnd() < 0.55 ? 'Trigo_Maduro' : 'Trigo_Cheio';
+};
+const spots = { Trigo_Verde: [], Trigo_Maduro: [], Trigo_Cheio: [], Trigo_Ralo: [] };
+const STEP = 0.36;
+for (let x = -FW / 2; x <= FW / 2; x += STEP) {
+  for (let z = -FD / 2; z <= FD / 2; z += STEP) {
+    const px = x + (rnd() - 0.5) * STEP * 0.9, pz = z + (rnd() - 0.5) * STEP * 0.9;
+    if (Math.abs(pz - 0.5) < 0.45 && px < -1) continue;   // trilha entrando pela esquerda
+    spots[pick(px, pz)].push([px, pz]);
+  }
+}
+const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3(), c = new THREE.Color();
+let totalInst = 0;
+for (const [name, list] of Object.entries(spots)) {
+  const src = kinds[name];
+  if (!src || !list.length) continue;
+  const inst = new THREE.InstancedMesh(src.geometry, wheatMat(src.material), list.length);
+  list.forEach(([x, z], i) => {
+    q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rnd() * Math.PI * 2);
+    const k = 0.85 + rnd() * 0.3;
+    s.set(k, k * (0.9 + rnd() * 0.2), k);
+    inst.setMatrixAt(i, m4.compose(p.set(x, 0, z), q, s));
+    const t = 0.88 + rnd() * 0.2;
+    inst.setColorAt(i, c.setRGB(t, t * (0.97 + rnd() * 0.05), t * 0.94));
+  });
+  inst.receiveShadow = true;
+  inst.frustumCulled = false;
+  scene.add(inst);
+  totalInst += list.length;
+}
+
+// tufos de grama fora do trigal
+{
+  const tex = texL.load('tex/grama_tufo.webp'); tex.colorSpace = THREE.SRGBColorSpace;
+  const a = new THREE.PlaneGeometry(0.62, 0.62); a.translate(0, 0.29, 0);
+  const b = a.clone(); b.rotateY(Math.PI / 2);
+  const geo = mergeGeometries([a, b]);
+  const n = geo.attributes.normal; for (let i = 0; i < n.count; i++) n.setXYZ(i, 0, 1, 0);
+  const grass = new THREE.InstancedMesh(geo, new THREE.MeshStandardMaterial({ map: tex, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 1 }), 500);
+  let i = 0;
+  while (i < 500) {
+    const ang = rnd() * Math.PI * 2, d = 6 + Math.sqrt(rnd()) * 22;
+    p.set(Math.cos(ang) * d, 0, Math.sin(ang) * d);
+    if (Math.abs(p.x) < FW / 2 + 0.8 && Math.abs(p.z) < FD / 2 + 0.8) continue;
+    q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rnd() * Math.PI);
+    const k = 0.5 + rnd() * 0.7; s.set(k, k, k);
+    grass.setMatrixAt(i, m4.compose(p, q, s)); i++;
+  }
+  grass.receiveShadow = true; scene.add(grass);
+}
+
+// ------------------------------------------------------------------ toque no chão = andar até lá
+const ray = new THREE.Raycaster(), ptr = new THREE.Vector2(), plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+let down = null;
+renderer.domElement.addEventListener('pointerdown', (e) => { down = { x: e.clientX, y: e.clientY, t: performance.now() }; });
+renderer.domElement.addEventListener('pointerup', (e) => {
+  if (!down) return;
+  const ok = Math.hypot(e.clientX - down.x, e.clientY - down.y) < 8 && performance.now() - down.t < 350;
+  down = null; if (!ok) return;
+  ptr.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+  ray.setFromCamera(ptr, camera);
+  const hit = new THREE.Vector3();
+  if (ray.ray.intersectPlane(plane, hit) && hit.length() < 30) goal.copy(hit);
+});
+
+addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
+let t = 0, last = performance.now(), walk = 0;
+const prev = new THREE.Vector3();
+// passeio automático até o primeiro toque: o personagem atravessa o trigal
+const tour = [[-2, 0.5], [3, -2], [6, 1.5], [0, 3.5], [-5, -2.5], [-9.2, 0.5]];
+let tourI = 0, touched = false;
+renderer.domElement.addEventListener('pointerdown', () => { touched = true; }, { once: true });
+renderer.setAnimationLoop(() => {
+  const now = performance.now(); const dt = Math.min(0.05, (now - last) / 1000); last = now; t += dt;
+  U.uTime.value = t;
+  if (!touched && player.position.distanceTo(goal) < 0.2) { const w = tour[tourI++ % tour.length]; goal.set(w[0], 0, w[1]); }
+  const to = goal.clone().sub(player.position); to.y = 0;
+  const dist = to.length();
+  if (dist > 0.05) {
+    const stepLen = Math.min(dist, 1.35 * dt);
+    player.position.addScaledVector(to.normalize(), stepLen);
+    player.rotation.y = Math.atan2(to.x, to.z);
+    walk += dt * 9;
+  }
+  player.children[0].position.y = 0.63 + Math.abs(Math.sin(walk)) * 0.03 * (dist > 0.05 ? 1 : 0);
+  U.uPlayer.value.copy(player.position);
+  // câmera acompanha o personagem de leve
+  prev.copy(controls.target);
+  controls.target.lerp(new THREE.Vector3(player.position.x, 0.8, player.position.z), Math.min(1, dt * 1.5));
+  camera.position.add(controls.target.clone().sub(prev));
+  sun.position.set(player.position.x + 7, 6.5, player.position.z + 4.5); sun.target.position.copy(player.position);
+  controls.update();
+  renderer.render(scene, camera);
+});
+requestAnimationFrame(() => renderer.domElement.classList.add('on'));
+</script>
+</body>
+</html>

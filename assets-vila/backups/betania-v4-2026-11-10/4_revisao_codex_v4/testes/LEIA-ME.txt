@@ -1,0 +1,7 @@
+Testes usados nesta revisão. Requer Python 3, websocket-client e Chrome headless.
+1. Inicie o servidor pelo INICIAR_JOGO.cmd na raiz do backup.
+2. Inicie uma instância de Chrome de teste com perfil separado e flags:
+   --headless=new --remote-debugging-port=9461 --remote-allow-origins=http://localhost:9461 --user-data-dir=<pasta-de-perfil-de-teste> --enable-unsafe-swiftshader
+3. Rode: python run_tests.py
+4. Mantendo a mesma aba de teste aberta, rode: python regressions.py
+Saídas são gravadas em saida/. O teste de falha bloqueia temporariamente o reboco via CDP e libera a URL ao terminar.

@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#86b9df">
+<title>Túmulo</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #c6e0ef; font-family: system-ui, sans-serif; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; opacity: 0; transition: opacity .8s; }
+  canvas.on { opacity: 1; }
+  #bar { z-index: 2; position: fixed; top: max(10px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; width: 94vw; }
+  #bar button { border: 0; border-radius: 14px; padding: 7px 12px; background: #f6efe2e6; color: #4a3a28; font-size: 13px; }
+  #bar button.on { background: #8a5a35; color: #fff7ea; }
+  #dica { z-index: 2; position: fixed; left: 50%; bottom: max(14px, env(safe-area-inset-bottom)); transform: translateX(-50%); color: #4a3a28;
+          background: #f6efe2d9; padding: 7px 13px; border-radius: 16px; font-size: 13px; transition: opacity 1.2s; pointer-events: none; white-space: nowrap; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="bar">
+  <button data-v="fora">Fora</button><button data-v="entrar">Entrar</button><button data-v="camara">Câmara</button>
+  <button id="bCorte">Corte</button><button id="bTerreno">Terreno: grama</button><button id="bPedra">Fechar a pedra</button>
+</div>
+<div id="dica">Toque na pedra para rolar. Em “Entrar” você vê por dentro.</div>
+<script type="module">
+// Túmulo escavado na rocha, com a pedra redonda rolada para o lado.
+// Vistas: de fora, entrando pela porta e na câmara. “Corte” tira a casca de rocha para ver a planta por dentro.
+// Terreno: grama (talude de terra) ou monte de rocha (o núcleo entra no recorte do monte).
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = (() => {
+  const c = document.createElement('canvas'); c.width = 2; c.height = 256;
+  const g = c.getContext('2d'); const gr = g.createLinearGradient(0, 0, 0, 256);
+  gr.addColorStop(0, '#86b9df'); gr.addColorStop(0.55, '#c6e0ef'); gr.addColorStop(1, '#f2e6d0');
+  g.fillStyle = gr; g.fillRect(0, 0, 2, 256);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+})();
+scene.fog = new THREE.Fog(0xeae4d6, 40, 100);
+const hemi = new THREE.HemisphereLight(0xcfe6ff, 0xc9a47a, 1.35);
+scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xffe4bc, 3.2);
+sun.position.set(12, 11, 8);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -13, right: 13, top: 13, bottom: -13, near: 0.5, far: 50 });
+sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.03;
+scene.add(sun);
+
+// ------------------------------------------------------------------ modelo (no Blender o túmulo fica em y = 200)
+const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync('tumulo.glb');
+const root = gltf.scene; root.position.z = 200; scene.add(root);
+const N = {};
+root.traverse((o) => {
+  if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; }
+  if (o.name) N[o.name] = o;
+});
+N.Tumulo_Interior.castShadow = false;
+for (const o of Object.values(N)) if (o.name && o.name.startsWith('NPC_')) o.visible = false;
+
+// ------------------------------------------------------------------ chão de grama, com um buraco sobre a câmara
+const groundMat = (() => {
+  const tex = new THREE.TextureLoader().load('tex/chao_grama_v3.webp');
+  tex.colorSpace = THREE.SRGBColorSpace; tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  return new THREE.MeshStandardMaterial({ map: tex, roughness: 1 });
+})();
+{
+  const shape = new THREE.Shape(); shape.absarc(0, 0, 70, 0, Math.PI * 2, false);
+  const h = new THREE.Path();   // x de -1,7 a 1,7 e profundidade de 0 a 6,3 (no plano: y_forma = -z)
+  h.moveTo(-1.7, 0); h.lineTo(1.7, 0); h.lineTo(1.7, 6.3); h.lineTo(-1.7, 6.3); h.closePath();
+  shape.holes.push(h);
+  const t = new THREE.Path();   // sulco da pedra (fica abaixo do chão)
+  t.moveTo(-2.62, -0.62); t.lineTo(0.95, -0.62); t.lineTo(0.95, -0.2); t.lineTo(-2.62, -0.2); t.closePath();
+  shape.holes.push(t);
+  const geo = new THREE.ShapeGeometry(shape, 48);
+  const uv = geo.attributes.uv, pos = geo.attributes.position;
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, pos.getX(i) / 5, pos.getY(i) / 5);
+  const g = new THREE.Mesh(geo, groundMat);
+  g.rotation.x = -Math.PI / 2; g.receiveShadow = true; scene.add(g);
+}
+
+// ------------------------------------------------------------------ luz da candeia (no nicho da parede da esquerda)
+const lamp = new THREE.PointLight(0xffb060, 5, 7, 1.6);
+lamp.position.set(-1.2, 1.15, -1.55);
+scene.add(lamp);
+const flame = new THREE.Mesh(new THREE.IcosahedronGeometry(0.035, 0), new THREE.MeshBasicMaterial({ color: 0xffd48a }));
+flame.position.copy(lamp.position); scene.add(flame);
+
+// ------------------------------------------------------------------ terreno e corte
+let terreno = 'grama', corte = false, fechada = false;
+function aplicar() {
+  N.Tumulo_Massa_Grama.visible = terreno === 'grama' && !corte;
+  N.Tumulo_Massa_Monte.visible = terreno === 'monte' && !corte;
+  N.Rochas_Soltas.visible = terreno === 'monte' && !corte;
+  document.getElementById('bCorte').classList.toggle('on', corte);
+  document.getElementById('bTerreno').textContent = 'Terreno: ' + (terreno === 'grama' ? 'grama' : 'monte');
+}
+document.getElementById('bCorte').onclick = () => { corte = !corte; aplicar(); vista(corte ? 'corte' : 'fora'); };
+document.getElementById('bTerreno').onclick = () => { terreno = terreno === 'grama' ? 'monte' : 'grama'; aplicar(); vista('fora'); };
+aplicar();
+
+// ------------------------------------------------------------------ pedra que rola
+const pedra = N.Tumulo_Pedra;
+const xAberta = pedra.position.x, xFechada = 0, R = 0.85;
+let px = xAberta;
+function alternarPedra() { fechada = !fechada; document.getElementById('bPedra').textContent = fechada ? 'Abrir a pedra' : 'Fechar a pedra'; }
+document.getElementById('bPedra').onclick = alternarPedra;
+
+// ------------------------------------------------------------------ câmera
+const camera = new THREE.PerspectiveCamera(innerHeight > innerWidth ? 58 : 42, innerWidth / innerHeight, 0.05, 200);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = 0.08;
+controls.minDistance = 0.25; controls.maxDistance = 30;
+controls.maxPolarAngle = Math.PI * 0.49;
+// posições em coordenadas do Blender (x, y, z) -> three (x, z, -y)
+const B = (x, y, z) => new THREE.Vector3(x, z, -y);
+// cada vista é um caminho: lista de [alvo, posição]; entrar e sair passam pela porta
+const PORTA_FORA = [B(0, 2.5, 1.0), B(0, -1.6, 1.25)];
+const PORTA_DENTRO = [B(0, 4.6, 0.8), B(0, 1.1, 1.2)];
+const VISTAS = {
+  fora: [[B(0, 1.0, 1.3), B(4.8, -10.5, 4.6)]],
+  entrar: [PORTA_FORA, PORTA_DENTRO],
+  camara: [PORTA_FORA, PORTA_DENTRO, [B(0.4, 5.1, 0.5), B(0, 3.05, 1.15)]],
+  corte: [[B(0, 2.9, 0.4), B(3.0, -2.2, 8.2)]],
+};
+const dentro = () => -camera.position.z > 0.3 && Math.abs(camera.position.x) < 1.6 && camera.position.y < 2.1;
+let fila = [], anim = null;
+function vista(k) {
+  let pts = VISTAS[k].map(([t, p]) => [t.clone(), p.clone()]);
+  if (k === 'fora' && innerHeight > innerWidth) pts = pts.map(([t, p]) => [t, t.clone().add(p.clone().sub(t).multiplyScalar(1.45))]);
+  if (k === 'entrar' || k === 'camara') {
+    if (fechada) alternarPedra();
+    if (corte) { corte = false; aplicar(); }
+    if (dentro()) pts = pts.slice(1);          // já está dentro: não volta para a porta
+  } else if (dentro() && k !== 'corte') {
+    pts = [PORTA_DENTRO, PORTA_FORA].map(([t, p]) => [t.clone(), p.clone()]).concat(pts);   // sai pela porta
+  }
+  fila = pts; anim = null; proximo();
+  document.querySelectorAll('#bar button[data-v]').forEach((b) => b.classList.toggle('on', b.dataset.v === k));
+}
+function proximo() {
+  const nx = fila.shift(); if (!nx) { anim = null; return; }
+  const d = camera.position.distanceTo(nx[1]);
+  anim = { t: 0, dur: Math.min(2.2, 0.6 + d * 0.22), t0: controls.target.clone(), p0: camera.position.clone(), t1: nx[0], p1: nx[1] };
+}
+document.querySelectorAll('#bar button[data-v]').forEach((b) => b.onclick = () => vista(b.dataset.v));
+{ const [t, p] = VISTAS.fora[0]; controls.target.copy(t);
+  camera.position.copy(t.clone().add(p.clone().sub(t).multiplyScalar(innerHeight > innerWidth ? 1.45 : 1)));
+  document.querySelector('[data-v=fora]').classList.add('on'); }
+
+const ray = new THREE.Raycaster(), ptr = new THREE.Vector2();
+let down = null;
+renderer.domElement.addEventListener('pointerdown', (e) => { down = [e.clientX, e.clientY]; });
+renderer.domElement.addEventListener('pointerup', (e) => {
+  if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 8) return;
+  ptr.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+  ray.setFromCamera(ptr, camera);
+  if (ray.intersectObject(pedra, true)[0]) { alternarPedra(); document.getElementById('dica').style.opacity = 0; }
+});
+setTimeout(() => { document.getElementById('dica').style.opacity = 0; }, 9000);
+addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.fov = innerHeight > innerWidth ? 58 : 42; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+
+const ease = (t) => t * t * (3 - 2 * t);
+const clock = new THREE.Clock();
+renderer.setAnimationLoop(() => {
+  const raw = clock.getDelta(), dt = Math.min(0.05, raw), adt = Math.min(0.25, raw), T = clock.elapsedTime;
+  // a pedra rola de verdade: anda em x e gira em torno do próprio eixo (a profundidade)
+  const alvo = fechada ? xFechada : xAberta;
+  const dx = (alvo - px) * Math.min(1, adt * 1.6);
+  px += Math.abs(dx) > 0.0005 ? dx : (alvo - px);
+  pedra.position.x = px;
+  pedra.rotation.z = -(px - xAberta) / R;
+  lamp.intensity = 5 + Math.sin(T * 9) * 0.35 + Math.sin(T * 23) * 0.2;
+  flame.scale.setScalar(1 + Math.sin(T * 11) * 0.15);
+  if (anim) {
+    anim.t = Math.min(1, anim.t + adt / anim.dur); const k = fila.length ? anim.t : ease(anim.t);
+    controls.target.lerpVectors(anim.t0, anim.t1, k); camera.position.lerpVectors(anim.p0, anim.p1, k);
+    if (anim.t >= 1) proximo();
+  }
+  controls.update();
+  renderer.render(scene, camera);
+});
+renderer.domElement.classList.add('on');
+</script>
+</body>
+</html>

@@ -1,0 +1,834 @@
+{
+  "1_jogo_e_assets_publicados/alfarrobeiras/alfarrobeiras.glb": {
+    "bytes": 301940,
+    "sha256": "81bc2db760891431403c9e09705579e0d54254caecb7e418a90b6802c2eb3660"
+  },
+  "1_jogo_e_assets_publicados/alfarrobeiras/index.html": {
+    "bytes": 7010,
+    "sha256": "e89ef826dbc87d001c2219d60da594b4689a72cf2d4f28c4e24391c77ce26deb"
+  },
+  "1_jogo_e_assets_publicados/alfarrobeiras/previa.png": {
+    "bytes": 181500,
+    "sha256": "0b529660eca58eaea26871c5ccfd5985dd94386b366ef2d56b3e75f62098c20c"
+  },
+  "1_jogo_e_assets_publicados/alfarrobeiras/tex/atlas_alfarrobeira.webp": {
+    "bytes": 166754,
+    "sha256": "e1454e6e1ad7f4c1bbd135fe5d4bd28b3335ed8eb2e70c4448a30e77cc3b71ff"
+  },
+  "1_jogo_e_assets_publicados/alfarrobeiras/tex/campo_seco.webp": {
+    "bytes": 152914,
+    "sha256": "a6da035cbc6b8a5106e70574ad5c789b8482d54ca1f08aa4d00c88b739d86d1d"
+  },
+  "1_jogo_e_assets_publicados/alfarrobeiras/tex/capim_tufo.webp": {
+    "bytes": 70358,
+    "sha256": "05c32e275de45f9b3a89bd8ebf03f4d6db35206afcde7327b956b8d414fec28c"
+  },
+  "1_jogo_e_assets_publicados/amendoeiras/amendoeiras.glb": {
+    "bytes": 466436,
+    "sha256": "0e730c80e867154735238cc597bd0ff3ae2cc6a574b48a484abb4957ce134896"
+  },
+  "1_jogo_e_assets_publicados/amendoeiras/index.html": {
+    "bytes": 7974,
+    "sha256": "225f6089a1de5ee0da19082fef8990f6a3182483c470350885121254f952320f"
+  },
+  "1_jogo_e_assets_publicados/amendoeiras/previa.png": {
+    "bytes": 708220,
+    "sha256": "ec64bf952e361d1d8cbed17442f57675ab0d3578fec1c18627a479a4014026e9"
+  },
+  "1_jogo_e_assets_publicados/amendoeiras/tex/atlas_amendoeira.webp": {
+    "bytes": 267770,
+    "sha256": "206e9c9f248ad93bbd638d85f3cab308450b247d459cf66779439f958acbca95"
+  },
+  "1_jogo_e_assets_publicados/amendoeiras/tex/atlas_terebinto.webp": {
+    "bytes": 265228,
+    "sha256": "ef33b47b1f01ddfbc1375fdea18546a5553afd4473366171dc912c40224d7053"
+  },
+  "1_jogo_e_assets_publicados/amendoeiras/tex/campo_seco.webp": {
+    "bytes": 152914,
+    "sha256": "a6da035cbc6b8a5106e70574ad5c789b8482d54ca1f08aa4d00c88b739d86d1d"
+  },
+  "1_jogo_e_assets_publicados/amendoeiras/tex/capim_tufo.webp": {
+    "bytes": 70358,
+    "sha256": "05c32e275de45f9b3a89bd8ebf03f4d6db35206afcde7327b956b8d414fec28c"
+  },
+  "1_jogo_e_assets_publicados/betania/index.html": {
+    "bytes": 40311,
+    "sha256": "8d76ecdc10f4b4e34703b00533fb05b5d11ad3321492ee0bf0eb7da6e3e6ccd1"
+  },
+  "1_jogo_e_assets_publicados/betania/previa.jpg": {
+    "bytes": 88617,
+    "sha256": "74d8d4897e624e414325fedbd8336bab5899c1c06425048701725f23f2cbc967"
+  },
+  "1_jogo_e_assets_publicados/betania/tex/campo_seco.webp": {
+    "bytes": 152914,
+    "sha256": "a6da035cbc6b8a5106e70574ad5c789b8482d54ca1f08aa4d00c88b739d86d1d"
+  },
+  "1_jogo_e_assets_publicados/betania/tex/campo_verde.webp": {
+    "bytes": 172922,
+    "sha256": "8a0bf88f190889bbde95f8d6103ace0707e3b5821fa5936cdee853a8729a537d"
+  },
+  "1_jogo_e_assets_publicados/betania/tex/capim_tufo.webp": {
+    "bytes": 70358,
+    "sha256": "05c32e275de45f9b3a89bd8ebf03f4d6db35206afcde7327b956b8d414fec28c"
+  },
+  "1_jogo_e_assets_publicados/betania/tex/estrada_terra.webp": {
+    "bytes": 88418,
+    "sha256": "6c790ed42497ab10b4d561ec7cc1d71b643eb7120972d60d46fe966c1b08f74b"
+  },
+  "1_jogo_e_assets_publicados/betania/tex/horizonte.webp": {
+    "bytes": 34656,
+    "sha256": "198c181fd6b994744bcbd7ce448866c2b516b9870ae67385f027b62435d1241f"
+  },
+  "1_jogo_e_assets_publicados/betania/tex/terra_batida.webp": {
+    "bytes": 71760,
+    "sha256": "3ed49c603426cb23ecaacbab488e382239e978a5c54d9fc1c25ed52eb245f57f"
+  },
+  "1_jogo_e_assets_publicados/carvalhos/carvalhos.glb": {
+    "bytes": 418388,
+    "sha256": "4765a2ffa106847ca7e303a4e18c2beb1b7ed680e7dbe9d276ad38c58e957f70"
+  },
+  "1_jogo_e_assets_publicados/carvalhos/index.html": {
+    "bytes": 6852,
+    "sha256": "03e44855f4a27be3fffc42dc0e819c452cdfaff273c5ee566d44679cc38eea97"
+  },
+  "1_jogo_e_assets_publicados/carvalhos/previa.png": {
+    "bytes": 391812,
+    "sha256": "b9466d7ecef4f713c82eb857d5786b31dfb173bbbcf1c1b212fb493b9f6bc41c"
+  },
+  "1_jogo_e_assets_publicados/carvalhos/tex/campo_seco.webp": {
+    "bytes": 152914,
+    "sha256": "a6da035cbc6b8a5106e70574ad5c789b8482d54ca1f08aa4d00c88b739d86d1d"
+  },
+  "1_jogo_e_assets_publicados/carvalhos/tex/capim_tufo.webp": {
+    "bytes": 70358,
+    "sha256": "05c32e275de45f9b3a89bd8ebf03f4d6db35206afcde7327b956b8d414fec28c"
+  },
+  "1_jogo_e_assets_publicados/casas/casa_cottage.glb": {
+    "bytes": 330468,
+    "sha256": "69c50e9013293b9b99633610b2fdce84d7297ebf7f5292e2da22d9ee4381d16c"
+  },
+  "1_jogo_e_assets_publicados/casas/casa_ia_20k.glb": {
+    "bytes": 776920,
+    "sha256": "067cf32d1def20f4ef276a1331b3803056049172268fcfc3ccfdc72981ed0a6d"
+  },
+  "1_jogo_e_assets_publicados/casas/casas_kit.glb": {
+    "bytes": 1110488,
+    "sha256": "eacd567e62a1c96a89502438ac59dde689293ff8ed2fd09206540db64c2a6834"
+  },
+  "1_jogo_e_assets_publicados/casas/construtor_casas.js": {
+    "bytes": 31900,
+    "sha256": "285bb196435693837cb21a3a79e88602700569ff4bd0ea3d5bb0129be04783b6"
+  },
+  "1_jogo_e_assets_publicados/casas/index.html": {
+    "bytes": 13917,
+    "sha256": "ccc512abd8fc9ee580dfd58a1f7ff7c279348ab04aa701205fe6c3b13794a2ef"
+  },
+  "1_jogo_e_assets_publicados/casas/previa.jpg": {
+    "bytes": 50334,
+    "sha256": "c4069ed3fe9dd67b5ff74191515d47cdaba76ad5d30ec4b7f04a8ab6a023447c"
+  },
+  "1_jogo_e_assets_publicados/casas/previa.png": {
+    "bytes": 919707,
+    "sha256": "71d42d2ddb88c18d69a726c460c879b9afff1e118670ebc7aac6ce0fd56f3e31"
+  },
+  "1_jogo_e_assets_publicados/casas/tex/cantaria.webp": {
+    "bytes": 13408,
+    "sha256": "3e27ecfcdfb69f417dba8063562e2a25db7f2b07b229dd751145efe25b7fcd5b"
+  },
+  "1_jogo_e_assets_publicados/casas/tex/chao_grama_v3.webp": {
+    "bytes": 44460,
+    "sha256": "9a544b26d80adb2f53405ddff7c38f6f568a6726cb3413538bc80848a646f672"
+  },
+  "1_jogo_e_assets_publicados/casas/tex/grama_tufo.webp": {
+    "bytes": 18894,
+    "sha256": "aaf933b057dfa3a8afab83836c7eac150433815c5ad497e1d1c043e436f306b4"
+  },
+  "1_jogo_e_assets_publicados/casas/tex/pedra.webp": {
+    "bytes": 13864,
+    "sha256": "c2a9877826d3357c0af50cd59804d47f9daca6b20d02054fadc313a9d69048fd"
+  },
+  "1_jogo_e_assets_publicados/casas/tex/reboco.webp": {
+    "bytes": 46952,
+    "sha256": "bd36451a9bf2cbafb1c31d32dc7cf6ef91bf209ef75337a73384959ae4b7a0c4"
+  },
+  "1_jogo_e_assets_publicados/casas/tex/teto.webp": {
+    "bytes": 50714,
+    "sha256": "5f7dfe1967e4b1f6441a139b73d413d5c2ab49e771ef8581db6869758ec36ab7"
+  },
+  "1_jogo_e_assets_publicados/cesto-uvas/cesto_uvas.glb": {
+    "bytes": 92844,
+    "sha256": "abee59d76fe6d43bead8c1f0b21fc096639c41ff8904ee9f05cc216d9b77cf98"
+  },
+  "1_jogo_e_assets_publicados/cesto-uvas/index.html": {
+    "bytes": 6595,
+    "sha256": "a97681a8cab595ed25793911ac1a101ff35a5b49a03aba3426294d9be9989282"
+  },
+  "1_jogo_e_assets_publicados/cesto-uvas/previa.png": {
+    "bytes": 373834,
+    "sha256": "43cc515fe130be9b21d08a1f069ceedba26d10a140ea97b52176a727b4c52c43"
+  },
+  "1_jogo_e_assets_publicados/cesto-uvas/tex/chao_grama_v3.webp": {
+    "bytes": 44460,
+    "sha256": "9a544b26d80adb2f53405ddff7c38f6f568a6726cb3413538bc80848a646f672"
+  },
+  "1_jogo_e_assets_publicados/cesto-uvas/tex/grama_tufo.webp": {
+    "bytes": 18894,
+    "sha256": "aaf933b057dfa3a8afab83836c7eac150433815c5ad497e1d1c043e436f306b4"
+  },
+  "1_jogo_e_assets_publicados/colheita-trigo/colheita.glb": {
+    "bytes": 332740,
+    "sha256": "0f50c7eaf9b6be99af16f84bfe200e21bba0273a6f90261316f0e562760417ee"
+  },
+  "1_jogo_e_assets_publicados/colheita-trigo/index.html": {
+    "bytes": 9421,
+    "sha256": "e1a561396a7b9431356a00a049d8ec9a16d14fb41834ef42347607faa49b2871"
+  },
+  "1_jogo_e_assets_publicados/colheita-trigo/previa.png": {
+    "bytes": 371084,
+    "sha256": "925abb1337bfd68c7d046beafdb9e2a293f84c41264cc8c28b4e93cabc211201"
+  },
+  "1_jogo_e_assets_publicados/colheita-trigo/tex/chao_grama_v3.webp": {
+    "bytes": 44460,
+    "sha256": "9a544b26d80adb2f53405ddff7c38f6f568a6726cb3413538bc80848a646f672"
+  },
+  "1_jogo_e_assets_publicados/colheita-trigo/tex/grama_tufo.webp": {
+    "bytes": 18894,
+    "sha256": "aaf933b057dfa3a8afab83836c7eac150433815c5ad497e1d1c043e436f306b4"
+  },
+  "1_jogo_e_assets_publicados/copa-telhas/comparacao.glb": {
+    "bytes": 756660,
+    "sha256": "055cfb885a5f465783e63eab760bbeb50eb0a6a3297323524ba5ac80287f2112"
+  },
+  "1_jogo_e_assets_publicados/copa-telhas/index.html": {
+    "bytes": 7425,
+    "sha256": "37fb783c1eec76735efb0a659457b44dbde54dad27ee31b3309aa3b3ac7e9122"
+  },
+  "1_jogo_e_assets_publicados/copa-telhas/teste_telhas.glb": {
+    "bytes": 291704,
+    "sha256": "e1ae5fb8ed77b9d8dbcbddd6a5a2c9c0e463b773fc360e5efa519eac5cf1baca"
+  },
+  "1_jogo_e_assets_publicados/copa-telhas/tex/campo_seco.webp": {
+    "bytes": 152914,
+    "sha256": "a6da035cbc6b8a5106e70574ad5c789b8482d54ca1f08aa4d00c88b739d86d1d"
+  },
+  "1_jogo_e_assets_publicados/copa-telhas/tex/capim_tufo.webp": {
+    "bytes": 70358,
+    "sha256": "05c32e275de45f9b3a89bd8ebf03f4d6db35206afcde7327b956b8d414fec28c"
+  },
+  "1_jogo_e_assets_publicados/discipulo/discipulo.glb": {
+    "bytes": 1541312,
+    "sha256": "db8e2fad233ae5dd66c607899725abe0e1079aa140d974439e0009b9fa56df54"
+  },
+  "1_jogo_e_assets_publicados/discipulo/index.html": {
+    "bytes": 10735,
+    "sha256": "c29532dfb71201b337c2448b20ec0ef66cbc3dfa570cf2197f779c0a78191d8e"
+  },
+  "1_jogo_e_assets_publicados/discipulo/previa.png": {
+    "bytes": 326777,
+    "sha256": "3e4c02d4bb71f4b29891fc93a1f49299031bfff5d624b5e2f1fed45caadf1587"
+  },
+  "1_jogo_e_assets_publicados/discipulo/tex/campo_seco.webp": {
+    "bytes": 152914,
+    "sha256": "a6da035cbc6b8a5106e70574ad5c789b8482d54ca1f08aa4d00c88b739d86d1d"
+  },
+  "1_jogo_e_assets_publicados/discipulo/tex/capim_tufo.webp": {
+    "bytes": 70358,
+    "sha256": "05c32e275de45f9b3a89bd8ebf03f4d6db35206afcde7327b956b8d414fec28c"
+  },
+  "1_jogo_e_assets_publicados/espinheiros/espinheiros.glb": {
+    "bytes": 506076,
+    "sha256": "0e14edd2a5cf6d318a172dc84b314603ed8a79a949c278bb54c6a69a80d622cb"
+  },
+  "1_jogo_e_assets_publicados/espinheiros/index.html": {
+    "bytes": 7910,
+    "sha256": "c9e116b8ad2031ece19085c1f7ab4ff17e3fc4896c2808c2c99fe3e4897bb425"
+  },
+  "1_jogo_e_assets_publicados/espinheiros/previa.png": {
+    "bytes": 805248,
+    "sha256": "183e69bcdf4dec210665b429a73f743c73110dece39ec0343c5e5da7e9185da7"
+  },
+  "1_jogo_e_assets_publicados/espinheiros/tex/atlas_amendoeira.webp": {
+    "bytes": 267770,
+    "sha256": "206e9c9f248ad93bbd638d85f3cab308450b247d459cf66779439f958acbca95"
+  },
+  "1_jogo_e_assets_publicados/espinheiros/tex/atlas_espinheiro.webp": {
+    "bytes": 282432,
+    "sha256": "b4fb3a08565f88b66d4af869847dc51a665d6f03e7e83173588cd237abaec990"
+  },
+  "1_jogo_e_assets_publicados/espinheiros/tex/atlas_terebinto.webp": {
+    "bytes": 265228,
+    "sha256": "ef33b47b1f01ddfbc1375fdea18546a5553afd4473366171dc912c40224d7053"
+  },
+  "1_jogo_e_assets_publicados/espinheiros/tex/campo_seco.webp": {
+    "bytes": 152914,
+    "sha256": "a6da035cbc6b8a5106e70574ad5c789b8482d54ca1f08aa4d00c88b739d86d1d"
+  },
+  "1_jogo_e_assets_publicados/espinheiros/tex/capim_tufo.webp": {
+    "bytes": 70358,
+    "sha256": "05c32e275de45f9b3a89bd8ebf03f4d6db35206afcde7327b956b8d414fec28c"
+  },
+  "1_jogo_e_assets_publicados/esteva/esteva.glb": {
+    "bytes": 307712,
+    "sha256": "2a08e97cd3ae3e474562086cce097c3240167f7fdf65631153454a96e6290604"
+  },
+  "1_jogo_e_assets_publicados/esteva/index.html": {
+    "bytes": 7927,
+    "sha256": "38a103649b646331fdc31fed87867feda22e1458e09b898f73b43d06306cdcf0"
+  },
+  "1_jogo_e_assets_publicados/esteva/previa.png": {
+    "bytes": 366921,
+    "sha256": "cea1b4a78d825150b6c7920825db0bde27ee0e62d5c060690a71548292a14880"
+  },
+  "1_jogo_e_assets_publicados/esteva/tex/atlas_esteva.webp": {
+    "bytes": 135156,
+    "sha256": "d21f8487e5f30efc8aca835d7cb38a3db740b7cbb12558a30570871020e41573"
+  },
+  "1_jogo_e_assets_publicados/esteva/tex/campo_seco.webp": {
+    "bytes": 152914,
+    "sha256": "a6da035cbc6b8a5106e70574ad5c789b8482d54ca1f08aa4d00c88b739d86d1d"
+  },
+  "1_jogo_e_assets_publicados/esteva/tex/capim_tufo.webp": {
+    "bytes": 70358,
+    "sha256": "05c32e275de45f9b3a89bd8ebf03f4d6db35206afcde7327b956b8d414fec28c"
+  },
+  "1_jogo_e_assets_publicados/figueiras/figueiras.glb": {
+    "bytes": 324472,
+    "sha256": "cecb3898f8d2d4d91a5601d87a97c3319841b4ee5f7543df407ba43aa59d4b90"
+  },
+  "1_jogo_e_assets_publicados/figueiras/index.html": {
+    "bytes": 7219,
+    "sha256": "7228b4af747cd8112ece391b1c08fa635fa077d7f4eb6848d2b9fdc18835f4b6"
+  },
+  "1_jogo_e_assets_publicados/figueiras/previa.png": {
+    "bytes": 1094356,
+    "sha256": "8c42f56eb1c94b786ae5c3158ac2f76b1dcedaa91195e36ec6527a3d27daabc8"
+  },
+  "1_jogo_e_assets_publicados/figueiras/tex/atlas_figueira.webp": {
+    "bytes": 153758,
+    "sha256": "7d5ea2fa46b7dfb67c7f4dc36cad9942e5a6905c3ab5eb46ef59f1a6c2a52c74"
+  },
+  "1_jogo_e_assets_publicados/figueiras/tex/chao_grama_v3.webp": {
+    "bytes": 44460,
+    "sha256": "9a544b26d80adb2f53405ddff7c38f6f568a6726cb3413538bc80848a646f672"
+  },
+  "1_jogo_e_assets_publicados/figueiras/tex/grama_tufo.webp": {
+    "bytes": 18894,
+    "sha256": "aaf933b057dfa3a8afab83836c7eac150433815c5ad497e1d1c043e436f306b4"
+  },
+  "1_jogo_e_assets_publicados/flores/flores.glb": {
+    "bytes": 272500,
+    "sha256": "ffe78c1c2adb1bd848b9b72a8a05d48c0ed69058bf399e9d5667dc8e4840c75f"
+  },
+  "1_jogo_e_assets_publicados/flores/index.html": {
+    "bytes": 7523,
+    "sha256": "8fe2a16287a142eb0816b2801ceffe4798b5238ec5f139faffe0f75090569685"
+  },
+  "1_jogo_e_assets_publicados/flores/previa.png": {
+    "bytes": 437403,
+    "sha256": "8aabcd9f503a12245ed87104ff2e01afb41976dfd9540b524b6eb0fd60b7dc6f"
+  },
+  "1_jogo_e_assets_publicados/flores/tex/atlas_flores.webp": {
+    "bytes": 218664,
+    "sha256": "cd82ed1fb4b85b3e6c25bbb1448573c25da28cc841f4fb89dc10dfb5f8998957"
+  },
+  "1_jogo_e_assets_publicados/flores/tex/campo_seco.webp": {
+    "bytes": 152914,
+    "sha256": "a6da035cbc6b8a5106e70574ad5c789b8482d54ca1f08aa4d00c88b739d86d1d"
+  },
+  "1_jogo_e_assets_publicados/flores/tex/capim_tufo.webp": {
+    "bytes": 70358,
+    "sha256": "05c32e275de45f9b3a89bd8ebf03f4d6db35206afcde7327b956b8d414fec28c"
+  },
+  "1_jogo_e_assets_publicados/forno-pao/forno.glb": {
+    "bytes": 168840,
+    "sha256": "8a217dcc6d64f495746e95164d90221d7d582cf548b293ea785de9b324cc8272"
+  },
+  "1_jogo_e_assets_publicados/forno-pao/index.html": {
+    "bytes": 13396,
+    "sha256": "c72ae3233f3a0c219c4c3914e5fe6236d8e4d53841b187ae715a0447b2962a82"
+  },
+  "1_jogo_e_assets_publicados/forno-pao/previa.png": {
+    "bytes": 483919,
+    "sha256": "f1f7c75a82256233afcf2231a7b579149f8448347344cf8e5d160dd6b9485653"
+  },
+  "1_jogo_e_assets_publicados/forno-pao/tex/chao_grama_v3.webp": {
+    "bytes": 44460,
+    "sha256": "9a544b26d80adb2f53405ddff7c38f6f568a6726cb3413538bc80848a646f672"
+  },
+  "1_jogo_e_assets_publicados/forno-pao/tex/grama_tufo.webp": {
+    "bytes": 18894,
+    "sha256": "aaf933b057dfa3a8afab83836c7eac150433815c5ad497e1d1c043e436f306b4"
+  },
+  "1_jogo_e_assets_publicados/index.html": {
+    "bytes": 6031,
+    "sha256": "afe4b955528a3a4aa78b24ac14257623728954e6ee1aaf942f7afc806747bf2d"
+  },
+  "1_jogo_e_assets_publicados/lagar/index.html": {
+    "bytes": 14512,
+    "sha256": "994a0061c524a1743f8cffa05febc12a657bf35ef67002c01e646d6d3f7a5460"
+  },
+  "1_jogo_e_assets_publicados/lagar/lagar.glb": {
+    "bytes": 144316,
+    "sha256": "3fd527e7f64cda78dae125caf0960c00876855d8b0a8cecdd5b210b8a8da6450"
+  },
+  "1_jogo_e_assets_publicados/lagar/previa.png": {
+    "bytes": 774921,
+    "sha256": "06003b14ab25c44d42ef3b2beae6e01eaed0e306767ce2fa8014cbf9a5c78e12"
+  },
+  "1_jogo_e_assets_publicados/lagar/tex/atlas_lagar.webp": {
+    "bytes": 72032,
+    "sha256": "9a65c57000eb977d8716bff38e3e8a0192586c0306d54e687fe4bb541056ad9a"
+  },
+  "1_jogo_e_assets_publicados/lagar/tex/chao_grama_v3.webp": {
+    "bytes": 44460,
+    "sha256": "9a544b26d80adb2f53405ddff7c38f6f568a6726cb3413538bc80848a646f672"
+  },
+  "1_jogo_e_assets_publicados/lagar/tex/grama_tufo.webp": {
+    "bytes": 18894,
+    "sha256": "aaf933b057dfa3a8afab83836c7eac150433815c5ad497e1d1c043e436f306b4"
+  },
+  "1_jogo_e_assets_publicados/lentiscos/index.html": {
+    "bytes": 7020,
+    "sha256": "2abe5a95d0ed4627536448cd83cadf505b8757711b5386c1e5c7d2c60e8899a6"
+  },
+  "1_jogo_e_assets_publicados/lentiscos/lentiscos.glb": {
+    "bytes": 389592,
+    "sha256": "7199bd0826dc9eb184fdfea0481d406905891ea6dedcb0c12a52bfd6d44cc332"
+  },
+  "1_jogo_e_assets_publicados/lentiscos/previa.png": {
+    "bytes": 987510,
+    "sha256": "6b0c238a252badc0325fcc5cf7ae56f809f3a95e2e2a36b93dcec240285679b6"
+  },
+  "1_jogo_e_assets_publicados/lentiscos/tex/atlas_lentisco.webp": {
+    "bytes": 263616,
+    "sha256": "956763bd13594225992c34d947c9fea583e246a48aa876abff4c1ddedb61cad3"
+  },
+  "1_jogo_e_assets_publicados/lentiscos/tex/campo_seco.webp": {
+    "bytes": 152914,
+    "sha256": "a6da035cbc6b8a5106e70574ad5c789b8482d54ca1f08aa4d00c88b739d86d1d"
+  },
+  "1_jogo_e_assets_publicados/lentiscos/tex/capim_tufo.webp": {
+    "bytes": 70358,
+    "sha256": "05c32e275de45f9b3a89bd8ebf03f4d6db35206afcde7327b956b8d414fec28c"
+  },
+  "1_jogo_e_assets_publicados/oliveiras/index.html": {
+    "bytes": 7022,
+    "sha256": "7f74ff1f7c9d96a5407e56c40d2af3887d159712458b677c6c7850d5e7adde8b"
+  },
+  "1_jogo_e_assets_publicados/oliveiras/oliveiras.glb": {
+    "bytes": 251932,
+    "sha256": "8210a4ef3ee3e561a657badce0e03562fc97cb8687de22096000b5a09c1261ba"
+  },
+  "1_jogo_e_assets_publicados/oliveiras/previa.png": {
+    "bytes": 1077447,
+    "sha256": "3168ede79f52e4bcfdec09bd9fb2dfd847dc8cfde8a6d5416dfce82e4ab962d0"
+  },
+  "1_jogo_e_assets_publicados/oliveiras/tex/atlas_oliveira.webp": {
+    "bytes": 150130,
+    "sha256": "94b399de3c9b1b76b1ddf729d07a76d01a57ae5c1636358a13b1f6a6bb86ed48"
+  },
+  "1_jogo_e_assets_publicados/oliveiras/tex/chao_grama_v3.webp": {
+    "bytes": 44460,
+    "sha256": "9a544b26d80adb2f53405ddff7c38f6f568a6726cb3413538bc80848a646f672"
+  },
+  "1_jogo_e_assets_publicados/oliveiras/tex/grama_tufo.webp": {
+    "bytes": 18894,
+    "sha256": "aaf933b057dfa3a8afab83836c7eac150433815c5ad497e1d1c043e436f306b4"
+  },
+  "1_jogo_e_assets_publicados/parreiras/index.html": {
+    "bytes": 7037,
+    "sha256": "9380804ae20df429b04cde32b5352cc74dfc23144d655337dc2222c0d2637984"
+  },
+  "1_jogo_e_assets_publicados/parreiras/parreiras_v2.glb": {
+    "bytes": 229612,
+    "sha256": "e0a583d6e5955d12bdfdb6123d0b823bc02ae0edbe8070c6a9f211dafe43e133"
+  },
+  "1_jogo_e_assets_publicados/parreiras/tex/atlas_v3.webp": {
+    "bytes": 102662,
+    "sha256": "1ad06f23fbe2e29d0552451ab71fda4a737b1efefbc11f23514ce265b6501169"
+  },
+  "1_jogo_e_assets_publicados/parreiras/tex/chao_grama_v3.webp": {
+    "bytes": 44460,
+    "sha256": "9a544b26d80adb2f53405ddff7c38f6f568a6726cb3413538bc80848a646f672"
+  },
+  "1_jogo_e_assets_publicados/parreiras/tex/grama_tufo.webp": {
+    "bytes": 18894,
+    "sha256": "aaf933b057dfa3a8afab83836c7eac150433815c5ad497e1d1c043e436f306b4"
+  },
+  "1_jogo_e_assets_publicados/pinheiros/index.html": {
+    "bytes": 7017,
+    "sha256": "11740c1ced63d6212d7c7e060710e75a055ac4d828a66dfa79e3d4172cc1ec1c"
+  },
+  "1_jogo_e_assets_publicados/pinheiros/pinheiros.glb": {
+    "bytes": 413384,
+    "sha256": "0d56ffceed8a96e0280886299493fda8fbcdb7cbe7297d2eb7ecf5a840e66c43"
+  },
+  "1_jogo_e_assets_publicados/pinheiros/previa.png": {
+    "bytes": 211114,
+    "sha256": "697a457ca650ad96a134f44f9b8a2211c6a4791a4d60844812f3cc490c5b906b"
+  },
+  "1_jogo_e_assets_publicados/pinheiros/tex/atlas_pinheiro.webp": {
+    "bytes": 264794,
+    "sha256": "a30103e548237f360620266878f39632c2ef90e40d1551bd7045a591480ca5db"
+  },
+  "1_jogo_e_assets_publicados/pinheiros/tex/campo_seco.webp": {
+    "bytes": 152914,
+    "sha256": "a6da035cbc6b8a5106e70574ad5c789b8482d54ca1f08aa4d00c88b739d86d1d"
+  },
+  "1_jogo_e_assets_publicados/pinheiros/tex/capim_tufo.webp": {
+    "bytes": 70358,
+    "sha256": "05c32e275de45f9b3a89bd8ebf03f4d6db35206afcde7327b956b8d414fec28c"
+  },
+  "1_jogo_e_assets_publicados/pote-azeitonas/index.html": {
+    "bytes": 6607,
+    "sha256": "a0373e9559c5bab985a0a8757868b484c2778723feee72f30a0cc0e826b8204f"
+  },
+  "1_jogo_e_assets_publicados/pote-azeitonas/pote_azeitonas.glb": {
+    "bytes": 89936,
+    "sha256": "05020269e6f63de83d32523d45f5e0f19998f724b607815cf9e65c2e88c29274"
+  },
+  "1_jogo_e_assets_publicados/pote-azeitonas/previa.png": {
+    "bytes": 325893,
+    "sha256": "c66b49f88abe4d6432a24a91e5c684b8329be0cd177a7c3a46a8b942c078d873"
+  },
+  "1_jogo_e_assets_publicados/pote-azeitonas/tex/chao_grama_v3.webp": {
+    "bytes": 44460,
+    "sha256": "9a544b26d80adb2f53405ddff7c38f6f568a6726cb3413538bc80848a646f672"
+  },
+  "1_jogo_e_assets_publicados/pote-azeitonas/tex/grama_tufo.webp": {
+    "bytes": 18894,
+    "sha256": "aaf933b057dfa3a8afab83836c7eac150433815c5ad497e1d1c043e436f306b4"
+  },
+  "1_jogo_e_assets_publicados/prensa-azeite/index.html": {
+    "bytes": 15603,
+    "sha256": "ac70f7949ca36c6cca4c68624b582de18d4f8943d56aa60687e1ad2438fc2dda"
+  },
+  "1_jogo_e_assets_publicados/prensa-azeite/prensa.glb": {
+    "bytes": 158760,
+    "sha256": "a9f060a0262e8f7934dd0e509637a7d741aacec12100c3ed425f4d8cd931f677"
+  },
+  "1_jogo_e_assets_publicados/prensa-azeite/previa.png": {
+    "bytes": 450003,
+    "sha256": "4cb0bd833cdda5e3bfc30fd8e4410deb95133c7ad8ae3c25a6004fe25d10cacb"
+  },
+  "1_jogo_e_assets_publicados/prensa-azeite/tex/atlas_prensa.webp": {
+    "bytes": 73646,
+    "sha256": "150def12a6052558bf6ac3dc857526d5dacd83fdeb40789a35c2a96a494e8a30"
+  },
+  "1_jogo_e_assets_publicados/prensa-azeite/tex/chao_grama_v3.webp": {
+    "bytes": 44460,
+    "sha256": "9a544b26d80adb2f53405ddff7c38f6f568a6726cb3413538bc80848a646f672"
+  },
+  "1_jogo_e_assets_publicados/prensa-azeite/tex/grama_tufo.webp": {
+    "bytes": 18894,
+    "sha256": "aaf933b057dfa3a8afab83836c7eac150433815c5ad497e1d1c043e436f306b4"
+  },
+  "1_jogo_e_assets_publicados/romanzeiras/index.html": {
+    "bytes": 7227,
+    "sha256": "a2f38225c910f10223e8f84b420435f3f679b91cf18a5bd3b6f92f34eff103fa"
+  },
+  "1_jogo_e_assets_publicados/romanzeiras/previa.png": {
+    "bytes": 1064402,
+    "sha256": "2afcca8127e9173d062fa3e14cbaf661ce43963be090c51e266646934665b860"
+  },
+  "1_jogo_e_assets_publicados/romanzeiras/romanzeiras.glb": {
+    "bytes": 371480,
+    "sha256": "1d7ec9ca9709b0cc50c9f73dd0772368b415a514c9457536394c956fe96e96fb"
+  },
+  "1_jogo_e_assets_publicados/romanzeiras/tex/atlas_romanzeira.webp": {
+    "bytes": 195882,
+    "sha256": "71b126e043b3b40e371d117df7c44bfeed1e5dbad5a69cc85aba7c62b532c55f"
+  },
+  "1_jogo_e_assets_publicados/romanzeiras/tex/chao_grama_v3.webp": {
+    "bytes": 44460,
+    "sha256": "9a544b26d80adb2f53405ddff7c38f6f568a6726cb3413538bc80848a646f672"
+  },
+  "1_jogo_e_assets_publicados/romanzeiras/tex/grama_tufo.webp": {
+    "bytes": 18894,
+    "sha256": "aaf933b057dfa3a8afab83836c7eac150433815c5ad497e1d1c043e436f306b4"
+  },
+  "1_jogo_e_assets_publicados/sarcopoterium/index.html": {
+    "bytes": 7788,
+    "sha256": "e4f7450d5b591af0a9482086b41616f0a4df7d4cb3cdfe5d05782052dbe6fae5"
+  },
+  "1_jogo_e_assets_publicados/sarcopoterium/previa.png": {
+    "bytes": 371067,
+    "sha256": "c29eba34f13adae05b8c5016012cf4c29b9e900e09caa344491989b1265ab821"
+  },
+  "1_jogo_e_assets_publicados/sarcopoterium/sarcopoterium.glb": {
+    "bytes": 369444,
+    "sha256": "f562597a29265d4b3bbce250be1f47da3ce35c3ddbe0f8d8d8cdfa9aa0d67de0"
+  },
+  "1_jogo_e_assets_publicados/sarcopoterium/tex/atlas_sarcopoterium.webp": {
+    "bytes": 223158,
+    "sha256": "3020ab11a753194e00ccb183b01d4279f65587d3b2101d6969b6adc572bd556f"
+  },
+  "1_jogo_e_assets_publicados/sarcopoterium/tex/campo_seco.webp": {
+    "bytes": 152914,
+    "sha256": "a6da035cbc6b8a5106e70574ad5c789b8482d54ca1f08aa4d00c88b739d86d1d"
+  },
+  "1_jogo_e_assets_publicados/sarcopoterium/tex/capim_tufo.webp": {
+    "bytes": 70358,
+    "sha256": "05c32e275de45f9b3a89bd8ebf03f4d6db35206afcde7327b956b8d414fec28c"
+  },
+  "1_jogo_e_assets_publicados/terebintos/index.html": {
+    "bytes": 7915,
+    "sha256": "cd06b038673e64eacea5797dd79eed7ec7ff8e0ea82a0d2aa8daa0cf6497ee74"
+  },
+  "1_jogo_e_assets_publicados/terebintos/previa.png": {
+    "bytes": 956774,
+    "sha256": "0e06e61892f2817b5175f70c43903e9d40f984f1832bd7624b206824271dfb2a"
+  },
+  "1_jogo_e_assets_publicados/terebintos/terebintos.glb": {
+    "bytes": 523960,
+    "sha256": "ce21719b1ddaead0d867235f171225a697acfddca6d9172c31e9d15542ea0193"
+  },
+  "1_jogo_e_assets_publicados/terebintos/tex/atlas_terebinto.webp": {
+    "bytes": 265228,
+    "sha256": "ef33b47b1f01ddfbc1375fdea18546a5553afd4473366171dc912c40224d7053"
+  },
+  "1_jogo_e_assets_publicados/terebintos/tex/campo_seco.webp": {
+    "bytes": 152914,
+    "sha256": "a6da035cbc6b8a5106e70574ad5c789b8482d54ca1f08aa4d00c88b739d86d1d"
+  },
+  "1_jogo_e_assets_publicados/terebintos/tex/capim_tufo.webp": {
+    "bytes": 70358,
+    "sha256": "05c32e275de45f9b3a89bd8ebf03f4d6db35206afcde7327b956b8d414fec28c"
+  },
+  "1_jogo_e_assets_publicados/tomilho/index.html": {
+    "bytes": 7891,
+    "sha256": "23b4485cccd37cf974a613bce60b9af429298b996d8d48b76affa77f8845252a"
+  },
+  "1_jogo_e_assets_publicados/tomilho/previa.png": {
+    "bytes": 301885,
+    "sha256": "6722e3f722b9ae1f05a95709a6932c309e3c1267b4ae34be36ca909a6caf7099"
+  },
+  "1_jogo_e_assets_publicados/tomilho/tex/atlas_tomilho.webp": {
+    "bytes": 203194,
+    "sha256": "6a0c2b13c518192ed0fe10640dcbb4a346c9c06f93858bcb3dd31c43729a7497"
+  },
+  "1_jogo_e_assets_publicados/tomilho/tex/campo_seco.webp": {
+    "bytes": 152914,
+    "sha256": "a6da035cbc6b8a5106e70574ad5c789b8482d54ca1f08aa4d00c88b739d86d1d"
+  },
+  "1_jogo_e_assets_publicados/tomilho/tex/capim_tufo.webp": {
+    "bytes": 70358,
+    "sha256": "05c32e275de45f9b3a89bd8ebf03f4d6db35206afcde7327b956b8d414fec28c"
+  },
+  "1_jogo_e_assets_publicados/tomilho/tomilho.glb": {
+    "bytes": 370400,
+    "sha256": "80ab0e813c6031086fe02a2c1db08155d237206f13ca049c9100ae814400e51c"
+  },
+  "1_jogo_e_assets_publicados/trigal/index.html": {
+    "bytes": 12680,
+    "sha256": "cfc16e27fc89a3127d432c8151410d3d4727e7af98c96f8d6740e817ba0c82db"
+  },
+  "1_jogo_e_assets_publicados/trigal/previa.png": {
+    "bytes": 683442,
+    "sha256": "455361f7c1e72ef08d3763d7cc8f9f362998138bcc20a13f936ed70610b7b652"
+  },
+  "1_jogo_e_assets_publicados/trigal/tex/chao_grama_v3.webp": {
+    "bytes": 44460,
+    "sha256": "9a544b26d80adb2f53405ddff7c38f6f568a6726cb3413538bc80848a646f672"
+  },
+  "1_jogo_e_assets_publicados/trigal/tex/grama_tufo.webp": {
+    "bytes": 18894,
+    "sha256": "aaf933b057dfa3a8afab83836c7eac150433815c5ad497e1d1c043e436f306b4"
+  },
+  "1_jogo_e_assets_publicados/trigal/tex/terra_arada.webp": {
+    "bytes": 19770,
+    "sha256": "779f252a2d42b6a543769e1a04836fa6e365544a5d5d2a1811e1d497c4ce40b3"
+  },
+  "1_jogo_e_assets_publicados/trigal/trigo.glb": {
+    "bytes": 238988,
+    "sha256": "c6521c67acf79f96b8551d1e98e839c675781e6a074cbc67ebce4a4b945ffb34"
+  },
+  "1_jogo_e_assets_publicados/tumulo/index.html": {
+    "bytes": 11623,
+    "sha256": "f6b1abd5fd05f4c8bfd6c04455e60eeb9f7297e424e6024e4b66e87902be61b0"
+  },
+  "1_jogo_e_assets_publicados/tumulo/previa.png": {
+    "bytes": 1214102,
+    "sha256": "327ca789320ae57dd11d728f4cfb0a5b3e4413172513933d0ace3b81f326a710"
+  },
+  "1_jogo_e_assets_publicados/tumulo/tex/chao_grama_v3.webp": {
+    "bytes": 44460,
+    "sha256": "9a544b26d80adb2f53405ddff7c38f6f568a6726cb3413538bc80848a646f672"
+  },
+  "1_jogo_e_assets_publicados/tumulo/tex/rocha_encosta.webp": {
+    "bytes": 118304,
+    "sha256": "3def76b1441914ec78b534f386440c8dd03dd59393a94fdd3ba65c2abdca8a6e"
+  },
+  "1_jogo_e_assets_publicados/tumulo/tex/rocha_talhada.webp": {
+    "bytes": 105654,
+    "sha256": "2cfd18f03b4e1bd38dbdd0fd92f58eaea795934a8e0492256a4810256f71f4aa"
+  },
+  "1_jogo_e_assets_publicados/tumulo/tumulo.glb": {
+    "bytes": 531020,
+    "sha256": "be0cc5293480a8fa21bad0e536d55794fbe84a1cdd975e83da07d9a2e998f2ca"
+  },
+  "1_jogo_e_assets_publicados/vila/index.html": {
+    "bytes": 17239,
+    "sha256": "e2bda3674d877b5144bc18d1b645df55df864eda5a90690a17374330ab5a28b5"
+  },
+  "1_jogo_e_assets_publicados/vila/previa.png": {
+    "bytes": 851808,
+    "sha256": "58a6d7314950bc8acbc79383951ffa84c99a7ef7a536ac054ef97a750610e673"
+  },
+  "1_jogo_e_assets_publicados/vila/tex/chao_grama_v3.webp": {
+    "bytes": 44460,
+    "sha256": "9a544b26d80adb2f53405ddff7c38f6f568a6726cb3413538bc80848a646f672"
+  },
+  "1_jogo_e_assets_publicados/vila/vila.glb": {
+    "bytes": 1584736,
+    "sha256": "0f9ce3d0d4b8d283c05c74cb7f3dc31a2a939e39bc1b30a117f91796dc484953"
+  },
+  "1_jogo_e_assets_publicados/vila-betania/discipulo_acoes.glb": {
+    "bytes": 2322592,
+    "sha256": "bd8a80bd0bcf2253cc11d4798f782b8d1c03bc5820effa29f2b0bf60922ab554"
+  },
+  "1_jogo_e_assets_publicados/vila-betania/index.html": {
+    "bytes": 112966,
+    "sha256": "bc9a9e01dc6499a3dd66ad05cc8bc03c796d7025f89ef6240e08f795e37b43ee"
+  },
+  "1_jogo_e_assets_publicados/vila-betania/previa.png": {
+    "bytes": 1525909,
+    "sha256": "c6683be6abd9215fcb334e716077333ce980b64993a17516202cee1e8651f0b4"
+  },
+  "1_jogo_e_assets_publicados/vila-betania/tex/campo_seco.webp": {
+    "bytes": 21244,
+    "sha256": "13e0ac96cc9f4c7ed5818c979b26c0ad4d7390782a1e8a37e47b63fe6eadf996"
+  },
+  "1_jogo_e_assets_publicados/vila-betania/tex/cantaria.webp": {
+    "bytes": 7928,
+    "sha256": "44e5857651bc8673d0d4bf66fea543747ef5ee9a3b2273023fdfc26b9b41faa7"
+  },
+  "1_jogo_e_assets_publicados/vila-betania/tex/chao_grama_v3.webp": {
+    "bytes": 21012,
+    "sha256": "73e630f12265482259a7e5b0924bfec3441e3e4dc7efcb074e1a0992fec73288"
+  },
+  "1_jogo_e_assets_publicados/vila-betania/tex/pedra.webp": {
+    "bytes": 8040,
+    "sha256": "20de6b5083d6a67897724d0cb13a8177829e059c3ecd3b25e27036b21f0401c5"
+  },
+  "1_jogo_e_assets_publicados/vila-betania/tex/reboco.webp": {
+    "bytes": 6368,
+    "sha256": "e6ed526e5cd0d2555bd98c5e19a1f068a68efb118bc8e8d75b085881e0d324e4"
+  },
+  "1_jogo_e_assets_publicados/vila-betania/tex/reboco_pintado_v4.webp": {
+    "bytes": 72794,
+    "sha256": "beaa4aa70165b79a31f78774a36b12239813042448b047ac1ebf0909a5bee5cc"
+  },
+  "1_jogo_e_assets_publicados/vila-betania/tex/rocha_encosta.webp": {
+    "bytes": 30766,
+    "sha256": "fe6859427b9b92c4b29dbad1ac393df52e0338cd8de8f1cecf6ad306a2df3788"
+  },
+  "1_jogo_e_assets_publicados/vila-betania/tex/terra_arada.webp": {
+    "bytes": 9032,
+    "sha256": "aa73f584b0d4247701da0b427b8b7de08144d7a2ed0de60f0dea354836b1893a"
+  },
+  "1_jogo_e_assets_publicados/vila-betania/tex/terra_pintada_v4.webp": {
+    "bytes": 65562,
+    "sha256": "2ced547adc6fc08ea19c895a3818a7ea75dec83e32f5930cc3c169970f4df87b"
+  },
+  "1_jogo_e_assets_publicados/vila-betania/tex/teto.webp": {
+    "bytes": 8232,
+    "sha256": "a47cd59513d125d31143f16bd1e0a2105849c3f9ba9114842b46f94d77d51ccb"
+  },
+  "2_fontes/melhorias_pintadas_v4/PROMPTS.md": {
+    "bytes": 2357,
+    "sha256": "63bc436bba525ad5db50a840e19045934049d3bd2186c43c161b838563e93834"
+  },
+  "2_fontes/melhorias_pintadas_v4/texturas/originais/reboco_pintado_v4.png": {
+    "bytes": 2171774,
+    "sha256": "f762bfb51cb378975fc0502c06c742daa2a90a47a0c22b4495d96d8333a7bd5c"
+  },
+  "2_fontes/melhorias_pintadas_v4/texturas/originais/terra_pintada_v4.png": {
+    "bytes": 2165448,
+    "sha256": "8bed22d5034c8a96634207927029f531c1958ccd2fd5fba343fc68486bc87106"
+  },
+  "4_revisao_codex_v4/antes/construtor_casas.js": {
+    "bytes": 31756,
+    "sha256": "2fd9beed947c1587ce7cdfedea5129b0016ce7154b8c787fe616d2109939c5e6"
+  },
+  "4_revisao_codex_v4/antes/index.html": {
+    "bytes": 105232,
+    "sha256": "f97e896f0b55788e484b43793de642f9e46b1ec26b8152f33da3e02cd4bb4546"
+  },
+  "4_revisao_codex_v4/antes/LEIA-ME.txt": {
+    "bytes": 1640,
+    "sha256": "e732640ad62c22b75a68d393b71634305efa36c39c9917befee65be7c78b48a2"
+  },
+  "4_revisao_codex_v4/evidencias/desktop.png": {
+    "bytes": 960006,
+    "sha256": "7a447268f34316c1396ffe2e2d1670d0414cf7571d046b72df8c2362cd532df4"
+  },
+  "4_revisao_codex_v4/evidencias/mobile-ajuda.png": {
+    "bytes": 57892,
+    "sha256": "33b88d057abde76f7260880d4629d589bbb035ce8dac75c623ea90bc836e2792"
+  },
+  "4_revisao_codex_v4/evidencias/mobile.png": {
+    "bytes": 436056,
+    "sha256": "70f40388a971f27f75b98bf2ae4713cefadc0ce81b3c3a479f673a2033e58c0e"
+  },
+  "4_revisao_codex_v4/evidencias/paisagem-ajuda.png": {
+    "bytes": 54952,
+    "sha256": "087c2b48fa71f885b693cc4725502c5f0f82f27aed8ce3eddb4dc3abe7af9ac9"
+  },
+  "4_revisao_codex_v4/evidencias/paisagem.png": {
+    "bytes": 539999,
+    "sha256": "2173757dff94987dbe8723baa4ab4c9ae026b93b5827989a9262e507cef02928"
+  },
+  "4_revisao_codex_v4/regressoes.json": {
+    "bytes": 739,
+    "sha256": "2f20b46aba6ad085f60d8e3ddedafd429889f0f3fb13715fcc799529f4d4ca34"
+  },
+  "4_revisao_codex_v4/RELATORIO.md": {
+    "bytes": 6310,
+    "sha256": "ef082404594a3d649d7aeff8ddc12e90f458a4accb9f5d8264c563483bc35b10"
+  },
+  "4_revisao_codex_v4/RESTAURAR_V3.ps1": {
+    "bytes": 606,
+    "sha256": "97f02acbca45830e472983fddc828c33e41842dd788858fd620f1a388c69f79b"
+  },
+  "4_revisao_codex_v4/resultados.json": {
+    "bytes": 7149,
+    "sha256": "bb36497c98462007b9a8b21c99a7520448e9cbe23c11bcba3fdb31192da2a5ce"
+  },
+  "4_revisao_codex_v4/testes/cdp.py": {
+    "bytes": 1804,
+    "sha256": "7f0881dabfce14d9b2bf6daa0a2046f7a5dd1e2f034fed7ffbdd83f7a561f8b7"
+  },
+  "4_revisao_codex_v4/testes/LEIA-ME.txt": {
+    "bytes": 606,
+    "sha256": "e3b8fd73359db302e4958dfb60d999ba41704e153cc2d1388226a2f220cfa0f1"
+  },
+  "4_revisao_codex_v4/testes/regressions.py": {
+    "bytes": 4156,
+    "sha256": "e124fac05d0d0d97316e48737ef3fea1e312f48d13d5e32f00d3cbd9b0247be8"
+  },
+  "4_revisao_codex_v4/testes/run_tests.py": {
+    "bytes": 6390,
+    "sha256": "7a5beeeab6381caf766fc092e875a98f8d17a02d99413bb5498fa00a6167ac37"
+  },
+  "index.html": {
+    "bytes": 368,
+    "sha256": "7974d17f5cd05a0523635f4578d6fe328439d345b5a2d96ccedbb762d7ac4342"
+  },
+  "INICIAR_JOGO.cmd": {
+    "bytes": 49,
+    "sha256": "afdf95382db80cc076e0277412925ff83aa6e71618e55ab2bb35d6977829a8d2"
+  },
+  "LEIA-ME.txt": {
+    "bytes": 2185,
+    "sha256": "58cdea368fa30bc523fda5b7e1057ec31d221d51d84577371abc9c9ae09af49a"
+  },
+  "README.md": {
+    "bytes": 1379,
+    "sha256": "9a640ffc35c07ef2d4b63495fcd64a1a53e621afa6224e65510df33ab6be8c15"
+  },
+  "servidor.mjs": {
+    "bytes": 1758,
+    "sha256": "43d88e2a43e48b916f3a86f69e189d9f814cb523d23672248b1250da07264ec5"
+  }
+}

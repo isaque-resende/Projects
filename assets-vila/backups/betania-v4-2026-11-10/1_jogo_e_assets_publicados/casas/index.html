@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#86b9df">
+<title>Casas da Judeia</title>
+<style>
+  :root { --bt: rgba(255, 250, 240, .9); --bt-fg: #3a2e22; --bt-on: #8a5a35; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #c6e0ef; font: 14px/1.2 system-ui, sans-serif; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; opacity: 0; transition: opacity .8s; }
+  canvas.on { opacity: 1; }
+  #ui { position: fixed; left: 0; right: 0; bottom: calc(14px + env(safe-area-inset-bottom)); display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; padding: 0 16px; z-index: 2; }
+  #ui button { border: 0; border-radius: 999px; padding: 10px 14px; background: var(--bt); color: var(--bt-fg); font: inherit; font-weight: 600; box-shadow: 0 2px 8px rgba(0, 0, 0, .18); }
+  #ui button.on { background: var(--bt-on); color: #fff; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="ui">
+  <button id="bCasa" class="on">Casa</button>
+  <button id="bQuart">Rua</button>
+  <button id="bSort">Sortear</button>
+  <button id="bDentro">Ver dentro</button>
+  <button id="bIA">Teste IA</button>
+</div>
+<script type="module">
+// Viewer do kit de casas: casa de exemplo mobiliada (porta abre com um toque), um quarteirão de casas
+// geminadas e o botão Sortear (gera outra casa ou outro quarteirão a partir do mesmo kit).
+// "Ver dentro" tira o teto e o andar de cima. O boneco tem 1,70 m (escala do personagem).
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { carregarKit, casaExemplo, casaAleatoria, rua as quarteirao, GLSL_NOISE } from './construtor_casas.js';
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const sky = (() => {
+  const c = document.createElement('canvas'); c.width = 2; c.height = 256;
+  const g = c.getContext('2d'); const gr = g.createLinearGradient(0, 0, 0, 256);
+  gr.addColorStop(0, '#86b9df'); gr.addColorStop(0.55, '#c6e0ef'); gr.addColorStop(1, '#f2e6d0');
+  g.fillStyle = gr; g.fillRect(0, 0, 2, 256);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+})();
+scene.background = sky;
+scene.fog = new THREE.Fog(0xeae4d6, 40, 95);
+scene.add(new THREE.HemisphereLight(0xcfe6ff, 0xc9a47a, 1.35));
+const sun = new THREE.DirectionalLight(0xffe4bc, 3.2);
+sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.bias = -0.0008; sun.shadow.normalBias = 0.05;
+scene.add(sun); scene.add(sun.target);
+
+const texL = new THREE.TextureLoader();
+const gt = texL.load('tex/chao_grama_v3.webp'); gt.colorSpace = THREE.SRGBColorSpace; gt.wrapS = gt.wrapT = THREE.RepeatWrapping; gt.repeat.set(24, 24);
+gt.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+const ground = new THREE.Mesh(new THREE.CircleGeometry(80, 48), new THREE.MeshStandardMaterial({ map: gt, roughness: 1 }));
+ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+// chão sem repetição aparente: mesma técnica das paredes, sobre o UV do mapa
+ground.material.onBeforeCompile = (sh) => {
+  sh.fragmentShader = GLSL_NOISE + sh.fragmentShader.replace('#include <map_fragment>', `
+    vec3 g = semRep(map, vMapUv);
+    float a = vnoise(vMapUv * 0.09), b = vnoise(vMapUv * 0.31 + 5.0);
+    g *= vec3(0.9 + 0.18 * a, 0.92 + 0.12 * a + 0.04 * b, 0.9 + 0.08 * b);
+    diffuseColor.rgb *= g;`);
+};
+
+const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.1, 200);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = 0.08;
+controls.minDistance = 2; controls.maxDistance = 60; controls.maxPolarAngle = Math.PI * 0.48;
+
+// boneco de 1,70 m
+function boneco(cor) {
+  const g = new THREE.Group();
+  const m = (c) => new THREE.MeshStandardMaterial({ color: c, roughness: 1, flatShading: true });
+  const robe = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.28, 1.42, 7), m(cor)); robe.position.y = 0.71;
+  const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.12, 0), m(0xc9a07a)); head.position.y = 1.52;
+  const veil = new THREE.Mesh(new THREE.ConeGeometry(0.17, 0.22, 7), m(0xd9cbb0)); veil.position.y = 1.59;
+  for (const x of [robe, head, veil]) { x.castShadow = true; g.add(x); }
+  return g;
+}
+
+// ------------------------------------------------------------------ cena
+const kit = await carregarKit('casas_kit.glb', 'tex/');
+const CASA_POS = new THREE.Vector3(0, 0, 0), QUART_POS = new THREE.Vector3(14, 0, -24);
+let casa = null, quart = null, dentro = false, modo = 'casa', semente = 1;
+const pessoa = boneco(0x8a6a4a); pessoa.position.set(2.0, 0, 4.9); scene.add(pessoa);
+const pessoa2 = boneco(0x6e5a8a); scene.add(pessoa2);
+
+function porCasa(g) {
+  if (casa) scene.remove(casa);
+  casa = g; casa.position.copy(CASA_POS); scene.add(casa); aplicaDentro();
+}
+function porQuart(g) {
+  if (quart) scene.remove(quart);
+  quart = g; quart.position.copy(QUART_POS); scene.add(quart); aplicaDentro();
+  const [W, D] = g.userData.tamanho;
+  pessoa2.position.set(QUART_POS.x + W / 2, 0, QUART_POS.z + 8.5);
+}
+function aplicaDentro() {
+  for (const g of [casa, quart]) if (g && g.userData.camadas.cima) g.userData.camadas.cima.visible = !dentro;
+  if (casa) for (const p of casa.userData.portas) if (p.position.y > 1) p.visible = !dentro;
+  if (quart) for (const p of quart.userData.portas) if (p.position.y > 1) p.visible = !dentro;
+}
+porCasa(casaExemplo(kit));
+porQuart(quarteirao(kit, 7));
+
+function olhar(alvo, dist, dir) {
+  controls.target.copy(alvo);
+  camera.position.copy(alvo).add(dir.clone().normalize().multiplyScalar(dist));
+  // sol fixo em direção, a ~30 m do alvo; caixa de sombra fixa e modesta (o chão escurecia no celular com a caixa grande)
+  sun.position.copy(alvo).add(new THREE.Vector3(9, 11, 6).normalize().multiplyScalar(30)); sun.target.position.copy(alvo);
+  sun.target.updateMatrixWorld();
+  const s = modo === 'quart' ? 22 : modo === 'ia' ? 22 : 10; Object.assign(sun.shadow.camera, { left: -s, right: s, top: s, bottom: -s, near: 5, far: 60 }); sun.shadow.camera.updateProjectionMatrix();
+  controls.update();
+}
+const retrato = () => innerHeight > innerWidth;
+function verCasa() { modo = 'casa'; olhar(CASA_POS.clone().add(new THREE.Vector3(2.5, 1.4, 2)), retrato() ? 19 : 13, new THREE.Vector3(0.55, 0.65, 1)); marca(); }
+function verQuart() {
+  modo = 'quart'; const [W, D] = quart.userData.tamanho;
+  olhar(QUART_POS.clone().add(new THREE.Vector3(W / 2, 1.6, 8.5)), retrato() ? 34 : 25, new THREE.Vector3(-0.75, 0.9, 0.12)); marca();
+}
+const bCasa = document.getElementById('bCasa'), bQuart = document.getElementById('bQuart'), bDentro = document.getElementById('bDentro');
+function marca() { bCasa.classList.toggle('on', modo === 'casa'); bQuart.classList.toggle('on', modo === 'quart'); bDentro.classList.toggle('on', dentro); const bi = document.getElementById('bIA'); if (bi) bi.classList.toggle('on', modo === 'ia'); }
+bCasa.onclick = () => { if (modo === 'casa') porCasa(casaExemplo(kit)); verCasa(); };
+bQuart.onclick = () => verQuart();
+document.getElementById('bSort').onclick = () => {
+  semente = (semente * 48271 + 11) % 2147483647;
+  if (modo === 'casa') { porCasa(casaAleatoria(kit, semente)); pessoa.position.set(1.5, 0, 9); }
+  else porQuart(quarteirao(kit, semente));
+};
+bDentro.onclick = () => { dentro = !dentro; aplicaDentro(); marca(); };
+verCasa();
+
+// ------------------------------------------------------------------ TESTE: casa da IA reduzida (20 mil triângulos, textura 1K)
+// ao lado da nossa casa de exemplo, e uma fileira de 6 cópias giradas atrás (para julgar a repetição)
+const IA_POS = new THREE.Vector3(-11, 0, 2);
+let ia = null;
+async function carregaIA() {
+  if (ia) return;
+  const g = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync('casa_ia_20k.glb');
+  ia = g.scene; ia.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  ia.position.copy(IA_POS); ia.rotation.y = 0; scene.add(ia);
+  const giros = [0, Math.PI / 2, Math.PI, -Math.PI / 2, 0, Math.PI];
+  giros.forEach((r, k) => {
+    const c = ia.clone(); c.position.set(IA_POS.x - 4 + (k % 3) * 9.2, 0, IA_POS.z - 12 - Math.floor(k / 3) * 9.2);
+    c.rotation.y = r; if (k % 2) c.scale.x = -1; scene.add(c);
+  });
+}
+// casa "stone cottage" (Tripo, 14 mil triângulos, sem textura): pintada por material + pincelada no mundo
+let cot = null;
+async function carregaCottage() {
+  if (cot) return;
+  const g = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync('casa_cottage.glb');
+  const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92 });
+  mat.onBeforeCompile = (sh) => {
+    sh.uniforms.tPedra = { value: kit.tex.pedra }; sh.uniforms.tReboco = { value: kit.tex.reboco };
+    sh.vertexShader = 'varying vec3 vWPos2;\n' + sh.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>\n vWPos2 = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+    sh.fragmentShader = 'uniform sampler2D tPedra, tReboco; varying vec3 vWPos2;\n' + GLSL_NOISE + sh.fragmentShader.replace('#include <map_fragment>', `
+      vec3 nW = normalize(cross(dFdx(vWPos2), dFdy(vWPos2)));
+      vec2 p = planar(vWPos2, nW);
+      float a = dot(semRep(tPedra, p / 1.6), vec3(0.333)), b = dot(semRep(tReboco, p / 0.8), vec3(0.333));
+      diffuseColor.rgb *= (0.86 + 0.16 * a + 0.1 * b) * macro(vWPos2) * vec3(1.06, 1.0, 0.92);`);
+  };
+  cot = g.scene;
+  cot.traverse((o) => { if (o.isMesh) { o.material = mat; o.castShadow = true; o.receiveShadow = true; } });
+  cot.position.set(-23, 0, 2); scene.add(cot);
+  [[-23, -10, Math.PI / 2], [-32, 2, Math.PI]].forEach(([x, z, r], k) => { const c = cot.clone(); c.position.set(x, 0, z); c.rotation.y = r; if (k) c.scale.x = -1; scene.add(c); });
+}
+document.getElementById('bIA').onclick = async () => {
+  await carregaCottage();
+  await carregaIA(); modo = 'ia'; marca();
+  olhar(new THREE.Vector3(-14, 1.6, -3), retrato() ? 42 : 30, new THREE.Vector3(0.3, 0.6, 1));
+};
+
+// toque numa porta: abre ou fecha
+const ray = new THREE.Raycaster(), ptr = new THREE.Vector2();
+let down = null;
+renderer.domElement.addEventListener('pointerdown', (e) => { down = { x: e.clientX, y: e.clientY, t: performance.now() }; });
+renderer.domElement.addEventListener('pointerup', (e) => {
+  if (!down) return;
+  const ok = Math.hypot(e.clientX - down.x, e.clientY - down.y) < 8 && performance.now() - down.t < 350; down = null;
+  if (!ok) return;
+  ptr.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+  ray.setFromCamera(ptr, camera);
+  const portas = [...(casa ? casa.userData.portas : []), ...(quart ? quart.userData.portas : [])].filter((p) => p.visible);
+  const hit = ray.intersectObjects(portas, true)[0];
+  if (!hit) return;
+  let p = hit.object; while (p && !p.userData.porta) p = p.parent;
+  if (p) p.userData.alvo = Math.abs(p.userData.alvo - p.userData.fechada) < 0.01 ? p.userData.aberta : p.userData.fechada;
+});
+
+// grama em volta (fora das casas)
+{
+  const tex = texL.load('tex/grama_tufo.webp'); tex.colorSpace = THREE.SRGBColorSpace;
+  const a = new THREE.PlaneGeometry(0.62, 0.62); a.translate(0, 0.29, 0);
+  const b = a.clone(); b.rotateY(Math.PI / 2);
+  const geo = mergeGeometries([a, b]);
+  const n = geo.attributes.normal; for (let i = 0; i < n.count; i++) n.setXYZ(i, 0, 1, 0);
+  const grass = new THREE.InstancedMesh(geo, new THREE.MeshStandardMaterial({ map: tex, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 1 }), 700);
+  let seed = 19; const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3();
+  let i = 0;
+  while (i < 700) {
+    p.set(-25 + rnd() * 80, 0, -28 + rnd() * 50);
+    const naCasa = (p.x > -2.5 && p.x < 7 && p.z > -1.5 && p.z < 7.5) || (p.x > -37 && p.x < -1 && p.z > -26 && p.z < 7);
+    const noQuart = p.x > QUART_POS.x - 2 && p.x < QUART_POS.x + 32 && p.z > QUART_POS.z - 1 && p.z < QUART_POS.z + 18;
+    if (naCasa || noQuart) continue;
+    q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rnd() * Math.PI);
+    const k = 0.5 + rnd() * 0.7; s.set(k, k, k);
+    grass.setMatrixAt(i++, m4.compose(p, q, s));
+  }
+  grass.receiveShadow = true; scene.add(grass);
+}
+
+addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
+let last = performance.now();
+renderer.setAnimationLoop(() => {
+  const now = performance.now(); const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  for (const g of [casa, quart]) if (g) for (const p of g.userData.portas) p.rotation.y += (p.userData.alvo - p.rotation.y) * Math.min(1, dt * 5);
+  controls.update(); renderer.render(scene, camera);
+});
+requestAnimationFrame(() => renderer.domElement.classList.add('on'));
+</script>
+</body>
+</html>

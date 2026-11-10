@@ -1,0 +1,391 @@
+[
+  {
+    "teste": "Inicializacao completa",
+    "ok": true,
+    "detalhe": null
+  },
+  {
+    "teste": "Ajuda abre como modal",
+    "ok": true,
+    "detalhe": null
+  },
+  {
+    "teste": "Ajuda pausa simulacao",
+    "ok": true,
+    "detalhe": null
+  },
+  {
+    "teste": "Stencil ativo para silhueta",
+    "ok": true,
+    "detalhe": null
+  },
+  {
+    "teste": "Rotas aos nove pontos de interesse",
+    "ok": true,
+    "detalhe": [
+      {
+        "id": "tumulo",
+        "passos": 4
+      },
+      {
+        "id": "casa",
+        "passos": 3
+      },
+      {
+        "id": "forno",
+        "passos": 2
+      },
+      {
+        "id": "poco",
+        "passos": 1
+      },
+      {
+        "id": "eira",
+        "passos": 2
+      },
+      {
+        "id": "aprisco",
+        "passos": 3
+      },
+      {
+        "id": "lagar",
+        "passos": 3
+      },
+      {
+        "id": "prensa",
+        "passos": 6
+      },
+      {
+        "id": "saida",
+        "passos": 3
+      }
+    ]
+  },
+  {
+    "teste": "Botao correr funciona com Enter",
+    "ok": true,
+    "detalhe": null
+  },
+  {
+    "teste": "Ajuda bloqueia entrada de movimento",
+    "ok": true,
+    "detalhe": null
+  },
+  {
+    "teste": "W movimenta personagem",
+    "ok": true,
+    "detalhe": null
+  },
+  {
+    "teste": "Perda de foco limpa teclas",
+    "ok": true,
+    "detalhe": null
+  },
+  {
+    "teste": "Interacao poco",
+    "ok": true,
+    "detalhe": {
+      "ocupado": false,
+      "P": [
+        2.45,
+        0,
+        3.88
+      ],
+      "rota": [],
+      "anim": "Parado",
+      "travado": false,
+      "esperas": 0,
+      "tempo": 42.03,
+      "perto": "poco",
+      "medida": {
+        "passo": 99.5,
+        "render": 3.7999999998137355
+      }
+    }
+  },
+  {
+    "teste": "Balde cheio pronto para cantaro",
+    "ok": true,
+    "detalhe": null
+  },
+  {
+    "teste": "Encher cantaro conclui",
+    "ok": true,
+    "detalhe": {
+      "ocupado": false,
+      "P": [
+        2.45,
+        0,
+        3.88
+      ],
+      "rota": [],
+      "anim": "Parado",
+      "travado": false,
+      "esperas": 0,
+      "tempo": 72.03,
+      "perto": "poco",
+      "medida": {
+        "passo": 99.5,
+        "render": 3.7999999998137355
+      }
+    }
+  },
+  {
+    "teste": "Interacao forno",
+    "ok": true,
+    "detalhe": {
+      "ocupado": false,
+      "P": [
+        1.5,
+        0,
+        9.15
+      ],
+      "rota": [],
+      "anim": "Parado",
+      "travado": false,
+      "esperas": 0,
+      "tempo": 102.13,
+      "perto": "forno",
+      "medida": {
+        "passo": 99.5,
+        "render": 3.7999999998137355
+      }
+    }
+  },
+  {
+    "teste": "Forno aceso",
+    "ok": true,
+    "detalhe": null
+  },
+  {
+    "teste": "Assar pao conclui",
+    "ok": true,
+    "detalhe": {
+      "ocupado": false,
+      "P": [
+        3.87,
+        0.04,
+        8.2
+      ],
+      "rota": [],
+      "anim": "Parado",
+      "travado": false,
+      "esperas": 0,
+      "tempo": 162.18,
+      "perto": "forno",
+      "medida": {
+        "passo": 99.5,
+        "render": 3.7999999998137355
+      }
+    }
+  },
+  {
+    "teste": "Interacao eira",
+    "ok": true,
+    "detalhe": {
+      "ocupado": false,
+      "P": [
+        9,
+        0,
+        10.8
+      ],
+      "rota": [],
+      "anim": "Parado",
+      "travado": false,
+      "esperas": 0,
+      "tempo": 197.28,
+      "perto": "eira",
+      "medida": {
+        "passo": 99.5,
+        "render": 3.7999999998137355
+      }
+    }
+  },
+  {
+    "teste": "Interacao tumulo",
+    "ok": true,
+    "detalhe": {
+      "ocupado": false,
+      "P": [
+        -13.07,
+        1.51,
+        -6.29
+      ],
+      "rota": [],
+      "anim": "Parado",
+      "travado": false,
+      "esperas": 0,
+      "tempo": 232.38,
+      "perto": "tumulo",
+      "medida": {
+        "passo": 99.5,
+        "render": 3.7999999998137355
+      }
+    }
+  },
+  {
+    "teste": "Entrar no tumulo conclui",
+    "ok": true,
+    "detalhe": {
+      "ocupado": false,
+      "P": [
+        -16.38,
+        1.1,
+        -11.3
+      ],
+      "rota": [],
+      "anim": "Parado",
+      "travado": false,
+      "esperas": 0,
+      "tempo": 272.43,
+      "perto": "tumulo",
+      "medida": {
+        "passo": 99.5,
+        "render": 3.7999999998137355
+      }
+    }
+  },
+  {
+    "teste": "Sair do tumulo conclui",
+    "ok": true,
+    "detalhe": {
+      "ocupado": false,
+      "P": [
+        -13.16,
+        1.51,
+        -6.24
+      ],
+      "rota": [],
+      "anim": "Parado",
+      "travado": false,
+      "esperas": 0,
+      "tempo": 312.48,
+      "perto": "tumulo",
+      "medida": {
+        "passo": 99.5,
+        "render": 3.7999999998137355
+      }
+    }
+  },
+  {
+    "teste": "Interacao casa",
+    "ok": true,
+    "detalhe": {
+      "ocupado": false,
+      "P": [
+        -5,
+        0.02,
+        0.3
+      ],
+      "rota": [],
+      "anim": "Parado",
+      "travado": false,
+      "esperas": 0,
+      "tempo": 352.63,
+      "perto": "casa",
+      "medida": {
+        "passo": 99.5,
+        "render": 3.7999999998137355
+      }
+    }
+  },
+  {
+    "teste": "Subir ao terraco",
+    "ok": true,
+    "detalhe": {
+      "ocupado": false,
+      "P": [
+        -5.5,
+        3,
+        -0.1
+      ],
+      "rota": [],
+      "anim": "Parado",
+      "travado": false,
+      "esperas": 0,
+      "tempo": 402.68,
+      "perto": "casa",
+      "medida": {
+        "passo": 99.5,
+        "render": 3.7999999998137355
+      }
+    }
+  },
+  {
+    "teste": "Descer a rua",
+    "ok": true,
+    "detalhe": {
+      "ocupado": false,
+      "P": [
+        -5,
+        -0.01,
+        2.7
+      ],
+      "rota": [],
+      "anim": "Parado",
+      "travado": false,
+      "esperas": 0,
+      "tempo": 452.73,
+      "perto": "casa",
+      "medida": {
+        "passo": 99.5,
+        "render": 3.7999999998137355
+      }
+    }
+  },
+  {
+    "teste": "Interacao lagar",
+    "ok": true,
+    "detalhe": {
+      "ocupado": false,
+      "P": [
+        27.07,
+        -0.77,
+        19.86
+      ],
+      "rota": [],
+      "anim": "Parado",
+      "travado": false,
+      "esperas": 0,
+      "tempo": 512.88,
+      "perto": "lagar",
+      "medida": {
+        "passo": 99.5,
+        "render": 3.7999999998137355
+      }
+    }
+  },
+  {
+    "teste": "Ajuda cabe em mobile",
+    "ok": true,
+    "detalhe": {
+      "left": 9,
+      "right": 381,
+      "top": 117,
+      "bottom": 727,
+      "w": 390,
+      "h": 844
+    }
+  },
+  {
+    "teste": "Ajuda cabe em paisagem",
+    "ok": true,
+    "detalhe": {
+      "left": 165,
+      "right": 679,
+      "top": 5,
+      "bottom": 385,
+      "w": 844,
+      "h": 390
+    }
+  },
+  {
+    "teste": "Sem erros de runtime/rede",
+    "ok": true,
+    "detalhe": {
+      "contexto": 6,
+      "erros": [],
+      "nota": "Exclui a exceção do contexto anterior, reproduzida por Runtime.enable ao conectar."
+    }
+  }
+]
