@@ -41,17 +41,15 @@
     background: rgba(246,236,214,.22); display: none; pointer-events: none; }
   #joy i { position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin: -26px 0 0 -26px; border-radius: 50%; background: rgba(246,236,214,.92);
     box-shadow: 0 2px 8px rgba(60,40,20,.25); }
-  #dlg { position: fixed; z-index: 4; left: 50%; bottom: max(14px, env(safe-area-inset-bottom)); width: min(94vw, 560px); transform: translate(-50%, 130%);
-    background: var(--papel); border: 1px solid var(--borda); border-radius: 16px; box-shadow: 0 8px 30px rgba(60,40,20,.28);
-    padding: 16px 18px 14px; box-sizing: border-box; transition: transform .35s cubic-bezier(.2,.8,.2,1); }
-  #dlg.on { transform: translate(-50%, 0); }
-  #dlg h2 { margin: 0 0 6px; font-weight: normal; font-size: 19px; letter-spacing: .03em; }
-  #dlg h2::before { content: '◆ '; color: var(--ouro); font-size: 14px; vertical-align: 2px; }
-  #dlg p { margin: 0 0 6px; font-size: 15.5px; line-height: 1.45; }
-  #dlg .ref { font-size: 12.5px; font-style: italic; opacity: .7; margin-bottom: 10px; }
-  #dlg .acoes { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
-  #dlg .acoes .bt { padding: 8px 14px; font-size: 15px; border-radius: 12px; }
-  #dlg .acoes .bt.pri { background: #ebcb8f; border-color: #c9a160; }
+  #legenda { position: fixed; z-index: 4; left: 50%; top: calc(max(12px, env(safe-area-inset-top)) + 54px); width: min(90vw, 520px); transform: translate(-50%, -10px);
+    background: rgba(246,236,214,.96); border: 1px solid var(--borda); border-radius: 14px; box-shadow: 0 6px 24px rgba(60,40,20,.22);
+    padding: 11px 15px 9px; box-sizing: border-box; opacity: 0; pointer-events: none; transition: opacity .4s, transform .4s; }
+  #legenda.on { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+  #legenda h2 { margin: 0 0 4px; font-weight: normal; font-size: 17px; letter-spacing: .03em; }
+  #legenda h2::before { content: '◆ '; color: var(--ouro); font-size: 13px; vertical-align: 2px; }
+  #legenda p { margin: 0 0 4px; font-size: 14.5px; line-height: 1.42; }
+  #legenda .ref { font-size: 12px; font-style: italic; opacity: .7; }
+  @media (max-width: 560px) { #legenda { top: calc(max(12px, env(safe-area-inset-top)) + 96px); } }
   #dica { position: fixed; z-index: 2; left: 50%; top: max(66px, calc(env(safe-area-inset-top) + 58px)); transform: translateX(-50%);
     background: rgba(246,236,214,.92); border: 1px solid var(--borda); border-radius: 20px; padding: 7px 14px; font-size: 13px;
     transition: opacity 1.2s; pointer-events: none; text-align: center; max-width: 88vw; }
@@ -81,7 +79,7 @@
   <button class="bt" id="bAcao"><span><i>◆</i>ação</span></button>
 </div>
 <div id="joy"><i></i></div>
-<div id="dlg"><h2></h2><p class="txt"></p><div class="ref"></div><div class="acoes"></div></div>
+<div id="legenda"><h2></h2><p class="txt"></p><div class="ref"></div></div>
 
 <script type="module">
 // Vila de Betânia jogável (v2). Diorama isométrico com área de exploração em volta, controles de toque,
@@ -130,13 +128,14 @@ scene.background = (() => {
 })();
 scene.fog = new THREE.Fog(0xe2dccb, 55, 150);
 
-scene.add(new THREE.HemisphereLight(0xd6e8ff, 0xc9a47a, 1.35));
-const sun = new THREE.DirectionalLight(0xffe2b8, 3.0);
+const hemi = new THREE.HemisphereLight(0xd6e8ff, 0xc9a47a, 1.35); hemi.layers.enableAll(); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xffe2b8, 3.0); sun.layers.enableAll();
 const SOL_DIR = V(10, 13, 6).normalize();
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
 Object.assign(sun.shadow.camera, { left: -24, right: 24, top: 24, bottom: -24, near: 1, far: 110 });
 sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.035;
+sun.shadow.camera.layers.enableAll();
 scene.add(sun, sun.target);
 
 // ================================================================== carga
@@ -199,12 +198,15 @@ const ESCADA = { x0: -10.5, x1: -9.0, z0: -6.5, z1: -3.5 };
 const naRampa = (x, z) => x >= RAMPA.x0 && x <= RAMPA.x1 && z >= RAMPA.z0 && z <= RAMPA.z1;
 const naEscada = (x, z) => x >= ESCADA.x0 && x <= ESCADA.x1 && z >= ESCADA.z0 && z <= ESCADA.z1;
 const dentroJogo = (x, z) => x >= PX0 && x <= PX1 && z >= PZ0 && z <= PZ1;
+const distBorda = (x, z) => Math.min(x - PX0, PX1 - x, z - PZ0, PZ1 - z);
 function hBase(x, z) {
   if (naRampa(x, z)) return TOPO * clamp((RAMPA.z1 - z) / (RAMPA.z1 - RAMPA.z0), 0, 1);
   if (naEscada(x, z)) return TOPO * clamp((ESCADA.z1 - z) / (ESCADA.z1 - ESCADA.z0), 0, 1);   // rampa por baixo; os degraus são de pedra
   const zf = zFrente(x);
-  if (!dentroJogo(x, z)) return zf < -50 ? 0 : TOPO * smooth(zf + 4, zf - 4, z);          // fora: o degrau vira encosta
-  return z < zf ? TOPO : 0;
+  const rampa = zf < -50 ? 0 : TOPO * smooth(zf + 4, zf - 4, z);
+  if (!dentroJogo(x, z)) return rampa;                                                     // fora: o degrau vira encosta
+  const degrau = z < zf ? TOPO : 0;
+  return lerp(rampa, degrau, smooth(0.5, 4.5, distBorda(x, z)));                           // perto da borda, encosta também
 }
 // grandes formas: o monte sobe a oeste e ao norte; a leste o terreno desce para o deserto
 function relevo(x, z) {
@@ -273,7 +275,7 @@ function ondula(x, z) {
   const plano = (1 - mascaraCaminho(x, z)) * (1 - terraCasas(x, z));
   const perto = (Math.abs(z - zFrente(x)) < 0.9 || (Math.abs(x - 12) < 0.9 && z < -4) || naEscada(x, z) || naRampa(x, z) || noCampo(x, z)) ? 0 : 1;
   const amp = nucleo ? 0.08 : 0.22;
-  return amp * ruido(x * 0.6, z * 0.6) * plano * perto;
+  return amp * ruido(x * 0.6, z * 0.6) * plano * perto * smooth(0.3, 3, distBorda(x, z));
 }
 const H = (x, z) => hBase(x, z) + relevo(x, z) + ondula(x, z);
 
@@ -286,7 +288,8 @@ const noFuroTumulo = (x, z) => { const [lx, lz] = tumParaLocal(x, z); return (lx
 const POCO = { x: 1.2, z: 2.0 };
 const poco = conjunto(GLB.vila, 'Poco_1_', 'Poco_1');
 const POCO_BB = new THREE.Box3().setFromObject(poco.getObjectByName('Poco_1'));
-const POCO_R = Math.min(POCO_BB.max.x - POCO_BB.min.x, POCO_BB.max.z - POCO_BB.min.z) * 0.5 * 0.6;
+const POCO_AGUA = new THREE.Box3().setFromObject(poco.getObjectByName('Poco_1_Agua'));
+const POCO_R = Math.max(0.35, Math.min(POCO_AGUA.max.x - POCO_AGUA.min.x, POCO_AGUA.max.z - POCO_AGUA.min.z) * 0.5);
 const POCO_RO = Math.max(POCO_BB.max.x - POCO_BB.min.x, POCO_BB.max.z - POCO_BB.min.z) * 0.5;
 
 // ================================================================== materiais (texturas suavizadas, sem repetição aparente)
@@ -362,11 +365,13 @@ let chao, chaoLonge;
   const pos = [], mask = [], idx = [];
   for (let k = 0; k <= N; k++) for (let i = 0; i <= N; i++) {
     const x = -R + i * S, z = -R + k * S;
-    pos.push(x, H(x, z), z); mask.push(Math.max(0, 1 - smooth(1.2, 2.2, distLinha(x, z, ESTRADA))) * 0.9, 0, 0, 1);
+    pos.push(x, H(x, z) - (dentroJogo(x, z) ? 0.08 : 0), z); mask.push(Math.max(0, 1 - smooth(1.2, 2.2, distLinha(x, z, ESTRADA))) * 0.9, 0, 0, 1);
   }
   for (let k = 0; k < N; k++) for (let i = 0; i < N; i++) {
     const x0 = -R + i * S, z0 = -R + k * S;
-    if (x0 >= PX0 && x0 + S <= PX1 && z0 >= PZ0 && z0 + S <= PZ1) continue;
+    if (x0 >= PX0 + 2 && x0 + S <= PX1 - 2 && z0 >= PZ0 + 2 && z0 + S <= PZ1 - 2) continue;   // por baixo do núcleo, só uma faixa na borda
+    if (Math.hypot(x0 + 1 - POCO.x, z0 + 1 - POCO.z) < 3.2) continue;                 // o poço tem o anel de chão próprio
+    { const [lx, lz] = tumParaLocal(x0 + 1, z0 + 1); if (Math.hypot(lx, lz + 3) < 5) continue; }   // o túmulo tem a tampa própria
     const a = k * (N + 1) + i, b = a + 1, c = a + N + 1, d = c + 1;
     idx.push(a, c, b, b, c, d);
   }
@@ -424,7 +429,7 @@ tumulo.position.set(TUM.x, TUM.y, TUM.z); tumulo.rotation.y = TUM.rot; scene.add
 const pedra = TN.Tumulo_Pedra, PEDRA_ABERTA = pedra.position.x, PEDRA_R = 0.85, PEDRA_Z = pedra.position.z + 200;
 let pedraX = 0, pedraAlvo = 0, navAberto = false;
 const tumuloAberto = () => pedraAlvo !== 0 && Math.abs(pedraX - pedraAlvo) < 0.05;
-const lampada = new THREE.PointLight(0xffb060, 0, 7, 1.6);
+const lampada = new THREE.PointLight(0xffb060, 0, 7, 1.6); lampada.layers.enableAll();
 { const [x, z] = tumParaMundo(-1.2, -1.55); lampada.position.set(x, TUM.y + 1.15, z); scene.add(lampada); }
 const pisoTumulo = [TN.Tumulo_Interior, TN.Tumulo_Patio];
 pisoTumulo.forEach((m) => m.traverse((o) => { if (o.isMesh) o.geometry.computeBoundsTree(); }));
@@ -499,6 +504,12 @@ OBST.circ.push([POCO.x, POCO.z, POCO_RO + 0.25]);
   const fosso = new THREE.Mesh(new THREE.CylinderGeometry(POCO_R + 0.02, POCO_R + 0.02, 3.6, 12, 1, true),
     new THREE.MeshStandardMaterial({ color: 0x5b4e40, roughness: 1, side: THREE.BackSide }));
   fosso.position.set(POCO.x, -1.8, POCO.z); scene.add(fosso);
+  // anel de chão logo abaixo do relevo: onde a grade foi recortada, aparece chão, nunca o vazio
+  const g = new THREE.RingGeometry(POCO_R + 0.01, 3.4, 40, 2).rotateX(-Math.PI / 2);
+  const n = g.attributes.position.count, mk = new Float32Array(n * 4);
+  for (let i = 0; i < n; i++) mk[i * 4] = 1;
+  g.setAttribute('aMask', new THREE.BufferAttribute(mk, 4));
+  const anel = new THREE.Mesh(g, MAT_CHAO); anel.position.set(POCO.x, -0.03, POCO.z); anel.receiveShadow = true; scene.add(anel);
 }
 const PC = {};
 for (const n of ['Poco_1_Balde', 'Poco_1_BaldeAgua', 'Poco_1_Corda', 'Poco_1_Cantaro', 'Poco_1_CantaroAgua', 'Poco_1_Agua']) PC[n] = poco.getObjectByName(n);
@@ -538,7 +549,7 @@ const LUGAR_MASSA = massas.map((m) => m.getWorldPosition(V())), LUGAR_PAO = paes
 for (const o of [...massas, ...paes]) scene.attach(o);
 for (const p of paes) p.visible = false;
 let fogoAlvo = 0, fogoNivel = 0, brasa = 0, assados = 0;
-const luzForno = new THREE.PointLight(0xff9a40, 0, 6, 1.5); luzForno.position.copy(FORNO_TOPO).add(V(0, 0.3, 0.3)); scene.add(luzForno);
+const luzForno = new THREE.PointLight(0xff9a40, 0, 6, 1.5); luzForno.layers.enableAll(); luzForno.position.copy(FORNO_TOPO).add(V(0, 0.3, 0.3)); scene.add(luzForno);
 // pá de forno: cabo de 1,25 m e pá larga; a origem é onde a mão segura, a pá aponta para +z
 const pa = new THREE.Group();
 {
@@ -550,7 +561,18 @@ const pa = new THREE.Group();
   pa.add(cabo, new THREE.Mesh(g, madeira)); prep(pa);
 }
 scene.add(pa);
-const PA_DESCANSO = { p: V(FORNO.x + 2.05, H(FORNO.x + 2.05, FORNO.z - 0.35) + 1.0, FORNO.z - 0.35), alvo: V(FORNO.x + 2.05, H(FORNO.x + 2.05, FORNO.z + 0.6), FORNO.z + 0.6) };
+const MESA_BB = new THREE.Box3().setFromObject(FN.Forno_Mesa);
+const MESA_Z = (MESA_BB.min.z + MESA_BB.max.z) / 2;
+const PA_DESCANSO = { p: V(MESA_BB.max.x + 0.14, MESA_BB.max.y + 0.55, MESA_Z - 0.1), alvo: V(MESA_BB.max.x + 0.5, H(MESA_BB.max.x + 0.5, MESA_Z + 1.0) + 0.02, MESA_Z + 1.0) };
+const PA_L = 1.27;
+// onde ficar para a ponta da pá chegar ao ponto (a mão vai ~0,4 m à frente do corpo)
+function pontoPa(alvo, alturaMao = 1.0, frente = 0.4, vindoDe = null) {
+  const dy = Math.min(PA_L - 0.05, Math.abs(alturaMao - alvo.y));
+  const dist = frente + Math.sqrt(PA_L * PA_L - dy * dy);
+  const de = vindoDe || V(P.x, 0, P.z);
+  const dir = V(de.x - alvo.x, 0, de.z - alvo.z); if (dir.lengthSq() < 1e-6) dir.set(0, 0, 1); dir.normalize();
+  return [alvo.x + dir.x * dist, alvo.z + dir.z * dist];
+}
 const paEst = { modo: 'descanso', alvo: null, carga: null };
 const PONTA_PA = V(0, 0.04, 1.27);
 
@@ -611,6 +633,25 @@ function linha(g, nome, a, b, poste = null) {
   por(copia(C, 'Jarro_Farinha'), 6.8, 12.1, 0);
   OBST.circ.push([6.0, 11.4, 0.6]);
 }
+const uJog = { value: V(0, 0, 0) }, uT = { value: 0 };
+function trigoMovel(im) {
+  const m = im.material.clone();
+  m.onBeforeCompile = (sh) => {
+    sh.uniforms.uJog = uJog; sh.uniforms.uT = uT;
+    sh.vertexShader = 'uniform vec3 uJog; uniform float uT;\n' + sh.vertexShader.replace('#include <project_vertex>', `
+      vec4 mvPosition = instanceMatrix * vec4(transformed, 1.0);
+      vec3 base = (instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+      float alt = clamp(mvPosition.y - base.y, 0.0, 2.0);
+      vec2 d = base.xz - uJog.xz; float dist = length(d);
+      float k = (1.0 - smoothstep(0.25, 1.05, dist)) * alt * 0.8;
+      mvPosition.xz += d / max(dist, 0.001) * k + vec2(sin(uT * 1.6 + base.x * 0.7 + base.z * 0.5), cos(uT * 1.3 + base.z * 0.6)) * 0.05 * alt;
+      mvPosition.y -= k * 0.4;
+      mvPosition = modelViewMatrix * mvPosition;
+      gl_Position = projectionMatrix * mvPosition;`);
+  };
+  m.customProgramCacheKey = () => 'trigo_movel';
+  im.material = m; return im;
+}
 function instancia(g, nome, pontos) {
   const { geo, mat } = geoDe(g, nome);
   const im = new THREE.InstancedMesh(geo, mat, pontos.length);
@@ -627,17 +668,17 @@ function instancia(g, nome, pontos) {
     for (let z = C.z0 + 0.4; z < C.z1 - 0.2; z += passo) for (let x = C.x0 + 0.4; x < C.x1 - 0.2; x += passo) {
       (rnd() < 0.7 ? A : B).push([x + (rnd() - 0.5) * passo * 0.5, z + (rnd() - 0.5) * passo * 0.5, rnd() * 6.28, 0.85 + rnd() * 0.3]);
     }
-    instancia(GLB.trigo, nomes[0], A); instancia(GLB.trigo, nomes[1], B);
-    OBST.box.push([C.x0, C.z0, C.x1, C.z1]);
+    trigoMovel(instancia(GLB.trigo, nomes[0], A)); trigoMovel(instancia(GLB.trigo, nomes[1], B));
   }
 }
 
 // ================================================================== lagar (vinha) e prensa de azeite, nos cantos
 const LAGAR = { x: 28.0, z: 21.0, rot: -0.6 }, PRENSA = { x: -23.6, z: -8.2, rot: 0.5 };
+const LG = {};
 {
   const l = conjunto(GLB.lagar, 'Lagar_', 'Lagar_Rocha');
-  for (const n of ['Lagar_Fio', 'Lagar_SucoColeta', 'Lagar_SucoJarro']) { const o = l.getObjectByName(n); if (o) o.visible = false; }
-  por(l, LAGAR.x, LAGAR.z, LAGAR.rot); OBST.circ.push([LAGAR.x, LAGAR.z, 1.6]);
+  por(l, LAGAR.x, LAGAR.z, LAGAR.rot); OBST.circ.push([LAGAR.x, LAGAR.z, 1.6]); l.updateMatrixWorld(true);
+  LG.g = l; l.traverse((o) => { if (o.name) LG[o.name] = o; });
   const p = conjunto(GLB.prensa, 'Prensa_', 'Prensa_Pedra');
   { const o = p.getObjectByName('Prensa_Fio'); if (o) o.visible = false; }
   por(p, PRENSA.x, PRENSA.z, PRENSA.rot);
@@ -910,10 +951,11 @@ function visivel(a, b) {
 
 // ================================================================== o discípulo
 const heroi = GLB.discipulo.scene;
-heroi.traverse((o) => { o.layers.enable(1); if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; } });
+heroi.traverse((o) => { o.layers.set(1); if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; } });
 scene.add(heroi);
 const maoE = heroi.getObjectByName('hand_l');
-const matSilhueta = new THREE.MeshBasicMaterial({ color: 0x6b4a2a, transparent: true, opacity: 0.42, depthFunc: THREE.GreaterDepth, depthWrite: false, fog: false });
+const matSilhueta = new THREE.MeshBasicMaterial({ color: 0x6b4a2a, transparent: true, opacity: 0.42, depthFunc: THREE.GreaterDepth, depthWrite: false, fog: false,
+  stencilWrite: true, stencilRef: 1, stencilFunc: THREE.NotEqualStencilFunc, stencilZPass: THREE.ReplaceStencilOp });   // cada pixel uma vez só
 const mixer = new THREE.AnimationMixer(heroi);
 const clips = Object.fromEntries(GLB.discipulo.animations.map((c) => [c.name, c]));
 let acaoAtual = null, animAtual = '';
@@ -925,7 +967,7 @@ function toca(n, fade = 0.25, ts = 1) {
 }
 toca('Parado', 0);
 const VEL = { Andar: 1.25, Trote: 2.7, Correr: 4.6 };
-const P = { x: 4.6, z: 1.9, y: 0, rot: -Math.PI / 2 - 0.4, rotAlvo: null, rota: [], aoChegar: null, travado: false, salto: null };
+const P = { alturaFixa: null, x: 4.6, z: 1.9, y: 0, rot: -Math.PI / 2 - 0.4, rotAlvo: null, rota: [], aoChegar: null, travado: false, salto: null };
 P.y = H(P.x, P.z);
 
 // ------------------------------------------------------------------ tempo de jogo, esperas e roteiros de ação
@@ -934,10 +976,11 @@ const esperas = [];
 const espera = (s) => new Promise((r) => esperas.push({ t: tempo + s, r }));
 let ocupado = false;
 async function roteiro(f) {
-  if (ocupado) return; ocupado = true; document.body.classList.add('ocupado'); fecharDlg(false);
+  if (ocupado) return; ocupado = true; document.body.classList.add('ocupado');
   try { await f(); } catch (e) { console.error(e); }
-  P.travado = false; animAtual = ''; toca('Parado', 0.3);
+  P.travado = false; P.alturaFixa = null; animAtual = ''; toca('Parado', 0.3);
   ocupado = false; document.body.classList.remove('ocupado');
+  if (poiAberto) abrir(poiAberto.id);
 }
 function anda(x, z, y = null) { return new Promise((r) => { irPara([x, z], () => r(), y, true); }); }
 async function vira(x, z) { P.rotAlvo = Math.atan2(x - P.x, z - P.z); await espera(0.3); }
@@ -1053,7 +1096,7 @@ const TEXTOS = {
   },
   lagar() {
     return { t: 'O lagar', p: 'Na vindima, as uvas são pisadas no lagar cavado na rocha, e o mosto escorre para o tanque de baixo. Jesus contou de um homem que plantou uma vinha, cercou-a e cavou nela um lagar.',
-      r: 'Mateus 21:33; Isaías 5:1-2', a: [['Voltar', fecharDlg]] };
+      r: 'Mateus 21:33; Isaías 5:1-2' };
   },
   prensa() {
     return { t: 'A prensa de azeite', p: 'No Monte das Oliveiras, as azeitonas são moídas e a pasta é prensada sob a viga até o azeite escorrer. Getsêmani, o jardim aonde Jesus ia com os discípulos, quer dizer “prensa de azeite”.',
@@ -1075,18 +1118,7 @@ async function rolarPedra() {
   while (Math.abs(pedraX - pedraAlvo) > 0.01) { const [x, z] = tumParaMundo(pedraX + PEDRA_R + 0.55, lz); P.x = x; P.z = z; await espera(0.02); }
   await espera(0.3);
   P.travado = false; animAtual = '';
-  await anda(...tumParaMundo(0.2, 2.6)); await vira(...tumParaMundo(0, 0)); abrir('tumulo');
-}
-async function fecharPedra() {
-  const lz = PEDRA_Z + 0.45;
-  await anda(...tumParaMundo(PEDRA_ABERTA - PEDRA_R - 0.55, lz));
-  await vira(...tumParaMundo(3, lz));
-  P.travado = true; animAtual = ''; toca('Empurrar', 0.25);
-  pedraAlvo = 0; construirNav(); navAberto = false;
-  while (Math.abs(pedraX) > 0.01) { const [x, z] = tumParaMundo(pedraX - PEDRA_R - 0.55, lz); P.x = x; P.z = z; await espera(0.02); }
-  await espera(0.3);
-  P.travado = false; animAtual = '';
-  await anda(...tumParaMundo(-0.6, 2.8)); abrir('tumulo');
+  await anda(...tumParaMundo(0.2, 2.6)); await vira(...tumParaMundo(0, 0));
 }
 const ESTAR_POCO = () => [POCO.x + DIR_POCO.x * (POCO_RO + 0.55), POCO.z + DIR_POCO.z * (POCO_RO + 0.55)];
 async function tirarAgua() {
@@ -1094,10 +1126,9 @@ async function tirarAgua() {
   await anim('Pegar', { ts: 0.7, marcas: [[0.24, () => { baldeEst.modo = 'mao'; }]] });                 // pega o balde da borda
   await anim('Interagir', { ts: 1.1, corte: 0.75, marcas: [[0.62, () => { baldeEst.modo = 'caindo'; baldeEst.vy = 0.8; baldeEst.t = 0; }]] });   // lança no poço
   await espera(0.4);
-  P.travado = true; animAtual = ''; toca('Empurrar', 0.2, 1.6);                                          // puxa a corda
+  P.travado = true; animAtual = ''; toca('Pegar', 0.2, 0.9);                                          // puxa a corda
   while (baldeEst.modo !== 'gancho') await espera(0.1);
   P.travado = false; animAtual = '';
-  abrir('poco');
 }
 async function encherCantaro() {
   await anda(...ESTAR_POCO()); await vira(POCO.x, POCO.z);
@@ -1107,7 +1138,6 @@ async function encherCantaro() {
   await anim('Interagir', { ts: 0.8, marcas: [[0.6, () => { baldeEst.inclina = 1.4; }], [1.4, () => { baldeEst.cheio = false; PC.Poco_1_CantaroAgua.visible = true; }], [1.6, () => { baldeEst.inclina = 0; }]] });
   await vira(POCO.x, POCO.z);
   await anim('Pegar', { ts: 0.7, marcas: [[0.3, () => { baldeEst.modo = 'borda'; }]] });
-  abrir('poco');
 }
 async function acenderFogo() {
   await anda(FORNO_BOCA.x, FORNO_BOCA.z + 0.95); await vira(FORNO_BOCA.x, FORNO_BOCA.z);
@@ -1115,57 +1145,127 @@ async function acenderFogo() {
   (async () => { await espera(1.0); while (fagulhas) { faiscas.emite(FORNO_BOCA.clone().add(V(0, 0.12, 0.15)), V(0, 1.2, 0.3), 3, 0.15); await espera(0.08); } })();
   await anim('Ajoelhar', { marcas: [[1.8, () => { brasa = 1; }], [2.9, () => { fogoAlvo = 1; }], [3.6, () => { fagulhas = false; }]] });
   fagulhas = false;
-  abrir('forno');
 }
 async function assarPao() {
-  const i = assados, mesa = LUGAR_MASSA[i];
-  await anda(PA_DESCANSO.p.x - 0.1, PA_DESCANSO.p.z + 1.0); await vira(PA_DESCANSO.p.x, PA_DESCANSO.p.z);
-  await anim('Pegar', { ts: 0.7, marcas: [[0.24, () => { paEst.modo = 'mao'; }]] });                      // pega a pá
-  await anda(mesa.x + 0.2, mesa.z + 1.05); await vira(mesa.x, mesa.z);
-  paEst.alvo = mesa.clone();
-  await anim('Pegar', { ts: 0.6, marcas: [[0.3, () => { paEst.carga = massas[i]; }]] });                   // massa na pá
-  paEst.alvo = null;
-  await anda(FORNO.x + 0.15, FORNO.z + 1.3); await vira(FORNO.x, FORNO.z);
-  paEst.alvo = FORNO_TOPO.clone().add(V(0, -0.15, 0));
-  await anim('Interagir', { ts: 0.85, marcas: [[0.75, () => { const m = paEst.carga; paEst.carga = null; m.visible = false; }]] });   // põe no forno
-  paEst.alvo = null;
+  const i = assados, mesa = LUGAR_MASSA[i].clone(), boca = FORNO_TOPO.clone().add(V(0, 0.06, 0));
+  const deFrente = V(FORNO.x + 0.3, 0, FORNO.z + 3);
+  // pega a pá encostada na ponta da mesa
+  await anda(PA_DESCANSO.p.x + 0.55, PA_DESCANSO.p.z + 0.75); await vira(PA_DESCANSO.p.x, PA_DESCANSO.p.z);
+  await anim('Pegar', { ts: 0.7, marcas: [[0.24, () => { paEst.modo = 'mao'; }]] });
+  // põe a massa na pá: longe o bastante para a pá deitar sobre a mesa
+  await anda(...pontoPa(mesa, 0.8, 0.42, V(mesa.x, 0, mesa.z + 2))); await vira(mesa.x, mesa.z);
+  await anim('Pegar', { ts: 0.6, marcas: [[0.15, () => { paEst.alvo = mesa.clone().add(V(0, 0.03, 0)); }], [0.3, () => { paEst.carga = massas[i]; }], [0.7, () => { paEst.alvo = null; }]] });
+  // leva ao forno e põe pelo alto do tannur
+  await anda(...pontoPa(boca, 1.1, 0.42, deFrente)); await vira(FORNO.x, FORNO.z);
+  await anim('Interagir', { ts: 0.85, marcas: [[0.45, () => { paEst.alvo = boca; }], [0.8, () => { const m = paEst.carga; paEst.carga = null; caiNoForno(m); }], [1.3, () => { paEst.alvo = null; }]] });
   for (let k = 0; k < 5; k++) { fumaca.emite(FORNO_TOPO.clone().add(V(0, 0.2, 0)), V(0.05, 0.6, 0), 2, 0.25); await espera(0.5); }
-  paEst.alvo = FORNO_TOPO.clone().add(V(0, -0.15, 0));
-  await anim('Interagir', { ts: 0.85, marcas: [[0.75, () => { paes[i].visible = true; paEst.carga = paes[i]; }]] });                // tira o pão
-  paEst.alvo = null;
-  await anda(mesa.x + 0.2, mesa.z + 1.05); await vira(mesa.x, mesa.z);
-  paEst.alvo = mesa.clone();
-  await anim('Pegar', { ts: 0.6, marcas: [[0.3, () => { const p = paEst.carga; paEst.carga = null; p.position.copy(LUGAR_PAO[i]); p.rotation.set(0, 0, 0); }]] });
-  paEst.alvo = null;
-  await anda(PA_DESCANSO.p.x - 0.1, PA_DESCANSO.p.z + 1.0); await vira(PA_DESCANSO.p.x, PA_DESCANSO.p.z);
-  await anim('Pegar', { ts: 0.7, marcas: [[0.26, () => { paEst.modo = 'descanso'; }]] });                  // devolve a pá
+  // tira o pão
+  await anim('Interagir', { ts: 0.85, marcas: [[0.45, () => { paEst.alvo = boca; }], [0.8, () => { paes[i].visible = true; paEst.carga = paes[i]; }], [1.3, () => { paEst.alvo = null; }]] });
+  // põe o pão na mesa
+  await anda(...pontoPa(mesa, 0.8, 0.42, V(mesa.x, 0, mesa.z + 2))); await vira(mesa.x, mesa.z);
+  await anim('Pegar', { ts: 0.6, marcas: [[0.15, () => { paEst.alvo = LUGAR_PAO[i].clone().add(V(0, 0.03, 0)); }], [0.32, () => { const p = paEst.carga; paEst.carga = null; p.position.copy(LUGAR_PAO[i]); p.rotation.set(0, 0, 0); }], [0.7, () => { paEst.alvo = null; }]] });
+  // devolve a pá
+  await anda(PA_DESCANSO.p.x + 0.55, PA_DESCANSO.p.z + 0.75); await vira(PA_DESCANSO.p.x, PA_DESCANSO.p.z);
+  await anim('Pegar', { ts: 0.7, marcas: [[0.26, () => { paEst.modo = 'descanso'; }]] });
   assados++;
-  abrir('forno');
+}
+// a massa desliza da pá para dentro do tannur e some lá no fundo
+function caiNoForno(m) {
+  const p0 = m.position.clone(); let t = 0;
+  const f = () => { t += 0.05; m.position.lerpVectors(p0, FORNO_TOPO.clone().add(V(0, -0.45, 0)), Math.min(1, t)); if (t < 1) espera(0.03).then(f); else m.visible = false; };
+  f();
 }
 async function joeirar() {
   await anda(9.0, 10.8); await vira(9.0, 11.8);
   for (let k = 0; k < 2; k++) {
     await anim('Interagir', { ts: 1.2, corte: 0.8, marcas: [[0.6, () => { const m = maoE.getWorldPosition(V()); palha.emite(m.add(V(0, 0.2, 0)), V(1.6, 1.5, -0.3), 40, 0.3); }]] });
   }
-  abrir('eira');
+}
+
+// ------------------------------------------------------------------ lagar
+const LAGAR_UVAS = Object.keys(LG).filter((k) => k.startsWith('Lagar_Uvas_')).map((k) => LG[k]);
+for (const h of LAGAR_UVAS) { h.userData.k = 1; h.userData.kv = 1; h.userData.y0 = h.position.y; }
+const LG_CENTRO = (() => { const c = V(); for (const h of LAGAR_UVAS) c.add(h.getWorldPosition(V())); return c.divideScalar(Math.max(1, LAGAR_UVAS.length)); })();
+const LG_PISO = LG_CENTRO.y - 0.06;
+const lagarEst = { pisado: 0, fio: 0, coleta: 0, volta: 0, tanque0: LG.Lagar_SucoTanque ? LG.Lagar_SucoTanque.position.y : 0, coleta0: LG.Lagar_SucoColeta ? LG.Lagar_SucoColeta.position.y : 0 };
+if (LG.Lagar_Fio) LG.Lagar_Fio.visible = false;
+if (LG.Lagar_SucoColeta) LG.Lagar_SucoColeta.visible = false;
+if (LG.Lagar_SucoJarro) LG.Lagar_SucoJarro.visible = false;
+const lagarCheio = () => LAGAR_UVAS.some((h) => h.userData.k > 0.05);
+const mosto = new Particulas({ max: 60, tam: 0.06, cor: 0x7a2048, mapa: texRedonda('rgba(150,40,90,1)'), grav: 6, vida: 0.5 });
+async function pisarUvas() {
+  // vai até a beira do lagar, entra no piso e pisa em roda
+  const dir = V(P.x - LG_CENTRO.x, 0, P.z - LG_CENTRO.z); if (dir.lengthSq() < 1e-4) dir.set(0, 0, 1); dir.normalize();
+  const beira = LG_CENTRO.clone().addScaledVector(dir, 1.45);
+  await anda(beira.x, beira.z); await vira(LG_CENTRO.x, LG_CENTRO.z);
+  P.travado = true; animAtual = ''; toca('Andar', 0.2, 0.9);
+  for (let t = 0; t <= 1; t += 0.04) { P.x = lerp(beira.x, LG_CENTRO.x + dir.x * 0.3, t); P.z = lerp(beira.z, LG_CENTRO.z + dir.z * 0.3, t); P.alturaFixa = lerp(H(beira.x, beira.z), LG_PISO, Math.min(1, t * 1.6)); await espera(0.03); }
+  let ang = Math.atan2(dir.z, dir.x), passo = 0;
+  for (let t = 0; t < 7.5; t += 0.03) {
+    ang += 0.03 * 0.9;
+    P.x = LG_CENTRO.x + Math.cos(ang) * 0.3; P.z = LG_CENTRO.z + Math.sin(ang) * 0.3;
+    P.rotAlvo = Math.atan2(-Math.sin(ang), Math.cos(ang));
+    passo += 0.03;
+    if (passo > 0.45) {           // cada passada afunda o monte mais perto do pé
+      passo = 0;
+      let m = null, md = 1e9; for (const h of LAGAR_UVAS) { if (h.userData.k <= 0.03) continue; const d = h.getWorldPosition(V()).distanceTo(V(P.x, LG_PISO, P.z)); if (d < md) { md = d; m = h; } }
+      if (m) m.userData.k = Math.max(0, m.userData.k - 0.22);
+      lagarEst.pisado = Math.min(1, lagarEst.pisado + 0.035); lagarEst.fio = 1;
+      mosto.emite(V(P.x, LG_PISO + 0.1, P.z), V(0, 1.4, 0), 6, 0.25);
+    }
+    await espera(0.03);
+  }
+  toca('Andar', 0.2, 0.9);
+  for (let t = 0; t <= 1; t += 0.04) { P.x = lerp(LG_CENTRO.x + dir.x * 0.3, beira.x, t); P.z = lerp(LG_CENTRO.z + dir.z * 0.3, beira.z, t); P.alturaFixa = lerp(LG_PISO, H(beira.x, beira.z), Math.max(0, t * 1.6 - 0.6)); P.rotAlvo = Math.atan2(dir.x, dir.z); await espera(0.03); }
+  P.alturaFixa = null;
+  if (!lagarCheio()) lagarEst.volta = tempo + 40;        // depois de um tempo, chega uva nova
+}
+function passoLagar(dt) {
+  for (const h of LAGAR_UVAS) {
+    h.userData.kv += (h.userData.k - h.userData.kv) * Math.min(1, dt * 6);
+    const k = h.userData.kv, sq = 1 - k;
+    h.scale.set(1 + sq * 0.35, Math.max(0.02, k), 1 + sq * 0.35); h.position.y = h.userData.y0 - sq * 0.03; h.visible = k > 0.03;
+  }
+  const E = lagarEst;
+  if (LG.Lagar_SucoTanque) LG.Lagar_SucoTanque.position.y = E.tanque0 + E.pisado * 0.06;
+  if (LG.Lagar_Bagaco) LG.Lagar_Bagaco.scale.set(1 + E.pisado * 0.9, 1 + E.pisado * 0.6, 1 + E.pisado * 0.9);
+  E.fio = Math.max(0, E.fio - dt * 0.2);
+  if (LG.Lagar_Fio) { LG.Lagar_Fio.visible = E.fio > 0.02; const w = 0.5 + 0.5 * Math.min(1, E.fio * 3); LG.Lagar_Fio.scale.set(w, 1, w); }
+  E.coleta = Math.min(1, E.coleta + dt * 0.06 * E.fio);
+  if (LG.Lagar_SucoColeta) { LG.Lagar_SucoColeta.visible = E.coleta > 0.01; LG.Lagar_SucoColeta.position.y = E.coleta0 + E.coleta * 0.13; const cs = 0.75 + E.coleta * 0.3; LG.Lagar_SucoColeta.scale.set(cs, 1, cs); }
+  if (E.volta && tempo > E.volta) { E.volta = 0; E.pisado = 0; E.coleta = 0; for (const h of LAGAR_UVAS) h.userData.k = 1; }
 }
 
 // ------------------------------------------------------------------ diálogo
-let poiAberto = null, poiPerto = null;
-const dlg = $('#dlg');
+let poiAberto = null, poiPerto = null, legendaAte = 0;
+const dlg = $('#legenda');
 function abrir(id) {
   const poi = POIS.find((p) => p.id === id); poiAberto = poi;
   const T2 = TEXTOS[id]();
   dlg.querySelector('h2').textContent = T2.t; dlg.querySelector('.txt').textContent = T2.p; dlg.querySelector('.ref').textContent = T2.r;
-  const ac = dlg.querySelector('.acoes'); ac.innerHTML = '';
-  for (const [rot, fn, pri] of T2.a) {
-    const b = document.createElement('button'); b.className = 'bt' + (pri ? ' pri' : ''); b.textContent = rot;
-    b.onclick = (e) => { e.stopPropagation(); fn(); }; ac.appendChild(b);
-  }
-  dlg.classList.add('on');
-  if (!dentroTumulo()) P.rotAlvo = Math.atan2(poi.alvo[0] - P.x, poi.alvo[1] - P.z);
+  dlg.classList.add('on'); legendaAte = tempo + 14;
 }
 function fecharDlg(soltaCamera = true) { dlg.classList.remove('on'); if (soltaCamera !== false) poiAberto = null; }
+dlg.addEventListener('pointerdown', (e) => { e.stopPropagation(); fecharDlg(); });
+// a ação de cada lugar depende do estado; sem ação, o botão só mostra o texto
+function acaoDe(id) {
+  switch (id) {
+    case 'tumulo': if (dentroTumulo()) return ['Sair', async () => { await anda(...tumParaMundo(0.1, 2.6)); }];
+      return pedraAlvo === 0 ? ['Rolar a pedra', rolarPedra] : ['Entrar no túmulo', async () => { await anda(...tumParaMundo(0, -3.4)); }];
+    case 'casa': if (P.y > 2) return ['Descer à rua', async () => { await anda(LZ.x + 1.5, LZ.z + LZ.d + 1.4, 0); }];
+      return dentroCasaLZ() ? ['Subir ao terraço', async () => { await anda(LZ.x + 1.0, LZ.z + 2.6, 3.0); }] : ['Entrar na casa', async () => { await anda(LZ.x + 1.5, LZ.z + 3.0, 0); }];
+    case 'forno': if (fogoAlvo === 0) return ['Acender o fogo', acenderFogo]; return assados < 3 ? ['Assar um pão', assarPao] : null;
+    case 'poco': if (baldeEst.modo === 'borda') return ['Tirar água', tirarAgua]; return baldeEst.modo === 'gancho' && baldeEst.cheio ? ['Encher o cântaro', encherCantaro] : null;
+    case 'eira': return ['Joeirar', joeirar];
+    case 'lagar': return lagarCheio() ? ['Pisar as uvas', pisarUvas] : null;
+    default: return null;
+  }
+}
+function usar(poi) {
+  if (ocupado) return;
+  abrir(poi.id);
+  const a = acaoDe(poi.id); if (a) roteiro(a[1]);
+}
 
 // ================================================================== câmera isométrica: segue, gira só no eixo vertical, zoom curto
 const camera = new THREE.PerspectiveCamera(24, innerWidth / innerHeight, 1, 400);
@@ -1249,9 +1349,8 @@ function tocar(cx, cy) {
   if (!poi && hc) poi = POIS.find((p) => Math.hypot(hc.point.x - p.alvo[0], hc.point.z - p.alvo[1]) < p.alvo[2]) || null;
   if (poi && poi.id === 'casa' && hc && naZonaLZ(hc.point.x, hc.point.z) && !hm) poi = null;   // na casa: tocar = andar até ali
   if (poi) {
-    if (poiAberto) fecharDlg(false);
-    if (poi.id === 'tumulo' && dentroTumulo()) { abrir('tumulo'); return; }
-    irPara(poi.pe, () => abrir(poi.id));
+    if (poi === poiPerto || (poi.id === 'tumulo' && dentroTumulo())) { usar(poi); return; }
+    irPara(poi.pe, () => usar(poi));
     return;
   }
   if (poiAberto) fecharDlg();
@@ -1269,11 +1368,7 @@ function irPara([x, z], aoChegar, y = null, exato = false) {
 }
 
 // botões da direita
-function acao() {
-  if (ocupado) return;
-  if (dlg.classList.contains('on')) { const b = dlg.querySelector('.acoes .bt'); if (b) b.click(); return; }
-  if (poiPerto) abrir(poiPerto.id);
-}
+function acao() { if (!ocupado && poiPerto) usar(poiPerto); }
 function pular() {
   if (P.salto || ocupado) return;
   P.salto = { t: 0 }; P.travado = true; animAtual = 'Pulo#';
@@ -1313,6 +1408,8 @@ function podePisar(x0, z0, y0, x1, z1) {
 
 // ================================================================== laço
 const relogio = new THREE.Clock();
+let escalaTempo = 1;   // só para testes
+const medida = { passo: 0, render: 0 };
 const tmp = V(), tmp2 = V();
 function passo(dt) {
   tempo += dt;
@@ -1337,7 +1434,6 @@ function passo(dt) {
   const corrida = correr || teclas.has('shift');
   if (forca > 0.12) {
     P.rota = []; P.aoChegar = null;
-    if (poiAberto) fecharDlg();
     const l = Math.hypot(kx, kz); kx /= l; kz /= l;
     vel = corrida ? VEL.Correr : forca > 0.6 ? VEL.Trote : VEL.Andar;
     const nx = P.x + kx * vel * dt, nz = P.z + kz * vel * dt;
@@ -1355,7 +1451,7 @@ function passo(dt) {
   }
   if (!P.travado) toca(vel === 0 ? 'Parado' : vel > 4 ? 'Correr' : vel > 2 ? 'Trote' : 'Andar');
   let dr = (P.rotAlvo ?? P.rot) - P.rot; dr = Math.atan2(Math.sin(dr), Math.cos(dr)); P.rot += dr * Math.min(1, dt * 10);
-  const yAlvo = alturaEm(P.x, P.z, P.y); P.y += (yAlvo - P.y) * Math.min(1, dt * 14);
+  const yAlvo = P.alturaFixa ?? alturaEm(P.x, P.z, P.y); P.y += (yAlvo - P.y) * Math.min(1, dt * 14);
   let pulo = 0;
   if (P.salto) { P.salto.t += dt; const u = (P.salto.t - 0.12) / 0.66; if (u > 0 && u < 1) pulo = 4 * u * (1 - u) * 0.55; }
   heroi.position.set(P.x, P.y + pulo, P.z); heroi.rotation.y = P.rot;
@@ -1368,9 +1464,12 @@ function passo(dt) {
   poiPerto = null;
   for (const p of POIS) if (Math.hypot(P.x - p.pe[0], P.z - p.pe[1]) < 2.6 && Math.abs(P.y - p.peY) < 1.5) poiPerto = p;
   if (dentroTumulo()) poiPerto = POIS[0];
-  const pronto = poiPerto && !dlg.classList.contains('on') && !ocupado;
+  if (naZonaLZ(P.x, P.z) && (dentroCasaLZ() || P.y > 2)) poiPerto = POIS[1];
+  const pronto = poiPerto && !ocupado;
   $('#bAcao').classList.toggle('pronto', !!pronto);
-  const rot = $('#rotulo'); if (pronto) { if (rot.textContent !== poiPerto.nome) rot.textContent = poiPerto.nome; rot.classList.add('on'); } else rot.classList.remove('on');
+  const rot = $('#rotulo');
+  if (pronto) { const a = acaoDe(poiPerto.id); const t = a ? a[0] + ' · ' + poiPerto.nome : poiPerto.nome; if (rot.textContent !== t) rot.textContent = t; rot.classList.add('on'); } else rot.classList.remove('on');
+  if (dlg.classList.contains('on') && !ocupado && (tempo > legendaAte || (poiAberto && Math.hypot(P.x - poiAberto.pe[0], P.z - poiAberto.pe[1]) > 5))) fecharDlg();
   for (const p of POIS) { p.m.position.y = p.y0 + Math.sin(tempo * 2 + p.marca[0]) * 0.12; p.m.rotation.y = tempo * 1.2; p.m.visible = !(poiAberto === p && (dlg.classList.contains('on') || ocupado)); }
 
   // ---- túmulo
@@ -1402,7 +1501,8 @@ function passo(dt) {
   if (paEst.modo === 'mao') {
     pa.position.copy(mao);
     const frente = V(Math.sin(P.rot), 0, Math.cos(P.rot));
-    pa.lookAt(paEst.alvo ? paEst.alvo : mao.clone().addScaledVector(frente, 1.4).add(V(0, -0.15, 0)));
+    // vazia vai em pé; com massa ou pão vai quase deitada, para a carga não cair
+    pa.lookAt(paEst.alvo ? paEst.alvo : paEst.carga ? mao.clone().addScaledVector(frente, 1.3).add(V(0, 0.18, 0)) : mao.clone().addScaledVector(frente, 0.55).add(V(0, 1.15, 0)));
   } else { pa.position.copy(PA_DESCANSO.p); pa.lookAt(PA_DESCANSO.alvo); }
   pa.updateMatrixWorld(true);
   if (paEst.carga) { paEst.carga.position.copy(pa.localToWorld(PONTA_PA.clone())); paEst.carga.rotation.set(0, P.rot, 0); }
@@ -1432,7 +1532,9 @@ function passo(dt) {
     corda.position.copy(POLIA); corda.scale.set(1, Math.max(0.01, L), 1);
     if (L > 1e-4) corda.quaternion.setFromUnitVectors(V(0, -1, 0), d.normalize());
   }
-  faiscas.passo(dt); fumaca.passo(dt); palha.passo(dt); respingo.passo(dt);
+  faiscas.passo(dt); fumaca.passo(dt); palha.passo(dt); respingo.passo(dt); mosto.passo(dt);
+  uJog.value.set(P.x, P.y, P.z); uT.value = tempo;
+  passoLagar(dt);
 
   // ---- câmera
   const [v, d] = alvoCamera();
@@ -1446,16 +1548,20 @@ function passo(dt) {
 addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); ajustaFov(); });
 renderer.autoClear = false; renderer.shadowMap.autoUpdate = false;
 renderer.setAnimationLoop(() => {
-  const dt = Math.min(0.05, relogio.getDelta()); passo(dt);
-  renderer.shadowMap.needsUpdate = true; renderer.clear(); renderer.render(scene, camera);
-  const bg = scene.background; scene.background = null; scene.overrideMaterial = matSilhueta; camera.layers.set(1);
+  const t0 = performance.now(); const dt = Math.min(0.05, relogio.getDelta()); for (let i = 0; i < escalaTempo; i++) passo(dt); medida.passo = performance.now() - t0;
+  // 1) cenário sem o jogador (a sombra dele entra no mapa de sombras); 2) silhueta onde o cenário o cobre; 3) o jogador
+  renderer.shadowMap.needsUpdate = true; renderer.clear(); camera.layers.set(0); renderer.render(scene, camera);
+  renderer.shadowMap.needsUpdate = false;
+  const bg = scene.background; scene.background = null; camera.layers.set(1); renderer.clearStencil();
+  scene.overrideMaterial = matSilhueta; renderer.render(scene, camera); scene.overrideMaterial = null;
   renderer.render(scene, camera);
-  scene.background = bg; scene.overrideMaterial = null; camera.layers.set(0);
+  scene.background = bg; camera.layers.set(0);
+  medida.render = performance.now() - t0 - medida.passo;
 });
 renderer.compile(scene, camera);
 setTimeout(() => { $('#carga').style.opacity = 0; setTimeout(() => $('#carga').remove(), 1000); }, 250);
 setTimeout(() => { $('#dica').style.opacity = 0; }, 10000);
-window.__vila = { NYf: () => NY, NXf: () => NX, NZf: () => NZ, sonda: (ax, az, bx, bz, y) => { const d = V(bx - ax, 0, bz - az); const L = d.length(); d.normalize(); raio.set(V(ax, y, az), d); raio.far = L + 0.05; return raio.intersectObjects(malhasLZ, false).map((h) => h.point.toArray().map((n) => n.toFixed(2)).join(',') + ' ' + h.object.parent.name); }, ligacao, raio, malhasLZ, P, POIS, abrir, irPara, roteiro, tumParaMundo, camera, camAlvo, baldeEst, paEst, LZ, caminho, noEm, pisosLZ,
+window.__vila = { estado: () => JSON.stringify({ ocupado, P: [P.x, P.y, P.z].map((n) => +n.toFixed(2)), rota: P.rota.map((r) => r.map((n) => +n.toFixed(2))), anim: animAtual, travado: P.travado, esperas: esperas.length, tempo: +tempo.toFixed(2), perto: poiPerto && poiPerto.id, medida }), set escala(v) { escalaTempo = v; }, fogo: () => fogoNivel, NYf: () => NY, NXf: () => NX, NZf: () => NZ, sonda: (ax, az, bx, bz, y) => { const d = V(bx - ax, 0, bz - az); const L = d.length(); d.normalize(); raio.set(V(ax, y, az), d); raio.far = L + 0.05; return raio.intersectObjects(malhasLZ, false).map((h) => h.point.toArray().map((n) => n.toFixed(2)).join(',') + ' ' + h.object.parent.name); }, ligacao, raio, malhasLZ, P, POIS, abrir, irPara, roteiro, tumParaMundo, camera, camAlvo, baldeEst, paEst, LZ, caminho, noEm, pisosLZ,
   get zoomT() { return zoomT; }, set zoomT(v) { zoomT = v; }, get az() { return azAlvo; }, set az(v) { azAlvo = v; }, get ocupado() { return ocupado; }, get fogo() { return fogoNivel; } };
 </script>
 </body>
