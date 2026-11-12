@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#86b9df">
+<title>Animais</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #c6e0ef; font-family: system-ui, sans-serif; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  #ui { position: fixed; top: max(12px, env(safe-area-inset-top)); left: 12px; right: 12px; display: flex; flex-wrap: wrap; gap: 6px; z-index: 2; }
+  #ui button { border: 0; border-radius: 8px; padding: 9px 13px; font-size: 14px; background: #fffc; color: #3a2e22; cursor: pointer; }
+  #ui button.on { background: #8a5a35; color: #fff; }
+  #info { position: fixed; bottom: max(10px, env(safe-area-inset-bottom)); left: 12px; right: 12px; font-size: 13px; color: #3a2e22; z-index: 2; }
+  .tag { position: fixed; transform: translate(-50%, -100%); font-size: 12px; color: #3a2e22; background: #fffd;
+         padding: 2px 6px; border-radius: 4px; white-space: nowrap; pointer-events: none; z-index: 1; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="ui"></div>
+<div id="info">carregando…</div>
+<script type="module">
+// Animais provisórios (Tripo), cada um com esqueleto simples e 3 animações: Parado, Andar, Comer.
+// Escala real; o cilindro translúcido é uma pessoa de 1,70 m.
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+// arquivo, nome, velocidade de caminhada (m/s)
+const ANIMAIS = [
+  ['boi', 'Boi', 1.0], ['vaca', 'Vaca', 1.0], ['cavalo', 'Cavalo', 1.5], ['jumento', 'Jumento', 1.2],
+  ['cabra', 'Cabra', 0.9], ['ovelha', 'Ovelha', 0.8], ['ibex', 'Íbex', 1.0], ['gazela', 'Gazela', 1.2],
+  ['lobo', 'Lobo', 1.3], ['raposa', 'Raposa', 1.1], ['galinha1', 'Galinha', 0.45], ['galinha2', 'Galinha ruiva', 0.45],
+  ['pomba1', 'Pomba', 0.35], ['pomba2', 'Pomba cinza', 0.35],
+];
+const ACOES = ['Parado', 'Andar', 'Comer'];
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xc6e0ef);
+scene.fog = new THREE.Fog(0xc6e0ef, 22, 50);
+const camera = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 0.05, 120);
+camera.position.set(0, 10, 21);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 0.5, 0);
+controls.enableDamping = true;
+controls.maxPolarAngle = Math.PI * 0.48;
+
+// manhã no deserto
+scene.add(new THREE.HemisphereLight(0xfff1dc, 0x9a7a52, 1.5));
+const sol = new THREE.DirectionalLight(0xffe2b8, 2.6);
+sol.position.set(8, 12, 6); sol.castShadow = true; sol.shadow.mapSize.set(2048, 2048);
+Object.assign(sol.shadow.camera, { left: -15, right: 15, top: 15, bottom: -15 });
+scene.add(sol);
+const texChao = new THREE.TextureLoader().load('../discipulo/tex/campo_seco.webp');
+texChao.colorSpace = THREE.SRGBColorSpace; texChao.wrapS = texChao.wrapT = THREE.RepeatWrapping; texChao.repeat.set(14, 14);
+const chao = new THREE.Mesh(new THREE.CircleGeometry(40, 64), new THREE.MeshLambertMaterial({ map: texChao, color: 0xe9dcc0 }));
+chao.rotation.x = -Math.PI / 2; chao.receiveShadow = true; scene.add(chao);
+const pessoa = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.2, 1.7, 14),
+  new THREE.MeshLambertMaterial({ color: 0x8a5a35, transparent: true, opacity: 0.3 }));
+pessoa.position.set(-9.6, 0.85, -2.1); scene.add(pessoa);
+
+const loader = new GLTFLoader();
+const bichos = [];
+let acao = 'Parado', circulo = false, carregados = 0;
+const fila = ANIMAIS.map(([arq, nome, vel], i) => ({ arq, nome, vel, i }));
+async function baixar(url) {
+  for (let t = 0; ; t++) {
+    try {
+      const c = new AbortController(); const tm = setTimeout(() => c.abort(), 15000);
+      try { const r = await fetch(url, { signal: c.signal }); if (!r.ok) throw new Error(r.status); return await r.arrayBuffer(); }
+      finally { clearTimeout(tm); }
+    } catch (e) { if (t >= 4) throw e; await new Promise((ok) => setTimeout(ok, 400 * (t + 1))); }
+  }
+}
+async function trabalhador() {
+  while (fila.length) {
+    const it = fila.shift();
+    let g = null;
+    for (let t = 0; !g; t++) {
+      try { g = await loader.parseAsync(await baixar(`${it.arq}.glb`), ''); }
+      catch (e) { if (t >= 4) throw e; await new Promise((ok) => setTimeout(ok, 500)); }
+    }
+    const raiz = g.scene;
+    raiz.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; } });
+    const col = it.i % 7, lin = Math.floor(it.i / 7);
+    const base = new THREE.Vector3((col - 3) * 2.8, 0, (lin - 0.5) * 4.2);
+    raiz.position.copy(base); scene.add(raiz);
+    const mx = new THREE.AnimationMixer(raiz);
+    const clips = Object.fromEntries(g.animations.map((c) => [c.name, mx.clipAction(c)]));
+    const tag = document.createElement('div'); tag.className = 'tag'; tag.textContent = it.nome; document.body.appendChild(tag);
+    const b = { ...it, raiz, mx, clips, base, tag, fase: Math.random() * 6.28, atual: null, alt: new THREE.Box3().setFromObject(raiz).max.y };
+    bichos.push(b); tocar(b, acao, 0); mx.setTime(Math.random() * 2);
+    carregados++; info();
+  }
+}
+for (let i = 0; i < 3; i++) trabalhador().catch((e) => { document.getElementById('info').textContent = 'erro: ' + e.message; });
+
+function tocar(b, n, f = 0.3) {
+  const a = b.clips[n]; if (!a || b.atual === a) return;
+  a.reset().play(); if (b.atual) b.atual.crossFadeTo(a, f, false); b.atual = a;
+}
+function info() {
+  document.getElementById('info').textContent = carregados < ANIMAIS.length
+    ? `carregando ${carregados}/${ANIMAIS.length}…`
+    : `${ANIMAIS.length} animais · ${acao}${circulo ? ' em círculo' : ''} · o cilindro é uma pessoa de 1,70 m`;
+}
+const ui = document.getElementById('ui'), bt = {};
+for (const a of ACOES) {
+  const b = document.createElement('button'); b.textContent = a;
+  b.onclick = () => {
+    acao = a; bichos.forEach((x) => tocar(x, a));
+    Object.values(bt).forEach((y) => y.classList.toggle('on', y === b));
+    if (a !== 'Andar' && circulo) bc.onclick();
+    info();
+  };
+  bt[a] = b; ui.appendChild(b);
+}
+bt.Parado.classList.add('on');
+const bc = document.createElement('button'); bc.textContent = 'Andar em círculo';
+bc.onclick = () => {
+  circulo = !circulo; bc.classList.toggle('on', circulo);
+  if (circulo && acao !== 'Andar') bt.Andar.onclick();
+  if (!circulo) bichos.forEach((b) => { b.raiz.position.copy(b.base); b.raiz.rotation.y = 0; });
+  info();
+};
+ui.appendChild(bc);
+
+const relogio = new THREE.Clock(), tmp = new THREE.Vector3();
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(relogio.getDelta(), 0.05);
+  for (const b of bichos) {
+    b.mx.update(dt);
+    if (circulo) {
+      const r = 0.8; b.fase += b.vel / r * dt;
+      b.raiz.position.set(b.base.x + Math.cos(b.fase) * r, 0, b.base.z + Math.sin(b.fase) * r);
+      b.raiz.rotation.y = -b.fase;
+    }
+    tmp.copy(b.raiz.position).setY(b.alt + 0.25).project(camera);
+    b.tag.style.display = tmp.z < 1 ? '' : 'none';
+    b.tag.style.left = (tmp.x * 0.5 + 0.5) * innerWidth + 'px';
+    b.tag.style.top = (-tmp.y * 0.5 + 0.5) * innerHeight + 'px';
+  }
+  controls.update();
+  renderer.render(scene, camera);
+});
+addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+</script>
+</body>
+</html>
