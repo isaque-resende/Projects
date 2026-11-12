@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#86b9df">
+<title>Cleopas</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #c6e0ef; font-family: system-ui, sans-serif; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  #ui { position: fixed; top: max(10px, env(safe-area-inset-top)); left: 10px; right: 10px; display: flex; flex-wrap: wrap; gap: 5px; z-index: 2; }
+  #ui button { border: 0; border-radius: 8px; padding: 8px 11px; font-size: 13px; background: #fffc; color: #3a2e22; cursor: pointer; }
+  #ui button.on { background: #8a5a35; color: #fff; }
+  #info { position: fixed; bottom: max(10px, env(safe-area-inset-bottom)); left: 12px; right: 12px; font-size: 13px; color: #3a2e22; z-index: 2; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="ui"></div>
+<div id="info">carregando…</div>
+<script type="module">
+// Cleopas, o discípulo que acompanha o jogador no caminho de Emaús.
+// Mesmo esqueleto e mesmas 13 animações do discípulo jogável. Luz padrão: manhã no deserto.
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xc6e0ef);
+scene.fog = new THREE.Fog(0xc6e0ef, 14, 40);
+const camera = new THREE.PerspectiveCamera(35, innerWidth / innerHeight, 0.05, 100);
+camera.position.set(0.6, 1.45, 3.4);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 0.95, 0);
+controls.enableDamping = true;
+controls.minDistance = 0.4;
+controls.maxPolarAngle = Math.PI * 0.49;
+
+scene.add(new THREE.HemisphereLight(0xfff1dc, 0x9a7a52, 1.5));
+const sol = new THREE.DirectionalLight(0xffe2b8, 2.6);
+sol.position.set(3, 6, 4); sol.castShadow = true; sol.shadow.mapSize.set(2048, 2048);
+Object.assign(sol.shadow.camera, { left: -3, right: 3, top: 3, bottom: -3 });
+scene.add(sol);
+const texChao = new THREE.TextureLoader().load('../discipulo/tex/campo_seco.webp');
+texChao.colorSpace = THREE.SRGBColorSpace; texChao.wrapS = texChao.wrapT = THREE.RepeatWrapping; texChao.repeat.set(8, 8);
+const chao = new THREE.Mesh(new THREE.CircleGeometry(20, 48), new THREE.MeshLambertMaterial({ map: texChao, color: 0xe9dcc0 }));
+chao.rotation.x = -Math.PI / 2; chao.receiveShadow = true; scene.add(chao);
+
+const ACOES = ['Parado', 'Conversando', 'Andar', 'Trote', 'Correr', 'Pulo_Inicio', 'Pulo_Ar', 'Pulo_Queda',
+  'Interagir', 'Pegar', 'Ajoelhar', 'Empurrar', 'Agachado'];
+const NOMES = { Pulo_Inicio: 'Pulo (início)', Pulo_Ar: 'Pulo (ar)', Pulo_Queda: 'Pulo (queda)' };
+let mixer = null, clips = {}, atual = null, tris = 0;
+
+async function carregar() {
+  for (let t = 0; ; t++) {
+    try {
+      const r = await fetch('cleopas.glb'); if (!r.ok) throw new Error(r.status);
+      return await new GLTFLoader().parseAsync(await r.arrayBuffer(), '');
+    } catch (e) { if (t >= 4) throw e; await new Promise((ok) => setTimeout(ok, 500)); }
+  }
+}
+const g = await carregar();
+g.scene.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; tris += o.geometry.index.count / 3; } });
+scene.add(g.scene);
+mixer = new THREE.AnimationMixer(g.scene);
+clips = Object.fromEntries(g.animations.map((c) => [c.name, mixer.clipAction(c)]));
+
+const ui = document.getElementById('ui');
+function tocar(n) {
+  const a = clips[n]; if (!a) return;
+  a.reset().play(); if (atual && atual !== a) atual.crossFadeTo(a, 0.25, false); atual = a;
+  [...ui.children].forEach((b) => b.classList.toggle('on', b.dataset.a === n));
+  document.getElementById('info').textContent = `Cleopas · ${tris.toLocaleString('pt-BR')} triângulos · ${NOMES[n] ?? n} · arraste para girar, aproxime para ver o rosto`;
+}
+for (const a of ACOES) {
+  const b = document.createElement('button'); b.textContent = NOMES[a] ?? a; b.dataset.a = a;
+  b.onclick = () => tocar(a); ui.appendChild(b);
+}
+tocar('Parado');
+
+const relogio = new THREE.Clock();
+renderer.setAnimationLoop(() => { mixer.update(Math.min(relogio.getDelta(), 0.05)); controls.update(); renderer.render(scene, camera); });
+addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+</script>
+</body>
+</html>
