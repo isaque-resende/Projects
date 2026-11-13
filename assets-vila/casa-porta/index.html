@@ -149,8 +149,9 @@ const TRONCOS = [];
 {
   const g = await baixar('../diorama-ciprestes/ciprestes.glb');
   const t = await baixar('arvores_tripo.glb');
+  const p = await baixar('tamareiras.glb');
   const m = {};
-  for (const n of [...g.scene.children, ...t.scene.children]) { n.position.set(0, 0, 0); sombra(n); m[n.name] = n; }
+  for (const n of [...g.scene.children, ...t.scene.children, ...p.scene.children]) { n.position.set(0, 0, 0); sombra(n); m[n.name] = n; }
   // [x, z, escala, nome, giro]; as árvores do Tripo de copa rasa ficam de frente para a câmera (giro pequeno)
   const LUG = [
     [-6.2, -1.5, 0.95, 'Cipreste2_Esguio', 0.4], [-5.4, -4.6, 0.8, 'Cipreste1_Redondo', 2.1], [6.6, -3.2, 1.0, 'Cipreste2_Esguio', 1.2],
@@ -159,11 +160,13 @@ const TRONCOS = [];
     [-8.0, -9.0, 0.9, 'Arvore6', -0.1], [8.8, -9.2, 0.95, 'Arvore8', 0.2], [-13.5, 4.5, 0.9, 'Arvore9', 0.0],
     [13.0, 3.8, 0.9, 'Arvore1', -0.15], [-4.5, 9.5, 0.8, 'Arvore4', 0.2], [6.0, 10.0, 0.85, 'Arvore7', -0.1],
     [15.5, -0.8, 0.9, 'Arvore3', -0.1], [0.5, -11.5, 1.0, 'Arvore5', 0.05],
+    [-10.5, 8.0, 1.0, 'Tamareiras', 0.1], [11.0, -12.0, 0.9, 'Tamareiras', -0.2],
   ];
   for (const [x, z, k, nome, r] of LUG) {
     if (!m[nome]) continue;
     const n = m[nome].clone(); n.position.set(x, 0, z); n.scale.setScalar(k); n.rotation.y = r; scene.add(n);
-    TRONCOS.push({ x, z, r: 0.45 * k });
+    if (nome === 'Tamareiras') for (const dx of [-2.0, 1.7]) TRONCOS.push({ x: x + dx * k, z, r: 0.5 * k });
+    else TRONCOS.push({ x, z, r: 0.45 * k });
   }
 }
 const bateArvore = (x, z) => TRONCOS.some((t) => Math.hypot(t.x - x, t.z - z) < t.r) || Math.hypot(x, z) > 30;
