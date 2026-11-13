@@ -22,7 +22,7 @@
 <body>
 <div id="fade"></div>
 <button id="acao"></button>
-<div id="dica">WASD ou toque para andar · Shift corre · roda/pinça: zoom</div>
+<div id="dica">Direcional, WASD ou toque para andar · Shift corre · Espaço pula · roda/pinça: zoom</div>
 <script type="module">
 // Fase de Betânia: vila compacta em vista isométrica. A câmera não gira: só acompanha o jogador
 // (com limite) e aproxima/afasta. O que fica entre a câmera e o jogador fica transparente.
@@ -138,7 +138,7 @@ const [gCasaP, gMuros, gForno, gTripo, gPar, gTam, gCip, gFrond, gRoch, gObj, gP
 // obstáculos: caixas (x0, x1, z0, z1) e círculos
 const CAIXAS = [], CIRC = [];
 const FADE = [];                                    // objetos altos que somem quando tampam o jogador
-const bate = (x, z, m = 0.3) => CAIXAS.some((c) => x > c.x0 - m && x < c.x1 + m && z > c.z0 - m && z < c.z1 + m) || CIRC.some((c) => Math.hypot(c.x - x, c.z - z) < c.r + m);
+const bate = (x, z, m = 0.3) => bateAnel(x, z, m) || CAIXAS.some((c) => x > c.x0 - m && x < c.x1 + m && z > c.z0 - m && z < c.z1 + m) || CIRC.some((c) => Math.hypot(c.x - x, c.z - z) < c.r + m);
 function caixaDe(obj, enc = 0) {
   obj.updateWorldMatrix(true, true);
   const b = new THREE.Box3().setFromObject(obj);
@@ -205,27 +205,60 @@ por(BA.Barraca2, -2.2, -2.2, -0.35, 1, { caixa: 0.25, fade: true });
 por(PA.Parreira_Arco, 0.4, 13.0, 0, 1, { fade: true });
 CIRC.push({ x: 0.4 - 1.23, z: 13.0, r: 0.22 }, { x: 0.4 + 1.16, z: 13.0, r: 0.22 });
 por(PA.Parreira_Poste, 2.8, 13.6, 0.4, 1, { circ: 0.22 });
+const [gPast, gOfi] = await Promise.all([baixar('../casa-porta/pastoril.glb'), baixar('../casa-porta/oficios.glb')]);
+// aprisco: muro circular de pedra com porteira (a porteira abre quando o jogador chega perto)
+let APR = null;
+function bateAnel(x, z, m) {
+  if (!APR) return false;
+  const dx = x - APR.x, dz = z - APR.z, d = Math.hypot(dx, dz);
+  if (Math.abs(d - APR.rm) > APR.esp / 2 + m) return false;
+  let a = Math.atan2(dz, dx) + APR.r; a = Math.atan2(Math.sin(a), Math.cos(a));
+  let g = a - APR.gap; g = Math.atan2(Math.sin(g), Math.cos(g));
+  if (Math.abs(g) > APR.meia) return true;          // muro
+  return APR.ab < 0.9;                              // vão: só passa com a porteira aberta
+}
 {
-  // aprisco à frente-esquerda: muros baixos de pedra (nada esconde o jogador)
-  const AX = -11, AZ = 8.5;
-  const peca = (nome, x, z, r) => por(MU[nome], AX + x, AZ + z, r, 1, { caixa: 0.1 });
-  peca('Muro_Reto1', -2.4, -2.3, 0); peca('Muro_Reto2', 0, -2.4, 0.03); peca('Muro_Reto3', 2.4, -2.3, 0);
-  peca('Muro_Reto4', -2.5, 2.4, 0); peca('Muro_Reto1', 2.5, 2.4, Math.PI);     // vão no meio: entrada
-  peca('Muro_Reto2', -3.8, -0.6, Math.PI / 2); peca('Muro_Reto3', -3.8, 1.3, Math.PI / 2);
-  peca('Muro_Reto4', 3.8, -0.6, -Math.PI / 2); peca('Muro_Reto2', 3.8, 1.3, -Math.PI / 2);
-  globalThis.APRISCO = { x0: AX - 3.0, x1: AX + 3.0, z0: AZ - 1.6, z1: AZ + 1.7 };
+  const AX = -11, AZ = 8.6, K = 2.2, KY = 1.3;
+  const muro = nos(gPast).Muro_Curvo.clone(); muro.position.set(0, 0, 0);
+  // descobre o vão do anel pelos vértices
+  const angs = []; const v = new THREE.Vector3(); let rIn = 1e9, rOut = 0;
+  muro.updateMatrixWorld(true);
+  muro.traverse((o) => { if (!o.isMesh) return; const pa = o.geometry.attributes.position; for (let i = 0; i < pa.count; i++) { v.fromBufferAttribute(pa, i).applyMatrix4(o.matrixWorld); angs.push(Math.atan2(v.z, v.x)); const r = Math.hypot(v.x, v.z); rOut = Math.max(rOut, r); if (v.y > 0.3) rIn = Math.min(rIn, r); } });
+  angs.sort((a, b) => a - b);
+  let gMax = 0, gA = 0;
+  for (let i = 0; i < angs.length; i++) { const a = angs[i], b = i + 1 < angs.length ? angs[i + 1] : angs[0] + Math.PI * 2; if (b - a > gMax) { gMax = b - a; gA = (a + b) / 2; } }
+  const alvoAng = Math.PI / 4;                       // vão virado para a câmera (+x +z)
+  const r = gA - alvoAng;
+  muro.scale.set(K, KY, K); muro.rotation.y = r; muro.position.set(AX, 0, AZ); sombra(muro); scene.add(muro);
+  const rm = (rIn + rOut) / 2 * K;
+  APR = { x: AX, z: AZ, r, gap: gA, meia: gMax / 2 + 0.02, rm, esp: (rOut - rIn) * K + 0.1, ab: 0, alvoAb: 0 };
+  // porteira atravessada no vão, presa por uma das pontas (dobradiça)
+  const port = nos(gPast).Porteira.clone(); port.position.set(0, 0, 0);
+  const larg = 2 * rm * Math.sin(gMax / 2) + 0.7, kp = larg / 2.63;
+  port.scale.setScalar(kp); sombra(port);
+  const phi = alvoAng, c = new THREE.Vector3(AX + Math.cos(phi) * (rm + 0.25), 0, AZ + Math.sin(phi) * (rm + 0.25));
+  const tg = new THREE.Vector3(-Math.sin(phi), 0, Math.cos(phi));
+  const piv = new THREE.Group(); piv.position.copy(c).addScaledVector(tg, -larg / 2);
+  const base = Math.atan2(-tg.z, tg.x);
+  piv.rotation.y = base; port.position.set(larg / 2, 0, 0); piv.add(port); scene.add(piv);
+  APR.piv = piv; APR.base = base; APR.centroPorta = c;
+  globalThis.APRISCO = { x0: AX - 1.45, x1: AX + 1.45, z0: AZ - 1.45, z1: AZ + 1.45 };
 }
 {
   const F = nos(gForno);
   const base = F.Forno_Corpo.position.clone();
   const forno = new THREE.Group();
-  for (const [n, o] of Object.entries(F)) if (n.startsWith('Forno_') && !/Chama|Brasa|Massa/.test(n)) { const c = o.clone(); c.position.sub(base); forno.add(c); }
+  for (const [n, o] of Object.entries(F)) if (n.startsWith('Forno_') && !/Chama|Brasa|Massa_[23]/.test(n)) { const c = o.clone(); c.position.sub(base); forno.add(c); }
   forno.position.set(-2.2, 0, -8.2); forno.rotation.y = 0.4; sombra(forno); scene.add(forno); CIRC.push({ x: -2.2, z: -8.2, r: 1.3 });
   // brasa e chamas acesas
   for (const n of ['Forno_Brasa', 'Forno_Chamas', 'Forno_ChamaBoca']) if (F[n]) { const c = F[n].clone(); c.position.sub(base); forno.add(c); }
   forno.updateWorldMatrix(true, true);
   globalThis.FORNO = {};
-  for (const n of ['NPC_Amassar', 'NPC_Aticar']) {
+  for (const n of ['Forno_Boca', 'Forno_Massa_1', 'Forno_Pao_1', 'Forno_Pao_2', 'Forno_Pao_3', 'Forno_Corpo']) {
+    const o = forno.children.find((c) => c.name === n || c.name.startsWith(n)); if (!o) continue;
+    globalThis.FORNO[n] = new THREE.Box3().setFromObject(o);
+  }
+  for (const n of ['NPC_Amassar', 'NPC_Aticar', 'NPC_Assar']) {
     const e = F[n]; const p = e.position.clone().sub(base).applyMatrix4(forno.matrixWorld);
     const q = new THREE.Quaternion().setFromRotationMatrix(forno.matrixWorld).multiply(e.quaternion);
     globalThis.FORNO[n] = { p, r: new THREE.Euler().setFromQuaternion(q, 'YXZ').y };
@@ -352,63 +385,329 @@ function ator(g, altura, x, z, r, clipe) {
 const [nMarta, nLazaro, nPastor, nAldeao, nLenco, nRobusto, nBotoes, nMagro, nMoco] = gNpc;
 // forno: uma mulher sova a massa na mesa, um rapaz atiça o fogo
 const FO = globalThis.FORNO, LG = globalThis.LAGAR;
-const padeira = ator(nBotoes, 1.6, FO.NPC_Amassar.p.x, FO.NPC_Amassar.p.z, FO.NPC_Amassar.r, 'Conversando');
+const padeira = ator(nBotoes, 1.6, FO.NPC_Amassar.p.x, FO.NPC_Amassar.p.z, FO.NPC_Amassar.r, 'Parado');
 const foguista = ator(nMoco, 1.66, -0.4, -9.7, -0.88, 'Parado');
 foguista.A.Parado && (foguista.A.Parado.timeScale = 0.8);
 // lagar: um homem pisa as uvas dentro do tanque; outro traz o cesto
-const pisador = ator(nMagro, 1.66, LG.tanque.x, LG.tanque.z, LG.r, 'Andar');
-pisador.o.position.y = LG.tanque.y - 0.05; pisador.toca('Andar'); pisador.A.Andar.timeScale = 0.75;
+const pisador = ator(nMagro, 1.66, LG.tanque.x, LG.tanque.z, LG.r, 'Parado');
+pisador.o.position.y = LG.tanque.y - 0.05;
 const ajudante = ator(nAldeao, 1.7, -1.0, 11.4, -1.92, 'Conversando');
 for (const n of [foguista, ajudante]) CIRC.push({ x: n.o.position.x, z: n.o.position.z, r: 0.35 });
-// ações do discípulo (mesmo esqueleto) emprestadas à padeira
-for (const c of gJog.animations) if (['Interagir', 'Pegar', 'Agachado', 'Empurrar'].includes(c.name)) {
-  const k = c.clone(); k.tracks = k.tracks.filter((tr) => !/^root\.(position|scale)/.test(tr.name));
-  padeira.A[c.name] = padeira.o.userData.mx.clipAction(k);
+// ---------- animação sob medida: IK de dois ossos (braço e perna) por cima do clipe parado ----------
+const _q1 = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), _q3 = new THREE.Quaternion();
+const _A = new THREE.Vector3(), _B = new THREE.Vector3(), _C = new THREE.Vector3(), _T = new THREE.Vector3(), _P = new THREE.Vector3(), _D = new THREE.Vector3(), _E = new THREE.Vector3();
+const CIMA = new THREE.Vector3(0, 1, 0);
+function giraMundo(osso, q) { osso.getWorldQuaternion(_q2); osso.parent.getWorldQuaternion(_q3); osso.quaternion.copy(_q3.invert().multiply(q.clone().multiply(_q2))); osso.updateMatrixWorld(true); }
+function alinha(osso, de, para) { if (de.lengthSq() < 1e-8 || para.lengthSq() < 1e-8) return; _q1.setFromUnitVectors(de.normalize(), para.normalize()); giraMundo(osso, _q1); }
+function ik(a, b, c, alvo, polo, peso = 1) {
+  a.getWorldPosition(_A); b.getWorldPosition(_B); c.getWorldPosition(_C);
+  _T.copy(_C).lerp(alvo, peso);
+  const l1 = _A.distanceTo(_B), l2 = _B.distanceTo(_C);
+  const dir = _D.copy(_T).sub(_A); let d = dir.length(); d = THREE.MathUtils.clamp(d, Math.abs(l1 - l2) + 1e-3, (l1 + l2) * 0.999); dir.normalize();
+  const pl = _P.copy(polo).sub(_A); pl.addScaledVector(dir, -pl.dot(dir)).normalize();
+  const x = (l1 * l1 - l2 * l2 + d * d) / (2 * d), h = Math.sqrt(Math.max(0, l1 * l1 - x * x));
+  const bd = _E.copy(_A).addScaledVector(dir, x).addScaledVector(pl, h);
+  alinha(a, _B.clone().sub(_A), bd.clone().sub(_A));
+  b.getWorldPosition(_B); c.getWorldPosition(_C);
+  alinha(b, _C.clone().sub(_B), _A.clone().addScaledVector(dir, d).sub(_B));
 }
-const PA_A = FO.NPC_Amassar.p.clone(), PA_B = FO.NPC_Aticar.p.clone();
+function corpo(st) {
+  const g = (n) => st.o.getObjectByName(n);
+  st.os = { pelvis: g('pelvis'), sp: g('spine_02'), sp3: g('spine_03'), cab: g('Head'),
+    bE: [g('upperarm_l'), g('lowerarm_l'), g('hand_l')], bD: [g('upperarm_r'), g('lowerarm_r'), g('hand_r')],
+    pE: [g('thigh_l'), g('calf_l'), g('foot_l')], pD: [g('thigh_r'), g('calf_r'), g('foot_r')] };
+  st.mE = null; st.mD = null; st.inc = 0; st.desce = 0; st.pesoB = 0;
+  return st;
+}
+const frente = (st) => new THREE.Vector3(Math.sin(st.o.rotation.y), 0, Math.cos(st.o.rotation.y));
+const pos = (o) => o.getWorldPosition(new THREE.Vector3());
+// inclina o tronco para a frente (ang em rad), repartido entre dois ossos da coluna
+function inclina(st, ang) {
+  if (Math.abs(ang) < 1e-3) return;
+  const eixo = new THREE.Vector3().crossVectors(CIMA, frente(st)).normalize();
+  const q = new THREE.Quaternion().setFromAxisAngle(eixo, ang * 0.6); giraMundo(st.os.sp, q);
+  q.setFromAxisAngle(eixo, ang * 0.4); giraMundo(st.os.sp3, q);
+}
+// mãos para os alvos (suavizados); peso 0 = deixa o clipe
+function maos(st, aE, aD, dt, peso = 1, rapidez = 10) {
+  st.pesoB += (peso - st.pesoB) * Math.min(1, dt * 6);
+  if (st.pesoB < 0.01) { st.mE = null; st.mD = null; return; }
+  if (!st.mE) { st.mE = pos(st.os.bE[2]); st.mD = pos(st.os.bD[2]); }
+  st.mE.lerp(aE, Math.min(1, dt * rapidez)); st.mD.lerp(aD, Math.min(1, dt * rapidez));
+  const f = frente(st), atras = f.clone().multiplyScalar(-0.5);
+  const lado = pos(st.os.bE[0]).sub(pos(st.os.bD[0])).setY(0).normalize();
+  ik(...st.os.bE, st.mE, pos(st.os.bE[0]).add(atras).addScaledVector(lado, 0.4).add(new THREE.Vector3(0, -0.4, 0)), st.pesoB);
+  ik(...st.os.bD, st.mD, pos(st.os.bD[0]).add(atras).addScaledVector(lado, -0.4).add(new THREE.Vector3(0, -0.4, 0)), st.pesoB);
+}
+// pernas: pés nos alvos, joelho para a frente
+function pernas(st, pE, pD) {
+  const f = frente(st);
+  ik(...st.os.pE, pE, pos(st.os.pE[0]).addScaledVector(f, 1).add(new THREE.Vector3(0, -0.3, 0)));
+  ik(...st.os.pD, pD, pos(st.os.pD[0]).addScaledVector(f, 1).add(new THREE.Vector3(0, -0.3, 0)));
+}
+const lerpAng = (o, alvo, k) => { let d = alvo - o.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d)); o.rotation.y += d * k; };
+function anda(st, alvo, dt, vel = 0.9) {
+  const d = alvo.clone().sub(st.o.position).setY(0), L = d.length();
+  if (L < 0.05) return true;
+  d.normalize(); st.o.position.addScaledVector(d, Math.min(vel * dt, L)); lerpAng(st.o, Math.atan2(d.x, d.z), Math.min(1, dt * 8)); st.toca('Andar');
+  return false;
+}
+
+// ---------- padeira: sova na mesa, agacha na boca do forno, enfia a massa, espera, tira o pão e põe na mesa ----------
+corpo(padeira); padeira.toca('Parado');
 const centroForno = new THREE.Vector3(-2.2, 0, -8.2);
-const PA_W = (() => { const m = PA_A.clone().add(PA_B).multiplyScalar(0.5), d = m.clone().sub(centroForno).setY(0); if (d.lengthSq() < 0.01) d.set(1, 0, 0); return centroForno.clone().add(d.normalize().multiplyScalar(1.75)); })();
-const PAO = new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 5), new THREE.MeshStandardMaterial({ color: 0xd29a52, roughness: 1, flatShading: true }));
-PAO.scale.y = 0.5; PAO.castShadow = true; PAO.visible = false; scene.add(PAO);
-const PAES = [], mao = padeira.o.getObjectByName('hand_r'), vMao = new THREE.Vector3();
-const ROTINA = [
-  { faz: 'Interagir', dur: 6 },                                  // sova a massa
-  { vai: [PA_W, PA_B], r: FO.NPC_Aticar.r, pao: true },          // leva a massa
-  { faz: 'Agachado', dur: 1.2, pao: true },
-  { faz: 'Empurrar', dur: 1.5, pao: true },                      // põe no forno
-  { faz: 'Parado', dur: 4 },                                     // espera assar
-  { faz: 'Pegar', dur: 1.1, depois: true },                      // tira o pão
-  { vai: [PA_W, PA_A], r: FO.NPC_Amassar.r, pao: true },
-  { faz: 'Interagir', dur: 1.2, pao: true, poe: true },          // deixa o pão na mesa
-];
-const pad = { i: 0, t: 0, alvo: 0 };
-padeira.toca('Interagir');
-function padeiraPasso(dt) {
-  const e = ROTINA[pad.i], o = padeira.o;
-  let fim = false;
-  if (e.vai) {
-    const alvo = e.vai[pad.alvo], d = alvo.clone().sub(o.position).setY(0);
-    padeira.toca('Andar');
-    if (d.length() < 0.06) { pad.alvo++; if (pad.alvo >= e.vai.length) { fim = true; pad.alvo = 0; } }
-    else { d.normalize(); o.position.addScaledVector(d, Math.min(0.9 * dt, d.length())); let k = Math.atan2(d.x, d.z) - o.rotation.y; k = Math.atan2(Math.sin(k), Math.cos(k)); o.rotation.y += k * Math.min(1, dt * 8); }
-    if (fim) o.rotation.y = e.r;
-  } else {
-    padeira.toca(e.faz); pad.t += dt; if (pad.t >= e.dur) fim = true;
+const BOCA = FO.Forno_Boca.getCenter(new THREE.Vector3()); BOCA.y = 0.12;
+// lugar de assar: em frente à boca do forno, olhando para ela
+const PA_A = FO.NPC_Amassar.p.clone().setY(0), PA_B = BOCA.clone().setY(0).add(BOCA.clone().sub(centroForno).setY(0).normalize().multiplyScalar(0.7));
+const PA_W = (() => { const m = PA_A.clone().add(PA_B).multiplyScalar(0.5), d = m.clone().sub(centroForno).setY(0); if (d.lengthSq() < 0.01) d.set(1, 0, 0); return centroForno.clone().add(d.normalize().multiplyScalar(1.8)); })();
+
+const MASSA = FO.Forno_Massa_1 ? FO.Forno_Massa_1.getCenter(new THREE.Vector3()) : PA_A.clone().setY(0.6);
+const MESA_Y = MASSA.y;
+const angA = Math.atan2(MASSA.x - PA_A.x, MASSA.z - PA_A.z), angB = Math.atan2(BOCA.x - PA_B.x, BOCA.z - PA_B.z);
+const matMassa = new THREE.MeshStandardMaterial({ color: 0xeedcb8, roughness: 1, flatShading: true });
+const matPao = new THREE.MeshStandardMaterial({ color: 0xc98b45, roughness: 1, flatShading: true });
+const PAO = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 5), matMassa); PAO.scale.y = 0.45; PAO.castShadow = true; PAO.visible = false; scene.add(PAO);
+const PAES = [];
+const PAD = { e: 'sova', t: 0 };
+padeira.o.rotation.y = angA;
+function padeiraPasso(dt, t) {
+  const st = padeira, o = st.o, f = frente(st);
+  PAD.t += dt;
+  const lado = pos(st.os.bE[0]).sub(pos(st.os.bD[0])).setY(0).normalize();
+  const peito = pos(st.os.sp3);
+  let aE = null, aD = null, inc = 0, desce = 0, carrega = false;
+  const muda = (e) => { PAD.e = e; PAD.t = 0; };
+  switch (PAD.e) {
+    case 'sova': {                                  // empurra e dobra a massa com as duas mãos
+      lerpAng(o, angA, Math.min(1, dt * 6)); st.toca('Parado');
+      const k = Math.sin(t * 4.2), c = MASSA.clone(); c.y = MESA_Y + 0.05;
+      aE = c.clone().addScaledVector(lado, 0.09).addScaledVector(f, 0.06 * k).add(new THREE.Vector3(0, -0.03 * Math.abs(k), 0));
+      aD = c.clone().addScaledVector(lado, -0.09).addScaledVector(f, 0.06 * k).add(new THREE.Vector3(0, -0.03 * Math.abs(k), 0));
+      inc = 0.35 + 0.06 * Math.abs(k);
+      if (PAD.t > 7) { PAO.material = matMassa; muda('leva1'); }
+      break;
+    }
+    case 'leva1': carrega = true; if (anda(st, PA_W, dt)) muda('leva2'); break;
+    case 'leva2': carrega = true; if (anda(st, PA_B, dt)) muda('agacha'); break;
+    case 'agacha': case 'enfia': case 'espera': case 'tira': {
+      st.toca('Parado'); lerpAng(o, angB, Math.min(1, dt * 6));
+      desce = 0.48; inc = 0.55;
+      const fundo = BOCA.clone().addScaledVector(f, 0.05), fora = BOCA.clone().addScaledVector(f, -0.35).setY(0.32);
+      if (PAD.e === 'agacha') { carrega = true; if (PAD.t > 0.9) muda('enfia'); }
+      else if (PAD.e === 'enfia') {
+        const k = Math.min(1, PAD.t / 0.8), volta = Math.max(0, (PAD.t - 1.2) / 0.6);
+        const m = fora.clone().lerp(fundo, k).lerp(fora, Math.min(1, volta));
+        aE = m.clone().addScaledVector(lado, 0.08); aD = m.clone().addScaledVector(lado, -0.08);
+        PAO.visible = PAD.t < 1.0; if (PAO.visible) PAO.position.copy(m);
+        if (PAD.t > 1.9) muda('espera');
+      } else if (PAD.e === 'espera') {
+        const jE = pos(st.os.pE[1]), jD = pos(st.os.pD[1]);   // mãos nos joelhos
+        aE = jE.addScaledVector(f, 0.08).add(new THREE.Vector3(0, 0.05, 0)); aD = jD.addScaledVector(f, 0.08).add(new THREE.Vector3(0, 0.05, 0));
+        inc = 0.35; if (PAD.t > 4) { PAO.material = matPao; muda('tira'); }
+      } else {
+        const k = Math.min(1, PAD.t / 0.8), volta = Math.max(0, (PAD.t - 1.1) / 0.7);
+        const m = fora.clone().lerp(fundo, k).lerp(fora, Math.min(1, volta));
+        aE = m.clone().addScaledVector(lado, 0.08); aD = m.clone().addScaledVector(lado, -0.08);
+        PAO.visible = PAD.t > 0.9; PAO.position.copy(m);
+        if (PAD.t > 1.9) muda('levanta');
+      }
+      break;
+    }
+    case 'levanta': carrega = true; desce = 0.48 * Math.max(0, 1 - PAD.t / 0.7); inc = 0.55 * Math.max(0, 1 - PAD.t / 0.7); st.toca('Parado'); if (PAD.t > 0.8) muda('volta1'); break;
+    case 'volta1': carrega = true; if (anda(st, PA_W, dt)) muda('volta2'); break;
+    case 'volta2': carrega = true; if (anda(st, PA_A, dt)) muda('poe'); break;
+    case 'poe': {
+      st.toca('Parado'); lerpAng(o, angA, Math.min(1, dt * 6));
+      const lugar = MASSA.clone().addScaledVector(lado, -0.35 + 0.17 * (PAES.length % 3)); lugar.y = MESA_Y + 0.04;
+      const m = peito.clone().addScaledVector(f, 0.3).add(new THREE.Vector3(0, -0.3, 0)).lerp(lugar, Math.min(1, PAD.t / 0.7));
+      aE = m.clone().addScaledVector(lado, 0.08); aD = m.clone().addScaledVector(lado, -0.08); inc = 0.25;
+      PAO.position.copy(m); PAO.visible = true;
+      if (PAD.t > 1.0) {
+        const pn = PAO.clone(); pn.position.copy(lugar); scene.add(pn); PAES.push(pn); if (PAES.length > 3) scene.remove(PAES.shift());
+        PAO.visible = false; muda('sova');
+      }
+      break;
+    }
   }
-  PAO.visible = !!e.pao || (e.depois && pad.t > e.dur * 0.6);
-  if (PAO.visible && mao) { mao.getWorldPosition(vMao); PAO.position.copy(vMao); }
-  if (fim) {
-    if (e.poe) { const p = PAO.clone(); p.position.copy(PAO.position); scene.add(p); PAES.push(p); if (PAES.length > 3) scene.remove(PAES.shift()); }
-    pad.t = 0; pad.i = (pad.i + 1) % ROTINA.length;
+  if (carrega) {                                    // segura a massa / o pão diante do peito
+    const m = peito.clone().addScaledVector(f, 0.3).add(new THREE.Vector3(0, -0.28, 0));
+    aE = m.clone().addScaledVector(lado, 0.09); aD = m.clone().addScaledVector(lado, -0.09);
+    PAO.visible = true; PAO.position.copy(m);
   }
+  // agachar: o corpo desce e os pés ficam no chão
+  st.desce += (desce - st.desce) * Math.min(1, dt * 5); st.inc += (inc - st.inc) * Math.min(1, dt * 5);
+  if (st.desce > 0.01) {
+    const pe = pos(st.os.pE[2]), pd = pos(st.os.pD[2]);
+    o.position.y = -st.desce; o.updateMatrixWorld(true);
+    pernas(st, pe, pd);
+  } else o.position.y = 0;
+  inclina(st, st.inc);
+  maos(st, aE || pos(st.os.bE[2]), aD || pos(st.os.bD[2]), dt, aE ? 1 : 0, 9);
+}
+
+// ---------- pisador: só pisa as uvas, levantando um pé de cada vez, mãos na cintura ----------
+corpo(pisador); pisador.toca('Parado');
+function pisadorPasso(dt, t) {
+  const st = pisador, o = st.o;
+  lerpAng(o, LG.r + Math.sin(t * 0.3) * 0.5, 1);
+  o.position.y = LG.tanque.y - 0.05 - Math.abs(Math.sin(t * 3.4)) * 0.03;
+  o.updateMatrixWorld(true);
+  const f = frente(st);
+  const ch = o.position.y + 0.06;
+  const pE = pos(st.os.pE[2]), pD = pos(st.os.pD[2]);
+  const sE = Math.max(0, Math.sin(t * 3.4)), sD = Math.max(0, Math.sin(t * 3.4 + Math.PI));
+  pE.y = ch + sE * 0.28; pE.addScaledVector(f, sE * 0.08); pD.y = ch + sD * 0.28; pD.addScaledVector(f, sD * 0.08);
+  pernas(st, pE, pD);
+  inclina(st, 0.12);
+  const lado = pos(st.os.bE[0]).sub(pos(st.os.bD[0])).setY(0).normalize(), cint = pos(st.os.pelvis).add(new THREE.Vector3(0, 0.12, 0));
+  maos(st, cint.clone().addScaledVector(lado, 0.2).addScaledVector(f, 0.02), cint.clone().addScaledVector(lado, -0.2).addScaledVector(f, 0.02), dt, 1, 20);
 }
 const marta = ator(nMarta, 1.62, -5.9, -5.0, -1.18, 'Conversando');
 const lazaro = ator(nLazaro, 1.72, -7.6, -4.3, 1.96, 'Conversando');
 marta.r0 = -1.18; lazaro.r0 = 1.96;
 const pastor = ator(nPastor, 1.68, -8.6, 11.8, 2.6, 'Parado');
-const lenco = ator(nLenco, 1.6, 1.2, -0.9, -3.05, 'Parado');
+const lenco = ator(nLenco, 1.6, 1.25, -1.7, Math.PI + 0.15, 'Parado');
+const vendedor = ator(nRobusto, 1.72, 0.85, -3.55, 0.15, 'Conversando');
+corpo(lenco); corpo(vendedor);
+CIRC.push({ x: 1.25, z: -1.7, r: 0.35 });
+// o vendedor fala, pega um produto no balcão e entrega; a freguesa estende a mão e recebe
+const PROD = new THREE.Mesh(new THREE.SphereGeometry(0.08, 7, 5), new THREE.MeshStandardMaterial({ color: 0xa63d2a, roughness: 1, flatShading: true }));
+PROD.castShadow = true; PROD.visible = false; scene.add(PROD);
+function barracaPasso(dt, t) {
+  const c = t % 9, fv = frente(vendedor), fl = frente(lenco);
+  const meio = vendedor.o.position.clone().lerp(lenco.o.position, 0.5).setY(1.05);
+  const balcao = vendedor.o.position.clone().addScaledVector(fv, 0.45).setY(0.92);
+  const ombroV = pos(vendedor.os.bD[0]), ombroL = pos(lenco.os.bD[0]);
+  let aV = null, aL = null;
+  if (c < 3.5) vendedor.toca('Conversando');
+  else {
+    vendedor.toca('Parado');
+    if (c < 5) aV = balcao;
+    else if (c < 7.2) aV = meio.clone().addScaledVector(fv, -0.05);
+    else aV = null;
+  }
+  if (c > 5.3 && c < 7.6) aL = meio.clone().addScaledVector(fl, -0.02);
+  PROD.visible = c > 4.4 && c < 8.6;
+  if (PROD.visible) PROD.position.copy(pos(c < 7.0 ? vendedor.os.bD[2] : lenco.os.bD[2]));
+  maos(vendedor, pos(vendedor.os.bE[2]), aV || pos(vendedor.os.bD[2]), dt, aV ? 1 : 0, 6);
+  // só o braço direito: a esquerda segue o clipe
+  if (vendedor.pesoB > 0.01) { vendedor.os.bE[0].updateMatrixWorld(true); }
+  lenco.toca('Parado');
+  maos(lenco, pos(lenco.os.bE[2]), aL || pos(lenco.os.bD[2]), dt, aL ? 1 : 0, 5);
+}
 const andante = ator(nRobusto, 1.74, 0, 0, 0, 'Andar');
-CIRC.push({ x: -5.9, z: -5.0, r: 0.35 }, { x: -7.6, z: -4.3, r: 0.35 }, { x: -8.6, z: 11.8, r: 0.35 }, { x: 1.2, z: -0.9, r: 0.35 });
+CIRC.push({ x: -5.9, z: -5.0, r: 0.35 }, { x: -7.6, z: -4.3, r: 0.35 }, { x: -8.6, z: 11.8, r: 0.35 }, { x: 0.85, z: -3.55, r: 0.3 });
+
+// ---------- poço ----------
+const POCO = { c: new THREE.Vector3(8.4, 0, 3.6) };
+{
+  const k = 0.8, n = nos(gOfi).Poco.clone(); n.position.set(0, 0, 0); n.scale.setScalar(k); n.updateMatrixWorld(true);
+  // centro e borda do anel: só os vértices altos
+  const v = new THREE.Vector3(), bx = new THREE.Box3(); let topo = 0;
+  n.traverse((o) => { if (!o.isMesh) return; const pa = o.geometry.attributes.position; for (let i = 0; i < pa.count; i++) { v.fromBufferAttribute(pa, i).applyMatrix4(o.matrixWorld); topo = Math.max(topo, v.y); } });
+  n.traverse((o) => { if (!o.isMesh) return; const pa = o.geometry.attributes.position; for (let i = 0; i < pa.count; i++) { v.fromBufferAttribute(pa, i).applyMatrix4(o.matrixWorld); if (v.y > topo * 0.7) bx.expandByPoint(v); } });
+  const cc = bx.getCenter(new THREE.Vector3());
+  n.position.set(POCO.c.x - cc.x, 0, POCO.c.z - cc.z); sombra(n); scene.add(n);
+  POCO.borda = topo; POCO.raio = (bx.max.x - bx.min.x) / 2;
+  CIRC.push({ x: POCO.c.x, z: POCO.c.z, r: POCO.raio + 0.1 });
+}
+const aguadeira = corpo(ator(nLenco, 1.58, POCO.c.x - POCO.raio - 0.45, POCO.c.z + 0.2, Math.PI / 2, 'Parado'));
+const AG = { e: 'puxa', t: 0, cheio: 0 };
+const AG_LUGAR = aguadeira.o.position.clone();
+const AG_ANG = Math.atan2(POCO.c.x - AG_LUGAR.x, POCO.c.z - AG_LUGAR.z);
+const madeira = new THREE.MeshStandardMaterial({ color: 0x7a5232, roughness: 1, flatShading: true });
+const BALDE = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.1, 0.22, 8), madeira); BALDE.castShadow = true; scene.add(BALDE);
+const CORDA = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 1, 4), new THREE.MeshStandardMaterial({ color: 0xc9b07a, roughness: 1 })); scene.add(CORDA);
+const AGUA = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.035, 1, 6), new THREE.MeshStandardMaterial({ color: 0x8fc4e0, transparent: true, opacity: 0.7, roughness: 0.3 })); AGUA.visible = false; scene.add(AGUA);
+const CANTARO = OB.Jarro_Alto.clone(); CANTARO.scale.setScalar(1.5); sombra(CANTARO); scene.add(CANTARO);
+const altCant = new THREE.Box3().setFromObject(CANTARO).getSize(new THREE.Vector3()).y;
+const CANT_CHAO = AG_LUGAR.clone().add(new THREE.Vector3(-0.15, 0, 0.75));
+CANTARO.position.copy(CANT_CHAO);
+const CASA_AG = CASAS[1].mundo(CASAS[1].px + 0.9, CASAS[1].pz + 1.1);
+const cordaEntre = (a, b) => { const m = a.clone().add(b).multiplyScalar(0.5), d = b.clone().sub(a); CORDA.position.copy(m); CORDA.scale.y = Math.max(0.01, d.length()); CORDA.quaternion.setFromUnitVectors(CIMA, d.normalize()); };
+function aguadeiraPasso(dt, t) {
+  const st = aguadeira, o = st.o, f = frente(st);
+  AG.t += dt;
+  const muda = (e) => { AG.e = e; AG.t = 0; };
+  const lado = pos(st.os.bE[0]).sub(pos(st.os.bD[0])).setY(0).normalize();
+  const peito = pos(st.os.sp3);
+  let aE = null, aD = null, inc = 0, peso = 1;
+  CORDA.visible = false; AGUA.visible = false;
+  const sobreBoca = POCO.c.clone().setY(POCO.borda + 0.25).addScaledVector(f, -0.25);
+  switch (AG.e) {
+    case 'puxa': {                                  // mão sobre mão, o balde sobe do fundo
+      st.toca('Parado'); lerpAng(o, AG_ANG, Math.min(1, dt * 5));
+      const k = t * 3.0, yE = 1.0 + 0.22 * Math.sin(k), yD = 1.0 + 0.22 * Math.sin(k + Math.PI);
+      aE = sobreBoca.clone().setY(yE).addScaledVector(lado, 0.06); aD = sobreBoca.clone().setY(yD).addScaledVector(lado, -0.06);
+      inc = 0.3;
+      const sobe = Math.min(1, AG.t / 6);
+      BALDE.position.copy(POCO.c).setY(-0.4 + sobe * (POCO.borda + 0.1)); BALDE.rotation.set(0, 0, 0);
+      cordaEntre(BALDE.position.clone().add(new THREE.Vector3(0, 0.12, 0)), Math.min(yE, yD) < 1 ? (yE < yD ? st.mE || aE : st.mD || aD) : aE);
+      CORDA.visible = true;
+      if (AG.t > 6) muda('tira');
+      break;
+    }
+    case 'tira': {                                  // puxa o balde para a borda
+      st.toca('Parado');
+      const m = POCO.c.clone().lerp(o.position, Math.min(1, AG.t / 0.9) * 0.55).setY(POCO.borda + 0.15 + 0.1 * Math.min(1, AG.t / 0.9));
+      BALDE.position.copy(m); aE = m.clone().addScaledVector(lado, 0.1).setY(m.y + 0.14); aD = m.clone().addScaledVector(lado, -0.1).setY(m.y + 0.14); inc = 0.25;
+      if (AG.t > 1.1) muda('vira');
+      break;
+    }
+    case 'vira': case 'despeja': {                  // vira para o cântaro e despeja
+      st.toca('Parado');
+      const alvoAng = Math.atan2(CANT_CHAO.x - o.position.x, CANT_CHAO.z - o.position.z);
+      lerpAng(o, alvoAng, Math.min(1, dt * 4));
+      const boca = CANT_CHAO.clone().setY(altCant + 0.3);
+      const m = AG.e === 'vira' ? peito.clone().addScaledVector(f, 0.32).add(new THREE.Vector3(0, -0.25, 0)) : boca.clone().addScaledVector(f, -0.12);
+      BALDE.position.lerp(m, Math.min(1, dt * 6));
+      const tomb = AG.e === 'despeja' ? Math.min(1.4, AG.t * 2) : 0;
+      BALDE.quaternion.setFromAxisAngle(new THREE.Vector3().crossVectors(CIMA, f).normalize(), tomb);
+      aE = BALDE.position.clone().addScaledVector(lado, 0.12).add(new THREE.Vector3(0, 0.08, 0)); aD = BALDE.position.clone().addScaledVector(lado, -0.12).add(new THREE.Vector3(0, 0.08, 0));
+      inc = AG.e === 'despeja' ? 0.35 : 0.1;
+      if (AG.e === 'despeja' && AG.t > 0.5 && AG.t < 2.3) {
+        const de = BALDE.position.clone().addScaledVector(f, 0.12), ate = CANT_CHAO.clone().setY(altCant * 0.9);
+        const mm = de.clone().add(ate).multiplyScalar(0.5); AGUA.position.copy(mm); AGUA.scale.y = de.distanceTo(ate); AGUA.quaternion.setFromUnitVectors(CIMA, de.clone().sub(ate).normalize()); AGUA.visible = true;
+      }
+      if (AG.e === 'vira' && AG.t > 1.0) muda('despeja');
+      if (AG.e === 'despeja' && AG.t > 2.6) { AG.cheio++; muda(AG.cheio >= 2 ? 'ergue' : 'devolve'); }
+      break;
+    }
+    case 'devolve': {                               // larga o balde de volta no poço
+      st.toca('Parado'); lerpAng(o, AG_ANG, Math.min(1, dt * 5));
+      BALDE.quaternion.identity(); BALDE.position.lerp(POCO.c.clone().setY(POCO.borda + 0.2), Math.min(1, dt * 5));
+      aE = BALDE.position.clone().addScaledVector(lado, 0.12).add(new THREE.Vector3(0, 0.1, 0)); aD = BALDE.position.clone().addScaledVector(lado, -0.12).add(new THREE.Vector3(0, 0.1, 0));
+      inc = 0.3; if (AG.t > 1.0) muda('puxa');
+      break;
+    }
+    case 'ergue': {                                 // agacha, pega o cântaro e põe na cabeça
+      st.toca('Parado'); BALDE.quaternion.identity(); BALDE.position.copy(POCO.c).setY(POCO.borda + 0.05).addScaledVector(f, -0.1);
+      const k = Math.min(1, AG.t / 1.6), cab = pos(st.os.cab).add(new THREE.Vector3(0, 0.12, 0));
+      CANTARO.position.copy(CANT_CHAO.clone().lerp(cab, k));
+      aE = CANTARO.position.clone().addScaledVector(lado, 0.14).add(new THREE.Vector3(0, altCant * 0.55, 0));
+      aD = CANTARO.position.clone().addScaledVector(lado, -0.14).add(new THREE.Vector3(0, altCant * 0.55, 0));
+      inc = 0.5 * (1 - k);
+      if (AG.t > 1.8) muda('leva');
+      break;
+    }
+    case 'leva': case 'volta': {
+      const indo = AG.e === 'leva';
+      if (indo) {
+        CANTARO.position.copy(pos(st.os.cab).add(new THREE.Vector3(0, 0.1, 0)));
+        aE = CANTARO.position.clone().addScaledVector(lado, 0.16).add(new THREE.Vector3(0, altCant * 0.5, 0));
+        aD = pos(st.os.bD[2]); peso = 1;
+        if (anda(st, CASA_AG, dt, 0.8)) { CANTARO.position.copy(CASA_AG.clone().addScaledVector(f, 0.45)); muda('volta'); }
+      } else {
+        peso = 0;
+        if (anda(st, AG_LUGAR, dt, 0.9)) { AG.cheio = 0; CANTARO.position.copy(CANT_CHAO); muda('puxa'); }
+      }
+      break;
+    }
+  }
+  st.inc += (inc - st.inc) * Math.min(1, dt * 5); inclina(st, st.inc);
+  if (AG.e === 'leva') { maos(st, aE, pos(st.os.bD[2]), dt, 1, 12); }
+  else maos(st, aE || pos(st.os.bE[2]), aD || pos(st.os.bD[2]), dt, aE ? peso : 0, 10);
+}
 
 // arado: madeira simples atrelada ao boi
 const boi = ator(gBoi, 1.55, 6, 7, Math.PI / 2, 'Andar');
@@ -498,6 +797,23 @@ const botao = document.getElementById('acao'), fade = document.getElementById('f
 let fora = false;
 botao.onclick = () => acionar();
 let portaPerto = null, jogVy = 0, jogNoChao = true;
+// direcional virtual (canto esquerdo de baixo)
+const JOY = { on: false, x: 0, y: 0, id: null };
+{
+  const base = document.createElement('div'), pino = document.createElement('div');
+  Object.assign(base.style, { position: 'fixed', left: '22px', bottom: 'calc(22px + env(safe-area-inset-bottom))', width: '120px', height: '120px', borderRadius: '50%', background: '#fdf6e355', border: '2px solid #fdf6e3aa', touchAction: 'none', zIndex: 4 });
+  Object.assign(pino.style, { position: 'absolute', left: '35px', top: '35px', width: '50px', height: '50px', borderRadius: '50%', background: '#fdf6e3', boxShadow: '0 2px 8px #0003', pointerEvents: 'none' });
+  base.appendChild(pino); document.body.appendChild(base);
+  const move = (e) => {
+    const r = base.getBoundingClientRect(); let x = (e.clientX - r.left - 60) / 50, y = (e.clientY - r.top - 60) / 50;
+    const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; }
+    JOY.x = x; JOY.y = y; pino.style.left = 35 + x * 40 + 'px'; pino.style.top = 35 + y * 40 + 'px';
+  };
+  base.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); JOY.on = true; JOY.id = e.pointerId; base.setPointerCapture(e.pointerId); alvoToque = null; move(e); });
+  base.addEventListener('pointermove', (e) => { if (JOY.on && e.pointerId === JOY.id) move(e); });
+  const fim = (e) => { if (e.pointerId !== JOY.id) return; JOY.on = false; JOY.x = JOY.y = 0; pino.style.left = '35px'; pino.style.top = '35px'; };
+  base.addEventListener('pointerup', fim); base.addEventListener('pointercancel', fim);
+}
 const toqueTela = matchMedia('(pointer: coarse)').matches;
 function pular() { if (jogNoChao && !fora) { jogVy = 5.2; jogNoChao = false; } }
 addEventListener('keydown', (e) => { if (e.code === 'Space') { e.preventDefault(); pular(); } });
@@ -568,6 +884,7 @@ const laco = (forca) => {
   if (!fora) {
     if (tecla.KeyW || tecla.ArrowUp) mv.add(fw); if (tecla.KeyS || tecla.ArrowDown) mv.sub(fw);
     if (tecla.KeyD || tecla.ArrowRight) mv.add(rt); if (tecla.KeyA || tecla.ArrowLeft) mv.sub(rt);
+    if (JOY.on && Math.hypot(JOY.x, JOY.y) > 0.15) { mv.addScaledVector(fw, -JOY.y).addScaledVector(rt, JOY.x); }
     if (mv.lengthSq() > 0) alvoToque = null;
     else if (alvoToque) { mv.subVectors(alvoToque, jog.o.position).setY(0); if (mv.length() < 0.15) { alvoToque = null; mv.set(0, 0, 0); } }
   }
@@ -578,11 +895,11 @@ const laco = (forca) => {
   const naFolha = (x, z) => CASAS.some((c) => { if (c.ang > -0.3) return false; const b = new THREE.Box3().setFromObject(c.porta).expandByScalar(0.18); return x > b.min.x && x < b.max.x && z > b.min.z && z < b.max.z; });
   let andou = false;
   if (mv.lengthSq() > 0) {
-    mv.normalize(); const corre = tecla.ShiftLeft || tecla.ShiftRight || (alvoToque && alvoToque.distanceTo(jog.o.position) > 6);
+    mv.normalize(); const corre = tecla.ShiftLeft || tecla.ShiftRight || (JOY.on && Math.hypot(JOY.x, JOY.y) > 0.9) || (alvoToque && alvoToque.distanceTo(jog.o.position) > 6);
     const v = (corre ? 5.2 : 2.4) * dt, p = jog.o.position;
     const nx = p.x + mv.x * v, nz = p.z + mv.z * v;
     // não atravessa quem anda (só bloqueia se estiver se aproximando)
-    const moveis = [[andante, 0.6], [boi, 1.1], [lavrador, 0.6], [padeira, 0.5], ...ovelhas.map((o) => [o, 0.7])];
+    const moveis = [[andante, 0.6], [boi, 1.1], [lavrador, 0.6], [padeira, 0.5], [aguadeira, 0.5], ...ovelhas.map((o) => [o, 0.7])];
     const noChaoBaixo = p.y < 0.4;
     const livre = (x, z) => naArea(x, z) && !naFolha(x, z) && (!noChaoBaixo || !bate(x, z)) &&
       (passagem(x, z) || alturaEm(x, z) <= p.y + 0.5) &&
@@ -650,8 +967,10 @@ const laco = (forca) => {
   }
 
   // pisador gira devagar dentro do tanque
-  pisador.o.rotation.y = LG.r + Math.sin(t * 0.35) * 0.7;   // pisa no lugar, virando devagar de um lado a outro
-  padeiraPasso(dt);
+  pisadorPasso(dt, t); padeiraPasso(dt, t); barracaPasso(dt, t); aguadeiraPasso(dt, t);
+  // porteira do aprisco abre quando o jogador chega perto
+  APR.alvoAb = jog.o.position.distanceTo(APR.centroPorta) < 2.6 ? 1.6 : 0;
+  APR.ab += (APR.alvoAb - APR.ab) * Math.min(1, dt * 3); APR.piv.rotation.y = APR.base + APR.ab;
   // passante
   if (pausa > 0) { pausa -= dt; andante.toca('Parado'); }
   else if (jog.o.position.distanceTo(andante.o.position) < 1.1) andante.toca('Parado');   // espera o jogador sair da frente
