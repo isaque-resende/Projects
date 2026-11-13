@@ -199,8 +199,13 @@ const naTrilha = (x, z, m) => {
 
 // ---------- árvores e arbustos ----------
 const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+const comRetentativa = async (url) => {
+  for (let k = 0; ; k++) {
+    try { return await loader.loadAsync(url); } catch (e) { if (k >= 3) throw e; await new Promise((r) => setTimeout(r, 400 * (k + 1))); }
+  }
+};
 const carregar = async (url) => {
-  const g = await loader.loadAsync(url);
+  const g = await comRetentativa(url);
   const m = {};
   for (const n of g.scene.children) {
     n.position.set(0, 0, 0);
@@ -277,6 +282,20 @@ for (let i = 0, n = 0; i < 600 && n < 40; i++) {
   scene.add(grass);
 }
 
+// ---------- um personagem de 1,7 m na trilha, para comparar a escala ----------
+let mixer = null;
+{
+  const g = await comRetentativa('../personagens/rapaz.glb');
+  const p = curva.getPointAt(0.42);
+  g.scene.position.set(p.x, 0, p.z + 0.2);
+  g.scene.rotation.y = 0.35;
+  g.scene.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  scene.add(g.scene);
+  mixer = new THREE.AnimationMixer(g.scene);
+  const c = g.animations.find((a) => a.name === 'Parado') || g.animations[0];
+  if (c) mixer.clipAction(c).play();
+}
+
 // ---------- nuvens facetadas em volta da ilha, andando devagar ----------
 const nuvens = [];
 {
@@ -329,7 +348,9 @@ addEventListener('resize', () => {
 
 const relogio = new THREE.Clock();
 renderer.setAnimationLoop(() => {
-  const t = relogio.getElapsedTime();
+  const dt = relogio.getDelta();
+  const t = relogio.elapsedTime;
+  if (mixer) mixer.update(dt);
   for (const g of nuvens) {
     g.position.x = g.userData.base + Math.sin(t * 0.05 * g.userData.vel * 6 + g.userData.fase) * 2.2;
     g.position.y += Math.sin(t * 0.4 + g.userData.fase) * 0.0015;
