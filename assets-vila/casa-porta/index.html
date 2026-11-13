@@ -213,6 +213,28 @@ const PORTA = new THREE.Vector3((bp.min.x + bp.max.x) / 2, 0, bp.max.z);
 let aberta = false, ang = 0;
 const ABERTO = -1.75;
 
+// ---------- objetos da casa (cestos, potes, lenha) junto à fachada ----------
+{
+  const ob = await baixar('objetos_casa.glb');
+  const O = {};
+  for (const n of ob.scene.children) { n.position.set(0, 0, 0); sombra(n); O[n.name] = n; }
+  // [dx a partir da porta, dz à frente da fachada, escala, nome, giro]
+  const OBJ = [
+    [1.4, 0.55, 1.3, 'Jarro_Alto', 0.3], [1.95, 0.5, 1.3, 'Pote_Escuro', 1.0], [1.6, 1.05, 1.2, 'Jarra_Alca', -0.6],
+    [2.3, 1.0, 1.0, 'Tigela_Funda', 0.0], [-4.1, 0.6, 1.1, 'Saco', -0.2], [-4.3, 1.3, 1.0, 'Cesto_Alca', 0.4],
+    [-2.0, 0.6, 1.0, 'Lenha', 0.2], [-2.6, 1.0, 1.0, 'Banquinho', 1.4], [-2.6, 1.0, 1.0, 'Cesto_Raso', 0.0],
+    [-3.3, 0.6, 1.3, 'Panela_Barro', 0.5], [-3.6, 1.3, 1.0, 'Pilao', 0.0], [-1.8, 1.6, 1.2, 'Esteira', 0.1],
+  ];
+  for (const [dx, dz, k, nome, r] of OBJ) {
+    if (!O[nome]) continue;
+    const n = O[nome].clone(); n.scale.setScalar(k); n.rotation.y = r;
+    let y = 0;
+    if (nome === 'Cesto_Raso') y = 0.19; // em cima do banquinho
+    n.position.set(PORTA.x + dx, y, PORTA.z + dz); scene.add(n);
+    if (nome !== 'Esteira' && nome !== 'Cesto_Raso') TRONCOS.push({ x: PORTA.x + dx, z: PORTA.z + dz, r: 0.28 * k });
+  }
+}
+
 // ---------- jogador ----------
 const pj = await baixar('../vila-betania/discipulo_acoes.glb');
 const jog = pj.scene; sombra(jog);
