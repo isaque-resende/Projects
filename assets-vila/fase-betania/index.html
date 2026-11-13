@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#d9d2bf">
+<title>Fase de Betânia</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #d9d2bf; font-family: system-ui, sans-serif; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  #fade { position: fixed; inset: 0; background: #000; opacity: 1; pointer-events: none; transition: opacity .9s; display: flex; align-items: center; justify-content: center; color: #f3e9d2; font-size: 22px; letter-spacing: .04em; }
+  #acao { position: fixed; left: 50%; bottom: calc(26px + env(safe-area-inset-bottom)); transform: translateX(-50%); padding: 12px 20px; border: 0; border-radius: 12px; background: #fdf6e3; color: #4a3520; font-size: 16px; box-shadow: 0 3px 12px #0003; display: none; }
+  #dica { position: fixed; left: 12px; top: calc(10px + env(safe-area-inset-top)); color: #4a3520; background: #fdf6e3cc; padding: 6px 10px; border-radius: 8px; font-size: 13px; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="fade"></div>
+<button id="acao"></button>
+<div id="dica">WASD ou toque para andar · Shift corre · roda/pinça: zoom</div>
+<script type="module">
+// Fase de Betânia: vila compacta em vista isométrica. A câmera não gira: só acompanha o jogador
+// (com limite) e aproxima/afasta. O que fica entre a câmera e o jogador fica transparente.
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xd9d2bf);
+scene.fog = new THREE.Fog(0xd9d2bf, 55, 95);
+scene.add(new THREE.HemisphereLight(0xd6ebff, 0xc9a47a, 1.3));
+const sun = new THREE.DirectionalLight(0xffe2b8, 3.1);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -26, right: 26, top: 26, bottom: -26, near: 1, far: 80 });
+sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.03;
+scene.add(sun, sun.target);
+
+let seed = 7;
+const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+const tl = new THREE.TextureLoader();
+const tex = (url, rep) => {
+  const t = tl.load(url); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()); if (rep) t.repeat.set(rep, rep); return t;
+};
+
+// ---------- chão: grande o bastante para a câmera nunca ver a borda ----------
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshStandardMaterial({ map: tex('../figueiras/tex/chao_grama_v3.webp', 40), roughness: 1 }));
+ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+
+// ---------- caminhos de terra ----------
+const CAMINHOS = [];
+function caminho(pts, larg) {
+  const curva = new THREE.CatmullRomCurve3(pts.map(([x, z]) => new THREE.Vector3(x, 0, z)));
+  const N = Math.max(20, Math.round(curva.getLength() * 2)), pos = [], uv = [], idx = [];
+  for (let i = 0; i <= N; i++) {
+    const t = i / N, p = curva.getPointAt(t), tg = curva.getTangentAt(t);
+    const w = larg * (0.85 + 0.2 * Math.sin(t * 13 + pts.length));
+    pos.push(p.x - tg.z * w, 0.02, p.z + tg.x * w, p.x + tg.z * w, 0.02, p.z - tg.x * w);
+    uv.push(0, t * N / 3, 1, t * N / 3);
+  }
+  for (let i = 0; i < N; i++) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
+  const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: tex('../betania/tex/estrada_terra.webp'), roughness: 1, polygonOffset: true, polygonOffsetFactor: -1 }));
+  m.receiveShadow = true; scene.add(m);
+  CAMINHOS.push({ curva, larg });
+}
+// estrada para Jerusalém (sai pelo oeste, à esquerda) e ruelas
+caminho([[-60, 3], [-30, 3.5], [-19, 2.5], [-10, 2.8], [-3, 1.5], [3, 0.5], [9, -1.5], [16, -1]], 1.5);
+caminho([[-3, 1.5], [-5, -2.5], [-7, -5.2]], 1.0);
+caminho([[3, 0.5], [4.5, -3.5], [6, -6.5]], 1.0);
+caminho([[-10, 2.8], [-10, 6.0]], 0.9);
+const naEstrada = (x, z, m) => CAMINHOS.some(({ curva, larg }) => {
+  for (let i = 0; i <= 80; i++) { const p = curva.getPointAt(i / 80); if (Math.hypot(p.x - x, p.z - z) < larg + m) return true; }
+  return false;
+});
+
+// ---------- carregamento ----------
+const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+const baixar = async (url) => {
+  for (let k = 0; ; k++) {
+    try { return await loader.loadAsync(url); } catch (e) { if (k >= 3) throw e; await new Promise((r) => setTimeout(r, 400 * (k + 1))); }
+  }
+};
+const sombra = (r) => r.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+const nos = (g) => { const m = {}; for (const n of g.scene.children) { m[n.name] = n; } return m; };
+
+// só a leva nova (modelada, com volume) + forno de pão
+const [gCasaP, gMuros, gForno, gTripo, gPar, gTam, gCip, gFrond, gRoch, gObj, gParr, gBarr, gBoi, gOve, gJog, ...gNpc] = await Promise.all([
+  baixar('../casa-porta/casa_porta.glb'), baixar('../casa-porta/muros_kit.glb'), baixar('../forno-pao/forno.glb'),
+  baixar('../casa-porta/arvores_tripo.glb'), baixar('../casa-porta/arvores_par.glb'),
+  baixar('../casa-porta/tamareiras.glb?v=4'), baixar('../diorama-ciprestes/ciprestes.glb'), baixar('../casa-porta/arvores_frondosas.glb'),
+  baixar('../casa-porta/rochas.glb'), baixar('../casa-porta/objetos_casa.glb'),
+  baixar('../casa-porta/parreiras_tripo.glb'), baixar('../casa-porta/barracas.glb'),
+  baixar('../animais/boi.glb'), baixar('../animais/ovelha.glb'), baixar('../vila-betania/discipulo_acoes.glb'),
+  baixar('../personagens/marta.glb'), baixar('../personagens/lazaro.glb'), baixar('../personagens/pastor.glb'),
+  baixar('../personagens/aldeao.glb'), baixar('../personagens/mulher_lenco.glb'), baixar('../personagens/robusto.glb'),
+]);
+
+// obstáculos: caixas (x0, x1, z0, z1) e círculos
+const CAIXAS = [], CIRC = [];
+const FADE = [];                                    // objetos altos que somem quando tampam o jogador
+const bate = (x, z, m = 0.3) => CAIXAS.some((c) => x > c.x0 - m && x < c.x1 + m && z > c.z0 - m && z < c.z1 + m) || CIRC.some((c) => Math.hypot(c.x - x, c.z - z) < c.r + m);
+function caixaDe(obj, enc = 0) {
+  obj.updateWorldMatrix(true, true);
+  const b = new THREE.Box3().setFromObject(obj);
+  CAIXAS.push({ x0: b.min.x + enc, x1: b.max.x - enc, z0: b.min.z + enc, z1: b.max.z - enc });
+}
+function por(modelo, x, z, r = 0, k = 1, { fade = false, caixa = false, circ = 0, y = 0 } = {}) {
+  const n = modelo.clone(); n.position.set(x, y, z); n.rotation.y = r; n.scale.setScalar(k);
+  sombra(n); scene.add(n);
+  if (caixa) caixaDe(n, typeof caixa === 'number' ? caixa : 0.15);
+  if (circ) CIRC.push({ x, z, r: circ * k });
+  if (fade) FADE.push(n);
+  return n;
+}
+
+// ---------- casas (todas ao fundo, de frente para a câmera) ----------
+const CASAP = gCasaP.scene; CASAP.children.forEach((c) => c.position.set(0, 0, 0));
+const casaMarta = new THREE.Group(); for (const c of [...CASAP.children]) casaMarta.add(c.clone());
+casaMarta.position.set(-7, 0, -9); sombra(casaMarta); scene.add(casaMarta); caixaDe(casaMarta, 0.2); FADE.push(casaMarta);
+for (const [x, z, r] of [[7, -10.5, -0.15], [-16.5, -4.5, 0.6], [16, -4.5, -0.6]]) {
+  const g = new THREE.Group(); for (const c of [...CASAP.children]) g.add(c.clone());
+  g.position.set(x, 0, z); g.rotation.y = r; sombra(g); scene.add(g); caixaDe(g, 0.3); FADE.push(g);
+}
+
+// ---------- largo: duas barracas; parreira junto à casa de Marta; aprisco de pedra ----------
+const MU = nos(gMuros), BA = nos(gBarr), PA = nos(gParr);
+for (const o of [...Object.values(MU), ...Object.values(BA), ...Object.values(PA)]) o.position.set(0, 0, 0);
+por(BA.Barraca5, 1.0, -3.2, 0.15, 1, { caixa: 0.25, fade: true });
+por(BA.Barraca2, -2.2, -2.2, -0.35, 1, { caixa: 0.25, fade: true });
+por(PA.Parreira_Arco, -11.5, -6.8, 0.2, 1, { fade: true });
+CIRC.push({ x: -12.7, z: -6.6, r: 0.22 }, { x: -10.3, z: -7.1, r: 0.22 });
+por(PA.Parreira_Poste, -13.8, -6.3, 0.4, 1, { circ: 0.22 });
+{
+  // aprisco à frente-esquerda: muros baixos de pedra (nada esconde o jogador)
+  const AX = -11, AZ = 8.5;
+  const peca = (nome, x, z, r) => por(MU[nome], AX + x, AZ + z, r, 1, { caixa: 0.1 });
+  peca('Muro_Reto1', -2.4, -2.3, 0); peca('Muro_Reto2', 0, -2.4, 0.03); peca('Muro_Reto3', 2.4, -2.3, 0);
+  peca('Muro_Reto4', -2.5, 2.4, 0); peca('Muro_Reto1', 2.5, 2.4, Math.PI);     // vão no meio: entrada
+  peca('Muro_Reto2', -3.8, -0.6, Math.PI / 2); peca('Muro_Reto3', -3.8, 1.3, Math.PI / 2);
+  peca('Muro_Reto4', 3.8, -0.6, -Math.PI / 2); peca('Muro_Reto2', 3.8, 1.3, -Math.PI / 2);
+  globalThis.APRISCO = { x0: AX - 3.0, x1: AX + 3.0, z0: AZ - 1.6, z1: AZ + 1.7 };
+}
+{
+  const F = nos(gForno);
+  const base = F.Forno_Corpo.position.clone();
+  const forno = new THREE.Group();
+  for (const [n, o] of Object.entries(F)) if (n.startsWith('Forno_') && !/Chama|Brasa|Massa/.test(n)) { const c = o.clone(); c.position.sub(base); forno.add(c); }
+  forno.position.set(-2.2, 0, -8.2); forno.rotation.y = 0.4; sombra(forno); scene.add(forno); CIRC.push({ x: -2.2, z: -8.2, r: 1.3 });
+}
+
+// ---------- lavoura: terra arada à frente-direita ----------
+const LAV = { x0: 5.0, x1: 16.6, z0: 6.0, z1: 12.4 };
+{
+  const t = tex('../vila-betania/tex/terra_arada.webp'); t.repeat.set(3, 2);
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(LAV.x1 - LAV.x0, LAV.z1 - LAV.z0), new THREE.MeshStandardMaterial({ map: t, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2 }));
+  m.rotation.x = -Math.PI / 2; m.position.set((LAV.x0 + LAV.x1) / 2, 0.03, (LAV.z0 + LAV.z1) / 2); m.receiveShadow = true; scene.add(m);
+}
+
+// ---------- árvores: poucas dentro da vila, uma cortina nas bordas (sangria) ----------
+const AT = nos(gTripo), AP = nos(gPar), T = nos(gTam), C = nos(gCip), FR = nos(gFrond), R = nos(gRoch), OB = nos(gObj);
+for (const o of [...Object.values(AT), ...Object.values(AP), ...Object.values(T), ...Object.values(FR), ...Object.values(R), ...Object.values(OB), ...Object.values(C)]) o.position.set(0, 0, 0);
+por(FR.Arvore_Grande, -12.5, -1.5, 0.4, 0.8, { circ: 0.7, fade: true });
+por(AT.Arvore2, 3.2, -7.8, 0.1, 0.9, { circ: 0.4, fade: true });
+por(FR.Arvore_Pequena, 11.5, -1.5, 2.0, 0.9, { circ: 0.4, fade: true });
+por(AT.Arvore6, -4.5, 5.5, 0.1, 0.85, { circ: 0.4, fade: true });
+por(C.Cipreste2_Esguio, 12.2, -8.8, 0, 0.8, { circ: 0.4, fade: true });
+por(T.Tamareiras, 1.5, 9.5, 0.2, 0.7, { fade: true });
+CIRC.push({ x: 1.5 - 1.4, z: 9.5, r: 0.35 }, { x: 1.5 + 1.2, z: 9.5, r: 0.35 });
+// objetos junto às casas
+por(OB.Jarro_Alto, -4.2, -6.4, 0, 1.3, { circ: 0.3 }); por(OB.Pote_Escuro, -3.6, -6.0, 0, 1.3, { circ: 0.3 });
+por(OB.Cesto_Alca, 4.0, -7.6, 0.4, 1, { circ: 0.3 }); por(OB.Lenha, -0.6, -9.2, 0.3, 1, { circ: 0.3 });
+por(OB.Saco, 9.8, -6.6, 0, 1.1, { circ: 0.3 }); por(OB.Banquinho, -14, -2.8, 1.0, 1, { circ: 0.3 });
+por(R.Rocha3, -15.5, 11.5, 0.8, 1, { circ: 0.6 }); por(R.Rocha6, 18.5, 2.5, -0.4, 0.9, { circ: 0.6 });
+// cortina de árvores fora da área de jogo
+const BORDA = [];
+for (let i = 0; i < 64; i++) {
+  const a = (i / 64) * Math.PI * 2;
+  const rx = 25 + rnd() * 6, rz = 19 + rnd() * 5;
+  const x = Math.cos(a) * rx, z = Math.sin(a) * rz;
+  if (Math.abs(z - 3) < 3.5 && x < 0) continue;      // a estrada para Jerusalém fica aberta
+  const lista = [C.Cipreste2_Esguio, C.Cipreste1_Redondo, FR.Arvore_Pequena, AT.Arvore1, AT.Arvore3, AT.Arvore5, AT.Arvore8, AT.Arvore9, T.Tamareiras].filter(Boolean);
+  BORDA.push(por(lista[Math.floor(rnd() * lista.length)], x, z, rnd() * 6.28, 0.85 + rnd() * 0.35, { fade: z > 8 }));
+}
+for (let i = 0; i < 10; i++) { const a = rnd() * 6.28; por(i % 2 ? FR.Arvore_Grande : AP.Arvores_Par, Math.cos(a) * 34, Math.sin(a) * 27, rnd() * 6.28, 1); }
+
+// tufos de grama (um draw call), fora dos caminhos, da lavoura e das casas
+{
+  const t = tl.load('../figueiras/tex/grama_tufo.webp'); t.colorSpace = THREE.SRGBColorSpace;
+  const a = new THREE.PlaneGeometry(0.6, 0.6); a.translate(0, 0.28, 0);
+  const b = a.clone(); b.rotateY(Math.PI / 2);
+  const geo = mergeGeometries([a, b]); const nn = geo.attributes.normal; for (let i = 0; i < nn.count; i++) nn.setXYZ(i, 0, 1, 0);
+  const N = 500, gr = new THREE.InstancedMesh(geo, new THREE.MeshStandardMaterial({ map: t, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 1 }), N);
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3();
+  let k = 0;
+  for (let i = 0; i < 8000 && k < N; i++) {
+    const x = (rnd() * 2 - 1) * 30, z = (rnd() * 2 - 1) * 23;
+    if (naEstrada(x, z, 0.6) || bate(x, z, 0.4) || (x > LAV.x0 - 0.5 && x < LAV.x1 + 0.5 && z > LAV.z0 - 0.5 && z < LAV.z1 + 0.5)) continue;
+    p.set(x, 0, z); q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rnd() * 3.14); const e = 0.5 + rnd() * 0.7; s.set(e, e, e);
+    gr.setMatrixAt(k++, m4.compose(p, q, s));
+  }
+  gr.count = k; gr.receiveShadow = true; scene.add(gr);
+}
+
+// ---------- personagens e animais ----------
+const MIX = [];
+function ator(g, altura, x, z, r, clipe) {
+  const o = SkeletonUtils.clone(g.scene); sombra(o);
+  const b = new THREE.Box3().setFromObject(o); o.scale.setScalar(altura / (b.max.y - b.min.y));
+  o.position.set(x, 0, z); o.rotation.y = r; scene.add(o);
+  const mx = new THREE.AnimationMixer(o); MIX.push(mx);
+  const A = Object.fromEntries(g.animations.map((c) => [c.name, mx.clipAction(c)]));
+  const st = { o, A, atual: '' };
+  st.toca = (n) => { if (n === st.atual || !A[n]) return; A[n].reset().fadeIn(0.2).play(); if (A[st.atual]) A[st.atual].fadeOut(0.2); st.atual = n; };
+  st.toca(clipe); A[clipe] && (A[clipe].time = rnd() * 2);
+  return st;
+}
+const [nMarta, nLazaro, nPastor, nAldeao, nLenco, nRobusto] = gNpc;
+const marta = ator(nMarta, 1.62, -3.3, -6.6, 0.5, 'Conversando');
+const lazaro = ator(nLazaro, 1.72, -5.4, -5.2, 2.4, 'Conversando');
+const pastor = ator(nPastor, 1.68, -8.6, 11.8, 2.6, 'Parado');
+const lenco = ator(nLenco, 1.6, 1.5, -1.4, -2.3, 'Parado');
+const andante = ator(nRobusto, 1.74, 0, 0, 0, 'Andar');
+CIRC.push({ x: -3.3, z: -6.6, r: 0.35 }, { x: -5.4, z: -5.2, r: 0.35 }, { x: -8.6, z: 11.8, r: 0.35 }, { x: 1.5, z: -1.4, r: 0.35 });
+
+// arado: madeira simples atrelada ao boi
+const boi = ator(gBoi, 1.55, 6, 7, Math.PI / 2, 'Andar');
+const lavrador = ator(nAldeao, 1.7, 4, 7, Math.PI / 2, 'Andar');
+const arado = new THREE.Group();
+{
+  const mad = new THREE.MeshStandardMaterial({ color: 0x6b4a2c, roughness: 1, flatShading: true });
+  const ferro = new THREE.MeshStandardMaterial({ color: 0x55504a, roughness: 0.8, flatShading: true });
+  const lanca = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 2.4, 6), mad); lanca.rotation.z = Math.PI / 2 - 0.25; lanca.position.set(1.15, 0.55, 0);
+  const rabica = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 1.0, 6), mad); rabica.rotation.z = 0.6; rabica.position.set(-0.3, 0.55, 0);
+  const relha = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.45, 5), ferro); relha.rotation.z = -Math.PI / 2 - 0.4; relha.position.set(0.15, 0.08, 0);
+  const canga = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.9), mad); canga.position.set(2.3, 1.15, 0);
+  arado.add(lanca, rabica, relha, canga); sombra(arado); scene.add(arado);
+}
+// sulcos que vão ficando para trás
+const SULCO = new THREE.MeshStandardMaterial({ color: 0x5a3d26, roughness: 1, polygonOffset: true, polygonOffsetFactor: -3 });
+const FAIXAS = [6.6, 7.6, 8.6, 9.6, 10.6, 11.6];
+const sulcos = FAIXAS.map((z) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 0.28), SULCO); m.rotation.x = -Math.PI / 2; m.position.set(LAV.x0 + 0.6, 0.04, z); m.scale.x = 0.001; scene.add(m); return m; });
+let lav = { faixa: 0, x: LAV.x0 + 1.2, dir: 1, virando: 0 };
+CAIXAS.push({ x0: LAV.x0 - 0.2, x1: LAV.x1, z0: LAV.z0 - 0.4, z1: LAV.z1 + 0.2 }); // o jogador não entra na lavoura
+
+// ovelhas no aprisco
+const ovelhas = [];
+for (let i = 0; i < 5; i++) {
+  const A = globalThis.APRISCO;
+  const o = ator(gOve, 0.85, A.x0 + 0.6 + rnd() * (A.x1 - A.x0 - 1.2), A.z0 + 0.6 + rnd() * (A.z1 - A.z0 - 1.2), rnd() * 6.28, rnd() < 0.5 ? 'Comer' : 'Parado');
+  o.alvo = null; o.espera = rnd() * 4; ovelhas.push(o);
+}
+
+// passante: dá voltas pela estrada
+const rota = new THREE.CatmullRomCurve3([[-15, 3.2], [-6, 2.4], [2, 1.1], [9, -0.6], [14, 0.3], [9, -2.4], [2, -0.4], [-6, 3.6]].map(([x, z]) => new THREE.Vector3(x, 0, z)), true);
+let tRota = 0;
+
+// ---------- jogador ----------
+const jog = ator(gJog, 1.7, 4, 3, Math.PI, 'Parado');
+const naArea = (x, z) => (x > -21 && x < 21 && z > -15 && z < 15.5) || (x < -20 && x > -27 && Math.abs(z - 3.2) < 2.6);
+
+// ---------- câmera isométrica: só segue (com limite) e faz zoom ----------
+const camera = new THREE.PerspectiveCamera(24, innerWidth / innerHeight, 0.5, 300);
+const DIR = new THREE.Vector3(1, 1.15, 1).normalize();
+let dist = innerHeight > innerWidth ? 62 : 46, distAlvo = dist;
+const DMIN = 24, DMAX = 72;
+const foco = new THREE.Vector3(0, 0, 2);
+addEventListener('wheel', (e) => { distAlvo = THREE.MathUtils.clamp(distAlvo * (e.deltaY > 0 ? 1.1 : 0.9), DMIN, DMAX); }, { passive: true });
+
+// ---------- controles ----------
+const tecla = {};
+addEventListener('keydown', (e) => { tecla[e.code] = true; if (e.code === 'KeyE') acionar(); });
+addEventListener('keyup', (e) => { tecla[e.code] = false; });
+let alvoToque = null;
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+const toques = new Map(); let pinca0 = 0, dist0 = 0, arrastou = false;
+renderer.domElement.addEventListener('pointerdown', (e) => {
+  toques.set(e.pointerId, [e.clientX, e.clientY]); arrastou = false;
+  if (toques.size === 2) { const [a, b] = [...toques.values()]; pinca0 = Math.hypot(a[0] - b[0], a[1] - b[1]); dist0 = distAlvo; }
+});
+renderer.domElement.addEventListener('pointermove', (e) => {
+  if (!toques.has(e.pointerId)) return; toques.set(e.pointerId, [e.clientX, e.clientY]);
+  if (toques.size === 2) { const [a, b] = [...toques.values()]; distAlvo = THREE.MathUtils.clamp(dist0 * pinca0 / Math.max(20, Math.hypot(a[0] - b[0], a[1] - b[1])), DMIN, DMAX); arrastou = true; }
+});
+const solta = (e) => {
+  if (toques.size === 1 && !arrastou) {
+    ndc.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); ray.setFromCamera(ndc, camera);
+    const h = ray.intersectObject(ground)[0]; if (h) alvoToque = h.point.clone();
+  }
+  toques.delete(e.pointerId);
+};
+renderer.domElement.addEventListener('pointerup', solta);
+renderer.domElement.addEventListener('pointercancel', (e) => toques.delete(e.pointerId));
+
+// ---------- saída para Jerusalém ----------
+const botao = document.getElementById('acao'), fade = document.getElementById('fade');
+let fora = false;
+botao.onclick = () => acionar();
+function acionar() {
+  if (botao.style.display !== 'block' || fora) return;
+  fora = true; botao.style.display = 'none';
+  fade.textContent = 'A caminho de Jerusalém…'; fade.style.opacity = 1;
+  setTimeout(() => { jog.o.position.set(-17, 0, 3); jog.o.rotation.y = Math.PI / 2; fade.style.opacity = 0; setTimeout(() => { fade.textContent = ''; fora = false; }, 900); }, 2200);
+}
+// placa
+{
+  const mad = new THREE.MeshStandardMaterial({ color: 0x6b4a2c, roughness: 1, flatShading: true });
+  const poste = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 1.9, 6), mad); poste.position.set(-19.5, 0.95, 5.6);
+  const c = document.createElement('canvas'); c.width = 256; c.height = 64; const g = c.getContext('2d');
+  g.fillStyle = '#8a6a44'; g.fillRect(0, 0, 256, 64); g.fillStyle = '#f6ecd6'; g.font = 'bold 30px serif'; g.textAlign = 'center'; g.fillText('← Jerusalém', 128, 43);
+  const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace;
+  const placa = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.36, 0.06), [mad, mad, mad, mad, new THREE.MeshStandardMaterial({ map: tx, roughness: 1 }), mad]);
+  placa.position.set(-19.5, 1.6, 5.62); placa.rotation.y = 0.5;
+  sombra(poste); sombra(placa); scene.add(poste, placa); CIRC.push({ x: -19.5, z: 5.6, r: 0.2 });
+}
+
+// ---------- transparência do que tampa o jogador ----------
+for (const o of FADE) o.traverse((m) => { if (m.isMesh) { m.material = m.material.clone(); m.material.transparent = true; m.userData.op = 1; } });
+const rayCam = new THREE.Raycaster();
+function atualizaFade() {
+  const p = jog.o.position.clone(); p.y = 0.9;
+  const tampa = new Set();
+  for (const alt of [0.2, 0.9, 1.6]) {
+    p.y = alt; const d = camera.position.clone().sub(p); const L = d.length(); d.normalize();
+    rayCam.set(p, d); rayCam.far = L;
+    for (const h of rayCam.intersectObjects(FADE, true)) { let o = h.object; while (o.parent && !FADE.includes(o)) o = o.parent; tampa.add(o); }
+  }
+  for (const o of FADE) {
+    const alvo = tampa.has(o) ? 0.25 : 1;
+    o.traverse((m) => { if (m.isMesh) { m.userData.op += (alvo - m.userData.op) * 0.15; m.material.opacity = m.userData.op; m.material.depthWrite = m.userData.op > 0.95; } });
+  }
+}
+
+// ---------- laço ----------
+const relogio = new THREE.Clock();
+const fw = new THREE.Vector3(), rt = new THREE.Vector3(), mv = new THREE.Vector3();
+setTimeout(() => { fade.style.opacity = 0; }, 150);
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(relogio.getDelta(), 0.05), t = relogio.elapsedTime;
+  for (const m of MIX) m.update(dt);
+
+  // jogador
+  fw.copy(DIR).negate().setY(0).normalize(); rt.set(-fw.z, 0, fw.x);
+  mv.set(0, 0, 0);
+  if (!fora) {
+    if (tecla.KeyW || tecla.ArrowUp) mv.add(fw); if (tecla.KeyS || tecla.ArrowDown) mv.sub(fw);
+    if (tecla.KeyD || tecla.ArrowRight) mv.add(rt); if (tecla.KeyA || tecla.ArrowLeft) mv.sub(rt);
+    if (mv.lengthSq() > 0) alvoToque = null;
+    else if (alvoToque) { mv.subVectors(alvoToque, jog.o.position).setY(0); if (mv.length() < 0.15) { alvoToque = null; mv.set(0, 0, 0); } }
+  }
+  if (mv.lengthSq() > 0) {
+    mv.normalize(); const corre = tecla.ShiftLeft || tecla.ShiftRight || (alvoToque && alvoToque.distanceTo(jog.o.position) > 6);
+    const v = (corre ? 5.2 : 2.4) * dt, p = jog.o.position;
+    const nx = p.x + mv.x * v, nz = p.z + mv.z * v;
+    if (!bate(nx, nz) && naArea(nx, nz)) p.set(nx, 0, nz);
+    else if (!bate(nx, p.z) && naArea(nx, p.z)) p.x = nx;
+    else if (!bate(p.x, nz) && naArea(p.x, nz)) p.z = nz;
+    else alvoToque = null;
+    const ang = Math.atan2(mv.x, mv.z); let d = ang - jog.o.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d)); jog.o.rotation.y += d * Math.min(1, dt * 12);
+    jog.toca(corre ? 'Correr' : 'Andar');
+  } else jog.toca('Parado');
+  const naSaida = jog.o.position.x < -21;
+  botao.textContent = 'E: seguir para Jerusalém'; botao.style.display = naSaida && !fora ? 'block' : 'none';
+
+  // boi, arado e lavrador indo e voltando pelas faixas
+  if (lav.virando > 0) {
+    lav.virando -= dt; boi.toca('Parado'); lavrador.toca('Parado');
+    if (lav.virando <= 0) { lav.faixa = (lav.faixa + 1) % FAIXAS.length; lav.dir *= -1; if (lav.faixa === 0) sulcos.forEach((s) => { s.scale.x = 0.001; }); }
+  } else {
+    boi.toca('Andar'); lavrador.toca('Andar');
+    lav.x += lav.dir * 0.9 * dt;
+    const xa = LAV.x0 + 1.2, xb = LAV.x1 - 1.6;
+    if (lav.x > xb || lav.x < xa) { lav.x = THREE.MathUtils.clamp(lav.x, xa, xb); lav.virando = 1.6; }
+    const s = sulcos[lav.faixa], ini = lav.dir > 0 ? xa : xb;
+    s.scale.x = Math.max(0.001, Math.abs(lav.x - ini)); s.position.x = (lav.x + ini) / 2;
+  }
+  const zf = FAIXAS[lav.faixa], ry = lav.dir > 0 ? Math.PI / 2 : -Math.PI / 2;
+  arado.position.set(lav.x, 0, zf); arado.rotation.y = lav.dir > 0 ? 0 : Math.PI;
+  boi.o.position.set(lav.x + lav.dir * 3.0, 0, zf); boi.o.rotation.y = ry;
+  lavrador.o.position.set(lav.x - lav.dir * 0.9, 0, zf); lavrador.o.rotation.y = ry;
+
+  // ovelhas pastando e andando devagar dentro do aprisco
+  const A = globalThis.APRISCO;
+  for (const o of ovelhas) {
+    if (o.alvo) {
+      const d = new THREE.Vector3().subVectors(o.alvo, o.o.position);
+      if (d.length() < 0.1) { o.alvo = null; o.espera = 2 + rnd() * 5; o.toca(rnd() < 0.6 ? 'Comer' : 'Parado'); }
+      else { d.normalize(); o.o.position.addScaledVector(d, 0.45 * dt); o.o.rotation.y = Math.atan2(d.x, d.z); }
+    } else if ((o.espera -= dt) <= 0) {
+      o.alvo = new THREE.Vector3(A.x0 + 0.5 + rnd() * (A.x1 - A.x0 - 1), 0, A.z0 + 0.5 + rnd() * (A.z1 - A.z0 - 1)); o.toca('Andar');
+    }
+  }
+
+  // passante
+  tRota = (tRota + dt * 1.15 / rota.getLength()) % 1;
+  const pr = rota.getPointAt(tRota), tg = rota.getTangentAt(tRota);
+  andante.o.position.copy(pr); andante.o.rotation.y = Math.atan2(tg.x, tg.z);
+
+  // Marta e Lázaro olham para o jogador quando ele chega perto
+  for (const n of [marta, lazaro]) {
+    const d = jog.o.position.distanceTo(n.o.position);
+    if (d < 4) { const a = Math.atan2(jog.o.position.x - n.o.position.x, jog.o.position.z - n.o.position.z); let k = a - n.o.rotation.y; k = Math.atan2(Math.sin(k), Math.cos(k)); n.o.rotation.y += k * Math.min(1, dt * 4); }
+  }
+
+  // câmera
+  dist += (distAlvo - dist) * Math.min(1, dt * 6);
+  const folga = (dist - DMIN) / (DMAX - DMIN);            // afastada, anda menos (a vila já cabe)
+  const lx = 11 * (1 - folga) + 2, lz = 8 * (1 - folga) + 2;
+  const fx = THREE.MathUtils.clamp(jog.o.position.x, -lx, lx), fz = THREE.MathUtils.clamp(jog.o.position.z, -lz, lz + 1);
+  foco.x += (fx - foco.x) * Math.min(1, dt * 3); foco.z += (fz - foco.z) * Math.min(1, dt * 3);
+  camera.position.copy(foco).addScaledVector(DIR, dist); camera.lookAt(foco);
+  sun.position.set(foco.x + 14, 22, foco.z + 9); sun.target.position.copy(foco);
+
+  atualizaFade();
+  renderer.render(scene, camera);
+});
+addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
+</script>
+</body>
+</html>
