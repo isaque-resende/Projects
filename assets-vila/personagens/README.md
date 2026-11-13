@@ -19,6 +19,8 @@ Quinze NPCs: pastor, aldeão e sacerdote (um modelo do Tripo) e mais doze de qua
 | `mulher_faixa.glb` | mulher de faixa na cabeça e avental | 1,62 m | 15.006 | 1,2 MB |
 | `mulher_lenco.glb` | mulher de lenço, capa curta e bolsinha | 1,50 m | 14.982 | 1,2 MB |
 | `mulher_botoes.glb` | mulher de faixa e túnica de botões | 1,62 m | 15.002 | 1,2 MB |
+| `marta.glb` | Marta (usada na Betânia) | 1,62 m | 15.000 | 570 KB |
+| `lazaro.glb` | Lázaro (usado na Betânia) | 1,70 m | 15.000 | 568 KB |
 
 Origem nos pés, de frente para +Z no three.js.
 

@@ -89,6 +89,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { clone as cloneSkin } from 'three/addons/utils/SkeletonUtils.js';
 import { computeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { carregarKit, casaExemplo, casaAleatoria, GLSL_NOISE } from '../casas/construtor_casas.js';
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
@@ -160,10 +161,24 @@ const ARQ = {
   terebintos: '../terebintos/terebintos.glb', espinheiros: '../espinheiros/espinheiros.glb', pinheiros: '../pinheiros/pinheiros.glb',
   alfarrobeiras: '../alfarrobeiras/alfarrobeiras.glb', lagar: '../lagar/lagar.glb', prensa: '../prensa-azeite/prensa.glb',
   discipulo: 'discipulo_acoes.glb',
+  // moradores e animais
+  marta: '../personagens/marta.glb', lazaro: '../personagens/lazaro.glb', lenco: '../personagens/mulher_lenco.glb',
+  robusto: '../personagens/robusto.glb', pastor: '../personagens/pastor.glb', boi: '../animais/boi.glb', ovelha: '../animais/ovelha.glb',
+};
+// no máximo 4 downloads ao mesmo tempo, e tenta de novo quando uma conexão cai no meio
+let vagas = 4; const filaVagas = [];
+const pegaVaga = () => (vagas > 0 ? (vagas--, Promise.resolve()) : new Promise((r) => filaVagas.push(r)));
+const soltaVaga = () => { const r = filaVagas.shift(); if (r) r(); else vagas++; };
+const comRetentativa = async (f) => {
+  for (let t = 0; ; t++) {
+    await pegaVaga();
+    try { return await f(); } catch (e) { if (t >= 6) throw e; } finally { soltaVaga(); }
+    await new Promise((r) => setTimeout(r, 300 * (t + 1)));
+  }
 };
 const [kit] = await Promise.all([
-  carregarKit('../casas/casas_kit.glb', 'tex/'),
-  ...Object.entries(ARQ).map(([k, u]) => loader.loadAsync(u).then((g) => { GLB[k] = g; g.scene.updateMatrixWorld(true); })),
+  comRetentativa(() => carregarKit('../casas/casas_kit.glb', 'tex/')),
+  ...Object.entries(ARQ).map(([k, u]) => comRetentativa(() => loader.loadAsync(u)).then((g) => { GLB[k] = g; g.scene.updateMatrixWorld(true); })),
 ]);
 
 function prep(o) {
@@ -246,6 +261,7 @@ const TRILHAS = [
 const PRACA = { x: 0.9, z: 2.4, r: 3.4 };
 const CAMPO = { x0: 12.6, x1: 20.4, z0: 6.8, z1: 13.8 };
 const CEVADA = { x0: -3.0, x1: 8.0, z0: 19.0, z1: 25.0 };
+const ARAVEL = { x0: 12.0, x1: 22.4, z0: 16.0, z1: 23.6 };          // terreno arável (o boi puxa o arado aqui)
 function distSeg(px, pz, ax, az, bx, bz) {
   const dx = bx - ax, dz = bz - az; const t = clamp(((px - ax) * dx + (pz - az) * dz) / (dx * dx + dz * dz || 1), 0, 1);
   return Math.hypot(px - ax - dx * t, pz - az - dz * t);
@@ -269,7 +285,8 @@ function terraCasas(x, z) {
   return m;
 }
 const naCaixa = (x, z, C) => x > C.x0 && x < C.x1 && z > C.z0 && z < C.z1;
-const noCampo = (x, z) => naCaixa(x, z, CAMPO) || naCaixa(x, z, CEVADA);
+const naPistaAro = (x, z) => x > ARAVEL.x0 - 5.6 && x < ARAVEL.x1 + 5.8 && z > ARAVEL.z0 - 1.6 && z < ARAVEL.z1 + 4.2;   // por onde o boi anda: sem plantas
+const noCampo = (x, z) => naCaixa(x, z, CAMPO) || naCaixa(x, z, CEVADA) || naCaixa(x, z, ARAVEL);
 function ondula(x, z) {
   const nucleo = Math.abs(x) < 22 && Math.abs(z) < 16;
   const plano = (1 - mascaraCaminho(x, z)) * (1 - terraCasas(x, z));
@@ -695,7 +712,7 @@ function planta(gk, nome, x, z, raio = 0.5, rot = null, esc = 1) {
 }
 function livreParaPlanta(x, z, folga = 0.6) {
   if (!dentroJogo(x, z) || Math.abs(x) > PX1 - 0.4 || Math.abs(z) > PZ1 - 0.4) return false;
-  if (mascaraCaminho(x, z) > 0.15 || terraCasas(x, z) > 0.35 || noCampo(x, z)) return false;
+  if (mascaraCaminho(x, z) > 0.15 || terraCasas(x, z) > 0.35 || noCampo(x, z) || naPistaAro(x, z)) return false;
   if (Math.abs(z - zFrente(x)) < 0.7 || naEscada(x, z) || naRampa(x, z) || (Math.abs(x - 12) < 0.6 && z < -4.4) || naZonaLZ(x, z)) return false;
   if (noFuroTumulo(x, z) || Math.hypot(x - LAGAR.x, z - LAGAR.z) < 2.6 || Math.hypot(x - PRENSA.x, z - PRENSA.z) < 3) return false;
   return !bloqueado(x, z, folga);
@@ -732,7 +749,7 @@ function livreParaPlanta(x, z, folga = 0.6) {
    [-31, 3, 'pinheiros', 'Pinheiro4_Velho', 0.6], [-32.5, 15, 'pinheiros', 'Pinheiro2_Reto', 0.5], [-27, 21, 'pinheiros', 'Pinheiro3_Inclinado', 0.5],
    [-25, 4, 'amendoeiras', 'Amendoeira1_Jovem_Verao', 0.4], [-28, 11, 'amendoeiras', 'Amendoeira2_Pomar_Verao', 0.45], [-22, 16, 'carvalhos', 'Carvalho2_Jovem', 0.55],
    [-30, -4, 'alfarrobeiras', 'Alfarrobeira4_Velha', 0.7], [-21, -13, 'espinheiros', 'Espinheiro1_Moita_Primavera', 0.4],
-  ].forEach(([x, z, g, n, r]) => { if (!bloqueado(x, z, 0.3)) planta(g, n, x, z, r); });
+  ].forEach(([x, z, g, n, r]) => { if (!bloqueado(x, z, 0.3) && !naPistaAro(x, z)) planta(g, n, x, z, r); });
   for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) {
     const x = 24.5 + i * 2.4, z = 9.5 + j * 2.6;
     if (mascaraCaminho(x, z) > 0.2) continue;
@@ -797,7 +814,7 @@ function livreParaPlanta(x, z, folga = 0.6) {
   let i = 0, tent = 0;
   while (i < N && tent++ < N * 14) {
     const x = lerp(PX0 + 0.3, PX1 - 0.3, rnd()), z = lerp(PZ0 + 0.3, PZ1 - 0.3, rnd());
-    if (mascaraCaminho(x, z) > 0.25 || terraCasas(x, z) > 0.5 || noCampo(x, z) || naEscada(x, z) || naRampa(x, z) || noFuroTumulo(x, z) || naZonaLZ(x, z)) continue;
+    if (mascaraCaminho(x, z) > 0.25 || terraCasas(x, z) > 0.5 || noCampo(x, z) || naPistaAro(x, z) || naEscada(x, z) || naRampa(x, z) || noFuroTumulo(x, z) || naZonaLZ(x, z)) continue;
     if (Math.abs(z - zFrente(x)) < 0.3 || Math.hypot(x - POCO.x, z - POCO.z) < 1.5) continue;
     if (ruido(x * 0.3, z * 0.27) < 0 && rnd() < 0.85) continue;
     p.set(x, H(x, z) - 0.03, z); q.setFromAxisAngle(up, rnd() * Math.PI);
@@ -994,6 +1011,228 @@ async function anim(nome, { ts = 1, marcas = [], fade = 0.2, corte = 1 } = {}) {
   await espera(clips[nome].duration * corte / ts);
 }
 async function laco(nome, seg, ts = 1) { P.travado = true; animAtual = ''; toca(nome, 0.2, ts); await espera(seg); }
+
+// ================================================================== vida: Marta, Lázaro e três moradores com tarefas
+// Marta assa pão no forno; Lázaro vai da casa à eira; uma mulher leva o jarro d'água do poço até a casa;
+// o pastor cuida das ovelhas no aprisco; um lavrador conduz o boi com a canga e o arado no terreno arável.
+// Quando o discípulo chega perto, quem está a pé para, vira para ele e conversa.
+const VIDA = [];
+function novoAtor(g, esc = 1) {
+  const raiz = cloneSkin(g.scene); raiz.scale.setScalar(esc);
+  raiz.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; } });
+  scene.add(raiz);
+  const mx = new THREE.AnimationMixer(raiz);
+  const acoes = Object.fromEntries(g.animations.map((c) => [c.name, mx.clipAction(c)]));
+  return { raiz, mx, acoes, atual: null, x: 0, z: 0, y: 0, rot: 0 };
+}
+function tocaAtor(a, nome, fade = 0.3, ts = 1) {
+  const c = a.acoes[nome]; if (!c) return;
+  c.timeScale = ts;
+  if (a.atual === c) return;
+  c.reset().play(); if (a.atual) a.atual.crossFadeTo(c, fade, false); a.atual = c;
+}
+function giraAtor(a, alvo, dt, k = 6) { let d = alvo - a.rot; d = Math.atan2(Math.sin(d), Math.cos(d)); a.rot += d * Math.min(1, dt * k); }
+function poeAtor(a, dt) {
+  a.y += (alturaEm(a.x, a.z, a.y) - a.y) * Math.min(1, dt * 12);
+  a.raiz.position.set(a.x, a.y, a.z); a.raiz.rotation.y = a.rot;
+}
+const distP = (a) => Math.hypot(P.x - a.x, P.z - a.z);
+
+// ---- moradores a pé: 'fica' (parado num ponto) ou 'anda' (vai e volta entre pontos, com pausas)
+function criaMorador(d) {
+  const a = novoAtor(GLB[d.k]);
+  const [x, z] = d.tipo === 'fica' ? d.pos : d.pontos[0];
+  Object.assign(a, { d, x, z, y: H(x, z), rota: [], alvo: 1, sentido: 1, pausa: d.atraso ?? rnd() * 2, troca: 4 + rnd() * 6, animBase: d.anim ?? 'Parado' });
+  if (d.olha) a.rot = Math.atan2(d.olha[0] - x, d.olha[1] - z);
+  tocaAtor(a, a.animBase, 0); a.mx.setTime(rnd() * 3);
+  VIDA.push(a); return a;
+}
+function atualizaMorador(a, dt) {
+  const d = a.d; let alvoRot = a.rot;
+  if (distP(a) < 1.9) { alvoRot = Math.atan2(P.x - a.x, P.z - a.z); tocaAtor(a, 'Conversando'); }
+  else if (d.tipo === 'fica') {
+    a.troca -= dt;
+    if (a.troca <= 0) { a.troca = 5 + rnd() * 8; a.animBase = a.animBase === 'Parado' && rnd() < 0.6 ? 'Conversando' : (d.anim ?? 'Parado'); }
+    if (d.olha) alvoRot = Math.atan2(d.olha[0] - a.x, d.olha[1] - a.z);
+    tocaAtor(a, a.animBase);
+  } else if (a.pausa > 0) {
+    a.pausa -= dt; tocaAtor(a, a.animPausa ?? 'Parado');
+    const o = d.olhaEm && d.olhaEm[a.ultimo]; if (o) alvoRot = Math.atan2(o[0] - a.x, o[1] - a.z);
+  } else {
+    if (!a.rota.length) { const [tx, tz] = d.pontos[a.alvo]; a.rota = caminho(a.x, a.z, a.y, tx, tz) ?? [[tx, tz, H(tx, tz)]]; }
+    const [tx, tz] = a.rota[0]; const dx = tx - a.x, dz = tz - a.z, dd = Math.hypot(dx, dz);
+    const s = VEL.Andar * 0.9 * dt;
+    if (dd <= s) {
+      a.x = tx; a.z = tz; a.rota.shift();
+      if (!a.rota.length) {
+        a.ultimo = a.alvo;
+        const L = d.pontos.length; if (a.alvo + a.sentido >= L || a.alvo + a.sentido < 0) a.sentido *= -1;
+        a.alvo += a.sentido; a.pausa = d.pausa[0] + rnd() * (d.pausa[1] - d.pausa[0]);
+        a.animPausa = d.animNaPausa ? d.animNaPausa[a.ultimo] : 'Parado';
+      }
+    } else { a.x += dx / dd * s; a.z += dz / dd * s; alvoRot = Math.atan2(dx, dz); }
+    tocaAtor(a, 'Andar', 0.25, 0.9);
+  }
+  giraAtor(a, alvoRot, dt); poeAtor(a, dt); a.mx.update(dt);
+}
+
+// ---- Marta no forno
+{
+  const mx = (MESA_BB.min.x + MESA_BB.max.x) / 2;
+  criaMorador({ k: 'marta', tipo: 'fica', pos: [MESA_BB.min.x - 0.75, MESA_Z], olha: [mx, MESA_Z], anim: 'Parado' });
+}
+// ---- Lázaro: da casa à eira
+criaMorador({ k: 'lazaro', tipo: 'anda', pontos: [[LZ.x + 1.5, LZ.z + LZ.d + 1.2], [7.8, 10.0]], pausa: [5, 10], animNaPausa: ['Parado', 'Conversando'], olhaEm: [[LZ.x + 1.5, LZ.z + 1.5], [9.0, 11.6]] });
+// ---- mulher do jarro: do poço à casa, com o jarro na cabeça
+{
+  const a = criaMorador({ k: 'lenco', tipo: 'anda', pontos: [[POCO.x + 1.6, POCO.z + 1.0], [LZ.x + 2.6, LZ.z + LZ.d + 1.3]], pausa: [4, 7], olhaEm: [[POCO.x, POCO.z], [LZ.x + 2.6, LZ.z + 1.0]], atraso: 1 });
+  const perfil = [[0.001, 0], [0.085, 0], [0.12, 0.04], [0.155, 0.14], [0.14, 0.26], [0.075, 0.33], [0.08, 0.37], [0.105, 0.4], [0.09, 0.405], [0.06, 0.37]].map(([r, y]) => new THREE.Vector2(r, y));
+  const jarro = new THREE.Mesh(new THREE.LatheGeometry(perfil, 14), new THREE.MeshStandardMaterial({ color: 0xb4663a, roughness: 0.85, flatShading: true, side: THREE.DoubleSide }));
+  jarro.castShadow = true; jarro.frustumCulled = false; scene.add(jarro);
+  const rolo = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.03, 6, 10).rotateX(Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xe9e0cc, roughness: 1, flatShading: true }));
+  scene.add(rolo);
+  const cab = a.raiz.getObjectByName('Head'); const w = V();
+  a.extra = () => { a.raiz.updateMatrixWorld(true); cab.getWorldPosition(w); rolo.position.set(w.x, w.y + 0.2, w.z); jarro.position.set(w.x, w.y + 0.22, w.z); };
+}
+// ---- pastor e ovelhas
+{
+  criaMorador({ k: 'pastor', tipo: 'fica', pos: [CURRAL.x1 + 1.3, APRISCO.z1 - 1.0], olha: [(APRISCO.x0 + APRISCO.x1) / 2, (APRISCO.z0 + APRISCO.z1) / 2], anim: 'Parado' });
+  for (let i = 0; i < 5; i++) {
+    const o = novoAtor(GLB.ovelha, 0.85);
+    const x = lerp(APRISCO.x0 + 1, APRISCO.x1 - 1, rnd()), z = lerp(APRISCO.z0 + 1, APRISCO.z1 - 1, rnd());
+    Object.assign(o, { ovelha: true, x, z, y: H(x, z), rot: rnd() * 6.28, estado: 'pasta', t: 2 + rnd() * 6, alvo: null });
+    tocaAtor(o, 'Comer', 0); o.mx.setTime(rnd() * 3); VIDA.push(o);
+  }
+}
+function atualizaOvelha(o, dt) {
+  o.t -= dt;
+  if (o.estado === 'anda') {
+    const dx = o.alvo[0] - o.x, dz = o.alvo[1] - o.z, dd = Math.hypot(dx, dz);
+    if (dd < 0.1 || o.t <= 0) { o.estado = rnd() < 0.7 ? 'pasta' : 'parada'; o.t = 4 + rnd() * 8; }
+    else { const s = 0.45 * dt; o.x += dx / dd * s; o.z += dz / dd * s; giraAtor(o, Math.atan2(dx, dz), dt, 4); tocaAtor(o, 'Andar', 0.3, 0.45); }
+  } else {
+    tocaAtor(o, o.estado === 'pasta' ? 'Comer' : 'Parado');
+    if (o.t <= 0) {
+      o.estado = 'anda'; o.t = 12;
+      o.alvo = [clamp(o.x + (rnd() - 0.5) * 4, APRISCO.x0 + 0.9, APRISCO.x1 - 0.9), clamp(o.z + (rnd() - 0.5) * 4, APRISCO.z0 + 0.9, APRISCO.z1 - 0.9)];
+    }
+  }
+  poeAtor(o, dt); o.mx.update(dt);
+}
+
+// ---- terreno arável: sulcos que o arado vai abrindo, e o lavrador conduzindo o boi
+const ARO = { x0: ARAVEL.x0, x1: ARAVEL.x1, z0: ARAVEL.z0, z1: ARAVEL.z1, n: 6, sp: 1.2, atras: 2.6, v: 0.75 };
+const arZ = (i) => ARO.z0 + 0.9 + i * ARO.sp;
+const matSulco = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, roughness: 1, flatShading: true, side: THREE.DoubleSide, transparent: true });
+const SULCOS = [];
+for (let i = 0; i < ARO.n; i++) {
+  const dir = i % 2 === 0 ? 1 : -1, z = arZ(i), L = ARO.x1 - ARO.x0 - 0.6, seg = Math.round(L / 0.5), xs0 = dir > 0 ? ARO.x0 + 0.3 : ARO.x1 - 0.3;
+  const pos = [], idx = [], cor = [];
+  for (let k = 0; k <= seg; k++) {
+    const x = xs0 + dir * (L * k / seg);
+    for (const [dz, dy, c] of [[-0.4, 0, 0.7], [-0.15, 0.08, 1], [0.15, 0.08, 1], [0.4, 0, 0.7]]) { pos.push(x, H(x, z + dz) + 0.012 + dy, z + dz); cor.push(0.50 * c, 0.29 * c, 0.17 * c); }
+  }
+  for (let k = 0; k < seg; k++) for (let j = 0; j < 3; j++) { const a = k * 4 + j, b = a + 1, c = a + 4, d = c + 1; idx.push(a, c, b, b, c, d); }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(cor, 3)); g.setIndex(idx); g.computeVertexNormals();
+  g.setDrawRange(0, 0);
+  const m = new THREE.Mesh(g, matSulco); m.receiveShadow = true; m.frustumCulled = false; scene.add(m);
+  SULCOS.push({ g, seg, dir });
+}
+const setSulco = (i, f) => SULCOS[i].g.setDrawRange(0, Math.floor(clamp(f, 0, 1) * SULCOS[i].seg) * 18);
+
+// canga (jugo), temão e arado de madeira, no sistema do boi (frente = +z)
+function haste(a, b, r, mat) {
+  const A = V(...a), B = V(...b), d = B.clone().sub(A), m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, d.length(), 6), mat);
+  m.position.copy(A).addScaledVector(d, 0.5); m.quaternion.setFromUnitVectors(V(0, 1, 0), d.normalize());
+  m.castShadow = true; return m;
+}
+const madeira = new THREE.MeshStandardMaterial({ color: 0x7c5632, roughness: 0.9, flatShading: true });
+const ferro = new THREE.MeshStandardMaterial({ color: 0x4a4744, roughness: 0.7, flatShading: true });
+const cordaFio = new THREE.MeshStandardMaterial({ color: 0xcdb98a, roughness: 1, flatShading: true });
+const ARADO_PESCOCO = { y: 1.2, z: 0.78 };
+const aradoGrupo = new THREE.Group(), aradoSolo = new THREE.Group();
+{
+  const { y, z } = ARADO_PESCOCO;
+  aradoGrupo.add(haste([-0.62, y, z], [0.62, y, z], 0.05, madeira));
+  for (const sx of [-1, 1]) aradoGrupo.add(haste([0.24 * sx, y, z], [0.24 * sx, y - 0.46, z], 0.026, madeira), haste([0.62 * sx, y, z], [0.62 * sx, y + 0.1, z], 0.04, madeira));
+  aradoGrupo.add(haste([0, y - 0.06, z], [0, 0.46, -ARO.atras], 0.04, madeira));              // temão
+  aradoSolo.position.set(0, 0, -ARO.atras);
+  aradoSolo.add(haste([0, 0.46 + 0.0, 0], [0, 0.08, -0.12], 0.04, madeira),                   // pé do arado
+    haste([0, 0.07, -0.55], [0, 0.07, 0.42], 0.05, madeira),                                    // sola
+    haste([0, 0.46, 0], [0, 1.06, -0.78], 0.032, madeira),                                      // rabiça
+    haste([-0.2, 1.06, -0.78], [0.2, 1.06, -0.78], 0.026, madeira));
+  const reja = new THREE.Mesh(new THREE.ConeGeometry(0.075, 0.34, 4).rotateX(Math.PI / 2), ferro); reja.position.set(0, 0.07, 0.55); reja.castShadow = true;
+  aradoSolo.add(reja);
+  aradoGrupo.add(aradoSolo);
+}
+const LAV = (() => {
+  const boi = novoAtor(GLB.boi, 0.85), lav = novoAtor(GLB.robusto, 1);
+  scene.remove(boi.raiz); const par = new THREE.Group(); par.add(boi.raiz, aradoGrupo); scene.add(par);
+  const corda3 = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 1, 5), cordaFio); scene.add(corda3);
+  tocaAtor(boi, 'Parado', 0); tocaAtor(lav, 'Parado', 0);
+  VIDA.push(boi, lav);
+  return { boi, lav, par, corda3, mao: lav.raiz.getObjectByName('hand_r'), pontos: [], cum: [], s: 0, i: 0, modo: 'reta', dir: 1, pausa: 0, fade: 0, aliviado: 0, sol: 0 };
+})();
+function cumula(pts) { const c = [0]; for (let k = 1; k < pts.length; k++) c.push(c[k - 1] + Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1])); return c; }
+function bez(p0, p1, p2, p3, n = 40) { const o = []; for (let k = 0; k <= n; k++) { const t = k / n, u = 1 - t; o.push([u * u * u * p0[0] + 3 * u * u * t * p1[0] + 3 * u * t * t * p2[0] + t * t * t * p3[0], u * u * u * p0[1] + 3 * u * u * t * p1[1] + 3 * u * t * t * p2[1] + t * t * t * p3[1]]); } return o; }
+function catmull(P4, n = 30) { const o = []; for (let s = 0; s < P4.length - 1; s++) { const p0 = P4[Math.max(0, s - 1)], p1 = P4[s], p2 = P4[s + 1], p3 = P4[Math.min(P4.length - 1, s + 2)]; for (let k = 0; k < n; k++) { const t = k / n, t2 = t * t, t3 = t2 * t; o.push([0, 1].map((c) => 0.5 * ((2 * p1[c]) + (-p0[c] + p2[c]) * t + (2 * p0[c] - 5 * p1[c] + 4 * p2[c] - p3[c]) * t2 + (-p0[c] + 3 * p1[c] - 3 * p2[c] + p3[c]) * t3))); } } o.push(P4[P4.length - 1]); return o; }
+const arIni = (dir) => (dir > 0 ? ARO.x0 - 0.4 : ARO.x1 + 0.4), arFim = (dir) => (dir > 0 ? ARO.x1 + ARO.atras : ARO.x0 - ARO.atras);
+function pernaAro() {
+  const L = LAV, i = L.i, dir = i % 2 === 0 ? 1 : -1; L.dir = dir;
+  if (L.modo === 'reta') { L.pontos = [[arIni(dir), arZ(i)], [arFim(dir), arZ(i)]]; }
+  else if (L.modo === 'volta') { const p0 = [arFim(dir), arZ(i)], p3 = [arIni(-dir), arZ(i + 1)]; L.pontos = bez(p0, [p0[0] + dir * 2.2, p0[1]], [p3[0] + dir * 2.2, p3[1]], p3); }
+  else { const A = [arFim(dir), arZ(i)], D = [arIni(1), arZ(0)]; L.pontos = catmull([A, [ARO.x0 - ARO.atras - 2.0, arZ(i) - 1.4], [ARO.x0 - ARO.atras - 2.0, arZ(0) + 1.0], D, [D[0] + 1, D[1]]]); }
+  L.cum = cumula(L.pontos); L.s = 0;
+}
+pernaAro();
+{ const p = LAV.pontos[0]; Object.assign(LAV.boi, { x: p[0], z: p[1] }); }
+function atualizaLavrador(dt) {
+  const L = LAV, boi = L.boi, lav = L.lav;
+  const perto = Math.min(distP(boi), distP(lav)) < 2.6;
+  if (!perto && L.pausa <= 0) {
+    L.s += ARO.v * dt;
+    if (L.s >= L.cum[L.cum.length - 1]) {
+      if (L.modo === 'reta') { setSulco(L.i, 1); if (L.i < ARO.n - 1) L.modo = 'volta'; else { L.modo = 'retorno'; } }
+      else if (L.modo === 'volta') { L.i++; L.modo = 'reta'; }
+      else { L.i = 0; L.modo = 'reta'; for (let k = 0; k < ARO.n; k++) setSulco(k, 0); matSulco.opacity = 1; L.pausa = 2.5; }
+      pernaAro();
+    }
+  } else if (L.pausa > 0 && !perto) L.pausa -= dt;
+  // posição e rumo do boi pela curva
+  const c = L.cum; let k = 1; while (k < c.length - 1 && c[k] < L.s) k++;
+  const t = clamp((L.s - c[k - 1]) / (c[k] - c[k - 1] || 1), 0, 1), a = L.pontos[k - 1], b = L.pontos[k];
+  const nx = lerp(a[0], b[0], t), nz = lerp(a[1], b[1], t);
+  if (!perto && L.pausa <= 0) { const rumo = Math.atan2(b[0] - a[0], b[1] - a[1]); boi.rot += ((a => Math.atan2(Math.sin(a), Math.cos(a)))(rumo - boi.rot)) * Math.min(1, dt * 5); }
+  boi.x = nx; boi.z = nz;
+  boi.y += (H(boi.x, boi.z) - boi.y) * Math.min(1, dt * 10);
+  L.par.position.set(boi.x, boi.y, boi.z); L.par.rotation.y = boi.rot;
+  // arado: no chão nas retas, levantado nas voltas
+  const alvoSol = L.modo === 'reta' ? 0 : 0.28; L.sol += (alvoSol - L.sol) * Math.min(1, dt * 3); aradoSolo.position.y = L.sol;
+  if (L.modo === 'reta') { const px = boi.x - L.dir * ARO.atras, f = L.dir > 0 ? (px - (ARO.x0 + 0.3)) / (ARO.x1 - ARO.x0 - 0.6) : ((ARO.x1 - 0.3) - px) / (ARO.x1 - ARO.x0 - 0.6); setSulco(L.i, f); }
+  if (L.modo === 'retorno') matSulco.opacity = 1 - clamp(L.s / (c[c.length - 1] || 1), 0, 1);
+  // o lavrador anda à frente e à esquerda do boi, de rumo igual ao dele
+  const cs = Math.cos(boi.rot), sn = Math.sin(boi.rot), lx = 0.95, lz = 2.15;
+  const tx = boi.x + lx * cs + lz * sn, tz = boi.z - lx * sn + lz * cs;
+  lav.x += (tx - lav.x) * Math.min(1, dt * 4); lav.z += (tz - lav.z) * Math.min(1, dt * 4);
+  if (perto) { giraAtor(lav, Math.atan2(P.x - lav.x, P.z - lav.z), dt); tocaAtor(lav, 'Conversando'); tocaAtor(boi, 'Parado', 0.4); }
+  else if (L.pausa > 0) { giraAtor(lav, boi.rot, dt); tocaAtor(lav, 'Parado'); tocaAtor(boi, 'Comer', 0.4); }
+  else { giraAtor(lav, boi.rot, dt, 8); tocaAtor(lav, 'Andar', 0.3, 0.6); tocaAtor(boi, 'Andar', 0.3, 0.75); }
+  poeAtor(lav, dt); lav.mx.update(dt); boi.mx.update(dt);
+  // corda da mão do lavrador à cabeça do boi
+  lav.raiz.updateMatrixWorld(true); const m = L.mao.getWorldPosition(V());
+  L.par.updateMatrixWorld(true);
+  const alvo = V(0, 0.98, 1.3).applyMatrix4(L.par.matrixWorld), dd = alvo.clone().sub(m);
+  L.corda3.scale.set(1, dd.length(), 1); L.corda3.position.copy(m).addScaledVector(dd, 0.5); L.corda3.quaternion.setFromUnitVectors(V(0, 1, 0), dd.normalize());
+}
+
+function atualizaVida(dt) {
+  for (const a of VIDA) {
+    if (a.d) { atualizaMorador(a, dt); if (a.extra) a.extra(); }
+    else if (a.ovelha) atualizaOvelha(a, dt);
+  }
+  atualizaLavrador(dt);
+}
+window.__vida = { VIDA, LAV, ARO };
 
 // ================================================================== partículas: faíscas, fumaça, palha e respingos
 function texRedonda(cor) {
@@ -1456,6 +1695,7 @@ function passo(dt) {
   if (P.salto) { P.salto.t += dt; const u = (P.salto.t - 0.12) / 0.66; if (u > 0 && u < 1) pulo = 4 * u * (1 - u) * 0.55; }
   heroi.position.set(P.x, P.y + pulo, P.z); heroi.rotation.y = P.rot;
   mixer.update(dt);
+  atualizaVida(dt);
   heroi.updateMatrixWorld(true);
   const mao = maoE.getWorldPosition(tmp);
   alvoMarca.material.opacity = Math.max(0, alvoMarca.material.opacity - dt * (P.rota.length ? 0.3 : 2)); alvoMarca.scale.setScalar(1 + (1 - alvoMarca.material.opacity) * 0.6);
