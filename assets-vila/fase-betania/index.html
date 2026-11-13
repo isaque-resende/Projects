@@ -69,7 +69,7 @@ const ground = (() => {
   const ruido = (x, y) => { const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
     const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
     return (h(xi, yi) * (1 - u) + h(xi + 1, yi) * u) * (1 - v) + (h(xi, yi + 1) * (1 - u) + h(xi + 1, yi + 1) * u) * v; };
-  const verde = new THREE.Color(0x8fa65a), verdeE = new THREE.Color(0x6f8a45), seco = new THREE.Color(0xc2b47a), c = new THREE.Color();
+  const verde = new THREE.Color(0xffffff), verdeE = new THREE.Color(0xd8e0c4), seco = new THREE.Color(0xfff1d2), c = new THREE.Color();
   for (let i = 0; i < p.count; i += 3) {
     const x = (p.getX(i) + p.getX(i + 1) + p.getX(i + 2)) / 3, y = (p.getY(i) + p.getY(i + 1) + p.getY(i + 2)) / 3;
     const n1 = ruido(x / 14 + 5, y / 14 + 9), n2 = ruido(x / 6, y / 6);
@@ -79,7 +79,7 @@ const ground = (() => {
     for (let k = 0; k < 3; k++) cor.push(c.r, c.g, c.b);
   }
   g.setAttribute('color', new THREE.Float32BufferAttribute(cor, 3));
-  return new THREE.Mesh(g, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, flatShading: true }));
+  return new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: tex('tex/grama.webp', 9), vertexColors: true, roughness: 1, flatShading: true }));
 })();
 ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
 
@@ -90,15 +90,15 @@ function caminho(pts, larg) {
   const N = Math.max(20, Math.round(curva.getLength() * 2)), pos = [], uv = [], idx = [];
   for (let i = 0; i <= N; i++) {
     const t = i / N, p = curva.getPointAt(t), tg = curva.getTangentAt(t);
-    const w = larg * (0.85 + 0.2 * Math.sin(t * 13 + pts.length));
+    const w = 1.45 * larg * (0.9 + 0.12 * Math.sin(t * 13 + pts.length)), L = curva.getLength();
     pos.push(p.x - tg.z * w, 0.02, p.z + tg.x * w, p.x + tg.z * w, 0.02, p.z - tg.x * w);
-    uv.push(0, t * N / 3, 1, t * N / 3);
+    uv.push(0, t * L / (2.9 * larg), 1, t * L / (2.9 * larg));
   }
   for (let i = 0; i < N; i++) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
-  const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: tex('../betania/tex/estrada_terra.webp'), roughness: 1, polygonOffset: true, polygonOffsetFactor: -1 }));
+  const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: tex('tex/estrada.webp'), roughness: 1, polygonOffset: true, polygonOffsetFactor: -1 }));
   m.receiveShadow = true; scene.add(m);
   CAMINHOS.push({ curva, larg });
 }
@@ -211,9 +211,49 @@ const gLagar = await baixar('../lagar/lagar.glb');
 // ---------- lavoura: terra arada à frente-direita ----------
 const LAV = { x0: 5.0, x1: 16.6, z0: 6.0, z1: 12.4 };
 {
-  const t = tex('../vila-betania/tex/terra_arada.webp'); t.repeat.set(3, 2);
+  const t = tex('tex/arada.webp'); t.center.set(0.5, 0.5); t.rotation = Math.PI / 2; t.repeat.set(0.9, 1.6);
   const m = new THREE.Mesh(new THREE.PlaneGeometry(LAV.x1 - LAV.x0, LAV.z1 - LAV.z0), new THREE.MeshStandardMaterial({ map: t, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2 }));
   m.rotation.x = -Math.PI / 2; m.position.set((LAV.x0 + LAV.x1) / 2, 0.03, (LAV.z0 + LAV.z1) / 2); m.receiveShadow = true; scene.add(m);
+}
+
+// ---------- pátios de terra batida (borda esfumada) e manchas soltas no gramado ----------
+{
+  const cv = document.createElement('canvas'); cv.width = cv.height = 128;
+  const cx = cv.getContext('2d'), gr = cx.createRadialGradient(64, 64, 20, 64, 64, 64);
+  gr.addColorStop(0, '#fff'); gr.addColorStop(0.7, '#fff'); gr.addColorStop(1, '#000');
+  cx.fillStyle = gr; cx.fillRect(0, 0, 128, 128);
+  const borda = new THREE.CanvasTexture(cv);
+  const patio = tex('tex/patio.webp');
+  for (const [x, z, r] of [[-2.2, -8.2, 3.4], [-3.2, 10.8, 3.6], [-0.6, -2.6, 4.2], [-7, -6.6, 3.0]]) {
+    const g = new THREE.CircleGeometry(r, 28), uv = g.attributes.uv;
+    for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * r / 2.5, uv.getY(i) * r / 2.5);
+    g.setAttribute('uv1', new THREE.Float32BufferAttribute(g.attributes.uv.array.map((v) => v / (r / 2.5)), 2));
+    const mat = new THREE.MeshStandardMaterial({ map: patio, alphaMap: borda, transparent: true, depthWrite: false, roughness: 1, polygonOffset: true, polygonOffsetFactor: -1.5 });
+    mat.alphaMap.channel = 1;
+    const m = new THREE.Mesh(g, mat); m.rotation.x = -Math.PI / 2; m.position.set(x, 0.015, z); m.receiveShadow = true; scene.add(m);
+  }
+  // manchas: atlas 3x3 (verde, seco, terra / flores brancas, flores lilás, folhas / pedrinhas, verde grande, flores mistas)
+  const pos = [], uvs = [], idx = []; let n = 0;
+  const peso = [2, 1, 1, 3, 3, 2, 2, 1, 4];
+  const escolhe = () => { let r = rnd() * 19; for (let i = 0; i < 9; i++) { r -= peso[i]; if (r < 0) return i; } return 0; };
+  for (let k = 0; k < 400 && n < 140; k++) {
+    const x = -32 + rnd() * 64, z = -26 + rnd() * 52;
+    if (naEstrada(x, z, 1.2)) continue;
+    if (x > LAV.x0 - 0.8 && x < LAV.x1 + 0.8 && z > LAV.z0 - 0.8 && z < LAV.z1 + 0.8) continue;
+    const c = escolhe(), s = (c < 3 || c === 7 ? 1.6 + rnd() * 1.6 : 0.6 + rnd() * 0.5), a = rnd() * 6.28;
+    const u0 = (c % 3) / 3, v0 = 1 - (Math.floor(c / 3) + 1) / 3;
+    const co = Math.cos(a) * s, si = Math.sin(a) * s;
+    for (const [dx, dz, u, v] of [[-1, -1, 0, 1], [1, -1, 1, 1], [1, 1, 1, 0], [-1, 1, 0, 0]]) {
+      pos.push(x + dx * co - dz * si, 0.01 + n * 0.0001, z + dx * si + dz * co); uvs.push(u0 + u / 3, v0 + v / 3);
+    }
+    const b = n * 4; idx.push(b, b + 2, b + 1, b, b + 3, b + 2); n++;
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2)); g.setIndex(idx); g.computeVertexNormals();
+  const t = tex('tex/manchas.webp'); t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+  const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: t, opacity: 0.8, transparent: true, depthWrite: false, roughness: 1, polygonOffset: true, polygonOffsetFactor: -1 }));
+  m.receiveShadow = true; scene.add(m);
 }
 
 // ---------- árvores: poucas dentro da vila, uma cortina nas bordas (sangria) ----------
