@@ -61,7 +61,26 @@ const tex = (url, rep) => {
 };
 
 // ---------- chão: grande o bastante para a câmera nunca ver a borda ----------
-const ground = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshStandardMaterial({ map: tex('../figueiras/tex/chao_grama_v3.webp', 40), roughness: 1 }));
+// sem textura: cor por triângulo (facetado), manchas grandes e suaves de verde e capim seco
+const ground = (() => {
+  const g = new THREE.PlaneGeometry(200, 200, 110, 110).toNonIndexed();
+  const p = g.attributes.position, cor = [];
+  const h = (x, y) => { const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return s - Math.floor(s); };
+  const ruido = (x, y) => { const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
+    const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+    return (h(xi, yi) * (1 - u) + h(xi + 1, yi) * u) * (1 - v) + (h(xi, yi + 1) * (1 - u) + h(xi + 1, yi + 1) * u) * v; };
+  const verde = new THREE.Color(0x8fa65a), verdeE = new THREE.Color(0x6f8a45), seco = new THREE.Color(0xc2b47a), c = new THREE.Color();
+  for (let i = 0; i < p.count; i += 3) {
+    const x = (p.getX(i) + p.getX(i + 1) + p.getX(i + 2)) / 3, y = (p.getY(i) + p.getY(i + 1) + p.getY(i + 2)) / 3;
+    const n1 = ruido(x / 14 + 5, y / 14 + 9), n2 = ruido(x / 6, y / 6);
+    c.copy(verde).lerp(verdeE, THREE.MathUtils.smoothstep(n1, 0.35, 0.75) * 0.8);
+    c.lerp(seco, THREE.MathUtils.smoothstep(n2 * 0.6 + n1 * 0.4, 0.55, 0.8) * 0.55);
+    c.multiplyScalar(0.96 + h(x, y) * 0.07);
+    for (let k = 0; k < 3; k++) cor.push(c.r, c.g, c.b);
+  }
+  g.setAttribute('color', new THREE.Float32BufferAttribute(cor, 3));
+  return new THREE.Mesh(g, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, flatShading: true }));
+})();
 ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
 
 // ---------- caminhos de terra ----------
