@@ -181,6 +181,22 @@ const TRONCOS = [];
     const n = R['Rocha' + i].clone(); n.position.set(x, 0, z); n.scale.setScalar(k); n.rotation.y = r; scene.add(n);
     TRONCOS.push({ x, z, r: 0.6 * k });
   }
+  // muros de pedra e rochas do kit: [x, z, giro, nome]; a colisão cobre a caixa da peça
+  const mk = await baixar('muros_kit.glb');
+  const M = {};
+  for (const n of mk.scene.children) { n.position.set(0, 0, 0); sombra(n); M[n.name] = n; }
+  const KIT = [
+    [-13.2, 6.6, 0.0, 'Muro_Reto1'], [-10.7, 6.6, 0.03, 'Muro_Reto2'], [-7.9, 6.7, 0.0, 'Muro_Pilar'],
+    [9.0, 7.6, 0.05, 'Muro_Reto4'], [11.4, 7.7, -0.03, 'Muro_Reto3'], [14.6, 9.0, 0.0, 'Muro_Canto'],
+    [-3.0, 13.0, 0.4, 'Rocha10'], [8.5, 13.5, -0.8, 'Rocha11'], [-16.5, -1.0, 1.2, 'Rocha12'],
+  ];
+  for (const [x, z, r, nome] of KIT) {
+    if (!M[nome]) continue;
+    const n = M[nome].clone(); n.position.set(x, 0, z); n.rotation.y = r; scene.add(n);
+    n.updateWorldMatrix(true, true);
+    const b = new THREE.Box3().setFromObject(n);
+    for (let px = b.min.x + 0.3; px < b.max.x; px += 0.5) for (let pz = b.min.z + 0.3; pz < b.max.z; pz += 0.5) TRONCOS.push({ x: px, z: pz, r: 0.4 });
+  }
 }
 const bateArvore = (x, z) => TRONCOS.some((t) => Math.hypot(t.x - x, t.z - z) < t.r) || Math.hypot(x, z) > 30;
 
