@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#86b9df">
+<title>Casa com porta</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #c6e0ef; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; opacity: 0; transition: opacity .8s; }
+  canvas.on { opacity: 1; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<script type="module">
+// Casa do Tripo reduzida, cor nos vértices. Toque na porta para abrir; toque de novo para fechar.
+// Luz padrão: manhã no deserto.
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const sky = (() => {
+  const c = document.createElement('canvas'); c.width = 2; c.height = 256;
+  const g = c.getContext('2d'); const gr = g.createLinearGradient(0, 0, 0, 256);
+  gr.addColorStop(0, '#86b9df'); gr.addColorStop(0.55, '#c6e0ef'); gr.addColorStop(1, '#f2e6d0');
+  g.fillStyle = gr; g.fillRect(0, 0, 2, 256);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+})();
+scene.background = sky;
+scene.fog = new THREE.Fog(0xeae4d6, 34, 70);
+
+// manhã no deserto: céu azul claro, sol branco-quente vindo do leste a uns 35°, luz rebatida da areia
+scene.add(new THREE.HemisphereLight(0xcfe6ff, 0xc9a47a, 1.35));
+const sun = new THREE.DirectionalLight(0xffe4bc, 3.2);
+sun.position.set(7, 6.5, 4.5);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -15, right: 15, top: 15, bottom: -15, near: 0.5, far: 30 });
+sun.shadow.bias = -0.0004;
+sun.shadow.normalBias = 0.02;
+scene.add(sun);
+
+// chão: sua textura de terra clara com grama, repetida (~5 m por repetição)
+const groundTex = new THREE.TextureLoader().load('../figueiras/tex/chao_grama_v3.webp');
+groundTex.colorSpace = THREE.SRGBColorSpace;
+groundTex.wrapS = groundTex.wrapT = THREE.RepeatWrapping;
+groundTex.repeat.set(16, 16);
+groundTex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+const ground = new THREE.Mesh(new THREE.CircleGeometry(40, 48), new THREE.MeshStandardMaterial({ map: groundTex, roughness: 1, color: 0xffffff }));
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+const camera = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 0.1, 120);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 2;
+controls.maxDistance = 42;
+controls.maxPolarAngle = Math.PI * 0.48;
+controls.target.set(0, 1.6, 0);
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.6;
+const stopSpin = () => { controls.autoRotate = false; };
+
+// câmera travada de frente, quase isométrica
+const AZ = 0.35, POL = 0.95;
+controls.autoRotate = false;
+controls.minAzimuthAngle = -AZ; controls.maxAzimuthAngle = AZ;
+controls.minPolarAngle = POL - 0.15; controls.maxPolarAngle = POL + 0.1;
+controls.minDistance = 8; controls.maxDistance = 30;
+controls.enablePan = false;
+controls.target.set(0, 1.4, 0);
+function frame() {
+  const dist = innerHeight > innerWidth ? 24 : 16;
+  camera.position.setFromSphericalCoords(dist, POL, 0.15).add(controls.target);
+  controls.update();
+}
+const LAYOUT = [{ x: 0, z: 0 }];
+const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync('casa_porta.glb');
+gltf.scene.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+scene.add(gltf.scene);
+const porta = gltf.scene.getObjectByName('Casa_Porta');
+// a porta gira na dobradiça (lado esquerdo) e abre para fora
+let aberta = false, ang = 0;
+const ABERTO = -1.75;
+const ray = new THREE.Raycaster(), ponto = new THREE.Vector2();
+let inicio = null;
+renderer.domElement.addEventListener('pointerdown', (e) => { inicio = [e.clientX, e.clientY]; });
+renderer.domElement.addEventListener('pointerup', (e) => {
+  if (!inicio || Math.hypot(e.clientX - inicio[0], e.clientY - inicio[1]) > 8) return;  // foi arrasto, não toque
+  ponto.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+  ray.setFromCamera(ponto, camera);
+  if (ray.intersectObject(porta, true).length) aberta = !aberta;
+});
+const relogio = new THREE.Clock();
+function animarPorta() {
+  const dt = Math.min(relogio.getDelta(), 0.05);
+  const alvo = aberta ? ABERTO : 0;
+  ang += (alvo - ang) * Math.min(1, dt * 5);
+  porta.rotation.y = ang;
+}
+
+// tufos de grama em pé: 2 planos cruzados (4 triângulos) com o seu recorte de grama, todos num só draw call.
+// Normais apontando para cima: a grama recebe a mesma luz do chão, sem escurecer de lado.
+{
+  const tex = new THREE.TextureLoader().load('../figueiras/tex/grama_tufo.webp');
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const a = new THREE.PlaneGeometry(0.62, 0.62); a.translate(0, 0.29, 0);
+  const b = a.clone(); b.rotateY(Math.PI / 2);
+  const geo = mergeGeometries([a, b]);
+  const n = geo.attributes.normal;
+  for (let i = 0; i < n.count; i++) n.setXYZ(i, 0, 1, 0);
+  const mat = new THREE.MeshStandardMaterial({ map: tex, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 1 });
+  let seed = 17;
+  const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  const N = 300;
+  const grass = new THREE.InstancedMesh(geo, mat, N);
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3(), c = new THREE.Color();
+  for (let i = 0; i < N; i++) {
+    if (i < N * 0.55) {               // mais grama ao redor das figueiras
+      const ang = rnd() * Math.PI * 2, d = 5.2 + rnd() * 3.5; const L = { x: 0, z: 0 };
+      p.set(L.x + Math.cos(ang) * d, 0, L.z + Math.sin(ang) * d);
+    } else {                          // e espalhada pelo campo
+      const ang = rnd() * Math.PI * 2, d = Math.sqrt(rnd()) * 20;
+      p.set(Math.cos(ang) * d, 0, Math.sin(ang) * d);
+    }
+    q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rnd() * Math.PI);
+    const k = 0.55 + rnd() * 0.8;
+    s.set(k, k * (0.8 + rnd() * 0.5), k);
+    grass.setMatrixAt(i, m4.compose(p, q, s));
+    const t = 0.82 + rnd() * 0.25;
+    grass.setColorAt(i, c.setRGB(t, t * (0.96 + rnd() * 0.06), t * 0.9));
+  }
+  grass.receiveShadow = true;
+  scene.add(grass);
+}
+
+frame();
+addEventListener('resize', () => {
+  renderer.setSize(innerWidth, innerHeight);
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+});
+renderer.setAnimationLoop(() => { animarPorta(); controls.update(); renderer.render(scene, camera); });
+requestAnimationFrame(() => renderer.domElement.classList.add('on'));
+</script>
+</body>
+</html>
