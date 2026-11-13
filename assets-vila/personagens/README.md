@@ -8,17 +8,17 @@ Quinze NPCs: pastor, aldeão e sacerdote (um modelo do Tripo) e mais doze de qua
 | `aldeao.glb` | aldeão sorridente com a jarra | 1,70 m | 14.995 | 813 KB |
 | `sacerdote.glb` | sacerdote de turbante, barba e peitoral | 1,78 m | 14.996 | 866 KB |
 | `rapaz.glb` | rapaz magro de túnica e faixa | 1,61 m | 15.006 | 787 KB |
-| `barbudo.glb` | homem barbudo de lenço na cabeça e manto | 1,66 m | 14.998 | 841 KB |
+| `barbudo.glb` | homem barbudo de lenço na cabeça e manto | 1,66 m | 14.998 | 829 KB |
 | `escriba.glb` | homem alto de gorro e túnica longa | 1,77 m | 14.995 | 842 KB |
-| `robusto.glb` | homem robusto e barbudo | 1,58 m | 15.007 | 818 KB |
+| `robusto.glb` | homem robusto e barbudo | 1,58 m | 15.007 | 810 KB |
 | `cacheado.glb` | homem de cabelo cacheado e manto de ombro | 1,71 m | 14.997 | 861 KB |
-| `magro.glb` | homem magro de barba e avental | 1,76 m | 14.911 | 802 KB |
-| `carregador.glb` | homem careca de túnica curta | 1,57 m | 15.006 | 1,2 MB |
+| `magro.glb` | homem magro de barba e avental | 1,76 m | 14.911 | 794 KB |
+| `carregador.glb` | homem careca de túnica curta | 1,57 m | 15.006 | 1,1 MB |
 | `moco.glb` | moço de cabelo curto e túnica com faixa | 1,76 m | 14.991 | 1,2 MB |
-| `mercador.glb` | mercador de turbante, barba e bolsa | 1,71 m | 14.998 | 1,2 MB |
+| `mercador.glb` | mercador de turbante, barba e bolsa | 1,71 m | 15.001 | 1,1 MB |
 | `mulher_faixa.glb` | mulher de faixa na cabeça e avental | 1,62 m | 15.006 | 1,2 MB |
 | `mulher_lenco.glb` | mulher de lenço, capa curta e bolsinha | 1,50 m | 14.982 | 1,2 MB |
-| `mulher_botoes.glb` | mulher de faixa e túnica de botões | 1,62 m | 15.002 | 1,2 MB |
+| `mulher_botoes.glb` | mulher de faixa e túnica de botões | 1,62 m | 15.003 | 1,0 MB |
 | `marta.glb` | Marta (usada na Betânia) | 1,62 m | 15.000 | 570 KB |
 | `lazaro.glb` | Lázaro (usado na Betânia) | 1,70 m | 15.000 | 568 KB |
 
@@ -38,3 +38,4 @@ Origem nos pés, de frente para +Z no three.js.
 ![Pastor, aldeão e sacerdote](previa.png)
 
 O viewer (`index.html`) troca entre os quinze e toca as cinco animações.
+- **Correção (13/11):** barbudo, robusto, magro, carregador, mercador e mulher de botões foram remontados. O punho e a ponta da mão agora são medidos na malha, os dedos seguem a mão e a perna abaixo da barra segue só coxa, panturrilha e pé. A saia encostada na mão não herda mais o peso do braço, e o avental e o vestido de baixo têm os mesmos pesos, para não se atravessarem. O rosto virou uma ilha única e maior na textura (antes ficava picado em vários pedaços e borrava no celular).
