@@ -149,7 +149,7 @@ const TRONCOS = [];
 {
   const g = await baixar('../diorama-ciprestes/ciprestes.glb');
   const t = await baixar('arvores_tripo.glb');
-  const p = await baixar('tamareiras.glb?v=3');
+  const p = await baixar('tamareiras.glb?v=4');
   const m = {};
   for (const n of [...g.scene.children, ...t.scene.children, ...p.scene.children]) { n.position.set(0, 0, 0); sombra(n); m[n.name] = n; }
   // [x, z, escala, nome, giro]; as árvores do Tripo de copa rasa ficam de frente para a câmera (giro pequeno)
