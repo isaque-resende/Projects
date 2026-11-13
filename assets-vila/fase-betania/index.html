@@ -103,11 +103,12 @@ function caminho(pts, larg) {
   CAMINHOS.push({ curva, larg });
 }
 // estrada para Jerusalém (sai pelo oeste, à esquerda) e ruelas
-caminho([[-60, 3], [-30, 3.5], [-19, 2.5], [-10, 2.8], [-3, 1.5], [3, 0.5], [9, -1.5], [16, -1]], 1.5);
-caminho([[-3, 1.5], [-5, -2.5], [-7, -5.2]], 1.0);
-caminho([[3, 0.5], [4.5, -3.5], [6, -6.5]], 1.0);
-caminho([[-10, 2.8], [-10, 6.0]], 0.9);
-caminho([[13, -0.6], [15.8, 2.6], [17.6, 6.4]], 0.85);
+// estrada para Jerusalém (sai pelo oeste) atravessa a vila; ruelas levam a cada porta e ao aprisco
+caminho([[-60, 3], [-30, 3.2], [-20, 2.8], [-10, 2.2], [-2, 0.8], [6, 0.4], [12, 1.0], [16, 1.6]], 1.5);
+caminho([[-2, 0.8], [-2.5, -3.5], [-2.7, -6.6]], 1.0);
+caminho([[6, 0.4], [6.1, -3.5], [6.3, -7.2]], 1.0);
+caminho([[12, 1.0], [14.2, -2.2], [14.6, -5.8]], 0.9);
+caminho([[-10, 2.2], [-7.6, 6.4], [-8.2, 10.6]], 0.9);
 const naEstrada = (x, z, m) => CAMINHOS.some(({ curva, larg }) => {
   for (let i = 0; i <= 80; i++) { const p = curva.getPointAt(i / 80); if (Math.hypot(p.x - x, p.z - z) < larg + m) return true; }
   return false;
@@ -158,7 +159,7 @@ function por(modelo, x, z, r = 0, k = 1, { fade = false, caixa = false, circ = 0
 const CASAP = gCasaP.scene; CASAP.children.forEach((c) => c.position.set(0, 0, 0));
 const CASAS = [];
 const PASSO = 0.12, ABERTO = -1.75;
-for (const [x, z, r] of [[-7, -9, 0], [7, -10.5, -0.15], [-16.5, -4.5, 0.6], [16, -4.5, -0.6]]) {
+for (const [x, z, r] of [[-3, -10.5, 0.1], [6.2, -11, -0.05], [15, -9.8, -0.35]]) {
   const g = new THREE.Group(); for (const c of [...CASAP.children]) g.add(c.clone(true));
   g.updateMatrixWorld(true);
   const porta = g.getObjectByName('Casa2_Porta'), corpo = g.getObjectByName('Casa2');
@@ -196,16 +197,43 @@ for (const [x, z, r] of [[-7, -9, 0], [7, -10.5, -0.15], [-16.5, -4.5, 0.6], [16
     alt(wx, wz) { const i = Math.round((wx - GX0) / PASSO), k = Math.round((wz - GZ0) / PASSO); return (i < 0 || k < 0 || i >= GW || k >= GD) ? 0 : ALT[i * GD + k]; },
     mundo(lx, lz) { return new THREE.Vector3(x + lx * co + lz * si, 0, z - lx * si + lz * co); } });
 }
-const alturaEm = (x, z) => { let h = 0; for (const c of CASAS) h = Math.max(h, c.alt(x, z)); return h; };
+const RELEVO = [];   // outros volumes onde se pisa (o rochedo do túmulo)
+const alturaEm = (x, z) => { let h = 0; for (const c of CASAS) h = Math.max(h, c.alt(x, z)); for (const r of RELEVO) h = Math.max(h, r(x, z)); return h; };
+// mapa de alturas de uma malha qualquer (mesma ideia das casas)
+function mapaAltura(mesh) {
+  mesh.updateWorldMatrix(true, false);
+  const cx = new THREE.Box3().setFromObject(mesh), P = 0.15;
+  const GX0 = cx.min.x - 0.2, GZ0 = cx.min.z - 0.2;
+  const GW = Math.ceil((cx.max.x - cx.min.x + 0.4) / P) + 1, GD = Math.ceil((cx.max.z - cx.min.z + 0.4) / P) + 1;
+  const ALT = new Float32Array(GW * GD);
+  const pos = mesh.geometry.attributes.position, idx = mesh.geometry.index, m = mesh.matrixWorld;
+  const A = new THREE.Vector3(), B = new THREE.Vector3(), C = new THREE.Vector3();
+  const n = idx ? idx.count : pos.count;
+  for (let t = 0; t < n; t += 3) {
+    A.fromBufferAttribute(pos, idx ? idx.getX(t) : t).applyMatrix4(m); B.fromBufferAttribute(pos, idx ? idx.getX(t + 1) : t + 1).applyMatrix4(m); C.fromBufferAttribute(pos, idx ? idx.getX(t + 2) : t + 2).applyMatrix4(m);
+    const i0 = Math.max(0, Math.floor((Math.min(A.x, B.x, C.x) - GX0) / P)), i1 = Math.min(GW - 1, Math.ceil((Math.max(A.x, B.x, C.x) - GX0) / P));
+    const k0 = Math.max(0, Math.floor((Math.min(A.z, B.z, C.z) - GZ0) / P)), k1 = Math.min(GD - 1, Math.ceil((Math.max(A.z, B.z, C.z) - GZ0) / P));
+    const d = (B.z - C.z) * (A.x - C.x) + (C.x - B.x) * (A.z - C.z);
+    if (Math.abs(d) < 1e-6) { for (let i = i0; i <= i1; i++) for (let k = k0; k <= k1; k++) { const y = Math.max(A.y, B.y, C.y); if (y > ALT[i * GD + k]) ALT[i * GD + k] = y; } continue; }
+    for (let i = i0; i <= i1; i++) for (let k = k0; k <= k1; k++) {
+      const xx = GX0 + i * P, zz = GZ0 + k * P;
+      const w1 = ((B.z - C.z) * (xx - C.x) + (C.x - B.x) * (zz - C.z)) / d, w2 = ((C.z - A.z) * (xx - C.x) + (A.x - C.x) * (zz - C.z)) / d, w3 = 1 - w1 - w2;
+      if (w1 < -0.02 || w2 < -0.02 || w3 < -0.02) continue;
+      const y = w1 * A.y + w2 * B.y + w3 * C.y; if (y > ALT[i * GD + k]) ALT[i * GD + k] = y;
+    }
+  }
+  return (wx, wz) => { const i = Math.round((wx - GX0) / P), k = Math.round((wz - GZ0) / P); return (i < 0 || k < 0 || i >= GW || k >= GD) ? 0 : ALT[i * GD + k]; };
+}
 
 // ---------- largo: duas barracas; parreira junto à casa de Marta; aprisco de pedra ----------
 const MU = nos(gMuros), BA = nos(gBarr), PA = nos(gParr);
 for (const o of [...Object.values(MU), ...Object.values(BA), ...Object.values(PA)]) o.position.set(0, 0, 0);
-por(BA.Barraca5, 1.0, -3.2, 0.15, 1, { caixa: 0.25, fade: true });
-por(BA.Barraca2, -2.2, -2.2, -0.35, 1, { caixa: 0.25, fade: true });
-por(PA.Parreira_Arco, 0.4, 13.0, 0, 1, { fade: true });
-CIRC.push({ x: 0.4 - 1.23, z: 13.0, r: 0.22 }, { x: 0.4 + 1.16, z: 13.0, r: 0.22 });
-por(PA.Parreira_Poste, 2.8, 13.6, 0.4, 1, { circ: 0.22 });
+const B5 = { x: 3.4, z: -3.4 };
+por(BA.Barraca5, B5.x, B5.z, 0.15, 1, { caixa: 0.25, fade: true });
+por(BA.Barraca2, -0.6, -3.0, -0.2, 1, { caixa: 0.25, fade: true });
+por(PA.Parreira_Arco, 9.2, -5.4, 0, 1, { fade: true });
+CIRC.push({ x: 9.2 - 1.23, z: -5.4, r: 0.22 }, { x: 9.2 + 1.16, z: -5.4, r: 0.22 });
+por(PA.Parreira_Poste, 7.4, -4.8, 0.4, 1, { circ: 0.22 });
 const [gPast, gOfi] = await Promise.all([baixar('../casa-porta/pastoril.glb'), baixar('../casa-porta/oficios.glb')]);
 // aprisco: muro circular de pedra com porteira (a porteira abre quando o jogador chega perto)
 let APR = null;
@@ -219,7 +247,7 @@ function bateAnel(x, z, m) {
   return APR.ab < 0.9;                              // vão: só passa com a porteira aberta
 }
 {
-  const AX = -11, AZ = 8.6, K = 2.2, KY = 1.3;
+  const AX = -12.4, AZ = 9.6, K = 2.2, KY = 1.3;
   const muro = nos(gPast).Muro_Curvo.clone(); muro.position.set(0, 0, 0);
   // descobre o vão do anel pelos vértices
   const angs = []; const v = new THREE.Vector3(); let rIn = 1e9, rOut = 0;
@@ -250,7 +278,7 @@ function bateAnel(x, z, m) {
   const base = F.Forno_Corpo.position.clone();
   const forno = new THREE.Group();
   for (const [n, o] of Object.entries(F)) if (n.startsWith('Forno_') && !/Chama|Brasa|Massa_[23]/.test(n)) { const c = o.clone(); c.position.sub(base); forno.add(c); }
-  forno.position.set(-2.2, 0, -8.2); forno.rotation.y = 0.4; sombra(forno); scene.add(forno); CIRC.push({ x: -2.2, z: -8.2, r: 1.0 });
+  forno.position.set(1.2, 0, -6.2); forno.rotation.y = 0.4; sombra(forno); scene.add(forno); CIRC.push({ x: 1.2, z: -6.2, r: 1.0 });
   // brasa e chamas acesas
   for (const n of ['Forno_Brasa', 'Forno_Chamas', 'Forno_ChamaBoca']) if (F[n]) { const c = F[n].clone(); c.position.sub(base); forno.add(c); }
   forno.updateWorldMatrix(true, true);
@@ -271,14 +299,14 @@ const gLagar = await baixar('../lagar/lagar.glb');
   const L = nos(gLagar), base = L.Lagar_Rocha.position.clone();
   const lagar = new THREE.Group();
   for (const o of Object.values(L)) { const c = o.clone(); c.position.sub(base); lagar.add(c); }
-  lagar.position.set(-3.2, 0, 10.8); lagar.rotation.y = 0.3; sombra(lagar); scene.add(lagar);
+  lagar.position.set(11.0, 0, -2.6); lagar.rotation.y = 0.3; sombra(lagar); scene.add(lagar);
   lagar.updateWorldMatrix(true, true); caixaDe(lagar, 0.35);
   const mundo = (n) => L[n].position.clone().sub(base).applyMatrix4(lagar.matrixWorld);
   globalThis.LAGAR = { tanque: mundo('Lagar_Uvas_6'), cesto: mundo('Lagar_CestoUvas'), jarro: mundo('Lagar_Jarro'), r: lagar.rotation.y };
 }
 
 // ---------- lavoura: terra arada à frente-direita ----------
-const LAV = { x0: 5.0, x1: 16.6, z0: 6.0, z1: 12.4 };
+const LAV = { x0: 4.4, x1: 15.6, z0: 7.4, z1: 13.4 };
 {
   const t = tex('tex/arada.webp'); t.center.set(0.5, 0.5); t.rotation = Math.PI / 2; t.repeat.set(0.9, 1.6);
   const m = new THREE.Mesh(new THREE.PlaneGeometry(LAV.x1 - LAV.x0, LAV.z1 - LAV.z0), new THREE.MeshStandardMaterial({ map: t, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2 }));
@@ -293,7 +321,7 @@ const LAV = { x0: 5.0, x1: 16.6, z0: 6.0, z1: 12.4 };
   cx.fillStyle = gr; cx.fillRect(0, 0, 128, 128);
   const borda = new THREE.CanvasTexture(cv);
   const patio = tex('tex/patio.webp');
-  for (const [x, z, r] of [[-2.2, -8.2, 3.4], [-3.2, 10.8, 3.6], [-0.6, -2.6, 4.2], [-7, -6.6, 3.0]]) {
+  for (const [x, z, r] of [[1.6, -6.1, 3.0], [11.0, -2.6, 3.4], [1.4, -2.8, 4.4], [-2.8, -6.2, 2.6]]) {
     const g = new THREE.CircleGeometry(r, 28), uv = g.attributes.uv;
     for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * r / 2.5, uv.getY(i) * r / 2.5);
     g.setAttribute('uv1', new THREE.Float32BufferAttribute(g.attributes.uv.array.map((v) => v / (r / 2.5)), 2));
@@ -328,20 +356,39 @@ const LAV = { x0: 5.0, x1: 16.6, z0: 6.0, z1: 12.4 };
 // ---------- árvores: poucas dentro da vila, uma cortina nas bordas (sangria) ----------
 const AT = nos(gTripo), AP = nos(gPar), T = nos(gTam), C = nos(gCip), FR = nos(gFrond), R = nos(gRoch), OB = nos(gObj);
 for (const o of [...Object.values(AT), ...Object.values(AP), ...Object.values(T), ...Object.values(FR), ...Object.values(R), ...Object.values(OB), ...Object.values(C)]) o.position.set(0, 0, 0);
-por(T.Tamareiras, 2.4, 8.6, 0.2, 0.7, { fade: true });
-CIRC.push({ x: 2.4 - 1.4, z: 8.6, r: 0.35 }, { x: 2.4 + 1.2, z: 8.6, r: 0.35 });
+por(T.Tamareiras, -4.4, 11.4, 0.2, 0.7, { fade: true });
+CIRC.push({ x: -4.4 - 1.4, z: 11.4, r: 0.35 }, { x: -4.4 + 1.2, z: 11.4, r: 0.35 });
 // objetos junto às casas
-por(OB.Jarro_Alto, -4.2, -6.4, 0, 1.3, { circ: 0.3 }); por(OB.Pote_Escuro, -3.6, -6.0, 0, 1.3, { circ: 0.3 });
-por(OB.Cesto_Alca, 4.6, -6.8, 0.4, 1, { circ: 0.3 }); por(OB.Lenha, 0.2, -10.0, 0.3, 1, { circ: 0.3 });
-por(OB.Saco, 9.8, -6.6, 0, 1.1, { circ: 0.3 }); por(OB.Banquinho, -9.6, -4.0, 1.0, 1, { circ: 0.3 });
-por(R.Rocha3, -17.0, 12.6, 0.8, 1, { circ: 0.6 });
+por(OB.Jarro_Alto, -5.6, -6.6, 0, 1.3, { circ: 0.3 }); por(OB.Pote_Escuro, -5.0, -6.2, 0, 1.3, { circ: 0.3 });
+por(OB.Cesto_Alca, 9.0, -7.0, 0.4, 1, { circ: 0.3 }); por(OB.Lenha, -1.3, -5.6, 0.3, 1, { circ: 0.3 });
+por(OB.Saco, 12.6, -5.6, 0, 1.1, { circ: 0.3 }); por(OB.Banquinho, 8.2, -7.0, 1.0, 1, { circ: 0.3 });
+por(R.Rocha3, -17.5, 13.6, 0.8, 1, { circ: 0.6 });
 // túmulo de Lázaro: gruta na rocha, fora da vila, à direita; entrada (com a pedra) virada para a vila e a câmera
+const TUM = {}, ROLA = 1;   // lado para onde a pedra rola (ao longo da face)
 {
-  const g = (await baixar('../casa-porta/tumulo_lazaro.glb')).scene.children[0]; g.position.set(0, 0, 0);
-  const tum = por(g, 20.0, 3.6, -1.86, 1, { caixa: 0.9 });
-  // ciprestes atrás e pedras soltas ao redor, como num lugar de sepulturas
-  por(C.Cipreste2_Esguio, 23.0, 0.6, 0, 0.9, { circ: 0.4 }); por(C.Cipreste1_Redondo, 24.2, 3.6, 0.5, 0.85, { circ: 0.4 }); por(C.Cipreste2_Esguio, 23.6, 7.0, 1.0, 0.8, { circ: 0.4 });
-  por(R.Rocha6, 16.4, 2.4, -0.4, 0.6, { circ: 0.4 }); por(R.Rocha2 || R.Rocha3, 20.9, 7.6, 1.2, 0.5, { circ: 0.35 });
+  const cena = (await baixar('../casa-porta/tumulo_lazaro.glb')).scene;
+  const tum = cena.clone(true); tum.position.set(-14.2, 0, -8.6); tum.rotation.y = -1.36; sombra(tum); scene.add(tum); FADE.push(tum);
+  tum.updateMatrixWorld(true);
+  RELEVO.push(mapaAltura(tum.getObjectByName('Tumulo_Lazaro')));
+  // a pedra recortada do modelo é só uma casca; no lugar dela vai um disco maciço do mesmo tamanho
+  const casca = tum.getObjectByName('Tumulo_Pedra'); casca.visible = false;
+  const rP = 1.15;
+  const geoP = new THREE.CylinderGeometry(rP, rP, 0.42, 16, 1); geoP.rotateX(Math.PI / 2);
+  { const pa = geoP.attributes.position; for (let i = 0; i < pa.count; i++) { const x = pa.getX(i), y = pa.getY(i), z = pa.getZ(i); const r = Math.hypot(x, y); const b = 1 + 0.04 * Math.sin(Math.atan2(y, x) * 5); pa.setXYZ(i, x * b, y * b, z * (r < 0.1 ? 1.25 : 1)); } geoP.computeVertexNormals(); }
+  const pedra = new THREE.Mesh(geoP, new THREE.MeshStandardMaterial({ color: 0xdcb48a, roughness: 1, flatShading: true }));
+  // tapa a boca da gruta, encostada na rocha
+  pedra.position.copy(casca.position).add(new THREE.Vector3(0.35, 0.06, 0.5)); pedra.rotation.y = -0.55; pedra.castShadow = pedra.receiveShadow = true; tum.add(pedra);
+  Object.assign(TUM, { tum, pedra, p0: pedra.position.clone(), q0: pedra.quaternion.clone(), k: 0, alvo: 0, raio: rP });
+  // a boca escura da gruta, logo atrás da pedra
+  const boca = new THREE.Mesh(new THREE.CircleGeometry(TUM.raio * 0.8, 20), new THREE.MeshBasicMaterial({ color: 0x120b06 }));
+  boca.position.copy(TUM.p0).add(new THREE.Vector3(0, 0.02, 0.33).applyQuaternion(TUM.q0)); boca.quaternion.copy(TUM.q0).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI)); tum.add(boca);
+  TUM.circ = { x: 0, z: 0, r: TUM.raio * 0.9 }; CIRC.push(TUM.circ);
+  TUM.frente = new THREE.Vector3(0, 0, -1).applyQuaternion(tum.quaternion).setY(0).normalize();   // a face da pedra olha para -z do modelo
+  TUM.lugar = pedra.getWorldPosition(new THREE.Vector3()).setY(0);
+  { const L = TUM.lugar, F = TUM.frente; caminho([[-10, 2.2], [-7.4, -2.4], [L.x + F.x * 3.6 + 0.4, L.z + F.z * 3.6 + 1.2], [L.x + F.x * 1.5, L.z + F.z * 1.5]], 0.85); }
+  // ciprestes atrás e pedras soltas, como num lugar de sepulturas
+  por(C.Cipreste2_Esguio, -7.4, -13.6, 1.0, 0.8, { circ: 0.4 }); por(C.Cipreste1_Redondo, -8.6, -2.4, 0.5, 0.75, { circ: 0.4 });
+  por(R.Rocha6, TUM.lugar.x + TUM.frente.x * 2.4 + 2.2, TUM.lugar.z + TUM.frente.z * 2.4 - 0.6, -0.4, 0.6, { circ: 0.4 });
 }
 // cortina de árvores fora da área de jogo
 const BORDA = [];
@@ -350,6 +397,7 @@ for (let i = 0; i < 52; i++) {
   const rx = 25 + rnd() * 6, rz = 19 + rnd() * 5;
   const x = Math.cos(a) * rx, z = Math.sin(a) * rz;
   if (Math.abs(z - 3) < 3.5 && x < 0) continue;      // a estrada para Jerusalém fica aberta
+  if (Math.hypot(x - TUM.tum.position.x, z - TUM.tum.position.z) < 8.5) continue;   // o rochedo do túmulo já fecha esse canto
   const lista = [C.Cipreste2_Esguio, C.Cipreste1_Redondo, FR.Arvore_Pequena, AT.Arvore1, AT.Arvore3, AT.Arvore5, AT.Arvore8, AT.Arvore9, T.Tamareiras].filter(Boolean);
   if (z > 7 || x > 22) { const pd = [R.Rocha1, R.Rocha4, R.Rocha5, R.Rocha7, R.Rocha8].filter(Boolean); por(pd[i % pd.length], x, z, rnd() * 6.28, 0.7 + rnd() * 0.5); continue; }
   BORDA.push(por(lista[Math.floor(rnd() * lista.length)], x, z, rnd() * 6.28, 0.85 + rnd() * 0.35, { fade: z > 8 }));
@@ -390,12 +438,12 @@ const [nMarta, nLazaro, nPastor, nAldeao, nLenco, nRobusto, nBotoes, nMagro, nMo
 // forno: uma mulher sova a massa na mesa, um rapaz atiça o fogo
 const FO = globalThis.FORNO, LG = globalThis.LAGAR;
 const padeira = ator(nBotoes, 1.6, FO.NPC_Amassar.p.x, FO.NPC_Amassar.p.z, FO.NPC_Amassar.r, 'Parado');
-const foguista = ator(nMoco, 1.66, -0.4, -9.7, -0.88, 'Parado');
+const foguista = ator(nMoco, 1.66, -0.6, -5.0, Math.atan2(1.8, -1.2), 'Parado');
 foguista.A.Parado && (foguista.A.Parado.timeScale = 0.8);
 // lagar: um homem pisa as uvas dentro do tanque; outro traz o cesto
 const pisador = ator(nMagro, 1.66, LG.tanque.x, LG.tanque.z, LG.r, 'Parado');
 pisador.o.position.y = LG.tanque.y - 0.05;
-const ajudante = ator(nAldeao, 1.7, -1.0, 11.4, -1.92, 'Conversando');
+const ajudante = ator(nAldeao, 1.7, LG.cesto.x + 0.9, LG.cesto.z + 0.9, LG.r - 2.2, 'Conversando');
 for (const n of [foguista, ajudante]) CIRC.push({ x: n.o.position.x, z: n.o.position.z, r: 0.35 });
 // ---------- animação sob medida: IK de dois ossos (braço e perna) por cima do clipe parado ----------
 const _q1 = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), _q3 = new THREE.Quaternion();
@@ -590,14 +638,14 @@ function pisadorPasso(dt, t) {
   const lado = pos(st.os.bE[0]).sub(pos(st.os.bD[0])).setY(0).normalize(), cint = pos(st.os.pelvis).add(new THREE.Vector3(0, 0.12, 0));
   maos(st, cint.clone().addScaledVector(lado, 0.2).addScaledVector(f, 0.02), cint.clone().addScaledVector(lado, -0.2).addScaledVector(f, 0.02), dt, 1, 20);
 }
-const marta = ator(nMarta, 1.62, -5.9, -5.0, -1.18, 'Conversando');
-const lazaro = ator(nLazaro, 1.72, -7.6, -4.3, 1.96, 'Conversando');
-marta.r0 = -1.18; lazaro.r0 = 1.96;
-const pastor = ator(nPastor, 1.68, -8.6, 11.8, 2.6, 'Parado');
-const lenco = ator(nLenco, 1.6, 1.25, -1.7, Math.PI + 0.15, 'Parado');
-const vendedor = ator(nRobusto, 1.72, 0.85, -3.55, 0.15, 'Conversando');
+const marta = ator(nMarta, 1.62, -5.0, -4.6, -0.95, 'Conversando');
+const lazaro = ator(nLazaro, 1.72, -6.4, -3.6, 2.19, 'Conversando');
+marta.r0 = -0.95; lazaro.r0 = 2.19;
+const pastor = ator(nPastor, 1.68, -8.0, 13.2, 2.6, 'Parado');
+const lenco = ator(nLenco, 1.6, B5.x + 0.25, B5.z + 1.5, Math.PI + 0.15, 'Parado');
+const vendedor = ator(nRobusto, 1.72, B5.x - 0.15, B5.z - 0.35, 0.15, 'Conversando');
 corpo(lenco); corpo(vendedor);
-CIRC.push({ x: 1.25, z: -1.7, r: 0.35 });
+CIRC.push({ x: B5.x + 0.25, z: B5.z + 1.5, r: 0.35 });
 // o vendedor fala, pega um produto no balcão e entrega; a freguesa estende a mão e recebe
 const PROD = new THREE.Mesh(new THREE.SphereGeometry(0.08, 7, 5), new THREE.MeshStandardMaterial({ color: 0xa63d2a, roughness: 1, flatShading: true }));
 PROD.castShadow = true; PROD.visible = false; scene.add(PROD);
@@ -624,10 +672,10 @@ function barracaPasso(dt, t) {
   maos(lenco, pos(lenco.os.bE[2]), aL || pos(lenco.os.bD[2]), dt, aL ? 1 : 0, 5);
 }
 const andante = ator(nRobusto, 1.74, 0, 0, 0, 'Andar');
-CIRC.push({ x: -5.9, z: -5.0, r: 0.35 }, { x: -7.6, z: -4.3, r: 0.35 }, { x: -8.6, z: 11.8, r: 0.35 }, { x: 0.85, z: -3.55, r: 0.3 });
+CIRC.push({ x: -5.0, z: -4.6, r: 0.35 }, { x: -6.4, z: -3.6, r: 0.35 }, { x: -8.0, z: 13.2, r: 0.35 }, { x: B5.x - 0.15, z: B5.z - 0.35, r: 0.3 });
 
 // ---------- poço: água no fundo, sarilho de madeira com roldana; uma mulher puxa o balde e enche o cântaro ----------
-const POCO = { c: new THREE.Vector3(8.4, 0, 3.6) };
+const POCO = { c: new THREE.Vector3(-4.6, 0, 4.6) };
 {
   const k = 0.8, n = nos(gOfi).Poco.clone(); n.position.set(0, 0, 0); n.scale.setScalar(k); n.updateMatrixWorld(true);
   const v = new THREE.Vector3(), bx = new THREE.Box3(); let topo = 0;
@@ -778,8 +826,8 @@ function aguadeiraPasso(dt, t) {
 }
 
 // arado: madeira simples atrelada ao boi
-const boi = ator(gBoi, 1.55, 6, 7, Math.PI / 2, 'Andar');
-const lavrador = ator(nAldeao, 1.7, 4, 7, Math.PI / 2, 'Andar');
+const boi = ator(gBoi, 1.55, 6, 8, Math.PI / 2, 'Andar');
+const lavrador = ator(nAldeao, 1.7, 4, 8, Math.PI / 2, 'Andar');
 const arado = new THREE.Group();
 {
   const mad = new THREE.MeshStandardMaterial({ color: 0x6b4a2c, roughness: 1, flatShading: true });
@@ -792,7 +840,7 @@ const arado = new THREE.Group();
 }
 // sulcos que vão ficando para trás
 const SULCO = new THREE.MeshStandardMaterial({ color: 0x5a3d26, roughness: 1, polygonOffset: true, polygonOffsetFactor: -3 });
-const FAIXAS = [6.6, 7.6, 8.6, 9.6, 10.6, 11.6];
+const FAIXAS = [0, 1, 2, 3, 4, 5].map((i) => LAV.z0 + 0.7 + i * 0.95);
 const sulcos = FAIXAS.map((z) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 0.28), SULCO); m.rotation.x = -Math.PI / 2; m.position.set(LAV.x0 + 0.6, 0.04, z); m.scale.x = 0.001; scene.add(m); return m; });
 // percurso fechado do boi: faixa por faixa com curva em U nas pontas, depois volta pela cabeceira
 const TRILHA = []; // pontos a cada 5 cm; f = faixa da reta (ou -1)
@@ -820,7 +868,7 @@ for (let i = 0; i < 5; i++) {
 }
 
 // passante: dá voltas pela estrada
-const rota = new THREE.CatmullRomCurve3([[-17, 3.0], [-10, 3.2], [-3, 2.0], [3, 1.0], [9, -0.9], [14, -0.5]].map(([x, z]) => new THREE.Vector3(x, 0, z)));
+const rota = new THREE.CatmullRomCurve3([[-18, 2.9], [-10, 2.4], [-2, 1.1], [6, 0.7], [12, 1.3]].map(([x, z]) => new THREE.Vector3(x, 0, z)));
 let tRota = 0, sentido = 1, pausa = 0;
 
 // ---------- jogador ----------
@@ -864,7 +912,7 @@ renderer.domElement.addEventListener('pointercancel', (e) => toques.delete(e.poi
 const botao = document.getElementById('acao'), fade = document.getElementById('fade');
 let fora = false;
 botao.onclick = () => acionar();
-let portaPerto = null, jogVy = 0, jogNoChao = true;
+let portaPerto = null, pedraPerto = false, jogVy = 0, jogNoChao = true;
 // direcional virtual (canto esquerdo de baixo)
 const JOY = { on: false, x: 0, y: 0, id: null };
 {
@@ -904,6 +952,7 @@ function entrarCasa(c) {
 }
 function acionar() {
   if (botao.style.display !== 'block' || fora) return;
+  if (pedraPerto && jog.o.position.x >= -21) { TUM.alvo = TUM.alvo ? 0 : 1; return; }
   if (portaPerto && jog.o.position.x >= -21) { portaPerto.aberta = !portaPerto.aberta; return; }
   fora = true; botao.style.display = 'none';
   fade.textContent = 'A caminho de Jerusalém…'; fade.style.opacity = 1;
@@ -995,10 +1044,12 @@ const laco = (forca) => {
     if (Math.abs(lx - c.px) < 0.45 && lz < c.pz - 0.45) entrarCasa(c);
   }
   const naSaida = jog.o.position.x < -21;
+  pedraPerto = pj.y < 0.6 && Math.hypot(pj.x - TUM.lugar.x, pj.z - TUM.lugar.z) < 3.6 && Math.abs(TUM.k - TUM.alvo) < 0.01;
   portaPerto = CASAS.find((c) => pj.y < 0.3 && c.mundo(c.px, c.pz).distanceTo(new THREE.Vector3(pj.x, 0, pj.z)) < 2.0) || null;
   if (naSaida) botao.textContent = (toqueTela ? '' : 'E: ') + 'seguir para Jerusalém';
+  else if (pedraPerto) botao.textContent = (toqueTela ? '' : 'E: ') + (TUM.alvo ? 'rolar a pedra de volta' : 'rolar a pedra');
   else if (portaPerto) botao.textContent = (toqueTela ? '' : 'E: ') + (portaPerto.aberta ? 'fechar a porta' : 'abrir a porta');
-  botao.style.display = (naSaida || portaPerto) && !fora ? 'block' : 'none';
+  botao.style.display = (naSaida || portaPerto || pedraPerto) && !fora ? 'block' : 'none';
 
   // boi, arado e lavrador indo e voltando pelas faixas
   {
@@ -1039,6 +1090,14 @@ const laco = (forca) => {
   // porteira do aprisco abre quando o jogador chega perto
   APR.alvoAb = jog.o.position.distanceTo(APR.centroPorta) < 2.6 ? 1.6 : 0;
   APR.ab += (APR.alvoAb - APR.ab) * Math.min(1, dt * 3); APR.piv.rotation.y = APR.base + APR.ab;
+  // a pedra do túmulo rola de lado, girando sobre si mesma
+  TUM.k += Math.sign(TUM.alvo - TUM.k) * Math.min(Math.abs(TUM.alvo - TUM.k), dt * 0.35);
+  {
+    const e = TUM.k * TUM.k * (3 - 2 * TUM.k), dist = 2.2 * e;
+    TUM.pedra.position.copy(TUM.p0).add(new THREE.Vector3(ROLA * dist, 0, -0.12 * Math.sin(Math.PI * e)).applyQuaternion(TUM.q0));
+    TUM.pedra.quaternion.copy(TUM.q0).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -ROLA * dist / TUM.raio));   // gira em torno do próprio eixo (normal da face)
+    const pw = TUM.pedra.getWorldPosition(new THREE.Vector3()); TUM.circ.x = pw.x; TUM.circ.z = pw.z;
+  }
   // passante
   if (pausa > 0) { pausa -= dt; andante.toca('Parado'); }
   else if (jog.o.position.distanceTo(andante.o.position) < 1.1) andante.toca('Parado');   // espera o jogador sair da frente
@@ -1067,6 +1126,7 @@ const laco = (forca) => {
   const fx = THREE.MathUtils.clamp(jog.o.position.x, -lx, lx), fz = THREE.MathUtils.clamp(jog.o.position.z, -lz, lz + 1);
   foco.x += (fx - foco.x) * Math.min(1, dt * 3); foco.z += (fz - foco.z) * Math.min(1, dt * 3); foco.y += (jog.o.position.y * 0.8 - foco.y) * Math.min(1, dt * 3);
   camera.position.copy(foco).addScaledVector(DIR, dist); camera.lookAt(foco);
+  scene.fog.near = dist + 14; scene.fog.far = dist + 70;   // a neblina acompanha o zoom: o fundo da vila nunca some
   sun.position.set(foco.x + 14, 22, foco.z + 9); sun.target.position.copy(foco);
 
   atualizaFade();
