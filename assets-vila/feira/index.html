@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#cdd6da">
+<title>Barracas da feira</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #cfd8dc; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<script type="module">
+// Só as 9 barracas do Tripo, de frente para a câmera, com um personagem de 1,7 m para escala.
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xd6dde0);
+scene.add(new THREE.HemisphereLight(0xcfe6ff, 0xc9a47a, 1.35));
+const sun = new THREE.DirectionalLight(0xffe4bc, 3.2);
+sun.position.set(8, 14, 10);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -14, right: 14, top: 14, bottom: -14, near: 1, far: 50 });
+sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.03;
+scene.add(sun);
+
+const chao = new THREE.TextureLoader().load('../figueiras/tex/chao_grama_v3.webp');
+chao.colorSpace = THREE.SRGBColorSpace; chao.wrapS = chao.wrapT = THREE.RepeatWrapping; chao.repeat.set(8, 8);
+const ground = new THREE.Mesh(new THREE.CircleGeometry(30, 48), new THREE.MeshStandardMaterial({ map: chao, roughness: 1 }));
+ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+
+const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+const baixar = async (url) => {
+  for (let k = 0; ; k++) {
+    try { return await loader.loadAsync(url); } catch (e) { if (k >= 3) throw e; await new Promise((r) => setTimeout(r, 400 * (k + 1))); }
+  }
+};
+const sombra = (r) => r.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+
+const b = await baixar('../casa-porta/barracas.glb');
+const B = {};
+for (const n of b.scene.children) { n.position.set(0, 0, 0); sombra(n); B[n.name] = n; }
+for (let i = 0; i < 9; i++) {
+  const n = B['Barraca' + (i + 1)];
+  if (!n) continue;
+  const m = n.clone();
+  m.position.set(((i % 3) - 1) * 4.6, 0, (Math.floor(i / 3) - 1) * 4.6);
+  scene.add(m);
+}
+
+let mixer = null;
+{
+  const g = await baixar('../vila-betania/discipulo_acoes.glb');
+  sombra(g.scene);
+  const bx = new THREE.Box3().setFromObject(g.scene);
+  g.scene.scale.setScalar(1.7 / (bx.max.y - bx.min.y));
+  g.scene.position.set(2.3, 0, 7.2);
+  scene.add(g.scene);
+  mixer = new THREE.AnimationMixer(g.scene);
+  const c = g.animations.find((a) => a.name === 'Parado') || g.animations[0];
+  if (c) mixer.clipAction(c).play();
+}
+
+const camera = new THREE.PerspectiveCamera(35, innerWidth / innerHeight, 0.3, 200);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.target.set(0, 1, 0);
+controls.maxPolarAngle = 1.45;
+controls.minDistance = 4; controls.maxDistance = 45;
+camera.position.set(0, 13, innerHeight > innerWidth ? 30 : 20);
+controls.update();
+addEventListener('resize', () => {
+  renderer.setSize(innerWidth, innerHeight);
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+});
+const relogio = new THREE.Clock();
+renderer.setAnimationLoop(() => {
+  if (mixer) mixer.update(relogio.getDelta());
+  controls.update();
+  renderer.render(scene, camera);
+});
+</script>
+</body>
+</html>
