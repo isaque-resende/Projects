@@ -11,8 +11,8 @@
   #ui { position: fixed; top: max(10px, env(safe-area-inset-top)); left: 10px; right: 10px; display: flex; flex-wrap: wrap; gap: 5px; z-index: 2; }
   #ui button { border: 0; border-radius: 8px; padding: 8px 11px; font-size: 13px; background: #fffc; color: #3a2e22; cursor: pointer; }
   #ui button.on, #versoes button.on { background: #8a5a35; color: #fff; }
-  #versoes { position: fixed; bottom: max(36px, calc(env(safe-area-inset-bottom) + 26px)); left: 10px; display: flex; gap: 5px; z-index: 2; }
-  #versoes button { border: 0; border-radius: 8px; padding: 8px 12px; font-size: 14px; background: #fffc; color: #3a2e22; cursor: pointer; }
+  #versoes { position: fixed; bottom: max(36px, calc(env(safe-area-inset-bottom) + 26px)); left: 10px; right: 10px; display: flex; flex-wrap: wrap; gap: 5px; z-index: 2; }
+  #versoes button { border: 0; border-radius: 8px; padding: 7px 10px; font-size: 13px; background: #fffc; color: #3a2e22; cursor: pointer; }
   #info { position: fixed; bottom: max(10px, env(safe-area-inset-bottom)); left: 12px; right: 12px; font-size: 13px; color: #3a2e22; z-index: 2; }
 </style>
 <script type="importmap">
@@ -27,7 +27,7 @@
 <div id="ui"></div>
 <div id="info">carregando…</div>
 <script type="module">
-// Pastor, aldeão e sacerdote: NPCs com o esqueleto do discípulo e as 5 animações dos NPCs.
+// 15 NPCs (pastor, aldeão, sacerdote e mais 12): NPCs com o esqueleto do discípulo e as 5 animações dos NPCs.
 // Mesmo esqueleto e mesmas 13 animações do discípulo jogável. Luz padrão: manhã no deserto.
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -66,7 +66,7 @@ chao.rotation.x = -Math.PI / 2; chao.receiveShadow = true; scene.add(chao);
 const ACOES = ['Parado', 'Conversando', 'Andar', 'Trote', 'Correr'];
 const NOMES = { Pulo_Inicio: 'Pulo (início)', Pulo_Ar: 'Pulo (ar)', Pulo_Queda: 'Pulo (queda)' };
 let mixer = null, clips = {}, atual = null, tris = 0, versao = 'pastor', raiz = null, acaoAtual = 'Parado';
-const NOMES_V = { pastor: 'Pastor', aldeao: 'Aldeão', sacerdote: 'Sacerdote' };
+const NOMES_V = { pastor: 'Pastor', aldeao: 'Aldeão', sacerdote: 'Sacerdote', rapaz: 'Rapaz', barbudo: 'Barbudo', escriba: 'Escriba', robusto: 'Robusto', cacheado: 'Cacheado', magro: 'Magro', carregador: 'Carregador', moco: 'Moço', mercador: 'Mercador', mulher_faixa: 'Mulher (faixa)', mulher_lenco: 'Mulher (lenço)', mulher_botoes: 'Mulher (botões)' };
 const cache = {};
 
 async function carregar(arq) {
@@ -105,7 +105,7 @@ for (const a of ACOES) {
   const b = document.createElement('button'); b.textContent = NOMES[a] ?? a; b.dataset.a = a;
   b.onclick = () => tocar(a); ui.appendChild(b);
 }
-for (const v of ['pastor', 'aldeao', 'sacerdote']) {
+for (const v of Object.keys(NOMES_V)) {
   const b = document.createElement('button'); b.textContent = NOMES_V[v]; b.dataset.v = v;
   b.onclick = () => mostrar(v); uiV.appendChild(b);
 }
