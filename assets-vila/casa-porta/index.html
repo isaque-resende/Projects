@@ -206,6 +206,13 @@ const TRONCOS = [];
     if (nome === 'Parreira_Arco') for (const dx of [-1.2, 1.16]) TRONCOS.push({ x: x + dx, z, r: 0.22 });
     else TRONCOS.push({ x, z, r: 0.22 });
   }
+  // feirinha: barracas numa fila à frente, de frente para a casa
+  const bk = await baixar('barracas.glb');
+  for (const n of bk.scene.children) { n.position.set(0, 0, 0); sombra(n); M[n.name] = n; }
+  KIT.push(
+    [-9.5, 16.5, Math.PI, 'Barraca1'], [-6.0, 16.8, Math.PI, 'Barraca5'], [-2.5, 16.5, Math.PI, 'Barraca2'],
+    [1.2, 16.8, Math.PI, 'Barraca7'], [4.8, 16.5, Math.PI, 'Barraca9'], [12.5, 15.0, Math.PI + 0.5, 'Barraca4'],
+  );
   for (const [x, z, r, nome] of KIT) {
     if (!M[nome]) continue;
     const n = M[nome].clone(); n.position.set(x, 0, z); n.rotation.y = r; scene.add(n);
