@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#d9d2bf">
+<title>Ofícios e pastoreio</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #d9d2bf; font-family: system-ui, sans-serif; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  .rot { position: fixed; transform: translate(-50%, -100%); color: #4a3520; background: #fdf6e3dd; padding: 3px 7px; border-radius: 6px; font-size: 12px; pointer-events: none; white-space: nowrap; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<script type="module">
+// Os dois kits novos do Tripo (ofícios da vila e pastoreio), cada peça com o nome e um personagem de 1,7 m para escala.
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xd9d2bf);
+scene.add(new THREE.HemisphereLight(0xd6ebff, 0xc9a47a, 1.3));
+const sun = new THREE.DirectionalLight(0xffe2b8, 3.1);
+sun.position.set(10, 18, 12); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -18, right: 18, top: 18, bottom: -18, near: 1, far: 60 });
+sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.03; scene.add(sun);
+
+const chao = new THREE.TextureLoader().load('../fase-betania/tex/grama.webp');
+chao.colorSpace = THREE.SRGBColorSpace; chao.wrapS = chao.wrapT = THREE.RepeatWrapping; chao.repeat.set(3, 3);
+const ground = new THREE.Mesh(new THREE.CircleGeometry(40, 48), new THREE.MeshStandardMaterial({ map: chao, roughness: 1 }));
+ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+
+const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+const baixar = async (url) => { for (let k = 0; ; k++) { try { return await loader.loadAsync(url); } catch (e) { if (k >= 3) throw e; await new Promise((r) => setTimeout(r, 400 * (k + 1))); } } };
+const sombra = (r) => r.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+
+const ROT = [];
+const [a, b] = await Promise.all([baixar('../casa-porta/oficios.glb'), baixar('../casa-porta/pastoril.glb')]);
+const linha = (g, z0) => {
+  const ns = [...g.scene.children];
+  ns.forEach((n, i) => {
+    n.position.set(((i % 5) - 2) * 4.6, 0, z0 + Math.floor(i / 5) * 4.8); sombra(n); scene.add(n);
+    const d = document.createElement('div'); d.className = 'rot'; d.textContent = n.name.replace(/_/g, ' '); document.body.appendChild(d);
+    const bx = new THREE.Box3().setFromObject(n);
+    ROT.push({ d, p: new THREE.Vector3(n.position.x, bx.max.y + 0.2, n.position.z) });
+  });
+};
+linha(a, -12); linha(b, 0.5);
+
+let mixer = null;
+{
+  const g = await baixar('../vila-betania/discipulo_acoes.glb'); sombra(g.scene);
+  const bx = new THREE.Box3().setFromObject(g.scene); g.scene.scale.setScalar(1.7 / (bx.max.y - bx.min.y));
+  g.scene.position.set(-11.5, 0, -3.5); scene.add(g.scene);
+  mixer = new THREE.AnimationMixer(g.scene); const c = g.animations.find((x) => x.name === 'Parado'); if (c) mixer.clipAction(c).play();
+}
+
+const camera = new THREE.PerspectiveCamera(35, innerWidth / innerHeight, 0.3, 300);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.target.set(0, 0.8, -3); controls.maxPolarAngle = 1.45; controls.minDistance = 3; controls.maxDistance = 70;
+camera.position.set(0, 20, innerHeight > innerWidth ? 34 : 22); controls.update();
+addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
+const relogio = new THREE.Clock(), v = new THREE.Vector3();
+renderer.setAnimationLoop(() => {
+  if (mixer) mixer.update(relogio.getDelta());
+  controls.update(); renderer.render(scene, camera);
+  for (const r of ROT) { v.copy(r.p).project(camera); const vis = v.z < 1 && Math.abs(v.x) < 1.1 && Math.abs(v.y) < 1.1; r.d.style.display = vis ? 'block' : 'none'; r.d.style.left = (v.x + 1) / 2 * innerWidth + 'px'; r.d.style.top = (1 - v.y) / 2 * innerHeight + 'px'; }
+});
+</script>
+</body>
+</html>
