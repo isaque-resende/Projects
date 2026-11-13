@@ -98,7 +98,7 @@ const LAYOUT = [{ x: 0, z: 0 }];
 const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync('casa_porta.glb');
 gltf.scene.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
 scene.add(gltf.scene);
-const porta = gltf.scene.getObjectByName('Casa_Porta');
+const porta = gltf.scene.getObjectByName('Casa2_Porta');
 // a porta gira na dobradiça (lado esquerdo) e abre para fora
 let aberta = false, ang = 0;
 const ABERTO = -1.75;
