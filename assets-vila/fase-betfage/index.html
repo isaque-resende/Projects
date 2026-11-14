@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<meta name="theme-color" content="#dcd6c4">
+<meta name="theme-color" content="#e6e4d2">
 <title>Fase de Betfagé</title>
 <style>
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #dcd6c4; font-family: system-ui, sans-serif; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #e6e4d2; font-family: system-ui, sans-serif; }
   canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
   #fade { position: fixed; inset: 0; background: #000; opacity: 1; pointer-events: none; transition: opacity .9s; display: flex; align-items: center; justify-content: center; color: #f3e9d2; font-size: 22px; letter-spacing: .04em; text-align: center; padding: 0 24px; }
   #acao { position: fixed; left: 50%; bottom: calc(26px + env(safe-area-inset-bottom)); transform: translateX(-50%); padding: 12px 20px; border: 0; border-radius: 12px; background: #fdf6e3; color: #4a3520; font-size: 16px; box-shadow: 0 3px 12px #0003; display: none; z-index: 5; }
@@ -26,9 +26,9 @@
 <div id="fala"></div>
 <div id="dica">Direcional, WASD ou toque para andar · Shift corre · Espaço pula · roda/pinça: zoom</div>
 <script type="module">
-// Fase de Betfagé: aldeia na encosta leste do Monte das Oliveiras. O terreno sobe da frente (onde se chega,
-// vindo de Betânia) até o alto (saída para Jerusalém). Câmera isométrica fixa, só segue e aproxima.
-// Eixos da fase: u = direita da tela, v = subida (para o fundo da tela).
+// Fase de Betfagé, montada no Blender a partir do diorama de referência (betfage_cenario.glb + betfage_layout.json):
+// um morro com socalcos, a estrada em S do pé ao cume, a aldeia geminada no meio, o trigal à direita, a eira à esquerda.
+// Aqui ficam a luz, a câmera, o jogador, o trigal instanciado e os NPCs.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
@@ -45,31 +45,26 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xdcd6c4);
-scene.fog = new THREE.Fog(0xdcd6c4, 60, 120);
-const hemi = new THREE.HemisphereLight(0xd6ebff, 0xc9a47a, 1.3); scene.add(hemi);
-const sun = new THREE.DirectionalLight(0xffe2b8, 3.1);
+// céu do diorama: verde-água claro em cima, creme embaixo
+const CEU = (() => { const c = document.createElement('canvas'); c.width = 4; c.height = 256; const g = c.getContext('2d'); const gr = g.createLinearGradient(0, 0, 0, 256);
+  gr.addColorStop(0, '#cfe6e0'); gr.addColorStop(0.55, '#e9ead6'); gr.addColorStop(1, '#f6dcc0'); g.fillStyle = gr; g.fillRect(0, 0, 4, 256);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();
+scene.background = CEU;
+scene.fog = new THREE.Fog(0xe4e6d4, 60, 110);
+const hemi = new THREE.HemisphereLight(0xe2f0ff, 0xc9b088, 1.45); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff0d6, 2.9);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
-Object.assign(sun.shadow.camera, { left: -30, right: 30, top: 30, bottom: -30, near: 1, far: 90 });
+Object.assign(sun.shadow.camera, { left: -26, right: 26, top: 26, bottom: -26, near: 1, far: 100 });
 sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.03;
 scene.add(sun, sun.target);
 
 let seed = 23;
 const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
 const tl = new THREE.TextureLoader();
-const tex = (url, rep) => {
-  const t = tl.load(url); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()); if (rep) t.repeat.set(rep, rep); return t;
-};
-const TX = '../fase-betania/tex/';
 const sm = (a, b, x) => { let k = (x - a) / (b - a); k = k < 0 ? 0 : k > 1 ? 1 : k; return k * k * (3 - 2 * k); };
-const S2 = Math.SQRT1_2;
-const XZ = (u, v) => [(u - v) * S2, (-u - v) * S2];
-const pUV0 = XZ;
-const UV = (x, z) => [(x - z) * S2, -(x + z) * S2];
 const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
-const CIMA0 = V3(0, 1, 0);
+const CIMA = V3(0, 1, 0);
 
 // ---------- carregamento ----------
 const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
@@ -79,183 +74,95 @@ const baixar = async (url) => {
   }
 };
 const sombra = (r) => r.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
-const nos = (g) => { const m = {}; for (const n of g.scene.children) { m[n.name] = n; } return m; };
-const [gCasaP, gMuros, gTripo, gCip, gFrond, gRoch, gObj, gPast, gTrigo, gColh, gFig, gOliv, gBoi, gOve, gJum, gJog,
-  nAldeao, nFaixa, nCarreg, nRobusto, nBotoes, nMoco, nPastor, nMagro, nRapaz] = await Promise.all([
-  baixar('../casa-porta/casa_porta.glb'), baixar('../casa-porta/muros_kit.glb'), baixar('../casa-porta/arvores_tripo.glb'),
-  baixar('../diorama-ciprestes/ciprestes.glb'), baixar('../casa-porta/arvores_frondosas.glb'), baixar('../casa-porta/rochas.glb'),
-  baixar('../casa-porta/objetos_casa.glb'), baixar('../casa-porta/pastoril.glb'), baixar('../trigal/trigo.glb'),
-  baixar('../colheita-trigo/colheita.glb'), baixar('../figueiras/figueiras.glb'), baixar('../oliveiras/oliveiras.glb'),
-  baixar('../animais/boi.glb'), baixar('../animais/ovelha.glb'), baixar('../animais/jumento.glb'), baixar('../vila-betania/discipulo_acoes.glb'),
+const LAY = await (await fetch('betfage_layout.json?v=8')).json();
+const S = LAY.S;
+// coordenadas do diorama: a = rumo ao canto direito, b = rumo ao canto esquerdo (0,0 = canto da frente)
+const AB = (x, z) => [(S / 2 - z) / S, (S / 2 - x) / S];
+const XZ = (a, b) => [S / 2 - b * S, S / 2 - a * S];
+const ARQS = [...new Set(LAY.objetos.map((o) => o.glb))];
+const [gCen, gCasaP, gTrigo, gColh, gBoi, gOve, gJum, gJog, gObj, nAldeao, nFaixa, nCarreg, nRobusto, nBotoes, nMoco, nPastor, nMagro, nRapaz, ...gArqs] = await Promise.all([
+  baixar('betfage_cenario.glb?v=8'), baixar('../casa-porta/casa_porta.glb'), baixar('../trigal/trigo.glb'), baixar('../colheita-trigo/colheita.glb'),
+  baixar('../animais/boi.glb'), baixar('../animais/ovelha.glb'), baixar('../animais/jumento.glb'), baixar('../vila-betania/discipulo_acoes.glb'), baixar('../casa-porta/objetos_casa.glb'),
   baixar('../personagens/aldeao.glb'), baixar('../personagens/mulher_faixa.glb'), baixar('../personagens/carregador.glb'),
   baixar('../personagens/robusto.glb'), baixar('../personagens/mulher_botoes.glb'), baixar('../personagens/moco.glb'),
   baixar('../personagens/pastor.glb'), baixar('../personagens/magro.glb'), baixar('../personagens/rapaz.glb'),
+  ...ARQS.map((a) => baixar('../' + a)),
 ]);
-const MU = nos(gMuros), AT = nos(gTripo), C = nos(gCip), FR = nos(gFrond), R = nos(gRoch), OB = nos(gObj), PS = nos(gPast),
-  CO = nos(gColh), FG = nos(gFig), OL = nos(gOliv);
-// cada peça com a origem na própria base (os kits vêm espalhados pela cena do Blender)
-const CO0 = {};
-for (const [n, o] of Object.entries(CO)) CO0[n] = o.position.clone();
-for (const o of [...Object.values(MU), ...Object.values(AT), ...Object.values(C), ...Object.values(FR), ...Object.values(R), ...Object.values(OB),
-  ...Object.values(PS), ...Object.values(CO), ...Object.values(FG), ...Object.values(OL)]) o.position.set(0, 0, 0);
+const nos = (g) => { const m = {}; for (const n of g.scene.children) m[n.name] = n; return m; };
+const KIT = Object.fromEntries(ARQS.map((a, i) => [a, nos(gArqs[i])]));
+for (const k of Object.values(KIT)) for (const o of Object.values(k)) o.position.set(0, 0, 0);
+const CO = nos(gColh), CO0 = {}; for (const [n, o] of Object.entries(CO)) { CO0[n] = o.position.clone(); o.position.set(0, 0, 0); }
+const OB = nos(gObj); for (const o of Object.values(OB)) o.position.set(0, 0, 0);
 
-// ---------- layout (u, v) ----------
-const U0 = -24, U1 = 29, V0 = -30, V1 = 27;                 // área de jogo
-const ESTRADA_UV = [[-1, -46], [-2, -30], [-3, -24], [-5.5, -17], [-6, -11], [-3.5, -5], [-1.5, 0], [-1, 5], [-2.8, 10], [-4.5, 14], [-3, 19], [-0.5, 23], [0.5, 28], [1, 40]];
-const CAMPO = { x0: 4.5, x1: 14.5, z0: -25.5, z1: -15.5 };    // trigal (alinhado com x/z, como na imagem)
-const noCampo = (x, z, m = 0) => x > CAMPO.x0 - m && x < CAMPO.x1 + m && z > CAMPO.z0 - m && z < CAMPO.z1 + m;
-const EIRA = { x: XZ(-13, -3)[0], z: XZ(-13, -3)[1], r: 3.1 };
-const CASAS_XZ = [[3, -7], [11, -9], [10, 1]];
-
-// ---------- terreno ----------
-const P_T = 1.3;                                            // altura de cada socalco
-function hb(x, z) {
-  const [u, v] = UV(x, z); let h;
-  if (v < 23) h = 0.21 * (v + 27);
-  else { const d = Math.min(v - 23, 8); h = 10.5 + 0.21 * d - 0.013125 * d * d; }   // o alto do monte: a subida acaba num plano coberto de oliveiras
-  h -= 0.0035 * u * u;
-  h += 0.12 * Math.sin(x * 0.31 + 1) * Math.cos(z * 0.27 - 0.5) + 0.05 * Math.sin(x * 0.8 + z * 0.6);
-  return h + 3;
-}
-// socalcos: só à esquerda, no olival, e no alto à direita
-const mascaraT = (u, v) => Math.max(sm(-6, -9, u) * sm(1, 4, v) * sm(22, 19.5, v), sm(4, 7, u) * sm(14.5, 16.5, v) * sm(22, 19.5, v));
-function hT(x, z) {
-  const h = hb(x, z), [u, v] = UV(x, z), m = mascaraT(u, v);
-  if (m <= 0) return h;
-  const f = h / P_T, fl = Math.floor(f), t = P_T * (fl + sm(0.8, 1, f - fl));
-  return h + (t - h) * m;
-}
-// plataformas niveladas (casas e eira)
-const PADS = [];
-const caixaCasa = (() => { const b = new THREE.Box3().setFromObject(gCasaP.scene); return { c: b.getCenter(new THREE.Vector3()), s: b.getSize(new THREE.Vector3()) }; })();
-for (const [x, z] of CASAS_XZ) PADS.push({ x: x + caixaCasa.c.x, z: z + caixaCasa.c.z, hx: caixaCasa.s.x / 2 + 1.2, hz: caixaCasa.s.z / 2 + 1.6, f: 2.6, y: hT(x + caixaCasa.c.x, z + caixaCasa.c.z) - 0.15 });
-PADS.push({ x: EIRA.x, z: EIRA.z, r: EIRA.r + 0.8, f: 2.4, y: hT(EIRA.x, EIRA.z) });
-function hFinal(x, z) {
-  let h = hT(x, z);
-  for (const p of PADS) {
-    const d = p.r ? Math.max(0, Math.hypot(x - p.x, z - p.z) - p.r) : Math.hypot(Math.max(0, Math.abs(x - p.x) - p.hx), Math.max(0, Math.abs(z - p.z) - p.hz));
-    const w = 1 - sm(0, p.f, d); if (w > 0) h += (p.y - h) * w;
-  }
-  return h;
-}
-// grade de alturas (0,5 m)
-const G0 = -80, GP = 0.5, GN = 321, GH = new Float32Array(GN * GN);
-for (let i = 0; i < GN; i++) for (let k = 0; k < GN; k++) GH[i * GN + k] = hFinal(G0 + i * GP, G0 + k * GP);
-function terreno(x, z) {
-  const fx = (x - G0) / GP, fz = (z - G0) / GP;
-  const i = Math.max(0, Math.min(GN - 2, Math.floor(fx))), k = Math.max(0, Math.min(GN - 2, Math.floor(fz)));
-  const a = fx - i, b = fz - k;
-  return (GH[i * GN + k] * (1 - a) + GH[(i + 1) * GN + k] * a) * (1 - b) + (GH[i * GN + k + 1] * (1 - a) + GH[(i + 1) * GN + k + 1] * a) * b;
-}
-
-// ---------- chão: vai muito além da área de jogo; facetado, cor por triângulo ----------
-const ground = (() => {
-  const g = new THREE.PlaneGeometry(160, 160, 160, 160); g.rotateX(-Math.PI / 2);
-  const p = g.attributes.position;
-  for (let i = 0; i < p.count; i++) p.setY(i, terreno(p.getX(i), p.getZ(i)));
-  const gn = g.toNonIndexed(), q = gn.attributes.position, cor = [];
-  const h = (x, y) => { const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return s - Math.floor(s); };
-  const ruido = (x, y) => { const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
-    const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
-    return (h(xi, yi) * (1 - u) + h(xi + 1, yi) * u) * (1 - v) + (h(xi, yi + 1) * (1 - u) + h(xi + 1, yi + 1) * u) * v; };
-  const verde = new THREE.Color(0xf2f2e4), verdeE = new THREE.Color(0xcfd8bc), seco = new THREE.Color(0xf6ead0), barranco = new THREE.Color(0xe9d8b8), c = new THREE.Color();
-  const A = new THREE.Vector3(), B = new THREE.Vector3(), Cc = new THREE.Vector3(), n = new THREE.Vector3();
-  for (let i = 0; i < q.count; i += 3) {
-    A.fromBufferAttribute(q, i); B.fromBufferAttribute(q, i + 1); Cc.fromBufferAttribute(q, i + 2);
-    const x = (A.x + B.x + Cc.x) / 3, z = (A.z + B.z + Cc.z) / 3;
-    const n1 = ruido(x / 14 + 5, z / 14 + 9), n2 = ruido(x / 6, z / 6);
-    c.copy(verde).lerp(verdeE, sm(0.35, 0.75, n1) * 0.8);
-    c.lerp(seco, sm(0.55, 0.85, n2 * 0.6 + n1 * 0.4) * 0.3);
-    n.subVectors(B, A).cross(Cc.clone().sub(A)).normalize();
-    c.lerp(barranco, sm(0.93, 0.75, Math.abs(n.y)) * 0.8);       // barrancos dos socalcos mais secos
-    c.multiplyScalar(0.96 + h(x, z) * 0.07);
-    for (let k = 0; k < 3; k++) cor.push(c.r, c.g, c.b);
-  }
-  gn.setAttribute('color', new THREE.Float32BufferAttribute(cor, 3)); gn.computeVertexNormals();
-  return new THREE.Mesh(gn, new THREE.MeshStandardMaterial({ map: tex(TX + 'grama.webp', 9), vertexColors: true, roughness: 1, flatShading: true }));
-})();
-ground.receiveShadow = true; scene.add(ground);
-
-// manchas de terra que acompanham o relevo (eira, terreiro, chão do trigal)
-const bordaSuave = (() => {
-  const cv = document.createElement('canvas'); cv.width = cv.height = 128;
-  const cx = cv.getContext('2d'), gr = cx.createRadialGradient(64, 64, 20, 64, 64, 64);
-  gr.addColorStop(0, '#fff'); gr.addColorStop(0.7, '#fff'); gr.addColorStop(1, '#000');
-  cx.fillStyle = gr; cx.fillRect(0, 0, 128, 128); return new THREE.CanvasTexture(cv);
-})();
-function mancha(x, z, rx, rz, mapa, cor = 0xffffff, rep = 2.5) {
-  const NA = 32, NR = 6, pos = [], uv = [], uv1 = [], idx = [];
-  pos.push(x, terreno(x, z) + 0.04, z); uv.push(0, 0); uv1.push(0.5, 0.5);
-  for (let r = 1; r <= NR; r++) for (let a = 0; a < NA; a++) {
-    const ang = a / NA * Math.PI * 2, k = r / NR, px = x + Math.cos(ang) * rx * k, pz = z + Math.sin(ang) * rz * k;
-    pos.push(px, terreno(px, pz) + 0.04, pz); uv.push((px - x) / rep, (pz - z) / rep); uv1.push(0.5 + Math.cos(ang) * k * 0.5, 0.5 + Math.sin(ang) * k * 0.5);
-  }
-  for (let a = 0; a < NA; a++) idx.push(0, 1 + (a + 1) % NA, 1 + a);
-  for (let r = 1; r < NR; r++) for (let a = 0; a < NA; a++) {
-    const i0 = 1 + (r - 1) * NA + a, i1 = 1 + (r - 1) * NA + (a + 1) % NA, j0 = i0 + NA, j1 = i1 + NA;
-    idx.push(i0, i1, j0, i1, j1, j0);
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
-  g.setAttribute('uv1', new THREE.Float32BufferAttribute(uv1, 2)); g.setIndex(idx); g.computeVertexNormals();
-  const mat = new THREE.MeshStandardMaterial({ map: mapa, color: cor, alphaMap: bordaSuave, transparent: true, depthWrite: false, roughness: 1, polygonOffset: true, polygonOffsetFactor: -1.5 });
-  mat.alphaMap.channel = 1;
-  const m = new THREE.Mesh(g, mat); m.receiveShadow = true; scene.add(m); return m;
-}
-const patio = tex(TX + 'patio.webp');
-
-// ---------- estrada larga e ruelas, coladas no relevo ----------
-const CAMINHOS = [];
-function caminho(pts, larg) {
-  const curva = new THREE.CatmullRomCurve3(pts.map(([x, z]) => V3(x, 0, z)));
-  const L = curva.getLength(), N = Math.max(20, Math.round(L * 2)), pos = [], uv = [], idx = [];
-  for (let i = 0; i <= N; i++) {
-    const t = i / N, p = curva.getPointAt(t), tg = curva.getTangentAt(t);
-    const w = 1.45 * larg * (0.92 + 0.1 * Math.sin(t * 13 + pts.length));
-    for (let j = 0; j <= 4; j++) {
-      const s = -1 + j / 2, x = p.x - tg.z * w * s, z = p.z + tg.x * w * s;
-      pos.push(x, terreno(x, z) + 0.05, z); uv.push(j / 4, t * L / (2.9 * larg));
+// ---------- cenário do Blender: terreno, estrada, muros ----------
+const matTerra = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, flatShading: true });
+let TERRENO = null;
+gCen.scene.traverse((o) => {
+  if (!o.isMesh) return;
+  if (o.name.startsWith('Betfage_Terreno')) { o.material = matTerra; TERRENO = o; o.receiveShadow = true; }
+  else if (o.name.startsWith('Betfage_Estrada')) { o.material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, flatShading: true, polygonOffset: true, polygonOffsetFactor: -2 }); o.receiveShadow = true; }
+  else { o.castShadow = true; o.receiveShadow = true; }
+});
+scene.add(gCen.scene);
+// mapa de alturas do terreno (cada célula guarda a maior altura dos triângulos que a cobrem)
+function mapaAltura(mesh, P = 0.3) {
+  mesh.updateWorldMatrix(true, false);
+  const cx = new THREE.Box3().setFromObject(mesh);
+  const GX0 = cx.min.x - 0.2, GZ0 = cx.min.z - 0.2;
+  const GW = Math.ceil((cx.max.x - cx.min.x + 0.4) / P) + 1, GD = Math.ceil((cx.max.z - cx.min.z + 0.4) / P) + 1;
+  const ALT = new Float32Array(GW * GD).fill(-1e9);
+  const pos = mesh.geometry.attributes.position, idx = mesh.geometry.index, m = mesh.matrixWorld;
+  const A = new THREE.Vector3(), B = new THREE.Vector3(), C = new THREE.Vector3();
+  const n = idx ? idx.count : pos.count;
+  for (let t = 0; t < n; t += 3) {
+    A.fromBufferAttribute(pos, idx ? idx.getX(t) : t).applyMatrix4(m); B.fromBufferAttribute(pos, idx ? idx.getX(t + 1) : t + 1).applyMatrix4(m); C.fromBufferAttribute(pos, idx ? idx.getX(t + 2) : t + 2).applyMatrix4(m);
+    const i0 = Math.max(0, Math.floor((Math.min(A.x, B.x, C.x) - GX0) / P)), i1 = Math.min(GW - 1, Math.ceil((Math.max(A.x, B.x, C.x) - GX0) / P));
+    const k0 = Math.max(0, Math.floor((Math.min(A.z, B.z, C.z) - GZ0) / P)), k1 = Math.min(GD - 1, Math.ceil((Math.max(A.z, B.z, C.z) - GZ0) / P));
+    const d = (B.z - C.z) * (A.x - C.x) + (C.x - B.x) * (A.z - C.z);
+    if (Math.abs(d) < 1e-6) { for (let i = i0; i <= i1; i++) for (let k = k0; k <= k1; k++) { const y = Math.max(A.y, B.y, C.y); if (y > ALT[i * GD + k]) ALT[i * GD + k] = y; } continue; }
+    for (let i = i0; i <= i1; i++) for (let k = k0; k <= k1; k++) {
+      const xx = GX0 + i * P, zz = GZ0 + k * P;
+      const w1 = ((B.z - C.z) * (xx - C.x) + (C.x - B.x) * (zz - C.z)) / d, w2 = ((C.z - A.z) * (xx - C.x) + (A.x - C.x) * (zz - C.z)) / d, w3 = 1 - w1 - w2;
+      if (w1 < -0.02 || w2 < -0.02 || w3 < -0.02) continue;
+      const y = w1 * A.y + w2 * B.y + w3 * C.y; if (y > ALT[i * GD + k]) ALT[i * GD + k] = y;
     }
   }
-  for (let i = 0; i < N; i++) for (let j = 0; j < 4; j++) { const a = i * 5 + j, b = a + 5; idx.push(a, a + 1, b, a + 1, b + 1, b); }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
-  const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: tex(TX + 'estrada.webp'), color: 0xf4ead8, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2 }));
-  m.receiveShadow = true; scene.add(m);
-  const amostras = []; for (let i = 0; i <= Math.ceil(L * 1.5); i++) amostras.push(curva.getPointAt(i / Math.ceil(L * 1.5)));
-  const c = { curva, larg, amostras }; CAMINHOS.push(c); return c;
+  return (wx, wz) => {
+    const fx = (wx - GX0) / P, fz = (wz - GZ0) / P;
+    const i = Math.max(0, Math.min(GW - 2, Math.floor(fx))), k = Math.max(0, Math.min(GD - 2, Math.floor(fz))), a = fx - i, b = fz - k;
+    const g = (ii, kk) => { const v = ALT[ii * GD + kk]; return v < -1e8 ? 0 : v; };
+    return (g(i, k) * (1 - a) + g(i + 1, k) * a) * (1 - b) + (g(i, k + 1) * (1 - a) + g(i + 1, k + 1) * a) * b;
+  };
 }
-const ESTRADA = caminho(ESTRADA_UV.map(([u, v]) => XZ(u, v)), 1.6);
-const naEstrada = (x, z, m) => CAMINHOS.some(({ amostras, larg }) => amostras.some((p) => Math.hypot(p.x - x, p.z - z) < 1.45 * larg + m));
-// distância à estrada principal, medida em u (para saber de que lado fica)
-const uEstrada = (v) => { const a = ESTRADA_UV; for (let i = 0; i < a.length - 1; i++) if (v >= a[i][1] && v <= a[i + 1][1]) { const k = (v - a[i][1]) / (a[i + 1][1] - a[i][1]); return a[i][0] + (a[i + 1][0] - a[i][0]) * k; } return 0; };
+const terreno = mapaAltura(TERRENO);
+
+// ---------- estrada (do layout) ----------
+const ESTR = LAY.estrada.map(([x, z]) => V3(x, 0, z));
+const ROTA = new THREE.CatmullRomCurve3(ESTR);
+const AMOS = []; { const L = ROTA.getLength(), n = Math.ceil(L * 2); for (let i = 0; i <= n; i++) AMOS.push(ROTA.getPointAt(i / n)); }
+const distEstrada = (x, z) => { let m = 1e9; for (const p of AMOS) { const d = Math.hypot(p.x - x, p.z - z); if (d < m) m = d; } return m; };
+const naEstrada = (x, z, m = 0) => distEstrada(x, z) < LAY.meia + m;
 
 // ---------- obstáculos ----------
-const CAIXAS = [], CIRC = [], FADE = [];
+const CAIXAS = [], CIRC = LAY.obst.map(([x, z, r]) => ({ x, z, r })), FADE = [];
 const bate = (x, z, m = 0.3) => CAIXAS.some((c) => x > c.x0 - m && x < c.x1 + m && z > c.z0 - m && z < c.z1 + m) || CIRC.some((c) => Math.hypot(c.x - x, c.z - z) < c.r + m);
-function caixaDe(obj, enc = 0) {
-  obj.updateWorldMatrix(true, true);
-  const b = new THREE.Box3().setFromObject(obj);
-  CAIXAS.push({ x0: b.min.x + enc, x1: b.max.x - enc, z0: b.min.z + enc, z1: b.max.z - enc });
-}
-function por(modelo, x, z, r = 0, k = 1, { fade = false, caixa = false, circ = 0, y = null, afunda = 0.05 } = {}) {
-  const n = modelo.clone(); n.position.set(x, (y ?? terreno(x, z)) - afunda, z); n.rotation.y = r; n.scale.setScalar(k);
-  sombra(n); scene.add(n);
-  if (caixa) caixaDe(n, typeof caixa === 'number' ? caixa : 0.15);
-  if (circ) CIRC.push({ x, z, r: circ * k });
-  if (fade) FADE.push(n);
-  return n;
+function caixaDe(obj, enc = 0) { obj.updateWorldMatrix(true, true); const b = new THREE.Box3().setFromObject(obj); CAIXAS.push({ x0: b.min.x + enc, x1: b.max.x - enc, z0: b.min.z + enc, z1: b.max.z - enc }); }
+// objetos do layout (árvores, pedras, eira, feixes, cestos...)
+const ALTOS = /Oliveira|Cipreste|Arvore|Figueira/;
+for (const o of LAY.objetos) {
+  const m = KIT[o.glb]?.[o.no]; if (!m) continue;
+  const n = m.clone(); n.position.set(...o.p); n.rotation.y += o.r; n.scale.multiplyScalar(o.k); sombra(n); scene.add(n);
+  if (ALTOS.test(o.no)) FADE.push(n);
 }
 
-// ---------- casas da aldeia: três, em plataformas cortadas na encosta ----------
+// ---------- casas geminadas, em degraus ----------
 const CASAP = gCasaP.scene; CASAP.children.forEach((c) => c.position.set(0, 0, 0));
 const CASAS = [];
 const PASSO = 0.12, ABERTO = -1.75;
-CASAS_XZ.forEach(([x, z], ic) => {
-  const y0 = PADS[ic].y, r = 0;
+for (const cs of LAY.casas) {
+  const [x, y0, z] = cs.p, r = cs.r;
   const g = new THREE.Group(); for (const c of [...CASAP.children]) g.add(c.clone(true));
-  g.updateMatrixWorld(true);
+  g.scale.set(...cs.k); g.updateMatrixWorld(true);
   const porta = g.getObjectByName('Casa2_Porta'), corpo = g.getObjectByName('Casa2');
   const bp = new THREE.Box3().setFromObject(porta);
   const px = (bp.min.x + bp.max.x) / 2, pz = bp.max.z;
@@ -281,66 +188,18 @@ CASAS_XZ.forEach(([x, z], ic) => {
       const yy = w1 * A.y + w2 * B.y + w3 * Cc.y; if (yy > ALT[i * GD + k]) ALT[i * GD + k] = yy;
     }
   }
-  const co = Math.cos(r), si = Math.sin(r);
-  CASAS.push({ g, porta, ALT, GX0, GZ0, GW, GD, px, pz, x, z, y0, co, si, aberta: false, ang: 0,
+  const co = Math.cos(r), si = Math.sin(r), ks = cs.k;
+  CASAS.push({ g, porta, ALT, GX0, GZ0, GW, GD, px: px * ks[0], pz: pz * ks[2], x, z, y0, co, si, aberta: false, ang: 0, caixa: cx,
     local(wx, wz) { const dx = wx - x, dz = wz - z; return [dx * co - dz * si, dx * si + dz * co]; },
     alt(wx, wz) { const i = Math.round((wx - GX0) / PASSO), k = Math.round((wz - GZ0) / PASSO); return (i < 0 || k < 0 || i >= GW || k >= GD) ? 0 : ALT[i * GD + k]; },
     mundo(lx, lz) { return V3(x + lx * co + lz * si, y0, z - lx * si + lz * co); } });
-});
+}
 const alturaEm = (x, z) => { let h = terreno(x, z); for (const c of CASAS) h = Math.max(h, c.alt(x, z)); return h; };
-const naCasa = (x, z, m = 0) => CASAS.some((c) => { const b = c.caixa || (c.caixa = new THREE.Box3().setFromObject(c.g)); return x > b.min.x - m && x < b.max.x + m && z > b.min.z - m && z < b.max.z + m; });
-// terreiro de terra batida na frente das portas e chão da eira
-for (const c of CASAS) { const p = c.mundo(c.px, c.pz + 1.8); mancha(p.x, p.z, 3.6, 2.6, patio); }
-mancha(EIRA.x, EIRA.z, EIRA.r + 1.4, EIRA.r + 1.4, patio, 0xf1e2c4);
-mancha((CAMPO.x0 + CAMPO.x1) / 2, (CAMPO.z0 + CAMPO.z1) / 2, (CAMPO.x1 - CAMPO.x0) / 2 + 0.9, (CAMPO.z1 - CAMPO.z0) / 2 + 0.9, patio, 0xe6dcc4, 3);
-
-// ---------- muros de pedra seca ----------
-const MUROS = [MU.Muro_Reto1, MU.Muro_Reto2, MU.Muro_Reto3, MU.Muro_Reto4].filter(Boolean);
-const tamMuro = MUROS.map((m) => new THREE.Box3().setFromObject(m).getSize(new THREE.Vector3()));
-function muro(a, b, alt = 0.85, i = 0) {
-  const k = i % MUROS.length, d = b.clone().sub(a), L = Math.hypot(d.x, d.z);
-  const m = MUROS[k].clone(); sombra(m);
-  const meio = a.clone().add(b).multiplyScalar(0.5);
-  const y = Math.min(terreno(a.x, a.z), terreno(b.x, b.z), terreno(meio.x, meio.z)) - 0.08;
-  m.position.set(meio.x, y, meio.z);
-  m.rotation.order = 'YZX'; m.rotation.y = Math.atan2(-d.z, d.x); m.rotation.z = Math.atan2(terreno(b.x, b.z) - terreno(a.x, a.z), L);
-  m.scale.set(L / tamMuro[k].x * 1.06, alt / tamMuro[k].y, 1);
-  scene.add(m);
-  for (let s = 0; s <= L; s += 0.6) CIRC.push({ x: a.x + d.x * s / L, z: a.z + d.z * s / L, r: 0.42 });
-  return m;
-}
-// muro ao longo de uma linha (u, v), cortada em segmentos; pula a estrada, as casas e onde houver vão
-function muroLinha(ptsUV, { alt = 0.85, vao = 0.15, seg = 2.3, filtro = null } = {}) {
-  const pts = ptsUV.map(([u, v]) => { const [x, z] = XZ(u, v); return V3(x, 0, z); });
-  const curva = new THREE.CatmullRomCurve3(pts), L = curva.getLength(), n = Math.max(1, Math.round(L / seg));
-  for (let i = 0; i < n; i++) {
-    const a = curva.getPointAt(i / n), b = curva.getPointAt((i + 1) / n), mm = a.clone().lerp(b, 0.5);
-    if (rnd() < vao || naEstrada(mm.x, mm.z, 1.0) || naCasa(mm.x, mm.z, 0.8) || noCampo(mm.x, mm.z, 0.6) || Math.hypot(mm.x - EIRA.x, mm.z - EIRA.z) < EIRA.r + 1.5) continue;
-    if (filtro && !filtro(mm)) continue;
-    muro(a, b, alt, i);
-  }
-}
-// muros de arrimo dos socalcos: seguem as curvas de nível, no pé de cada barranco
-for (let k = 0; k < 12; k++) {
-  const alvo = P_T * (k + 0.8);
-  const linha = [];
-  for (let u = U0 - 6; u <= U1 + 6; u += 0.5) {
-    let a = -40, b = 26;
-    const f = (v) => { const [x, z] = XZ(u, v); return hb(x, z) - alvo; };
-    if (f(a) > 0 || f(b) < 0) { if (linha.length > 1) break; continue; }
-    for (let it = 0; it < 30; it++) { const mmid = (a + b) / 2; if (f(mmid) > 0) b = mmid; else a = mmid; }
-    const v = (a + b) / 2 - 0.25;
-    if (mascaraT(u, v + 0.25) > 0.9) linha.push([u, v]);
-    else if (linha.length > 1) { muroLinha(linha, { alt: P_T * 1.05, vao: 0.18 }); linha.length = 0; }
-    else linha.length = 0;
-  }
-  if (linha.length > 1) muroLinha(linha, { alt: P_T * 1.05, vao: 0.18 });
-}
-// muros baixos à beira da estrada (trechos)
-const beira = (v0, v1, lado) => { const pts = []; for (let v = v0; v <= v1; v += 1) pts.push([uEstrada(v) + lado * 3.4, v]); muroLinha(pts, { alt: 0.7, vao: 0.12 }); };
-beira(-27, -19, -1); beira(-9, -2, 1); beira(6, 13, 1); beira(15, 21, -1);
+const naCasa = (x, z, m = 0) => CASAS.some((c) => x > c.caixa.min.x - m && x < c.caixa.max.x + m && z > c.caixa.min.z - m && z < c.caixa.max.z + m);
 
 // ---------- trigal maduro: instâncias que se abrem quando alguém anda por dentro ----------
+const CAMPO = LAY.campo;
+const noCampo = (x, z, m = 0) => x > CAMPO.x0 - m && x < CAMPO.x1 + m && z > CAMPO.z0 - m && z < CAMPO.z1 + m;
 const KT = {}; gTrigo.scene.traverse((o) => { if (o.isMesh) KT[o.name] = o; });
 const UT = { uTime: { value: 0 }, uP: { value: [V3(999, 0, 999), V3(999, 0, 999), V3(999, 0, 999), V3(999, 0, 999)] }, uRadius: { value: 1.0 } };
 function matTrigo(base) {
@@ -371,26 +230,24 @@ function matTrigo(base) {
   m.customProgramCacheKey = () => 'trigo4';
   return m;
 }
-const TRIGO = [];           // { m, i, x, z, y, a, k, cortado }
+const TRIGO = [];
 {
-  const nomes = ['Trigo_Maduro', 'Trigo_Cheio', 'Trigo_Ralo'];
   const listas = { Trigo_Maduro: [], Trigo_Cheio: [], Trigo_Ralo: [] };
-  const STEP = 0.36;
+  const STEP = 0.34;
   for (let x = CAMPO.x0 + 0.2; x <= CAMPO.x1 - 0.1; x += STEP) for (let z = CAMPO.z0 + 0.2; z <= CAMPO.z1 - 0.1; z += STEP) {
     const px = x + (rnd() - 0.5) * STEP * 0.8, pz = z + (rnd() - 0.5) * STEP * 0.8;
     const borda = Math.min(px - CAMPO.x0, CAMPO.x1 - px, pz - CAMPO.z0, CAMPO.z1 - pz);
-    const n = borda < 0.6 && rnd() < 0.6 ? 'Trigo_Ralo' : (rnd() < 0.55 ? 'Trigo_Maduro' : 'Trigo_Cheio');
-    listas[n].push([px, pz]);
+    listas[borda < 0.5 && rnd() < 0.6 ? 'Trigo_Ralo' : (rnd() < 0.55 ? 'Trigo_Maduro' : 'Trigo_Cheio')].push([px, pz]);
   }
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3(), c = new THREE.Color();
-  for (const nm of nomes) {
-    const src = KT[nm], lista = listas[nm]; if (!src || !lista.length) continue;
+  for (const [nm, lista] of Object.entries(listas)) {
+    const src = KT[nm]; if (!src || !lista.length) continue;
     const inst = new THREE.InstancedMesh(src.geometry, matTrigo(src.material), lista.length);
     lista.forEach(([x, z], i) => {
-      const a = rnd() * Math.PI * 2, k = 0.85 + rnd() * 0.3, y = terreno(x, z) - 0.03;
-      q.setFromAxisAngle(CIMA0, a); s.set(k, k * (0.9 + rnd() * 0.2), k);
+      const a = rnd() * Math.PI * 2, k = 0.9 + rnd() * 0.3, y = terreno(x, z) - 0.03;
+      q.setFromAxisAngle(CIMA, a); s.set(k, k * (0.95 + rnd() * 0.2), k);
       inst.setMatrixAt(i, m4.compose(p.set(x, y, z), q, s));
-      const t = 0.88 + rnd() * 0.2; inst.setColorAt(i, c.setRGB(t, t * (0.97 + rnd() * 0.05), t * 0.94));
+      const t = 0.92 + rnd() * 0.16; inst.setColorAt(i, c.setRGB(t, t * (0.97 + rnd() * 0.05), t * 0.9));
       TRIGO.push({ m: inst, i, x, z, y, a, k, ky: s.y, cortado: false });
     });
     inst.receiveShadow = true; inst.frustumCulled = false; scene.add(inst);
@@ -398,108 +255,37 @@ const TRIGO = [];           // { m, i, x, z, y, a, k, cortado }
 }
 const _m4 = new THREE.Matrix4(), _q4 = new THREE.Quaternion(), _s4 = new THREE.Vector3(), _p4 = new THREE.Vector3();
 function poeTrigo(w, alto) {
-  _q4.setFromAxisAngle(CIMA0, w.a);
+  _q4.setFromAxisAngle(CIMA, w.a);
   if (alto) _s4.set(w.k, w.ky, w.k); else _s4.set(w.k * 0.75, 0.12, w.k * 0.75);
   w.m.setMatrixAt(w.i, _m4.compose(_p4.set(w.x, w.y, w.z), _q4, _s4)); w.m.instanceMatrix.needsUpdate = true;
 }
-function corta(x, z, r) { let n = 0; for (const w of TRIGO) if (!w.cortado && Math.hypot(w.x - x, w.z - z) < r) { w.cortado = true; poeTrigo(w, false); n++; } return n; }
+function corta(x, z, r) { for (const w of TRIGO) if (!w.cortado && Math.hypot(w.x - x, w.z - z) < r) { w.cortado = true; poeTrigo(w, false); } }
 function rebrota() { for (const w of TRIGO) if (w.cortado) { w.cortado = false; poeTrigo(w, true); } }
 
-// ---------- árvores, pedras e objetos ----------
-const FIG_SECA_P = pUV0(-10, -13);
-const livre = (x, z, r) => Math.hypot(x - FIG_SECA_P[0], z - FIG_SECA_P[1]) > 4.5 + r * 0.5 && !naEstrada(x, z, r * 0.6 + 0.4) && !naCasa(x, z, r * 0.5 + 0.6) && !noCampo(x, z, r * 0.5 + 0.4) && !bate(x, z, r * 0.6) && Math.hypot(x - EIRA.x, z - EIRA.z) > EIRA.r + r * 0.5 + 1;
-const ARV = [];
-function arvore(modelo, x, z, k = 1, { fade = true, raio = 0.5, forca = false } = {}) {
-  if (!modelo) return null;
-  if (!forca && !livre(x, z, raio * 2)) return null;
-  const n = por(modelo, x, z, rnd() * 6.28, k, { fade, afunda: 0.12 });
-  CIRC.push({ x, z, r: raio }); ARV.push(n); return n;
-}
-const pUV = (u, v) => XZ(u, v);
-// figueiras com folhas (fora de estação: sem figos maduros)
-const FIGS = [FG.Figueira2_Larga_SemFruta, FG.Figueira1_Jovem_SemFruta, FG.Figueira4_Grande_SemFruta, FG.Figueira3_Encostada_SemFruta];
-[[-7.5, 4], [9, 10.5], [6, -14], [-16, -14], [20, -8]].forEach(([u, v], i) => { const [x, z] = pUV(u, v); arvore(FIGS[i % FIGS.length], x, z, 0.9, { raio: 0.5 }); });
-// a figueira amaldiçoada: à beira da estrada, um pouco afastada das outras, seca desde a raiz (provisória)
-const FIG_SECA = (() => {
-  const [x, z] = FIG_SECA_P, y = terreno(x, z);
-  const g = new THREE.Group(), mat = new THREE.MeshStandardMaterial({ color: 0x9c9388, roughness: 1, flatShading: true });
-  const galho = (a, b, r0, r1) => { const d = b.clone().sub(a), L = d.length(); const m = new THREE.Mesh(new THREE.CylinderGeometry(r1, r0, L, 5), mat); m.position.copy(a).add(b).multiplyScalar(0.5); m.quaternion.setFromUnitVectors(V3(0, 1, 0), d.normalize()); g.add(m); };
-  const tronco = V3(0, 1.5, 0); galho(V3(0, 0, 0), tronco, 0.28, 0.2);
+// ---------- figueira amaldiçoada: seca desde a raiz (provisória, à beira da estrada) ----------
+{
+  const [x, z] = LAY.figseca, y = terreno(x, z);
+  const g = new THREE.Group(), mat = new THREE.MeshStandardMaterial({ color: 0xa69d92, roughness: 1, flatShading: true });
+  const galho = (a, b, r0, r1) => { const d = b.clone().sub(a), L = d.length(); const m = new THREE.Mesh(new THREE.CylinderGeometry(r1, r0, L, 5), mat); m.position.copy(a).add(b).multiplyScalar(0.5); m.quaternion.setFromUnitVectors(CIMA, d.normalize()); g.add(m); };
+  const tronco = V3(0, 1.4, 0); galho(V3(0, 0, 0), tronco, 0.26, 0.18);
   let s = 5;
   for (let i = 0; i < 6; i++) {
-    const a = i / 6 * Math.PI * 2 + 0.4, p1 = tronco.clone().add(V3(Math.cos(a) * 0.9, 0.9 + (i % 2) * 0.3, Math.sin(a) * 0.9)); galho(tronco, p1, 0.14, 0.08);
-    for (let j = 0; j < 2; j++) { s = (s * 16807) % 2147483647; const b = a + (j ? 0.6 : -0.5); galho(p1, p1.clone().add(V3(Math.cos(b) * 0.6, 0.5 + (s % 100) / 300, Math.sin(b) * 0.6)), 0.07, 0.025); }
+    const a = i / 6 * Math.PI * 2 + 0.4, p1 = tronco.clone().add(V3(Math.cos(a) * 0.8, 0.8 + (i % 2) * 0.3, Math.sin(a) * 0.8)); galho(tronco, p1, 0.12, 0.07);
+    for (let j = 0; j < 2; j++) { s = (s * 16807) % 2147483647; const b = a + (j ? 0.6 : -0.5); galho(p1, p1.clone().add(V3(Math.cos(b) * 0.55, 0.45 + (s % 100) / 300, Math.sin(b) * 0.55)), 0.06, 0.02); }
   }
-  for (let i = 0; i < 4; i++) { const a = i * 1.7; galho(V3(Math.cos(a) * 0.15, 0.12, Math.sin(a) * 0.15), V3(Math.cos(a) * 0.75, -0.05, Math.sin(a) * 0.75), 0.1, 0.04); }   // raízes à mostra
-  g.position.set(x, y - 0.05, z); sombra(g); scene.add(g); FADE.push(g); CIRC.push({ x, z, r: 0.4 });
-  // folhas secas caídas em volta
+  for (let i = 0; i < 4; i++) { const a = i * 1.7; galho(V3(Math.cos(a) * 0.15, 0.12, Math.sin(a) * 0.15), V3(Math.cos(a) * 0.7, -0.05, Math.sin(a) * 0.7), 0.09, 0.035); }
+  g.position.set(x, y - 0.05, z); sombra(g); scene.add(g); FADE.push(g);
   const fol = new THREE.MeshStandardMaterial({ color: 0x8a6a3c, roughness: 1, flatShading: true, side: THREE.DoubleSide });
-  for (let i = 0; i < 22; i++) { const a = rnd() * 6.28, r = 0.4 + rnd() * 1.6, f = new THREE.Mesh(new THREE.CircleGeometry(0.09, 4), fol); f.position.set(x + Math.cos(a) * r, terreno(x + Math.cos(a) * r, z + Math.sin(a) * r) + 0.06, z + Math.sin(a) * r); f.rotation.set(-Math.PI / 2 + (rnd() - 0.5) * 0.5, 0, rnd() * 6); scene.add(f); }
-  return g;
-})();
-// olival nos socalcos da esquerda
-const OLIVS = [OL.Oliveira1_Jovem, OL.Oliveira2_Retorcida, OL.Oliveira3_Vaso, OL.Oliveira4_Ancia];
-for (let i = 0, n = 0; i < 400 && n < 14; i++) {
-  const u = -22 + rnd() * 13, v = 3 + rnd() * 18; const [x, z] = pUV(u, v);
-  if (ARV.some((a) => Math.hypot(a.position.x - x, a.position.z - z) < 4.2)) continue;
-  if (arvore(OLIVS[n % 4], x, z, 0.75 + rnd() * 0.2, { raio: 0.5 })) n++;
-}
-// oliveiras no alto à direita (acima do trigal)
-for (let i = 0, n = 0; i < 300 && n < 6; i++) {
-  const u = 6 + rnd() * 20, v = 15.5 + rnd() * 6; const [x, z] = pUV(u, v);
-  if (ARV.some((a) => Math.hypot(a.position.x - x, a.position.z - z) < 4.5)) continue;
-  if (arvore(OLIVS[(n + 1) % 4], x, z, 0.8, { raio: 0.5 })) n++;
-}
-// a estrada: ladeada de árvores e pedras dos dois lados
-for (let v = -26; v <= 22; v += 3.6) {
-  for (const lado of [-1, 1]) {
-    const u = uEstrada(v) + lado * (4.2 + rnd() * 1.2), [x, z] = pUV(u, v + (rnd() - 0.5) * 1.5);
-    if (rnd() < 0.45) { const pd = [R.Rocha1, R.Rocha3, R.Rocha6, R.Rocha8, MU.Rocha11]; if (livre(x, z, 0.9)) { por(pd[Math.floor(rnd() * pd.length)], x, z, rnd() * 6.28, 0.6 + rnd() * 0.4, { circ: 0.5 }); } }
-    else if (v > -14) arvore(rnd() < 0.3 ? C.Cipreste2_Esguio : OLIVS[Math.floor(rnd() * 4)], x, z, 0.7 + rnd() * 0.15, { raio: 0.45 });
-    else arvore(rnd() < 0.5 ? AT.Arvore7 : AT.Arvore1, x, z, 0.9, { raio: 0.4 });
-  }
-}
-// o alto do monte: dois ciprestes e grandes pedras marcam a saída
-{
-  const s = (u, v, m, k, r = 0.6) => { const [x, z] = pUV(u, v); return por(m, x, z, rnd() * 6.28, k, { circ: r, fade: true, afunda: 0.15 }); };
-  s(-3.8, 24.5, C.Cipreste2_Esguio, 1.1, 0.4); s(4.6, 25.2, C.Cipreste2_Esguio, 1.15, 0.4); s(-5.6, 23.4, C.Cipreste2_Esguio, 0.95, 0.4);
-  s(-7.5, 25.5, MU.Rocha10, 1.6, 1.0); s(7.2, 24.4, MU.Rocha12, 1.7, 1.1); s(9, 26.2, MU.Rocha11, 1.5, 0.9); s(-10, 24, R.Rocha6, 1.6, 0.8); s(5.6, 22.6, R.Rocha9, 1.2, 0.6);
+  for (let i = 0; i < 18; i++) { const a = rnd() * 6.28, r = 0.4 + rnd() * 1.4, fx = x + Math.cos(a) * r, fz = z + Math.sin(a) * r, f = new THREE.Mesh(new THREE.CircleGeometry(0.08, 4), fol); f.position.set(fx, terreno(fx, fz) + 0.05, fz); f.rotation.set(-Math.PI / 2 + (rnd() - 0.5) * 0.5, 0, rnd() * 6); scene.add(f); }
 }
 
-// ---------- jogador e área ----------
-const naArea = (x, z) => { const [u, v] = UV(x, z); return (u > U0 + 1.5 && u < U1 - 1.5 && v > V0 + 1 && v < V1 - 0.5) || Math.abs(u - uEstrada(v)) < 2.6 && v > V0 - 4 && v < V1 + 3; };
-
-// ---------- sangria: cortina de árvores e pedras em volta, sem ver a borda do mundo ----------
-{
-  const altas = [C.Cipreste2_Esguio, C.Cipreste1_Redondo, FR.Arvore_Grande, FR.Arvore_Pequena, AT.Arvore2, AT.Arvore3, AT.Arvore5, AT.Arvore8, ...OLIVS].filter(Boolean);
-  const baixas = [AT.Arvore1, AT.Arvore7, AT.Arvore9, FR.Arvore_Pequena].filter(Boolean);
-  const pedras = [R.Rocha1, R.Rocha2, R.Rocha4, R.Rocha5, R.Rocha7, R.Rocha8, MU.Rocha10, MU.Rocha12].filter(Boolean);
-  const per = [];
-  const borda = (ua, va, ub, vb, out) => { const L = Math.hypot(ub - ua, vb - va), n = Math.round(L / 2.4); for (let i = 0; i <= n; i++) per.push([ua + (ub - ua) * i / n, va + (vb - va) * i / n, out]); };
-  borda(U0, V0, U1, V0, [0, -1]); borda(U1, V0, U1, V1, [1, 0]); borda(U1, V1, U0, V1, [0, 1]); borda(U0, V1, U0, V0, [-1, 0]);
-  for (const camada of [[0.5, 3.5, 1], [4, 9, 0.7], [9, 20, 0.35], [20, 34, 0.5]]) {
-    for (const [u0, v0, [ou, ov]] of per) {
-      if (rnd() > camada[2] * (ov > 0 ? 1.6 : 1)) continue;     // no alto (fundo da tela) a mata é mais fechada
-      if (camada[0] >= 20 && ov <= 0) continue;
-      const d = camada[0] + rnd() * (camada[1] - camada[0]);
-      const u = u0 + ou * d + (rnd() - 0.5) * 2, v = v0 + ov * d + (rnd() - 0.5) * 2;
-      if (Math.abs(u - uEstrada(v)) < 4.5 && (v < V0 + 2 || v > V1 - 2)) continue;   // a estrada entra e sai livre
-      const [x, z] = pUV(u, v);
-      const perto = v < -6 && ov <= 0;      // lado da câmera: só pedras e arbustos baixos
-      if (perto && rnd() < 0.55) { if (livre(x, z, 1.2)) por(pedras[Math.floor(rnd() * pedras.length)], x, z, rnd() * 6.28, 0.8 + rnd() * 0.7, { circ: 0.6 }); continue; }
-      const lista = perto ? baixas : altas;
-      arvore(lista[Math.floor(rnd() * lista.length)], x, z, 0.85 + rnd() * 0.35, { raio: 0.5, fade: true });
-    }
-  }
-}
-
-// ---------- personagens e animais ----------
+// ---------- personagens ----------
 const MIX = [];
 function ator(g, altura, x, z, r, clipe) {
   const o = SkeletonUtils.clone(g.scene); sombra(o);
   const b = new THREE.Box3().setFromObject(o); o.scale.setScalar(altura / (b.max.y - b.min.y));
   o.position.set(x, terreno(x, z), z); o.rotation.y = r; scene.add(o);
-  const mx = new THREE.AnimationMixer(o); MIX.push(mx); o.userData.mx = mx;
+  const mx = new THREE.AnimationMixer(o); MIX.push(mx);
   const A = Object.fromEntries(g.animations.map((c) => [c.name, mx.clipAction(c)]));
   const st = { o, A, atual: '' };
   st.toca = (n) => { if (n === st.atual || !A[n]) return; A[n].reset().fadeIn(0.2).play(); if (A[st.atual]) A[st.atual].fadeOut(0.2); st.atual = n; };
@@ -507,10 +293,8 @@ function ator(g, altura, x, z, r, clipe) {
   return st;
 }
 const chao = (st) => { st.o.position.y = terreno(st.o.position.x, st.o.position.z); };
-// ---------- IK de dois ossos por cima do clipe parado (mesmo da fase de Betânia) ----------
 const _q1 = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), _q3 = new THREE.Quaternion();
 const _A = new THREE.Vector3(), _B = new THREE.Vector3(), _C = new THREE.Vector3(), _T = new THREE.Vector3(), _P = new THREE.Vector3(), _D = new THREE.Vector3(), _E = new THREE.Vector3();
-const CIMA = CIMA0;
 function giraMundo(osso, q) { osso.getWorldQuaternion(_q2); osso.parent.getWorldQuaternion(_q3); osso.quaternion.copy(_q3.invert().multiply(q.clone().multiply(_q2))); osso.updateMatrixWorld(true); }
 function alinha(osso, de, para) { if (de.lengthSq() < 1e-8 || para.lengthSq() < 1e-8) return; _q1.setFromUnitVectors(de.normalize(), para.normalize()); giraMundo(osso, _q1); }
 function ik(a, b, c, alvo, polo, peso = 1) {
@@ -528,8 +312,7 @@ function ik(a, b, c, alvo, polo, peso = 1) {
 function corpo(st) {
   const g = (n) => st.o.getObjectByName(n);
   st.os = { pelvis: g('pelvis'), sp: g('spine_02'), sp3: g('spine_03'), cab: g('Head'),
-    bE: [g('upperarm_l'), g('lowerarm_l'), g('hand_l')], bD: [g('upperarm_r'), g('lowerarm_r'), g('hand_r')],
-    pE: [g('thigh_l'), g('calf_l'), g('foot_l')], pD: [g('thigh_r'), g('calf_r'), g('foot_r')] };
+    bE: [g('upperarm_l'), g('lowerarm_l'), g('hand_l')], bD: [g('upperarm_r'), g('lowerarm_r'), g('hand_r')] };
   st.mE = null; st.mD = null; st.inc = 0; st.pesoB = 0;
   return st;
 }
@@ -558,12 +341,11 @@ function anda(st, alvo, dt, vel = 0.9) {
   d.normalize(); st.o.position.addScaledVector(d, Math.min(vel * dt, L)); lerpAng(st.o, Math.atan2(d.x, d.z), Math.min(1, dt * 8)); st.toca('Andar'); chao(st);
   return false;
 }
-// barra (cilindro de altura 1) esticada entre dois pontos
 const barra = (m, a, b) => { const d = b.clone().sub(a), L = d.length(); if (L < 1e-3) { m.visible = false; return; } m.visible = true; m.position.copy(a).add(b).multiplyScalar(0.5); m.scale.set(1, L, 1); m.quaternion.setFromUnitVectors(CIMA, d.normalize()); };
 const madeira = new THREE.MeshStandardMaterial({ color: 0x7a5232, roughness: 1, flatShading: true });
 const ferro = new THREE.MeshStandardMaterial({ color: 0x8d8a84, roughness: 0.6, metalness: 0.3, flatShading: true });
 const cil = (r, mat = madeira) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 1, 6), mat); m.castShadow = true; scene.add(m); return m; };
-// partículas: palha, grãos e pó
+// partículas: palha e grão
 const PART = [];
 const geoPart = new THREE.TetrahedronGeometry(0.035, 0);
 const matPalha = new THREE.MeshStandardMaterial({ color: 0xe7cf8e, roughness: 1, flatShading: true });
@@ -586,61 +368,46 @@ function partPasso(dt) {
   }
 }
 
-// ---------- ceifa: um ceifeiro corta fileira por fileira; uma mulher amarra os feixes; um homem leva à carroça ----------
-const ceifeiro = corpo(ator(nAldeao, 1.7, CAMPO.x0 - 0.4, CAMPO.z1 + 0.3, Math.PI / 2, 'Andar'));
-const atadeira = corpo(ator(nFaixa, 1.6, CAMPO.x0 - 2, CAMPO.z1 + 1.2, Math.PI / 2, 'Parado'));
-const carregador = corpo(ator(nCarreg, 1.72, CAMPO.x1 + 1.5, CAMPO.z1 - 2, -Math.PI / 2, 'Parado'));
+// ---------- ceifa: o ceifeiro corta fileira por fileira; a mulher amarra os feixes; o homem leva à carroça ----------
+const ceifeiro = corpo(ator(nAldeao, 1.7, CAMPO.x0 + 0.3, CAMPO.z1 + 0.5, Math.PI / 2, 'Andar'));
+const atadeira = corpo(ator(nFaixa, 1.6, CAMPO.x0 - 1, CAMPO.z1 + 1.2, Math.PI / 2, 'Parado'));
+const carregador = corpo(ator(nCarreg, 1.72, LAY.carro.x - 1.5, LAY.carro.z - 1, -Math.PI / 2, 'Parado'));
 const FILEIRAS = Math.floor((CAMPO.z1 - CAMPO.z0 - 0.4) / 0.9);
 const zFila = (r) => CAMPO.z1 - 0.45 - r * 0.9;
-const CE = { e: 'corta', fila: 0, dir: 1, x: CAMPO.x0 + 0.3, t: 0, desdeFeixe: 0, espera: 0 };
-ceifeiro.o.position.set(CE.x, 0, zFila(0) + 0.55); chao(ceifeiro);
-// foice (provisória): cabo curto e lâmina curva
+const CE = { e: 'corta', fila: 0, dir: 1, x: CAMPO.x0 + 0.3, t: 0, desdeFeixe: 0 };
 const FOICE = new THREE.Group();
 { const cabo = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.022, 0.16, 6), madeira); cabo.position.y = -0.06;
   const lam = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.012, 3, 10, Math.PI * 1.15), ferro); lam.position.set(0.16, 0.02, 0); lam.rotation.x = Math.PI / 2;
   FOICE.add(cabo, lam); sombra(FOICE); scene.add(FOICE); }
-const FEIXES = [];          // { o, st: 'solto' | 'amarrado' | 'levado' }
-const FEIXE_D = CO.Feixe_Deitado;
-function soltaFeixe(x, z, ang) {
-  const o = FEIXE_D.clone(); o.position.set(x, terreno(x, z) + 0.02, z); o.rotation.y = ang; o.scale.setScalar(0.85); sombra(o); scene.add(o);
-  FEIXES.push({ o, st: 'solto' });
-}
+const FEIXES = [];
+function soltaFeixe(x, z, ang) { const o = CO.Feixe_Deitado.clone(); o.position.set(x, terreno(x, z) + 0.02, z); o.rotation.y = ang; o.scale.setScalar(0.85); sombra(o); scene.add(o); FEIXES.push({ o, st: 'solto' }); }
 function ceifeiroPasso(dt, t) {
   const st = ceifeiro, o = st.o;
   let aE = null, aD = null, inc = 0;
   if (CE.e === 'corta') {
     const zf = zFila(CE.fila);
-    // anda de lado ao longo da fileira, de frente para o trigo ainda em pé (para -z)
-    const fx = CE.dir * 0.55, fz = -1, ang = Math.atan2(fx, fz);
-    lerpAng(o, ang, Math.min(1, dt * 4));
+    lerpAng(o, Math.atan2(CE.dir * 0.55, -1), Math.min(1, dt * 4));
     const v = 0.3 * dt; CE.x += CE.dir * v; CE.desdeFeixe += v;
     o.position.x = CE.x; o.position.z = zf + 0.55; chao(st);
     st.toca('Andar'); st.A.Andar.timeScale = 0.45;
     const f = frente(st), lado = pos(st.os.bE[0]).sub(pos(st.os.bD[0])).setY(0).normalize(), base = o.position.clone();
     const fase = (t % 1.1) / 1.1;
-    // mão esquerda agarra um punhado; a direita passa a foice rente ao chão
     const agarra = base.clone().addScaledVector(f, 0.55).addScaledVector(lado, 0.12).add(V3(0, 0.45, 0));
     aE = fase < 0.75 ? agarra.clone().add(V3(0, fase > 0.4 ? 0.12 : 0, 0)) : base.clone().addScaledVector(f, 0.3).addScaledVector(lado, 0.35).add(V3(0, 0.75, 0));
     const sw = fase < 0.4 ? -0.6 : fase < 0.7 ? -0.6 + 1.4 * sm(0.4, 0.7, fase) : 0.8 - 1.4 * sm(0.7, 1, fase);
     aD = base.clone().addScaledVector(f, 0.5 + 0.1 * Math.cos(sw)).addScaledVector(lado, -0.35 * Math.cos(sw * 1.4) + 0.3 * Math.sin(sw)).add(V3(0, 0.28, 0));
     inc = 0.75;
     corta(o.position.x + CE.dir * 0.35, zf + 0.1, 0.55); corta(o.position.x, o.position.z, 0.5);
-    if (CE.desdeFeixe > 2.1) { CE.desdeFeixe = 0; soltaFeixe(o.position.x - CE.dir * 0.4, zf + 0.75, (rnd() - 0.5) * 0.5); }
-    if ((CE.dir > 0 && CE.x > CAMPO.x1 - 0.25) || (CE.dir < 0 && CE.x < CAMPO.x0 + 0.25)) {
-      corta(CE.x, zf, 0.7);
-      CE.fila++; CE.dir *= -1; CE.e = CE.fila < FILEIRAS ? 'vira' : 'fim'; CE.t = 0;
-    }
-    // a foice na mão direita
-    const mao = pos(st.os.bD[2]); FOICE.position.copy(mao); FOICE.rotation.set(0, o.rotation.y + sw - 1.2, -0.3);
+    if (CE.desdeFeixe > 2.0) { CE.desdeFeixe = 0; soltaFeixe(o.position.x - CE.dir * 0.4, zf + 0.75, (rnd() - 0.5) * 0.5); }
+    if ((CE.dir > 0 && CE.x > CAMPO.x1 - 0.25) || (CE.dir < 0 && CE.x < CAMPO.x0 + 0.25)) { corta(CE.x, zf, 0.7); CE.fila++; CE.dir *= -1; CE.e = CE.fila < FILEIRAS ? 'vira' : 'fim'; CE.t = 0; }
+    FOICE.position.copy(pos(st.os.bD[2])); FOICE.rotation.set(0, o.rotation.y + sw - 1.2, -0.3);
   } else if (CE.e === 'vira') {
     st.A.Andar.timeScale = 1;
     if (anda(st, V3(CE.x, 0, zFila(CE.fila) + 0.55), dt, 0.6)) CE.e = 'corta';
     FOICE.position.copy(pos(st.os.bD[2])); FOICE.rotation.set(0, o.rotation.y - 1.2, -0.8);
   } else {
-    // terminou o campo: descansa à beira e o trigo volta (o ciclo recomeça)
     st.A.Andar.timeScale = 1;
-    const lugar = V3(CAMPO.x0 - 1.2, 0, CAMPO.z1 + 0.8);
-    if (anda(st, lugar, dt, 0.9)) {
+    if (anda(st, V3(CAMPO.x0 - 0.8, 0, CAMPO.z1 + 0.8), dt, 0.9)) {
       st.toca('Parado'); CE.t += dt;
       if (CE.t > 10 && !FEIXES.some((f) => f.st === 'solto')) {
         rebrota(); for (const f of FEIXES) if (f.st !== 'levado') scene.remove(f.o);
@@ -653,54 +420,46 @@ function ceifeiroPasso(dt, t) {
   maos(st, aE || pos(st.os.bE[2]), aD || pos(st.os.bD[2]), dt, aE ? 1 : 0, 9);
 }
 const AT_ = { e: 'segue', t: 0, alvo: null };
-function atadeiraPasso(dt, t) {
+function atadeiraPasso(dt) {
   const st = atadeira, o = st.o;
   let aE = null, aD = null, inc = 0;
   if (AT_.e === 'segue') {
     AT_.alvo = FEIXES.find((f) => f.st === 'solto') || null;
     if (AT_.alvo) AT_.e = 'vai';
-    else {
-      const p = ceifeiro.o.position.clone().add(V3(-CE.dir * 2.6, 0, 0.9));
-      if (o.position.distanceTo(p) > 1.2) anda(st, p, dt, 0.8); else { st.toca('Parado'); lerpAng(o, Math.atan2(ceifeiro.o.position.x - o.position.x, ceifeiro.o.position.z - o.position.z), dt * 3); }
-    }
+    else { const p = ceifeiro.o.position.clone().add(V3(-CE.dir * 2.4, 0, 0.9)); if (o.position.distanceTo(p) > 1.2) anda(st, p, dt, 0.8); else { st.toca('Parado'); lerpAng(o, Math.atan2(ceifeiro.o.position.x - o.position.x, ceifeiro.o.position.z - o.position.z), dt * 3); } }
   } else if (AT_.e === 'vai') {
-    const p = AT_.alvo.o.position.clone().add(V3(0, 0, 0.6));
-    if (anda(st, p, dt, 0.85)) { AT_.e = 'amarra'; AT_.t = 0; }
-  } else if (AT_.e === 'amarra') {
+    if (anda(st, AT_.alvo.o.position.clone().add(V3(0, 0, 0.6)), dt, 0.85)) { AT_.e = 'amarra'; AT_.t = 0; }
+  } else {
     AT_.t += dt; st.toca('Parado');
     const fp = AT_.alvo.o.position;
     lerpAng(o, Math.atan2(fp.x - o.position.x, fp.z - o.position.z), Math.min(1, dt * 6));
-    const lado = pos(st.os.bE[0]).sub(pos(st.os.bD[0])).setY(0).normalize();
-    const g = AT_.t * 7;
+    const lado = pos(st.os.bE[0]).sub(pos(st.os.bD[0])).setY(0).normalize(), g = AT_.t * 7;
     aE = fp.clone().addScaledVector(lado, 0.14).add(V3(0, 0.22 + 0.05 * Math.sin(g), 0));
     aD = fp.clone().addScaledVector(lado, -0.14).add(V3(Math.cos(g) * 0.06, 0.2 + 0.05 * Math.cos(g), Math.sin(g) * 0.06));
     inc = 0.95 * sm(0, 0.5, AT_.t) * (1 - sm(2.4, 2.9, AT_.t));
-    if (AT_.t > 1.2 && AT_.alvo.st === 'solto') { AT_.alvo.st = 'amarrado'; AT_.alvo.o.scale.set(0.85, 0.9, 0.72); }   // apertado pela atadura
+    if (AT_.t > 1.2 && AT_.alvo.st === 'solto') { AT_.alvo.st = 'amarrado'; AT_.alvo.o.scale.set(0.85, 0.9, 0.72); }
     if (AT_.t > 3) AT_.e = 'segue';
   }
   st.inc += (inc - st.inc) * Math.min(1, dt * 5); inclina(st, st.inc);
   maos(st, aE || pos(st.os.bE[2]), aD || pos(st.os.bD[2]), dt, aE ? 1 : 0, 10);
 }
-// carroça com boi, à direita do trigal (o lado da câmera)
-const CARRO = { x: CAMPO.x1 + 3.0, z: (CAMPO.z0 + CAMPO.z1) / 2 + 1.0, r: -Math.PI / 2, n: 0, max: 8 };
-const carroca = por(CO.Carroca, CARRO.x, CARRO.z, CARRO.r, 1, { afunda: 0.02 });
-carroca.rotation.order = 'YXZ'; carroca.rotation.x = -Math.atan2(terreno(CARRO.x, CARRO.z + 1.5) - terreno(CARRO.x, CARRO.z - 1.5), 3) * 0.8;
+// carroça com boi (embaixo, à direita, entre o trigal e o pé do morro)
+const CARRO = { x: LAY.carro.x, z: LAY.carro.z, r: -Math.PI / 2, n: 0, max: 8 };
+const carroca = CO.Carroca.clone(); sombra(carroca); carroca.position.set(CARRO.x, LAY.carro.y - 0.02, CARRO.z); carroca.rotation.y = CARRO.r; scene.add(carroca);
 const carga = CO.Carroca_Carga.clone(); sombra(carga); carroca.add(carga); carga.visible = false;
-caixaDe(carroca, 0.2);
-carroca.updateMatrixWorld(true);
-const CARRO_LADO = CO0.NPC_Carregar.clone().sub(CO0.Carroca); CARRO_LADO.set(CARRO_LADO.x, 0, -CARRO_LADO.z * 0 + CARRO_LADO.z);
-const LUGAR_C = carroca.localToWorld(V3(CARRO_LADO.x, 0, CARRO_LADO.z + 0.25)); LUGAR_C.y = 0;
-const boiCarro = ator(gBoi, 1.5, 0, 0, 0, 'Parado');
+caixaDe(carroca, 0.2); carroca.updateMatrixWorld(true);
+const LADO_C = CO0.NPC_Carregar.clone().sub(CO0.Carroca);
+const LUGAR_C = carroca.localToWorld(V3(LADO_C.x, 0, LADO_C.z + 0.25)); LUGAR_C.y = 0;
+const boiCarro = ator(gBoi, 1.45, 0, 0, 0, 'Parado');
 {
   const b = new THREE.Box3().setFromObject(carroca), c = b.getCenter(new THREE.Vector3());
-  const ponta = V3(Math.cos(-CARRO.r), 0, -Math.sin(-CARRO.r));   // eixo longo da carroça (x local)
-  boiCarro.ponta = ponta;
-  boiCarro.o.position.set(c.x + ponta.x * 2.9, 0, c.z - ponta.z * 2.9); chao(boiCarro);
+  const ponta = V3(Math.cos(-CARRO.r), 0, Math.sin(-CARRO.r));
+  boiCarro.o.position.set(c.x + ponta.x * 2.8, 0, c.z + ponta.z * 2.8); chao(boiCarro);
   boiCarro.o.rotation.y = Math.atan2(boiCarro.o.position.x - c.x, boiCarro.o.position.z - c.z);
   CIRC.push({ x: boiCarro.o.position.x, z: boiCarro.o.position.z, r: 0.9 });
 }
 const CA = { e: 'espera', t: 0, alvo: null };
-function carregadorPasso(dt, t) {
+function carregadorPasso(dt) {
   const st = carregador, o = st.o;
   let aE = null, aD = null, inc = 0;
   const lado = pos(st.os.bE[0]).sub(pos(st.os.bD[0])).setY(0).normalize();
@@ -711,7 +470,7 @@ function carregadorPasso(dt, t) {
       if (CARRO.n >= CARRO.max) { CA.e = 'cheio'; CA.t = 0; break; }
       const livres = FEIXES.filter((f) => f.st === 'amarrado');
       if (livres.length) { livres.sort((a, b) => a.o.position.distanceTo(LUGAR_C) - b.o.position.distanceTo(LUGAR_C)); CA.alvo = livres[0]; CA.alvo.st = 'levado'; CA.e = 'vai'; }
-      else if (!anda(st, LUGAR_C, dt, 0.9)) { /* volta ao lugar */ } else { st.toca('Parado'); lerpAng(o, Math.atan2(topo.x - o.position.x, topo.z - o.position.z), dt * 3); }
+      else if (anda(st, LUGAR_C, dt, 0.9)) { st.toca('Parado'); lerpAng(o, Math.atan2(topo.x - o.position.x, topo.z - o.position.z), dt * 3); }
       break;
     }
     case 'vai': if (anda(st, CA.alvo.o.position.clone().add(V3(0, 0, 0.6)), dt, 1.0)) { CA.e = 'pega'; CA.t = 0; } break;
@@ -739,70 +498,36 @@ function carregadorPasso(dt, t) {
       if (CA.t > 1.2) { scene.remove(CA.alvo.o); CA.alvo = null; CARRO.n++; atualizaCarga(); CA.e = 'espera'; }
       break;
     }
-    case 'cheio': {
-      // carroça cheia: o boi descansa; depois a carga é levada para a eira e o trabalho continua
-      CA.t += dt; st.toca('Conversando');
-      if (CA.t > 9) { CARRO.n = 0; atualizaCarga(); CA.e = 'espera'; }
-      break;
-    }
+    case 'cheio': { CA.t += dt; st.toca('Conversando'); if (CA.t > 9) { CARRO.n = 0; atualizaCarga(); CA.e = 'espera'; } break; }
   }
   st.inc += (inc - st.inc) * Math.min(1, dt * 5); inclina(st, st.inc);
   maos(st, aE || pos(st.os.bE[2]), aD || pos(st.os.bD[2]), dt, aE ? 1 : 0, 10);
 }
 function atualizaCarga() { carga.visible = CARRO.n > 0; carga.scale.set(1, Math.max(0.15, CARRO.n / CARRO.max), 1); }
-// feixes em pé (medas) num canto já colhido e uma pilha junto à eira
-{
-  const fe = CO.Feixe_EmPe;
-  for (const [dx, dz] of [[0, 0], [0.35, 0.1], [0.12, 0.38], [-0.25, 0.25]]) por(fe, CAMPO.x1 + 1.2 + dx, CAMPO.z1 + 0.6 + dz, rnd() * 6, 0.95, { afunda: 0.02 });
-  CIRC.push({ x: CAMPO.x1 + 1.3, z: CAMPO.z1 + 0.8, r: 0.6 });
-}
 
-// ---------- eira: um homem bate o trigo com o mangual; uma mulher joeira com o forcado ----------
-{
-  const e = CO.Eira; const k = (EIRA.r * 2) / 2.84;
-  por(e, EIRA.x, EIRA.z, 0.3, k, { afunda: 0.02 });
-  // anel de pedras em volta
-  const pd = [R.Rocha1, R.Rocha4, R.Rocha7, R.Rocha2];
-  for (let i = 0; i < 26; i++) {
-    const a = i / 26 * Math.PI * 2; if (Math.abs(Math.atan2(Math.sin(a - 0.75), Math.cos(a - 0.75))) < 0.28) continue;   // entrada virada para a estrada
-    const x = EIRA.x + Math.cos(a) * (EIRA.r + 0.35), z = EIRA.z + Math.sin(a) * (EIRA.r + 0.35);
-    por(pd[i % 4], x, z, a, 0.28 + rnd() * 0.08, { afunda: 0.03 });
-    CIRC.push({ x, z, r: 0.3 });
-  }
-  por(CO.Feixe_Pilha, EIRA.x - 2.0, EIRA.z - 4.6, 0.6, 1.1, { circ: 0.6 });
-  por(CO.Feixe_Pilha, EIRA.x - 3.4, EIRA.z - 3.6, 2.0, 1.0, { circ: 0.6 });
-  for (const [dx, dz, r] of [[3.5, -2.6, 0], [4.1, -2.0, 0.6], [3.9, -3.2, 1.2]]) por(OB.Saco, EIRA.x + dx, EIRA.z + dz, r, 1.15, { circ: 0.3 });
-  por(CO.Cesto_Graos, EIRA.x + 3.0, EIRA.z - 1.6, 0, 1.2, { circ: 0.3 });
-  por(CO.Peneira, EIRA.x + 2.6, EIRA.z - 1.0, 0, 1.1);
-}
-const EIRA_Y = terreno(EIRA.x, EIRA.z);
-// monte de palha com grão no meio da eira (cresce e diminui de leve)
+// ---------- eira: mangual e joeira ----------
+const EI = LAY.eira, EIRA_Y = EI.y;
 const MONTE = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xe2c27e, roughness: 1, flatShading: true }));
-MONTE.position.set(EIRA.x + 0.4, EIRA_Y + 0.02, EIRA.z - 0.3); MONTE.scale.set(1.3, 0.32, 1.1); MONTE.receiveShadow = MONTE.castShadow = true; scene.add(MONTE);
-const debulhador = corpo(ator(nRobusto, 1.72, EIRA.x - 0.9, EIRA.z + 0.9, 0, 'Parado'));
-debulhador.o.rotation.y = Math.atan2(MONTE.position.x - debulhador.o.position.x, MONTE.position.z - debulhador.o.position.z);
-const joeiradeira = corpo(ator(nBotoes, 1.6, EIRA.x + 1.9, EIRA.z + 0.7, 0, 'Parado'));
-joeiradeira.o.rotation.y = Math.atan2(MONTE.position.x - joeiradeira.o.position.x, MONTE.position.z - joeiradeira.o.position.z);
-for (const n of [debulhador, joeiradeira]) { n.o.position.y = EIRA_Y; CIRC.push({ x: n.o.position.x, z: n.o.position.z, r: 0.4 }); }
-// mangual (provisório): cabo e mangoal presos por uma correia
+MONTE.position.set(EI.x + 0.3, EIRA_Y + 0.05, EI.z - 0.2); MONTE.scale.set(1.0, 0.28, 0.85); MONTE.receiveShadow = MONTE.castShadow = true; scene.add(MONTE);
+const debulhador = corpo(ator(nRobusto, 1.72, EI.x - 0.8, EI.z + 0.8, 0, 'Parado'));
+const joeiradeira = corpo(ator(nBotoes, 1.6, EI.x + 1.5, EI.z + 0.6, 0, 'Parado'));
+for (const n of [debulhador, joeiradeira]) { n.o.position.y = EIRA_Y + 0.05; n.o.rotation.y = Math.atan2(MONTE.position.x - n.o.position.x, MONTE.position.z - n.o.position.z); CIRC.push({ x: n.o.position.x, z: n.o.position.z, r: 0.4 }); }
 const MG = { cabo: cil(0.022), mangoal: cil(0.03), correia: cil(0.008, new THREE.MeshStandardMaterial({ color: 0x5a3e26, roughness: 1 })), bateu: false };
-// forcado de joeirar (provisório)
 const FORC = { cabo: cil(0.02), trav: cil(0.012), dentes: [cil(0.01), cil(0.01), cil(0.01), cil(0.01)] };
 function debulhadorPasso(dt, t) {
   const st = debulhador, f = frente(st), lado = pos(st.os.bE[0]).sub(pos(st.os.bD[0])).setY(0).normalize();
-  const T = 1.4, fase = (t % T) / T;
-  // ângulo do cabo: 0 = em pé; ergue por cima do ombro e desce com força à frente
+  const fase = (t % 1.4) / 1.4;
   const th = fase < 0.55 ? 1.75 - 2.25 * sm(0, 0.55, fase) : fase < 0.72 ? -0.5 + 2.3 * sm(0.55, 0.72, fase) : 1.8;
   const G = pos(st.os.pelvis).add(V3(0, 0.38, 0)).addScaledVector(f, 0.25).addScaledVector(lado, -0.1);
   const d = CIMA.clone().multiplyScalar(Math.cos(th)).addScaledVector(f, Math.sin(th));
   const E = G.clone().addScaledVector(d, 1.05);
   const lag = fase < 0.55 ? -0.7 : fase < 0.72 ? 0.9 : 1.3;
   const d2 = CIMA.clone().multiplyScalar(Math.cos(th + lag)).addScaledVector(f, Math.sin(th + lag));
-  let S = E.clone().addScaledVector(d2, 0.62);
-  const piso = EIRA_Y + 0.12;
-  if (S.y < piso) { const dy = Math.max(0, E.y - piso), hz = Math.sqrt(Math.max(0, 0.62 * 0.62 - dy * dy)); S = E.clone().addScaledVector(f, hz); S.y = piso; }
-  barra(MG.cabo, G.clone().addScaledVector(d, -0.08), E); barra(MG.correia, E, E.clone().lerp(S, 0.08)); barra(MG.mangoal, E.clone().lerp(S, 0.08), S);
-  if (fase > 0.7 && !MG.bateu) { MG.bateu = true; for (let i = 0; i < 8; i++) solta(S.clone().add(V3(0, 0.05, 0)), V3((rnd() - 0.5) * 1.6, 1 + rnd() * 1.4, (rnd() - 0.5) * 1.6), i % 3 ? 'palha' : 'grao', 1.4); }
+  let Sp = E.clone().addScaledVector(d2, 0.62);
+  const piso = EIRA_Y + 0.15;
+  if (Sp.y < piso) { const dy = Math.max(0, E.y - piso), hz = Math.sqrt(Math.max(0, 0.62 * 0.62 - dy * dy)); Sp = E.clone().addScaledVector(f, hz); Sp.y = piso; }
+  barra(MG.cabo, G.clone().addScaledVector(d, -0.08), E); barra(MG.correia, E, E.clone().lerp(Sp, 0.08)); barra(MG.mangoal, E.clone().lerp(Sp, 0.08), Sp);
+  if (fase > 0.7 && !MG.bateu) { MG.bateu = true; for (let i = 0; i < 8; i++) solta(Sp.clone().add(V3(0, 0.05, 0)), V3((rnd() - 0.5) * 1.6, 1 + rnd() * 1.4, (rnd() - 0.5) * 1.6), i % 3 ? 'palha' : 'grao', 1.4); }
   if (fase < 0.5) MG.bateu = false;
   st.toca('Parado');
   st.inc += ((fase > 0.6 && fase < 0.85 ? 0.45 : 0.12) - st.inc) * Math.min(1, dt * 8); inclina(st, st.inc);
@@ -810,108 +535,87 @@ function debulhadorPasso(dt, t) {
 }
 function joeiradeiraPasso(dt, t) {
   const st = joeiradeira, f = frente(st), lado = pos(st.os.bE[0]).sub(pos(st.os.bD[0])).setY(0).normalize();
-  const T = 2.8, fase = ((t + 0.9) % T) / T;
+  const fase = ((t + 0.9) % 2.8) / 2.8;
   const H = pos(st.os.pelvis).add(V3(0, 0.15, 0)).addScaledVector(f, 0.2).addScaledVector(lado, -0.12);
-  // ponta do forcado: enfia no monte, ergue e joga para o alto contra o vento
-  const baixo = H.clone().addScaledVector(f, 1.35).setY(EIRA_Y + 0.15), alto = H.clone().addScaledVector(f, 0.9).add(V3(0, 1.45, 0));
+  const baixo = H.clone().addScaledVector(f, 1.3).setY(EIRA_Y + 0.2), alto = H.clone().addScaledVector(f, 0.9).add(V3(0, 1.45, 0));
   const k = fase < 0.35 ? 0 : fase < 0.55 ? sm(0.35, 0.55, fase) : 1 - sm(0.7, 1, fase);
-  const ponta = baixo.clone().lerp(alto, k);
-  const d = ponta.clone().sub(H).normalize();
-  const fim = H.clone().addScaledVector(d, -0.3);
-  barra(FORC.cabo, fim, ponta);
+  const ponta = baixo.clone().lerp(alto, k), d = ponta.clone().sub(H).normalize();
+  barra(FORC.cabo, H.clone().addScaledVector(d, -0.3), ponta);
   const latF = V3().crossVectors(d, CIMA).normalize();
   barra(FORC.trav, ponta.clone().addScaledVector(latF, -0.13), ponta.clone().addScaledVector(latF, 0.13));
   FORC.dentes.forEach((m, i) => { const b = ponta.clone().addScaledVector(latF, -0.12 + i * 0.08); barra(m, b, b.clone().addScaledVector(d, 0.28)); });
-  if (fase > 0.52 && fase < 0.6 && rnd() < 0.7) {
-    const p = ponta.clone().addScaledVector(d, 0.15);
-    solta(p, V3(0.6 + rnd() * 0.5, 0.6 + rnd() * 0.6, -0.6 - rnd() * 0.5), 'palha', 2.6);     // a palha voa com o vento
-    solta(p, V3((rnd() - 0.5) * 0.3, 0.3, (rnd() - 0.5) * 0.3), 'grao', 1.2);               // o grão cai no lugar
-  }
+  if (fase > 0.52 && fase < 0.6 && rnd() < 0.7) { const p = ponta.clone().addScaledVector(d, 0.15); solta(p, V3(0.6 + rnd() * 0.5, 0.6 + rnd() * 0.6, -0.6 - rnd() * 0.5), 'palha', 2.6); solta(p, V3((rnd() - 0.5) * 0.3, 0.3, (rnd() - 0.5) * 0.3), 'grao', 1.2); }
   st.toca('Parado');
   st.inc += ((fase < 0.4 ? 0.5 : 0.1) - st.inc) * Math.min(1, dt * 5); inclina(st, st.inc);
   maos(st, H.clone().addScaledVector(d, 0.45), H.clone(), dt, 1, 18);
 }
 
-// ---------- aldeia: jumenta e jumentinho amarrados à porta, cocho, conversa no terreiro ----------
-const C0 = CASAS[0], portaC0 = C0.mundo(C0.px, C0.pz);
-const jumenta = ator(gJum, 1.25, portaC0.x + 2.4, portaC0.z + 1.4, -2.2, 'Parado');
-const jumentinho = ator(gJum, 0.82, portaC0.x + 3.3, portaC0.z + 2.2, -2.6, 'Comer');
-const ESTACA = V3(portaC0.x + 1.7, 0, portaC0.z + 0.7); ESTACA.y = terreno(ESTACA.x, ESTACA.z);
-{
-  const m = cil(0.06); barra(m, ESTACA, ESTACA.clone().add(V3(0, 1.1, 0)));
-  CIRC.push({ x: ESTACA.x, z: ESTACA.z, r: 0.15 }, { x: jumenta.o.position.x, z: jumenta.o.position.z, r: 0.7 }, { x: jumentinho.o.position.x, z: jumentinho.o.position.z, r: 0.5 });
-  por(PS.Cocho, portaC0.x + 2.6, portaC0.z + 3.4, 0.3, 0.75, { circ: 0.7 });
-}
+// ---------- aldeia: jumenta e jumentinho junto ao cocho, conversa à porta ----------
+const [cox, coz] = LAY.cocho;
+const jumenta = ator(gJum, 1.2, cox + 0.9, coz + 1.1, 2.4, 'Parado');
+const jumentinho = ator(gJum, 0.8, cox + 1.8, coz + 0.3, 2.0, 'Comer');
+const ESTACA = V3(cox + 0.1, 0, coz + 1.9); ESTACA.y = terreno(ESTACA.x, ESTACA.z);
+{ const m = cil(0.06); barra(m, ESTACA, ESTACA.clone().add(V3(0, 1.1, 0))); CIRC.push({ x: ESTACA.x, z: ESTACA.z, r: 0.15 }, { x: jumenta.o.position.x, z: jumenta.o.position.z, r: 0.6 }, { x: jumentinho.o.position.x, z: jumentinho.o.position.z, r: 0.45 }); }
 const CORDA_J = cil(0.012, new THREE.MeshStandardMaterial({ color: 0xc9b07a, roughness: 1 }));
-for (const [o, x, z, k] of [[OB.Jarro_Alto, -2.2, 0.7, 1.3], [OB.Pote_Escuro, -1.6, 0.9, 1.2], [OB.Cesto_Alca, 1.5, 0.5, 1]]) { const c = CASAS[2], p = c.mundo(c.px + x, c.pz + z); por(o, p.x, p.z, rnd() * 6, k, { circ: 0.3 }); }
-{ const c = CASAS[1], p = c.mundo(c.px - 1.8, c.pz + 0.7); por(OB.Banquinho, p.x, p.z, 0.6, 1, { circ: 0.3 }); por(OB.Lenha, p.x + 3.4, p.z + 0.2, 0.2, 1, { circ: 0.35 }); }
 const conv1 = ator(nMagro, 1.7, 0, 0, 0, 'Conversando'), conv2 = ator(nRapaz, 1.66, 0, 0, 0, 'Conversando');
 {
-  const c = CASAS[1], p = c.mundo(c.px - 0.4, c.pz + 2.6);
-  conv1.o.position.set(p.x - 0.55, 0, p.z); conv2.o.position.set(p.x + 0.55, 0, p.z + 0.2); chao(conv1); chao(conv2);
+  const c = CASAS[2], p = c.mundo(c.px - 0.2, c.pz + 1.6);
+  conv1.o.position.set(p.x - 0.5, 0, p.z); conv2.o.position.set(p.x + 0.5, 0, p.z + 0.2); chao(conv1); chao(conv2);
   conv1.o.rotation.y = Math.PI / 2 - 0.2; conv2.o.rotation.y = -Math.PI / 2 - 0.2; conv1.r0 = conv1.o.rotation.y; conv2.r0 = conv2.o.rotation.y;
   for (const n of [conv1, conv2]) CIRC.push({ x: n.o.position.x, z: n.o.position.z, r: 0.35 });
 }
-// ovelhas pastando na encosta de baixo, com o pastor
-const PASTO = (() => { const [x, z] = pUV(12, -17); return { x, z, r: 4.2 }; })();
-const pastor = ator(nPastor, 1.68, PASTO.x - 3.2, PASTO.z + 1.0, 1.6, 'Parado');
+// ovelhas no cercado de baixo, com o pastor; e algumas no socalco de cima, à direita
+const PASTO = { x: LAY.pasto[0], z: LAY.pasto[1], r: 1.8 };
+const pastor = ator(nPastor, 1.68, PASTO.x - 2.2, PASTO.z + 2.0, 2.4, 'Parado');
 CIRC.push({ x: pastor.o.position.x, z: pastor.o.position.z, r: 0.35 });
 const ovelhas = [];
-for (let i = 0; i < 6; i++) {
-  let x, z, k = 0;
-  do { const a = rnd() * 6.28, r = rnd() * PASTO.r; x = PASTO.x + Math.cos(a) * r; z = PASTO.z + Math.sin(a) * r; } while (k++ < 50 && ovelhas.some((b) => Math.hypot(b.o.position.x - x, b.o.position.z - z) < 1.1));
-  const o = ator(gOve, 0.85, x, z, rnd() * 6.28, rnd() < 0.6 ? 'Comer' : 'Parado'); o.alvo = null; o.espera = rnd() * 4; ovelhas.push(o);
+for (let i = 0; i < 4; i++) {
+  const a = rnd() * 6.28, r = rnd() * PASTO.r;
+  const o = ator(gOve, 0.8, PASTO.x + Math.cos(a) * r, PASTO.z + Math.sin(a) * r, rnd() * 6.28, rnd() < 0.6 ? 'Comer' : 'Parado'); o.alvo = null; o.espera = rnd() * 4; o.area = PASTO; ovelhas.push(o);
+}
+{
+  const [x, z] = XZ(0.86, 0.70), area = { x, z, r: 2.0 };
+  for (let i = 0; i < 3; i++) { const o = ator(gOve, 0.8, x + (rnd() - 0.5) * 2, z + (rnd() - 0.5) * 2, rnd() * 6.28, 'Comer'); o.alvo = null; o.espera = rnd() * 4; o.area = area; ovelhas.push(o); }
 }
 // alguém subindo e descendo a estrada
 const andante = ator(nMoco, 1.68, 0, 0, 0, 'Andar');
-let tRota = 0.05, sentido = 1, pausa = 0;
-const rota = ESTRADA.curva;
-const tRotaMin = 0.12, tRotaMax = 0.86;
+let tRota = 0.2, sentido = 1, pausa = 0;
+const tMin = (() => { for (let i = 0; i < AMOS.length; i++) { const [a, b] = AB(AMOS[i].x, AMOS[i].z); if (a + b > 0.1) return i / AMOS.length; } return 0.1; })();
+const tMax = (() => { for (let i = AMOS.length - 1; i >= 0; i--) { const [a, b] = AB(AMOS[i].x, AMOS[i].z); if (a + b < 1.9) return i / AMOS.length; } return 0.9; })();
 
-// tufos de grama (um draw call)
+// tufos de grama (um draw call), dentro do diorama
 {
   const t = tl.load('../figueiras/tex/grama_tufo.webp'); t.colorSpace = THREE.SRGBColorSpace;
-  const a = new THREE.PlaneGeometry(0.6, 0.6); a.translate(0, 0.28, 0);
+  const a = new THREE.PlaneGeometry(0.5, 0.5); a.translate(0, 0.23, 0);
   const b = a.clone(); b.rotateY(Math.PI / 2);
   const geo = mergeGeometries([a, b]); const nn = geo.attributes.normal; for (let i = 0; i < nn.count; i++) nn.setXYZ(i, 0, 1, 0);
-  const N = 520, gr = new THREE.InstancedMesh(geo, new THREE.MeshStandardMaterial({ map: t, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 1 }), N);
+  const N = 300, gr = new THREE.InstancedMesh(geo, new THREE.MeshStandardMaterial({ map: t, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 1 }), N);
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3();
   let k = 0;
-  for (let i = 0; i < 9000 && k < N; i++) {
-    const u = U0 - 4 + rnd() * (U1 - U0 + 8), v = V0 - 4 + rnd() * (V1 - V0 + 8), [x, z] = pUV(u, v);
-    if (naEstrada(x, z, 0.6) || naCasa(x, z, 0.6) || noCampo(x, z, 0.5) || bate(x, z, 0.35) || Math.hypot(x - EIRA.x, z - EIRA.z) < EIRA.r + 1.2) continue;
-    p.set(x, terreno(x, z) - 0.02, z); q.setFromAxisAngle(CIMA, rnd() * 3.14); const e = 0.5 + rnd() * 0.7; s.set(e, e, e);
+  for (let i = 0; i < 6000 && k < N; i++) {
+    const [x, z] = XZ(-0.1 + rnd() * 1.2, -0.1 + rnd() * 1.2);
+    if (naEstrada(x, z, 0.5) || naCasa(x, z, 0.5) || noCampo(x, z, 0.4) || bate(x, z, 0.3) || Math.hypot(x - EI.x, z - EI.z) < EI.r + 1) continue;
+    p.set(x, terreno(x, z) - 0.02, z); q.setFromAxisAngle(CIMA, rnd() * 3.14); const e = 0.6 + rnd() * 0.6; s.set(e, e, e);
     gr.setMatrixAt(k++, m4.compose(p, q, s));
   }
   gr.count = k; gr.receiveShadow = true; scene.add(gr);
 }
 
-// placas: Betânia (embaixo) e Jerusalém (no alto)
-function placa(u, v, texto, rot) {
-  const [x, z] = pUV(u, v), y = terreno(x, z);
-  const mad = new THREE.MeshStandardMaterial({ color: 0x6b4a2c, roughness: 1, flatShading: true });
-  const poste = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 1.9, 6), mad); poste.position.set(x, y + 0.95, z);
-  const c = document.createElement('canvas'); c.width = 256; c.height = 64; const g = c.getContext('2d');
-  g.fillStyle = '#8a6a44'; g.fillRect(0, 0, 256, 64); g.fillStyle = '#f6ecd6'; g.font = 'bold 28px serif'; g.textAlign = 'center'; g.fillText(texto, 128, 42);
-  const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace;
-  const pl = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.36, 0.06), [mad, mad, mad, mad, new THREE.MeshStandardMaterial({ map: tx, roughness: 1 }), mad]);
-  pl.position.set(x, y + 1.6, z); pl.rotation.y = rot;
-  sombra(poste); sombra(pl); scene.add(poste, pl); CIRC.push({ x, z, r: 0.2 });
-}
-placa(uEstrada(-25) + 3.6, -25, '↓ Betânia', Math.PI / 4);
-placa(uEstrada(22) + 3.4, 22, 'Jerusalém ↑', Math.PI / 4);
-
 // ---------- jogador ----------
-const INICIO = (() => { const [x, z] = pUV(uEstrada(-26.5), -26.5); return V3(x, 0, z); })();
+const INICIO = (() => { const i = Math.round(tMin * AMOS.length) + 2; const p = AMOS[Math.min(AMOS.length - 1, i)]; return V3(p.x, 0, p.z); })();
 const jog = ator(gJog, 1.7, INICIO.x, INICIO.z, Math.PI + Math.PI / 4, 'Parado');
+const naArea = (x, z) => { const [a, b] = AB(x, z); return (a > -0.06 && a < 1.06 && b > -0.06 && b < 1.06) || naEstrada(x, z, 0.4); };
 
-// ---------- câmera isométrica: só segue (com limite) e faz zoom ----------
-const camera = new THREE.PerspectiveCamera(24, innerWidth / innerHeight, 0.5, 400);
-const DIR = V3(1, 0.85, 1).normalize();       // mais baixa que em Betânia: a subida aparece
-let dist = innerHeight > innerWidth ? 60 : 46, distAlvo = dist;
-const DMIN = 22, DMAX = 74;
-const foco = jog.o.position.clone();
-addEventListener('wheel', (e) => { distAlvo = THREE.MathUtils.clamp(distAlvo * (e.deltaY > 0 ? 1.1 : 0.9), DMIN, DMAX); }, { passive: true });
+// ---------- câmera: o mesmo ângulo do diorama (30°, de quina); afastada mostra tudo, perto segue o jogador ----------
+const camera = new THREE.PerspectiveCamera(22, innerWidth / innerHeight, 0.5, 400);
+const DIR = V3(1, 0.8165, 1).normalize();
+const CENTRO = (() => { const [x, z] = XZ(0.56, 0.56); return V3(x, 6.0, z); })();
+const distTudo = () => { const largura = S * 1.25, alt = S * 1.05; const f = Math.tan(THREE.MathUtils.degToRad(11)); return Math.max(alt / 2 / f, largura / 2 / f / camera.aspect); };
+let dist = distTudo(), distAlvo = dist;
+const DMIN = 14;
+const DMAX = () => distTudo() * 1.08;
+const foco = CENTRO.clone();
+addEventListener('wheel', (e) => { distAlvo = THREE.MathUtils.clamp(distAlvo * (e.deltaY > 0 ? 1.1 : 0.9), DMIN, DMAX()); }, { passive: true });
 
 // ---------- controles ----------
 const tecla = {};
@@ -926,12 +630,12 @@ renderer.domElement.addEventListener('pointerdown', (e) => {
 });
 renderer.domElement.addEventListener('pointermove', (e) => {
   if (!toques.has(e.pointerId)) return; toques.set(e.pointerId, [e.clientX, e.clientY]);
-  if (toques.size === 2) { const [a, b] = [...toques.values()]; distAlvo = THREE.MathUtils.clamp(dist0 * pinca0 / Math.max(20, Math.hypot(a[0] - b[0], a[1] - b[1])), DMIN, DMAX); arrastou = true; }
+  if (toques.size === 2) { const [a, b] = [...toques.values()]; distAlvo = THREE.MathUtils.clamp(dist0 * pinca0 / Math.max(20, Math.hypot(a[0] - b[0], a[1] - b[1])), DMIN, DMAX()); arrastou = true; }
 });
 const soltaToque = (e) => {
   if (toques.size === 1 && !arrastou) {
     ndc.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); ray.setFromCamera(ndc, camera);
-    const h = ray.intersectObjects([ground, ...CASAS.map((c) => c.g)], true)[0]; if (h) alvoToque = h.point.clone();
+    const h = ray.intersectObjects([TERRENO, ...CASAS.map((c) => c.g)], true)[0]; if (h) alvoToque = h.point.clone();
   }
   toques.delete(e.pointerId);
 };
@@ -947,7 +651,7 @@ const JOY = { on: false, x: 0, y: 0, id: null };
   const base = document.createElement('div'), pino = document.createElement('div');
   Object.assign(base.style, { position: 'fixed', left: '22px', bottom: 'calc(22px + env(safe-area-inset-bottom))', width: '120px', height: '120px', borderRadius: '50%', background: '#fdf6e355', border: '2px solid #fdf6e3aa', touchAction: 'none', zIndex: 4 });
   Object.assign(pino.style, { position: 'absolute', left: '35px', top: '35px', width: '50px', height: '50px', borderRadius: '50%', background: '#fdf6e3', boxShadow: '0 2px 8px #0003', pointerEvents: 'none' });
-  base.id = 'joy'; base.appendChild(pino); document.body.appendChild(base);
+  base.appendChild(pino); document.body.appendChild(base);
   const move = (e) => {
     const r = base.getBoundingClientRect(); let x = (e.clientX - r.left - 60) / 50, y = (e.clientY - r.top - 60) / 50;
     const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; }
@@ -972,7 +676,7 @@ function entrarCasa(c) {
   fade.textContent = 'Dentro da casa · toque ou aperte uma tecla para sair'; fade.style.pointerEvents = 'auto'; fade.style.opacity = 1;
   const sair = () => {
     removeEventListener('keydown', sair); fade.removeEventListener('click', sair);
-    const p = c.mundo(c.px + 0.55, c.pz + 1.4); jog.o.position.set(p.x, c.y0, p.z); c.aberta = false;
+    const p = c.mundo(c.px + 0.4, c.pz + 1.2); jog.o.position.set(p.x, c.y0, p.z); c.aberta = false;
     fade.style.opacity = 0; fade.style.pointerEvents = 'none';
     setTimeout(() => { fade.textContent = ''; fora = false; }, 900);
   };
@@ -983,7 +687,7 @@ function acionar() {
   if (saida === 'alto') {
     fora = true; botao.style.display = 'none';
     fade.textContent = 'Do alto do Monte das Oliveiras, Jerusalém… (próxima fase, em construção)'; fade.style.opacity = 1;
-    setTimeout(() => { const [x, z] = pUV(uEstrada(22.5), 22.5); jog.o.position.set(x, terreno(x, z), z); jog.o.rotation.y = Math.PI / 4; fade.style.opacity = 0; setTimeout(() => { fade.textContent = ''; fora = false; }, 900); }, 3200);
+    setTimeout(() => { const p = AMOS[Math.round(tMax * AMOS.length) - 4]; jog.o.position.set(p.x, terreno(p.x, p.z), p.z); jog.o.rotation.y = Math.PI / 4; fade.style.opacity = 0; setTimeout(() => { fade.textContent = ''; fora = false; }, 900); }, 3200);
     return;
   }
   if (saida === 'baixo') { fora = true; fade.textContent = 'De volta a Betânia…'; fade.style.opacity = 1; setTimeout(() => { location.href = '../fase-betania/'; }, 1200); return; }
@@ -994,8 +698,7 @@ function acionar() {
 for (const o of FADE) o.traverse((m) => { if (m.isMesh) { m.material = m.material.clone(); m.material.transparent = true; m.userData.op = 1; } });
 const rayCam = new THREE.Raycaster();
 function atualizaFade() {
-  const p = jog.o.position.clone(), y0 = p.y;
-  const tampa = new Set();
+  const p = jog.o.position.clone(), y0 = p.y, tampa = new Set();
   for (const alt of [0.2, 0.9, 1.6]) {
     p.y = y0 + alt; const d = camera.position.clone().sub(p); const L = d.length(); d.normalize();
     rayCam.set(p, d); rayCam.far = L;
@@ -1010,7 +713,6 @@ function atualizaFade() {
   }
 }
 
-// ---------- abertura curta ----------
 setTimeout(() => { fade.style.opacity = 0; setTimeout(() => { fade.textContent = ''; fala('Betfagé, a aldeia dos figos verdes, no caminho de Jerusalém.'); }, 900); setTimeout(() => fala('Suba a estrada até o alto do monte.'), 5200); setTimeout(() => fala(''), 9000); }, 1200);
 
 // ---------- laço ----------
@@ -1020,8 +722,6 @@ const laco = (forca) => {
   const dt = forca || Math.min(relogio.getDelta(), 0.05), t = relogio.elapsedTime;
   for (const m of MIX) m.update(dt);
   UT.uTime.value = t;
-
-  // jogador
   fw.copy(DIR).negate().setY(0).normalize(); rt.set(-fw.z, 0, fw.x);
   mv.set(0, 0, 0);
   if (!fora) {
@@ -1033,17 +733,17 @@ const laco = (forca) => {
   }
   for (const c of CASAS) { c.ang += ((c.aberta ? ABERTO : 0) - c.ang) * Math.min(1, dt * 5); c.porta.rotation.y = c.ang; }
   const pj = jog.o.position;
-  const passagem = (x, z) => CASAS.some((c) => { if (!(c.aberta && c.ang < -1.2) || pj.y > c.y0 + 0.3) return false; const [lx, lz] = c.local(x, z); return Math.abs(lx - c.px) < 0.45 && lz > c.pz - 1.0 && lz < c.pz + 0.8; });
-  const naFolha = (x, z) => CASAS.some((c) => { if (c.ang > -0.3) return false; const b = new THREE.Box3().setFromObject(c.porta).expandByScalar(0.18); return x > b.min.x && x < b.max.x && z > b.min.z && z < b.max.z; });
+  const passagem = (x, z) => CASAS.some((c) => { if (!(c.aberta && c.ang < -1.2) || pj.y > c.y0 + 0.3) return false; const [lx, lz] = c.local(x, z); return Math.abs(lx - c.px) < 0.4 && lz > c.pz - 0.9 && lz < c.pz + 0.7; });
+  const naFolha = (x, z) => CASAS.some((c) => { if (c.ang > -0.3) return false; const b = new THREE.Box3().setFromObject(c.porta).expandByScalar(0.15); return x > b.min.x && x < b.max.x && z > b.min.z && z < b.max.z; });
   let andou = false;
   if (mv.lengthSq() > 0) {
     mv.normalize(); const corre = tecla.ShiftLeft || tecla.ShiftRight || (JOY.on && Math.hypot(JOY.x, JOY.y) > 0.9) || (alvoToque && alvoToque.distanceTo(jog.o.position) > 6);
-    const v = (corre ? 5.2 : 2.4) * dt, p = jog.o.position;
+    const v = (corre ? 4.6 : 2.2) * dt, p = jog.o.position;
     const nx = p.x + mv.x * v, nz = p.z + mv.z * v;
-    const moveis = [[andante, 0.6], [ceifeiro, 0.5], [atadeira, 0.5], [carregador, 0.5], ...ovelhas.map((o) => [o, 0.7])];
+    const moveis = [[andante, 0.55], [ceifeiro, 0.5], [atadeira, 0.5], [carregador, 0.5], ...ovelhas.map((o) => [o, 0.6])];
     const rente = p.y - terreno(p.x, p.z) < 0.4;
-    const livreJ = (x, z) => naArea(x, z) && !naFolha(x, z) && (!rente || !bate(x, z)) &&
-      (passagem(x, z) || alturaEm(x, z) <= p.y + 0.5) &&
+    const livreJ = (x, z) => naArea(x, z) && !naFolha(x, z) && (!rente || !bate(x, z, 0.25)) &&
+      (passagem(x, z) || alturaEm(x, z) <= p.y + 0.55) &&
       !moveis.some(([m, r]) => { const d = Math.hypot(m.o.position.x - x, m.o.position.z - z); return d < r && d < Math.hypot(m.o.position.x - p.x, m.o.position.z - p.z); });
     const x0 = p.x, z0 = p.z;
     if (livreJ(nx, nz)) { p.x = nx; p.z = nz; }
@@ -1054,10 +754,9 @@ const laco = (forca) => {
     const ang = Math.atan2(mv.x, mv.z); let d = ang - jog.o.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d)); jog.o.rotation.y += d * Math.min(1, dt * 12);
     if (andou) jog.toca(corre ? 'Correr' : 'Andar');
   }
-  // altura: chão inclinado, degrau, escada e terraço; pulo e queda
   const pas = passagem(pj.x, pj.z);
   const chaoJ = pas ? Math.max(terreno(pj.x, pj.z), CASAS.find((c) => c.aberta)?.y0 ?? 0) : alturaEm(pj.x, pj.z);
-  if (jogNoChao && pj.y - chaoJ > 0.5) jogNoChao = false;
+  if (jogNoChao && pj.y - chaoJ > 0.55) jogNoChao = false;
   if (jogNoChao) pj.y += (chaoJ - pj.y) * Math.min(1, dt * 18);
   else { jogVy -= 14 * dt; pj.y += jogVy * dt; if (pj.y <= chaoJ) { pj.y = chaoJ; jogVy = 0; jogNoChao = true; } }
   if (!jogNoChao) jog.toca(jogVy > 0 ? 'Pulo_Ar' : 'Pulo_Queda');
@@ -1065,73 +764,47 @@ const laco = (forca) => {
   for (const c of CASAS) {
     if (!(c.aberta && c.ang < -1.2) || fora) continue;
     const [lx, lz] = c.local(pj.x, pj.z);
-    if (Math.abs(lx - c.px) < 0.45 && lz < c.pz - 0.45) entrarCasa(c);
+    if (Math.abs(lx - c.px) < 0.4 && lz < c.pz - 0.4) entrarCasa(c);
   }
-  const [ju, jv] = UV(pj.x, pj.z);
-  saida = jv > V1 - 2.5 ? 'alto' : jv < V0 + 2.2 ? 'baixo' : null;
-  portaPerto = CASAS.find((c) => Math.abs(pj.y - c.y0) < 0.3 && c.mundo(c.px, c.pz).setY(0).distanceTo(V3(pj.x, 0, pj.z)) < 2.0) || null;
+  const [ja, jb] = AB(pj.x, pj.z);
+  saida = ja + jb > 1.86 ? 'alto' : ja + jb < 0.04 ? 'baixo' : null;
+  portaPerto = CASAS.find((c) => Math.abs(pj.y - c.y0) < 0.3 && c.mundo(c.px, c.pz).setY(0).distanceTo(V3(pj.x, 0, pj.z)) < 1.8) || null;
   if (saida === 'alto') botao.textContent = (toqueTela ? '' : 'E: ') + 'seguir para Jerusalém';
   else if (saida === 'baixo') botao.textContent = (toqueTela ? '' : 'E: ') + 'voltar para Betânia';
   else if (portaPerto) botao.textContent = (toqueTela ? '' : 'E: ') + (portaPerto.aberta ? 'fechar a porta' : 'abrir a porta');
   botao.style.display = (saida || portaPerto) && !fora ? 'block' : 'none';
 
-  // o trigo se abre em volta de quem anda por dentro
   UT.uP.value[0].copy(pj); UT.uP.value[1].copy(ceifeiro.o.position); UT.uP.value[2].copy(atadeira.o.position); UT.uP.value[3].copy(carregador.o.position);
-  ceifeiroPasso(dt, t); atadeiraPasso(dt, t); carregadorPasso(dt, t); debulhadorPasso(dt, t); joeiradeiraPasso(dt, t); partPasso(dt);
-  // boi da carroça: descansa e rumina
+  ceifeiroPasso(dt, t); atadeiraPasso(dt); carregadorPasso(dt); debulhadorPasso(dt, t); joeiradeiraPasso(dt, t); partPasso(dt);
   if (rnd() < dt * 0.08) boiCarro.toca(boiCarro.atual === 'Comer' ? 'Parado' : 'Comer');
   if (rnd() < dt * 0.06) jumenta.toca(jumenta.atual === 'Comer' ? 'Parado' : 'Comer');
-  { const c = jumenta.o.position.clone().add(V3(0, 0.95, 0)).addScaledVector(frente(jumenta), 0.55); barra(CORDA_J, ESTACA.clone().add(V3(0, 0.95, 0)), c); }
-
-  // ovelhas
+  { const c = jumenta.o.position.clone().add(V3(0, 0.9, 0)).addScaledVector(frente(jumenta), 0.5); barra(CORDA_J, ESTACA.clone().add(V3(0, 0.95, 0)), c); }
   for (const o of ovelhas) {
     if (o.alvo) {
       const d = new THREE.Vector3().subVectors(o.alvo, o.o.position).setY(0);
       if (d.length() < 0.1) { o.alvo = null; o.espera = 2 + rnd() * 5; o.toca(rnd() < 0.6 ? 'Comer' : 'Parado'); }
       else {
-        d.normalize();
-        const fr = o.o.position.clone().addScaledVector(d, 0.3);
-        if (ovelhas.some((b) => b !== o && b.o.position.distanceTo(fr) < 0.75)) { o.alvo = null; o.espera = 1 + rnd() * 2; o.toca('Parado'); }
-        else { o.o.position.addScaledVector(d, 0.45 * dt); chao(o); let k = Math.atan2(d.x, d.z) - o.o.rotation.y; k = Math.atan2(Math.sin(k), Math.cos(k)); o.o.rotation.y += k * Math.min(1, dt * 5); }
+        d.normalize(); const fr = o.o.position.clone().addScaledVector(d, 0.3);
+        if (ovelhas.some((b) => b !== o && b.o.position.distanceTo(fr) < 0.7)) { o.alvo = null; o.espera = 1 + rnd() * 2; o.toca('Parado'); }
+        else { o.o.position.addScaledVector(d, 0.4 * dt); chao(o); lerpAng(o.o, Math.atan2(d.x, d.z), Math.min(1, dt * 5)); }
       }
-    } else if ((o.espera -= dt) <= 0) {
-      const a = rnd() * 6.28, r = rnd() * PASTO.r; o.alvo = V3(PASTO.x + Math.cos(a) * r, 0, PASTO.z + Math.sin(a) * r); o.toca('Andar');
-    }
+    } else if ((o.espera -= dt) <= 0) { const a = rnd() * 6.28, r = rnd() * o.area.r; o.alvo = V3(o.area.x + Math.cos(a) * r, 0, o.area.z + Math.sin(a) * r); o.toca('Andar'); }
   }
-  // passante na estrada
   if (pausa > 0) { pausa -= dt; andante.toca('Parado'); }
   else if (jog.o.position.distanceTo(andante.o.position) < 1.1) andante.toca('Parado');
-  else {
-    andante.toca('Andar');
-    tRota += sentido * dt * 1.1 / rota.getLength();
-    if (tRota > tRotaMax || tRota < tRotaMin) { tRota = THREE.MathUtils.clamp(tRota, tRotaMin, tRotaMax); sentido *= -1; pausa = 3; }
-  }
-  {
-    const pr = rota.getPointAt(tRota), tg = rota.getTangentAt(tRota).multiplyScalar(sentido), lat = V3(-tg.z, 0, tg.x).multiplyScalar(0.9);
-    andante.o.position.copy(pr).add(lat); chao(andante);
-    let k = Math.atan2(tg.x, tg.z) - andante.o.rotation.y; k = Math.atan2(Math.sin(k), Math.cos(k)); andante.o.rotation.y += k * Math.min(1, dt * 5);
-  }
-  // os dois do terreiro olham para o jogador quando ele chega perto
-  for (const n of [conv1, conv2]) {
-    const d = jog.o.position.distanceTo(n.o.position);
-    const a = d < 3.5 ? Math.atan2(jog.o.position.x - n.o.position.x, jog.o.position.z - n.o.position.z) : n.r0;
-    lerpAng(n.o, a, Math.min(1, dt * 3));
-  }
+  else { andante.toca('Andar'); tRota += sentido * dt * 1.0 / ROTA.getLength(); if (tRota > tMax || tRota < tMin) { tRota = THREE.MathUtils.clamp(tRota, tMin, tMax); sentido *= -1; pausa = 3; } }
+  { const pr = ROTA.getPointAt(tRota), tg = ROTA.getTangentAt(tRota).multiplyScalar(sentido), lat = V3(-tg.z, 0, tg.x).multiplyScalar(0.8); andante.o.position.copy(pr).add(lat); chao(andante); lerpAng(andante.o, Math.atan2(tg.x, tg.z), Math.min(1, dt * 5)); }
+  for (const n of [conv1, conv2]) { const d = jog.o.position.distanceTo(n.o.position); lerpAng(n.o, d < 3.5 ? Math.atan2(jog.o.position.x - n.o.position.x, jog.o.position.z - n.o.position.z) : n.r0, Math.min(1, dt * 3)); }
 
-  // câmera: limites em (u, v); afastada, anda menos
+  // câmera: afastada, o diorama inteiro; aproximando, segue o jogador
+  distAlvo = Math.min(distAlvo, DMAX());
   dist += (distAlvo - dist) * Math.min(1, dt * 6);
-  // o quadro não passa da sangria (árvores e pedras em volta); mas o jogador nunca sai da parte central da tela
-  const hw = 0.2126 * dist * camera.aspect, hd = 0.37 * dist;
-  const lim = (x, a, b) => a > b ? (a + b) / 2 : THREE.MathUtils.clamp(x, a, b);
-  let cu = lim(ju, U0 - 7 + hw, U1 + 7 - hw), cv = lim(jv, V0 - 6 + hd, V1 + 12 - hd);
-  cu = THREE.MathUtils.clamp(cu, ju - hw * 0.55, ju + hw * 0.55); cv = THREE.MathUtils.clamp(cv, jv - hd * 0.5, jv + hd * 0.5);
-  const [fx, fz] = XZ(cu, cv);
-  foco.x += (fx - foco.x) * Math.min(1, dt * 3); foco.z += (fz - foco.z) * Math.min(1, dt * 3);
-  foco.y += (terreno(foco.x, foco.z) * 0.6 + pj.y * 0.3 - foco.y) * Math.min(1, dt * 3);
+  const k = sm(DMIN, DMAX() * 0.92, dist);
+  const alvoF = pj.clone().lerp(CENTRO, k);
+  foco.lerp(alvoF, Math.min(1, dt * 3));
   camera.position.copy(foco).addScaledVector(DIR, dist); camera.lookAt(foco);
-  scene.fog.near = dist + 16; scene.fog.far = dist + 75;
-  sun.position.set(foco.x + 14, foco.y + 24, foco.z + 9); sun.target.position.copy(foco);
-
+  scene.fog.near = dist + 6; scene.fog.far = dist + 40;
+  sun.position.set(foco.x - 10, foco.y + 26, foco.z + 14); sun.target.position.copy(foco);
   atualizaFade();
   renderer.render(scene, camera);
 };
