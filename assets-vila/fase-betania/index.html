@@ -126,7 +126,7 @@ function por(modelo, x, z, r = 0, k = 1, { fade = false, caixa = false, circ = 0
 }
 
 // ---------- cenário do Blender: terreno (vila plana, morros em volta), caminhos, muretas; árvores e pedras do layout ----------
-const [gCen, LAYB] = await Promise.all([baixar('betania_cenario.glb?v=5'), fetch('betania_layout.json?v=5').then((r) => r.json())]);
+const [gCen, LAYB] = await Promise.all([baixar('betania_cenario.glb?v=7'), fetch('betania_layout.json?v=7').then((r) => r.json())]);
 // terreno e caminhos com sombreamento suave e a cor misturada entre os vértices (visual "prado", igual a Betfagé)
 function suaviza(mesh) {
   const g0 = mesh.geometry, pos = g0.attributes.position, col = g0.attributes.color, idx = g0.index;
@@ -361,7 +361,7 @@ const gLagar = await baixar('../lagar/lagar.glb');
   const L = nos(gLagar), base = L.Lagar_Rocha.position.clone();
   const lagar = new THREE.Group();
   for (const o of Object.values(L)) { const c = o.clone(); c.position.sub(base); lagar.add(c); }
-  lagar.position.set(-17.0, 0, -1.2); lagar.rotation.y = 0.7; sombra(lagar); scene.add(lagar);
+  lagar.position.set(-20.0, 0, 8.6); lagar.rotation.y = 0.7; sombra(lagar); scene.add(lagar);
   lagar.updateWorldMatrix(true, true); caixaDe(lagar, 0.35);
   const mundo = (n) => L[n].position.clone().sub(base).applyMatrix4(lagar.matrixWorld);
   globalThis.LAGAR = { tanque: mundo('Lagar_Uvas_6'), cesto: mundo('Lagar_CestoUvas'), jarro: mundo('Lagar_Jarro'), r: lagar.rotation.y };
@@ -910,7 +910,9 @@ renderer.domElement.addEventListener('pointercancel', (e) => toques.delete(e.poi
 // ---------- saída para Jerusalém ----------
 const botao = document.getElementById('acao'), fade = document.getElementById('fade');
 let fora = false;
-botao.onclick = () => acionar();
+// no celular o toque age já no pointerdown (o texto do botão é reescrito a cada quadro e o 'click' se perdia)
+botao.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); acionar(); });
+const textoBotao = (s) => { if (botao.textContent !== s) botao.textContent = s; };
 let portaPerto = null, pedraPerto = false, tumbaPerto = false, jogVy = 0, jogNoChao = true;
 // direcional virtual (canto esquerdo de baixo)
 const JOY = { on: false, x: 0, y: 0, id: null };
@@ -1022,7 +1024,7 @@ function tumbaPasso(dt) {
   }
   p.y += (CAMT.alt(p.x, p.z) - p.y) * Math.min(1, dt * 16);
   jog.toca(andou ? 'Andar' : 'Parado');
-  if (!fora) { botao.textContent = (toqueTela ? '' : 'E: ') + 'sair do túmulo'; botao.style.display = 'block'; }
+  if (!fora) { textoBotao((toqueTela ? '' : 'E: ') + 'sair do túmulo'); botao.style.display = 'block'; }
   // câmera: o mesmo ângulo de fora; segue um pouco o jogador, sem sair da câmara
   distT = distTumba(); const d = Math.min(distAlvo, distT);
   const alvo = CAMT.centro.clone().lerp(p, 0.25); alvo.y = CAMT.centro.y;
@@ -1189,12 +1191,12 @@ const laco = (forca) => {
   }
   const naSaida = jog.o.position.x < -30;
   pedraPerto = pj.y - chaoTerra(pj.x, pj.z) < 1.2 && Math.hypot(pj.x - TUM.lugar.x, pj.z - TUM.lugar.z) < 3.6 && Math.abs(TUM.k - TUM.alvo) < 0.01;
-  tumbaPerto = pedraPerto && TUM.alvo === 1 && TUM.k > 0.99 && Math.hypot(pj.x - TUM.lugar.x, pj.z - TUM.lugar.z) < 2.2;
-  portaPerto = CASAS.find((c) => pj.y < 0.3 && c.mundo(c.px, c.pz).distanceTo(new THREE.Vector3(pj.x, 0, pj.z)) < 2.0) || null;
-  if (naSaida) botao.textContent = (toqueTela ? '' : 'E: ') + 'seguir para Jerusalém';
-  else if (tumbaPerto) botao.textContent = (toqueTela ? '' : 'E: ') + 'entrar no túmulo';
-  else if (pedraPerto) botao.textContent = (toqueTela ? '' : 'E: ') + (TUM.alvo ? 'rolar a pedra de volta' : 'rolar a pedra');
-  else if (portaPerto) botao.textContent = (toqueTela ? '' : 'E: ') + 'entrar na casa';
+  tumbaPerto = pedraPerto && TUM.alvo === 1 && TUM.k > 0.99 && Math.hypot(pj.x - TUM.lugar.x, pj.z - TUM.lugar.z) < 3.4;
+  portaPerto = CASAS.find((c) => pj.y < 0.3 && c.mundo(c.px, c.pz).distanceTo(new THREE.Vector3(pj.x, 0, pj.z)) < 2.6) || null;
+  if (naSaida) textoBotao((toqueTela ? '' : 'E: ') + 'seguir para Jerusalém');
+  else if (tumbaPerto) textoBotao((toqueTela ? '' : 'E: ') + 'entrar no túmulo');
+  else if (pedraPerto) textoBotao((toqueTela ? '' : 'E: ') + (TUM.alvo ? 'rolar a pedra de volta' : 'rolar a pedra'));
+  else if (portaPerto) textoBotao((toqueTela ? '' : 'E: ') + 'entrar na casa');
   botao.style.display = (naSaida || portaPerto || pedraPerto) && !fora ? 'block' : 'none';
 
   // boi, arado e lavrador indo e voltando pelas faixas

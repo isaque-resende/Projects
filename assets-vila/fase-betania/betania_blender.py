@@ -21,12 +21,12 @@ def sm(e0, e1, x):
 CASAS = [(-3, -10.5, 0.1), (6.2, -11, -0.05)]
 CASAS_NOVAS = [('Casa_Sobrado', 17.0, -12.0, -0.25), ('Casa_Alcapao', 25.0, -2.5, -0.55), ('Casa_Varal', -24.0, 13.0, 0.35 - math.pi / 2)]
 BARRACAS = [('Barraca5', 1.0, 4.6, 0.15), ('Barraca2', 6.4, 4.6, -0.1)]     # feirinha ao sul da estrada, longe das portas
-APRISCO = (-12.4, 9.6); FORNO = (1.2, -6.2); LAGAR = (-17.0, -1.2); POCO = (-4.6, 4.6)
+APRISCO = (-12.4, 9.6); FORNO = (1.2, -6.2); LAGAR = (-20.0, 8.6); POCO = (-4.6, 4.6)
 LAV = (4.4, 15.6, 7.4, 13.4)
 TUMULO = (-18.0, -11.5, -0.38)
 PEDRA_TUM = (-13.54, -8.43); FRENTE_TUM = (0.929, 0.371)
 PLACA = (-28.5, 5.6)
-PATIOS = [(1.6, -6.1, 3.0), (-17.0, -1.2, 3.4), (1.4, -2.8, 4.4), (-2.8, -6.2, 2.6), (-4.6, 4.6, 2.2), (-12.4, 9.6, 3.6)]
+PATIOS = [(1.6, -6.1, 3.0), (-20.0, 8.6, 3.4), (1.4, -2.8, 4.4), (-2.8, -6.2, 2.6), (-4.6, 4.6, 2.2), (-12.4, 9.6, 3.6)]
 # caminhos (iguais aos da página) + o do túmulo
 L, F = PEDRA_TUM, FRENTE_TUM
 CAMINHOS = [
@@ -278,7 +278,7 @@ bosque(27.0, 16.0, 3.4, 6, 'oliveiras', dentro)       # olival na borda da frent
 bosque(-26.0, -16.0, 3.4, 5, 'cedros', dentro)        # cedros no barranco, atrás do túmulo
 bosque(8.0, 19.5, 3.0, 4, 'escuras', dentro)          # bosquezinho na frente
 bosque(-14.0, 19.0, 3.0, 4, 'carvalhos', dentro)      # carvalhos na frente, à esquerda
-bosque(-17.5, 12.5, 2.6, 3, 'carvalhos', dentro)      # carvalhos atrás do aprisco
+bosque(-15.0, 17.5, 2.6, 3, 'carvalhos', dentro)      # carvalhos atrás do aprisco
 bosque(26.0, -15.0, 3.0, 5, 'escuras', dentro)        # canto de trás, à direita das casas
 # fora da vila: matas por espécie, com clareiras; pedregais à parte
 LONGE = True
