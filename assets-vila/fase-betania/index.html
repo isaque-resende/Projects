@@ -24,7 +24,7 @@
 <body>
 <div id="fade"></div>
 <button id="acao"></button>
-<div style="position:fixed;right:8px;top:calc(6px + env(safe-area-inset-top));font:11px system-ui;color:#4a352099;z-index:9;pointer-events:none">v10</div>
+<div style="position:fixed;right:8px;top:calc(6px + env(safe-area-inset-top));font:11px system-ui;color:#4a352099;z-index:9;pointer-events:none">v11</div>
 <div id="fala"></div>
 <button id="pularIntro">Pular introdução</button>
 <div id="dica">Direcional, WASD ou toque para andar · Shift corre · Espaço pula · roda/pinça: zoom</div>
@@ -210,10 +210,10 @@ const CASAS_NOVAS = [], BEBEDOURO = [];
 
 for (const b of BEBEDOURO) {          // água dentro do cocho de pedra
   b.updateMatrixWorld(true); const bx = new THREE.Box3().setFromObject(b), rc = new THREE.Raycaster(), d = [];
-  for (let i = 0; i < 160; i++) { const x = bx.min.x + Math.random() * (bx.max.x - bx.min.x), z = bx.min.z + Math.random() * (bx.max.z - bx.min.z); rc.set(new THREE.Vector3(x, bx.max.y + 1, z), new THREE.Vector3(0, -1, 0)); const h = rc.intersectObject(b, true)[0]; if (h && h.point.y < bx.max.y - 0.12) d.push(h.point); }
+  for (let i = 0; i < 160; i++) { const x = bx.min.x + Math.random() * (bx.max.x - bx.min.x), z = bx.min.z + Math.random() * (bx.max.z - bx.min.z); rc.set(new THREE.Vector3(x, bx.max.y + 1, z), new THREE.Vector3(0, -1, 0)); const h = rc.intersectObject(b, true)[0]; if (h && h.point.y < bx.max.y - 0.12 && h.point.y > bx.min.y + 0.08) d.push(h.point); }
   if (d.length > 5) { const c = d.reduce((a, p) => a.add(p), new THREE.Vector3()).multiplyScalar(1 / d.length), ry = b.rotation.y, ux = new THREE.Vector3(Math.cos(ry), 0, -Math.sin(ry)), uz = new THREE.Vector3(Math.sin(ry), 0, Math.cos(ry));
     let ax = 0, az = 0; for (const p of d) { const v = p.clone().sub(c); ax = Math.max(ax, Math.abs(v.dot(ux))); az = Math.max(az, Math.abs(v.dot(uz))); }
-    const ag = new THREE.Mesh(new THREE.CircleGeometry(1, 16), new THREE.MeshStandardMaterial({ color: 0x4f8a92, roughness: 0.3 })); ag.rotation.set(-Math.PI / 2, 0, ry); ag.scale.set(ax, az, 1); ag.position.set(c.x, bx.max.y - 0.1, c.z); scene.add(ag); }
+    const ag = new THREE.Mesh(new THREE.CircleGeometry(1, 16), new THREE.MeshStandardMaterial({ color: 0x4f8a92, roughness: 0.3 })); ag.rotation.set(-Math.PI / 2, 0, ry); const yf = Math.min(bx.max.y - 0.05, Math.max(...d.map((p) => p.y)) + 0.04); ag.scale.set(ax * 0.92, az * 0.92, 1); ag.position.set(c.x, yf, c.z); scene.add(ag); }
 }
 function tingeCasa(raiz) {
   raiz.traverse((m) => {
@@ -477,8 +477,15 @@ function corpo(st) {
     bE: [g('upperarm_l'), g('lowerarm_l'), g('hand_l')], bD: [g('upperarm_r'), g('lowerarm_r'), g('hand_r')],
     pE: [g('thigh_l'), g('calf_l'), g('foot_l')], pD: [g('thigh_r'), g('calf_r'), g('foot_r')] };
   st.mE = null; st.mD = null; st.inc = 0; st.desce = 0; st.pesoB = 0;
+  const animados = new Set(); for (const a of Object.values(st.A)) for (const tr of a.getClip().tracks) animados.add(tr.name.split('.')[0]);
+  st.base = [];
+  for (const k of ['sp', 'sp3', 'pelvis', 'cab']) { const b = st.os[k]; if (b && !animados.has(b.name)) st.base.push([b, b.quaternion.clone()]); }
+  for (const b of [...st.os.bE, ...st.os.bD]) if (b && !animados.has(b.name)) st.base.push([b, b.quaternion.clone()]);
+  CORPOS.push(st);
   return st;
 }
+const CORPOS = [];
+function posesBase() { for (const st of CORPOS) for (const [b, q] of st.base) b.quaternion.copy(q); }
 const frente = (st) => new THREE.Vector3(Math.sin(st.o.rotation.y), 0, Math.cos(st.o.rotation.y));
 const pos = (o) => o.getWorldPosition(new THREE.Vector3());
 // inclina o tronco para a frente (ang em rad), repartido entre dois ossos da coluna
@@ -522,12 +529,29 @@ const PA_A = FO.NPC_Amassar.p.clone().setY(0);
 const MASSA = FO.Forno_Massa_1 ? FO.Forno_Massa_1.getCenter(new THREE.Vector3()) : PA_A.clone().setY(0.6);
 const MESA_Y = MASSA.y;
 const dirMesa = PA_A.clone().sub(centroForno).setY(0).normalize();
-const PA_B = centroForno.clone().addScaledVector(dirMesa, raioForno + 0.38);          // ao lado do forno, do lado da mesa
+const PA_B = centroForno.clone().addScaledVector(dirMesa, raioForno + 0.55);          // ao lado do forno, do lado da mesa
 const angA = Math.atan2(MASSA.x - PA_A.x, MASSA.z - PA_A.z), angB = Math.atan2(centroForno.x - PA_B.x, centroForno.z - PA_B.z);
 const matMassa = new THREE.MeshStandardMaterial({ color: 0xeedcb8, roughness: 1, flatShading: true });
 const matPao = new THREE.MeshStandardMaterial({ color: 0xc98b45, roughness: 1, flatShading: true });
 const PAO = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 5), matMassa); PAO.castShadow = true; scene.add(PAO);
 const PAES = [];
+const FOGO = { chamas: [], fumaca: [] };
+{
+  const cor = [0xffd25a, 0xff9a2e, 0xff6a1a];
+  for (let i = 0; i < 5; i++) { const m = new THREE.Mesh(new THREE.ConeGeometry(0.045 + (i % 2) * 0.02, 0.22, 5), new THREE.MeshBasicMaterial({ color: cor[i % 3], transparent: true, opacity: 0.9, depthWrite: false, blending: THREE.AdditiveBlending }));
+    const a = i / 5 * 6.28, d = i ? raioForno * 0.15 : 0; m.userData = { x: Math.cos(a) * d, z: Math.sin(a) * d, f: Math.random() * 6 }; scene.add(m); FOGO.chamas.push(m); }
+  const br = new THREE.Mesh(new THREE.CircleGeometry(raioForno * 0.28, 10), new THREE.MeshBasicMaterial({ color: 0xff5a14 })); br.rotation.x = -Math.PI / 2; br.position.copy(TOPO).add(new THREE.Vector3(0, -0.16, 0)); scene.add(br);
+  FOGO.luz = new THREE.PointLight(0xff8a3a, 2, 5, 1.6); FOGO.luz.position.copy(TOPO).add(new THREE.Vector3(0, 0.4, 0)); scene.add(FOGO.luz);
+  const mf = new THREE.MeshStandardMaterial({ color: 0xd8d2c8, roughness: 1, transparent: true, opacity: 0.5, depthWrite: false, flatShading: true });
+  for (let i = 0; i < 14; i++) { const m = new THREE.Mesh(new THREE.IcosahedronGeometry(0.14, 0), mf.clone()); m.userData = { t: i / 14 * 4 }; scene.add(m); FOGO.fumaca.push(m); }
+}
+function fogoPasso(dt, t) {
+  FOGO.chamas.forEach((m, i) => { const u = m.userData, s = 0.75 + 0.35 * Math.sin(t * 9 + u.f) + 0.15 * Math.sin(t * 23 + i); m.scale.set(1, s, 1); m.position.set(TOPO.x + u.x, TOPO.y - 0.04 + 0.09 * s, TOPO.z + u.z); m.rotation.y = t * 2 + i; m.visible = !(PAD.e === 'enfia' || PAD.e === 'tira') || i % 2 === 0; });
+  FOGO.luz.intensity = 1.6 + 0.6 * Math.sin(t * 11) + 0.3 * Math.sin(t * 27);
+  for (const m of FOGO.fumaca) { const u = m.userData; u.t = (u.t + dt) % 4; const k = u.t / 4;
+    m.position.set(TOPO.x + Math.sin(u.t * 1.3 + m.id) * 0.1 + k * 0.8, TOPO.y + 0.3 + k * 3.0, TOPO.z + Math.cos(u.t * 1.1 + m.id) * 0.1 - k * 0.5);
+    m.scale.setScalar(0.6 + k * 2.4); m.material.opacity = 0.45 * Math.min(1, u.t * 3) * (1 - k); m.rotation.set(u.t, u.t * 0.7, 0); }
+}
 // pá de padeiro: lâmina na origem, cabo ao longo de +x
 const madPa = new THREE.MeshStandardMaterial({ color: 0x9a7048, roughness: 1, flatShading: true });
 const PAH = new THREE.Group();
@@ -587,14 +611,14 @@ function padeiraPasso(dt, t) {
     case 'leva': segura = true; alvoB = carregaB(); alvoD = paraPeito(alvoB); if (anda(st, PA_B, dt, 0.7)) muda('enfia'); break;
     case 'enfia': case 'tira': {                      // ergue a pá, desce pela boca de cima e volta
       segura = true; st.toca('Parado'); lerpAng(o, angB, Math.min(1, dt * 6));
-      const acima = TOPO.clone().add(new THREE.Vector3(0, 0.45, 0)), dentro = TOPO.clone().add(new THREE.Vector3(0, -0.4, 0));
+      const acima = TOPO.clone().add(new THREE.Vector3(0, 0.35, 0)), dentro = TOPO.clone().add(new THREE.Vector3(0, -0.08, 0));
       if (T < 0.9) alvoB = acima;
       else if (T < 1.8) alvoB = dentro;
       else if (T < 2.4) alvoB = dentro;
       else if (T < 3.2) alvoB = acima;
       else alvoB = carregaB();
       alvoD = peito.clone().add(new THREE.Vector3(0, -0.05, 0)).sub(alvoB).normalize();
-      if (alvoD.y < 0.25) { alvoD.y = 0.25; alvoD.normalize(); }
+      if (alvoD.y < 0.75) { alvoD.y = 0.75; alvoD.normalize(); }
       inc = T > 0.9 && T < 3.2 ? 0.2 : 0.05; rapPa = 5;
       if (T > 1.9 && T < 2.0) { if (PAD.e === 'enfia') PAD.naPa = false; else { PAD.naPa = true; PAO.material = matPao; PAO.scale.set(1.5, 0.3, 1.5); } }
       if (T > 3.7) muda(PAD.e === 'enfia' ? 'espera' : 'volta');
@@ -602,7 +626,7 @@ function padeiraPasso(dt, t) {
     }
     case 'espera': {                                  // segura a pá em pé enquanto o pão assa
       segura = true; st.toca('Parado');
-      alvoB = peito.clone().addScaledVector(f, 0.35).add(new THREE.Vector3(0, 0.75, 0)); alvoD = new THREE.Vector3(0, -1, 0).addScaledVector(f, -0.15).normalize();
+      alvoB = o.position.clone().addScaledVector(f, 0.45).addScaledVector(lado, -0.25).setY(0.16); alvoD = new THREE.Vector3(0, 1, 0).addScaledVector(f, -0.12).normalize();
       if (T > 5) muda('tira');
       break;
     }
@@ -1312,7 +1336,7 @@ const laco = (forca) => {
   }
 
   // pisador gira devagar dentro do tanque
-  pisadorPasso(dt, t); padeiraPasso(dt, t); barracaPasso(dt, t); aguadeiraPasso(dt, t);
+  posesBase(); fogoPasso(dt, t); pisadorPasso(dt, t); padeiraPasso(dt, t); barracaPasso(dt, t); aguadeiraPasso(dt, t);
   // porteira do aprisco abre quando o jogador chega perto
   APR.alvoAb = jog.o.position.distanceTo(APR.centroPorta) < 2.6 ? 1.6 : 0;
   APR.ab += (APR.alvoAb - APR.ab) * Math.min(1, dt * 3); APR.piv.rotation.y = APR.base + APR.ab;
