@@ -21,12 +21,12 @@ def sm(e0, e1, x):
 CASAS = [(-3, -10.5, 0.1), (6.2, -11, -0.05)]
 CASAS_NOVAS = [('Casa_Sobrado', 17.0, -12.0, -0.25), ('Casa_Alcapao', 25.0, -2.5, -0.55), ('Casa_Varal', -24.0, 13.0, 0.35 - math.pi / 2)]
 BARRACAS = [('Barraca5', 1.0, 4.6, 0.15), ('Barraca2', 6.4, 4.6, -0.1)]     # feirinha ao sul da estrada, longe das portas
-APRISCO = (-12.4, 9.6); FORNO = (1.2, -6.2); LAGAR = (11.0, -2.6); POCO = (-4.6, 4.6)
+APRISCO = (-12.4, 9.6); FORNO = (1.2, -6.2); LAGAR = (-17.0, -1.2); POCO = (-4.6, 4.6)
 LAV = (4.4, 15.6, 7.4, 13.4)
 TUMULO = (-18.0, -11.5, -0.38)
 PEDRA_TUM = (-13.54, -8.43); FRENTE_TUM = (0.929, 0.371)
 PLACA = (-28.5, 5.6)
-PATIOS = [(1.6, -6.1, 3.0), (11.0, -2.6, 3.4), (1.4, -2.8, 4.4), (-2.8, -6.2, 2.6), (-4.6, 4.6, 2.2), (-12.4, 9.6, 3.6)]
+PATIOS = [(1.6, -6.1, 3.0), (-17.0, -1.2, 3.4), (1.4, -2.8, 4.4), (-2.8, -6.2, 2.6), (-4.6, 4.6, 2.2), (-12.4, 9.6, 3.6)]
 # caminhos (iguais aos da página) + o do túmulo
 L, F = PEDRA_TUM, FRENTE_TUM
 CAMINHOS = [
@@ -209,18 +209,16 @@ for x, z, r in CASAS:
         if ('casa-porta\\casa_porta.glb', no) in PROTO: poe('casa-porta\\casa_porta.glb', no, x, z, r, 1.0, y=0, afunda=0, col=col_ref, jogo=False)
 for no_, x, z, r in CASAS_NOVAS: poe('casas\\casas_betfage.glb', no_, x, z, r, 1.0, y=0, afunda=0.02)
 for no, x, z, r in BARRACAS: poe('casa-porta\\barracas.glb', no, x, z, r, 1.0, y=0, afunda=0, col=col_ref, jogo=False)
-poe('casa-porta\\parreiras_tripo.glb', 'Parreira_Arco', 9.2, -5.4, 0, 1.0, y=0, afunda=0, col=col_ref, jogo=False)
-poe('casa-porta\\parreiras_tripo.glb', 'Parreira_Poste', 7.4, -4.8, 0.4, 1.0, y=0, afunda=0, col=col_ref, jogo=False)
 ap = poe('casa-porta\\pastoril.glb', 'Muro_Curvo', APRISCO[0], APRISCO[1], 0.0, 2.2, y=0, afunda=0, col=col_ref, jogo=False)
 if ap: ap.scale.z *= 1.3 / 2.2
 poe('casa-porta\\oficios.glb', 'Poco', POCO[0] + 0.2, POCO[1], 0, 0.8, y=0, afunda=0, col=col_ref, jogo=False)
 tum = poe('casa-porta\\tumulo_rocha.glb', 'Tumulo_Rocha', TUMULO[0], TUMULO[1], TUMULO[2], 1.0, y=0, afunda=0, col=col_ref, jogo=False)
 for nome, (x, z) in [('Forno_Corpo', FORNO), ('Lagar_Rocha', LAGAR)]:
     arq = 'forno-pao\\forno.glb' if nome.startswith('Forno') else 'lagar\\lagar.glb'
-    poe(arq, nome, x, z, 0.4 if nome.startswith('Forno') else 0.3, 1.0, y=0, afunda=0, col=col_ref, jogo=False)
+    poe(arq, nome, x, z, 0.4 if nome.startswith('Forno') else 0.7, 1.0, y=0, afunda=0, col=col_ref, jogo=False)
 
 # ---------------- zonas livres (nada de árvore, pedra ou muro em cima) ----------------
-ZONAS = [(x, z, 4.6) for x, z, r in CASAS] + [(x, z, 5.2 if 'Sobrado' in n_ else 3.6) for n_, x, z, r in CASAS_NOVAS] + [(x, z, 2.6) for _, x, z, _ in BARRACAS] + [(9.2, -5.4, 2.4), (7.4, -4.8, 1.2),
+ZONAS = [(x, z, 4.6) for x, z, r in CASAS] + [(x, z, 5.2 if 'Sobrado' in n_ else 3.6) for n_, x, z, r in CASAS_NOVAS] + [(x, z, 2.6) for _, x, z, _ in BARRACAS] + [
          (APRISCO[0], APRISCO[1], 4.2), (FORNO[0], FORNO[1], 2.6), (LAGAR[0], LAGAR[1], 3.2), (POCO[0], POCO[1], 2.6), (PLACA[0], PLACA[1], 1.4),
          (TUMULO[0], TUMULO[1], 8.0), (PEDRA_TUM[0] + FRENTE_TUM[0] * 2.5, PEDRA_TUM[1] + FRENTE_TUM[1] * 2.5, 3.0), (-4.4, 11.4, 2.0)]
 def livre(x, z, r=0.5):
