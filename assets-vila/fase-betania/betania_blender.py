@@ -18,13 +18,14 @@ def sm(e0, e1, x):
     return k * k * (3 - 2 * k)
 
 # ---------------- o que o jogo já tem (mesmas posições da página) ----------------
-CASAS = [(-3, -10.5, 0.1), (6.2, -11, -0.05), (15, -9.8, -0.35)]
-BARRACAS = [('Barraca5', 3.4, -3.4, 0.15), ('Barraca2', -0.6, -3.0, -0.2)]
+CASAS = [(-3, -10.5, 0.1), (6.2, -11, -0.05)]
+CASAS_NOVAS = [('Casa_Sobrado', 17.0, -12.0, -0.25), ('Casa_Alcapao', 25.0, -2.5, -0.55), ('Casa_Varal', -24.0, 13.0, 0.35 - math.pi / 2)]
+BARRACAS = [('Barraca5', 1.0, 4.6, 0.15), ('Barraca2', 6.4, 4.6, -0.1)]     # feirinha ao sul da estrada, longe das portas
 APRISCO = (-12.4, 9.6); FORNO = (1.2, -6.2); LAGAR = (11.0, -2.6); POCO = (-4.6, 4.6)
 LAV = (4.4, 15.6, 7.4, 13.4)
 TUMULO = (-18.0, -11.5, -0.38)
 PEDRA_TUM = (-13.54, -8.43); FRENTE_TUM = (0.929, 0.371)
-PLACA = (-19.5, 5.6)
+PLACA = (-28.5, 5.6)
 PATIOS = [(1.6, -6.1, 3.0), (11.0, -2.6, 3.4), (1.4, -2.8, 4.4), (-2.8, -6.2, 2.6), (-4.6, 4.6, 2.2), (-12.4, 9.6, 3.6)]
 # caminhos (iguais aos da página) + o do túmulo
 L, F = PEDRA_TUM, FRENTE_TUM
@@ -36,7 +37,7 @@ CAMINHOS = [
     ([(-10, 2.2), (-7.6, 6.4), (-8.2, 10.6)], 0.9),
     ([(-10, 2.2), (-7.4, -2.4), (L[0] + F[0] * 3.6 + 0.4, L[1] + F[1] * 3.6 + 1.2), (L[0] + F[0] * 1.5, L[1] + F[1] * 1.5)], 0.85),
 ]
-AREA = (-21, 21, -15, 15.5)          # onde o jogador anda (o chão aqui é plano, y = 0)
+AREA = (-30, 30, -21, 23)          # onde o jogador anda (o chão aqui é plano, y = 0)
 
 # curvas dos caminhos amostradas (catmull-rom, como na página)
 def catmull(p0, p1, p2, p3, t):
@@ -63,12 +64,18 @@ def dist_estrada_jer(x, z):
 # ---------------- relevo ----------------
 def fora(x, z):
     # distância para fora do retângulo arredondado da vila (negativo = dentro)
-    qx = abs(x - 0) - 23.0; qz = abs(z - 1.0) - 17.5
+    qx = abs(x - 0) - 32.0; qz = abs(z - 1.0) - 24.0
     return math.hypot(max(qx, 0), max(qz, 0)) + min(max(qx, qz), 0)
 def ruido(x, z): return 0.35 * math.sin(x * 0.21 + 1.3) * math.cos(z * 0.17 - 0.7) + 0.18 * math.sin(x * 0.53 + z * 0.41)
+def h_tumulo(x, z):
+    # barranco em volta do rochedo: sobe atrás e dos lados; na frente da boca o chão fica plano
+    dx, dz = x - PEDRA_TUM[0], z - PEDRA_TUM[1]
+    atras = -(dx * FRENTE_TUM[0] + dz * FRENTE_TUM[1]); lado = dx * -FRENTE_TUM[1] + dz * FRENTE_TUM[0]
+    return 6.5 * sm(-1.0, 5.0, atras) * math.exp(-(lado / 15.0) ** 2) + 3.5 * sm(5, 18, atras) * math.exp(-(lado / 22.0) ** 2)
 def h_base(x, z):
     d = fora(x, z)
-    if d <= 0: return 0.0
+    ht = h_tumulo(x, z)
+    if d <= 0: return ht
     tras = sm(-12, 14, -(x + z))                          # atrás (longe da câmera): os morros sobem
     sobe = 6.0 * (1 - math.exp(-d / 8)) + 0.30 * d
     desce = -min(2.0, 0.07 * d)                            # na frente a encosta desce de leve (não tampa a câmera)
@@ -77,7 +84,7 @@ def h_base(x, z):
     if x < -16:
         de = dist_estrada_jer(x, z); he = 0.085 * max(0.0, -22 - x)
         w = 1 - sm(1.5, 9.0, de); h = h * (1 - w) + he * w
-    return h
+    return max(h, ht)
 def altura(x, z): return h_base(x, z)
 
 # ---------------- cena ----------------
@@ -176,7 +183,7 @@ def importa(arq):
 for arq in ['casa-porta\\muretas.glb', 'casa-porta\\rochas.glb', 'casa-porta\\arvores_tripo.glb', 'casa-porta\\arvores_frondosas.glb',
             'casa-porta\\arvores_par.glb', 'diorama-ciprestes\\ciprestes.glb', 'casa-porta\\tamareiras.glb', 'casa-porta\\casa_porta.glb',
             'casa-porta\\barracas.glb', 'casa-porta\\parreiras_tripo.glb', 'casa-porta\\pastoril.glb', 'casa-porta\\oficios.glb',
-            'casa-porta\\tumulo_rocha.glb', 'casa-porta\\tumulo_pedra.glb', 'forno-pao\\forno.glb', 'lagar\\lagar.glb']:
+            'casa-porta\\tumulo_rocha.glb', 'casa-porta\\tumulo_pedra.glb', 'forno-pao\\forno.glb', 'lagar\\lagar.glb', 'casas\\casas_betfage.glb', 'casa-porta\\insula.glb']:
     importa(arq)
 col_proto.hide_render = True; col_proto.hide_viewport = True
 
@@ -200,6 +207,7 @@ def poe(arq, no, x, z, r=0.0, k=1.0, y=None, afunda=0.05, col=None, jogo=True):
 for x, z, r in CASAS:
     for no in ('Casa2', 'Casa2_Porta'):
         if ('casa-porta\\casa_porta.glb', no) in PROTO: poe('casa-porta\\casa_porta.glb', no, x, z, r, 1.0, y=0, afunda=0, col=col_ref, jogo=False)
+for no_, x, z, r in CASAS_NOVAS: poe('casas\\casas_betfage.glb', no_, x, z, r, 1.0, y=0, afunda=0.02)
 for no, x, z, r in BARRACAS: poe('casa-porta\\barracas.glb', no, x, z, r, 1.0, y=0, afunda=0, col=col_ref, jogo=False)
 poe('casa-porta\\parreiras_tripo.glb', 'Parreira_Arco', 9.2, -5.4, 0, 1.0, y=0, afunda=0, col=col_ref, jogo=False)
 poe('casa-porta\\parreiras_tripo.glb', 'Parreira_Poste', 7.4, -4.8, 0.4, 1.0, y=0, afunda=0, col=col_ref, jogo=False)
@@ -212,9 +220,9 @@ for nome, (x, z) in [('Forno_Corpo', FORNO), ('Lagar_Rocha', LAGAR)]:
     poe(arq, nome, x, z, 0.4 if nome.startswith('Forno') else 0.3, 1.0, y=0, afunda=0, col=col_ref, jogo=False)
 
 # ---------------- zonas livres (nada de árvore, pedra ou muro em cima) ----------------
-ZONAS = [(x, z, 4.6) for x, z, r in CASAS] + [(x, z, 2.6) for _, x, z, _ in BARRACAS] + [(9.2, -5.4, 2.4), (7.4, -4.8, 1.2),
+ZONAS = [(x, z, 4.6) for x, z, r in CASAS] + [(x, z, 5.2 if 'Sobrado' in n_ else 3.6) for n_, x, z, r in CASAS_NOVAS] + [(x, z, 2.6) for _, x, z, _ in BARRACAS] + [(9.2, -5.4, 2.4), (7.4, -4.8, 1.2),
          (APRISCO[0], APRISCO[1], 4.2), (FORNO[0], FORNO[1], 2.6), (LAGAR[0], LAGAR[1], 3.2), (POCO[0], POCO[1], 2.6), (PLACA[0], PLACA[1], 1.4),
-         (TUMULO[0], TUMULO[1], 9.5), (PEDRA_TUM[0] + FRENTE_TUM[0] * 2.5, PEDRA_TUM[1] + FRENTE_TUM[1] * 2.5, 3.0), (-4.4, 11.4, 2.0)]
+         (TUMULO[0], TUMULO[1], 8.0), (PEDRA_TUM[0] + FRENTE_TUM[0] * 2.5, PEDRA_TUM[1] + FRENTE_TUM[1] * 2.5, 3.0), (-4.4, 11.4, 2.0)]
 def livre(x, z, r=0.5):
     if dist_cam(x, z)[0] < 0.8 + r * 0.5: return False
     if LAV[0] - 1.2 - r < x < LAV[1] + 1.2 + r and LAV[2] - 1.2 - r < z < LAV[3] + 1.2 + r: return False
@@ -243,7 +251,7 @@ mureta(x0 - 0.9, z0 - 0.9, (x0 + x1) / 2 - 1.0, z0 - 0.9); mureta((x0 + x1) / 2 
 mureta(x0 - 0.9, z0 - 0.9, x0 - 0.9, z1 + 0.6)
 # corte da estrada de Jerusalém, saindo da vila (os dois lados, onde o morro começa)
 for lado in (1, -1):
-    pts = [(x, 3.0 + lado * 2.9) for x in (-23.0, -27.0, -31.0, -35.0)]
+    pts = [(x, 3.0 + lado * 2.9) for x in (-32.0, -36.0, -40.0, -44.0)]
     for a_, b_ in zip(pts, pts[1:]): mureta(a_[0], a_[1], b_[0], b_[1], 'Mureta_Baixa')
 
 # ---------------- árvores por espécie ----------------
@@ -267,21 +275,25 @@ dentro = lambda x, z: livre(x, z, 0.6)
 poe('casa-porta\\tamareiras.glb', 'Tamareiras', -4.4, 11.4, 0.2, 0.7, afunda=0.05); REG.append((-4.4, 11.4, 1.6))
 for x, z, no, k in [(-7.4, -13.6, 'Cipreste2_Esguio', 0.8), (-8.6, -2.4, 'Cipreste1_Redondo', 0.75), (-11.0, -15.2, 'Cipreste2_Esguio', 0.85), (-6.2, -15.8, 'Cipreste2_Esguio', 0.75)]:
     poe('diorama-ciprestes\\ciprestes.glb', no, x, z, random.random() * 6, k, afunda=0.1); REG.append((x, z, 0.9))
-bosque(18.5, 4.0, 2.8, 4, 'oliveiras', dentro)        # olival pequeno entre o lagar e a lavoura
+bosque(19.5, 3.5, 2.8, 4, 'oliveiras', dentro)        # olival pequeno entre o lagar e a lavoura
+bosque(27.0, 16.0, 3.4, 6, 'oliveiras', dentro)       # olival na borda da frente, à direita
+bosque(-26.0, -16.0, 3.4, 5, 'cedros', dentro)        # cedros no barranco, atrás do túmulo
+bosque(8.0, 19.5, 3.0, 4, 'escuras', dentro)          # bosquezinho na frente
+bosque(-14.0, 19.0, 3.0, 4, 'carvalhos', dentro)      # carvalhos na frente, à esquerda
 bosque(-17.5, 12.5, 2.6, 3, 'carvalhos', dentro)      # carvalhos atrás do aprisco
-bosque(19.0, -14.0, 2.4, 3, 'escuras', dentro)        # canto de trás, à direita das casas
+bosque(26.0, -15.0, 3.0, 5, 'escuras', dentro)        # canto de trás, à direita das casas
 # fora da vila: matas por espécie, com clareiras; pedregais à parte
 LONGE = True
 random.seed(5)
-def longe_ok(x, z): return fora(x, z) > 1.5 and dist_cam(x, z)[0] > 3.0 and all(math.hypot(x - zx, z - zz) > zr for zx, zz, zr in ZONAS)
+def longe_ok(x, z): return fora(x, z) > 0.8 and dist_cam(x, z)[0] > 3.0 and all(math.hypot(x - zx, z - zz) > zr for zx, zz, zr in ZONAS)
 centros = []
 for i in range(900):
     x, z = random.uniform(-75, 70), random.uniform(-70, 70)
     d = fora(x, z)
-    if d < 3 or d > 48 or (x + z) > 40: continue          # nada muito à frente da câmera
-    if any(math.hypot(x - a, z - b) < 13 for a, b, _ in centros): continue
-    centros.append((x, z, 'mata' if random.random() < 0.72 else 'pedra'))
-    if len(centros) >= 40: break
+    if d < 1.5 or d > 46 or (x + z) > 52: continue        # nada muito à frente da câmera
+    if any(math.hypot(x - a, z - b) < 11 for a, b, _ in centros): continue
+    centros.append((x, z, 'mata' if random.random() < 0.75 else 'pedra'))
+    if len(centros) >= 62: break
 ORDEM = ['cedros', 'carvalhos', 'oliveiras', 'escuras', 'carvalhos', 'cedros', 'oliveiras']
 PEDRAS = [('casa-porta\\rochas.glb', n) for n in ['Rocha1', 'Rocha2', 'Rocha4', 'Rocha5', 'Rocha7', 'Rocha8']]
 for ic, (cx, cz, tipo) in enumerate(centros):
@@ -304,7 +316,7 @@ for ci in (0, 5):
         for lado in (1, -1):
             if random.random() < 0.35: continue
             off = w + 0.35 + random.random() * 0.25; x, z = p.x - q.y * off * lado, p.y + q.x * off * lado
-            if (ci == 0 and -14 < x < 16) or not cabe(x, z, 0.35, 1.0): continue
+            if (ci == 0 and -16 < x < 18) or not cabe(x, z, 0.35, 1.0): continue
             poe(*random.choice(PEDRAS), x, z, random.random() * 6.28, 0.5 + random.random() * 0.3, afunda=0.08); REG.append((x, z, 0.35))
 # o lugar das sepulturas: algumas pedras grandes junto ao rochedo
 for dx, dz, k in [(2.6, 4.5, 1.1), (-3.5, 6.0, 0.9), (5.8, -1.0, 0.8)]:
