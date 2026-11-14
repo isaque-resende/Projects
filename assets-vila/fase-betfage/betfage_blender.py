@@ -97,11 +97,11 @@ cbx, cbz = xz(*COCHO_AB); HCB = h_base(cbx, cbz); pad_rect(cbx, cbz, 2.4, 1.6, 1
 pcx, pcz = xz(*POCO_AB); HPOCO = h_base(pcx, pcz); pad_circ(pcx, pcz, 1.6, 1.6, HPOCO); pad_circ(pcx + 0.707 * 2.5, pcz - 0.707 * 2.5, 1.3, 1.4, HPOCO)
 jmx, jmz = xz(*JUM_AB); HJUM = HINS; pad_circ(jmx, jmz, 1.8, 1.6, HJUM)     # na altura do pátio da ínsula (senão rebaixa o pátio e a escada fica no ar)
 fsx, fsz = xz(*FIGSECA_AB); HFIG = HR[dist_estrada(fsx, fsz)[1]]; pad_circ(fsx, fsz, 1.7, 1.8, HFIG)
-csx, csz = xz(*CASA_AB); HCASA = h_socalco(csx, csz); pad_rect(csx, csz, 4.6, 4.6, 2.0, HCASA)
-c2x, c2z = xz(*CASA2_AB); HC2 = h_socalco(c2x, c2z); pad_rect(c2x, c2z, 3.0, 3.0, 1.8, HC2)
-c3x, c3z = xz(*CASA3_AB); HC3 = h_socalco(c3x, c3z); pad_rect(c3x, c3z, 3.0, 3.0, 1.8, HC3)
+csx, csz = xz(*CASA_AB); HCASA = h_socalco(csx, csz); pad_rect(csx, csz, 4.9, 4.9, 3.2, HCASA)
+c2x, c2z = xz(*CASA2_AB); HC2 = h_socalco(c2x, c2z); pad_rect(c2x, c2z, 3.6, 3.6, 3.2, HC2)
+c3x, c3z = xz(*CASA3_AB); HC3 = h_socalco(c3x, c3z); pad_rect(c3x, c3z, 3.6, 3.6, 3.2, HC3)
 FOX, FOZ = csx - 0.707 * 5.6 + 0.707 * 1.6, csz + 0.707 * 5.6 + 0.707 * 1.6          # forno à esquerda da casa (na tela), um pouco à frente
-MPX, MPZ = FOX - 0.707 * 2.6 + 0.707 * 0.6, FOZ + 0.707 * 2.6 + 0.707 * 0.6          # mesa de pão ao lado
+MPX, MPZ = FOX + 0.707 * 2.4 + 0.707 * 0.9, FOZ + 0.707 * 2.4 - 0.707 * 0.9          # mesa de pão ao lado
 pad_circ(FOX, FOZ, 1.9, 1.8, HCASA); pad_circ(MPX, MPZ, 1.5, 1.6, HCASA)
 
 def altura(x, z):
@@ -231,7 +231,7 @@ def poe(arq, no, x, z, r=0.0, k=1.0, y=None, afunda=0.05, exporta=False, jogo=Tr
 
 for arq in ['casa-porta\\muros_kit.glb', 'casa-porta\\insula.glb', 'diorama-ciprestes\\ciprestes.glb', 'casa-porta\\casa_porta.glb',
             'casa-porta\\rochas.glb', 'colheita-trigo\\colheita.glb', 'casa-porta\\pastoril.glb', 'casa-porta\\oficios.glb', 'casa-porta\\objetos_casa.glb',
-            'casa-porta\\arvores_tripo.glb', 'trigal\\trigo.glb', 'casas\\casas_betfage.glb']:
+            'casa-porta\\arvores_tripo.glb', 'trigal\\trigo.glb', 'casas\\casas_betfage.glb', 'casa-porta\\arvores_frondosas.glb', 'casa-porta\\arvores_par.glb']:
     importa(arq)
 col_proto.hide_render = True; col_proto.hide_viewport = True
 
@@ -266,7 +266,7 @@ def muro(xa, za, xb, zb, alt=0.9, i=0, base=None, esp=None):
     s = 0.0
     while s <= L: OBST.append((round(xa + (xb - xa) * s / L, 2), round(za + (zb - za) * s / L, 2), 0.42 if not esp else max(0.42, esp / 2))); s += 0.6
 ZONAS = [('c', apx, apz, 1.45 * APRISCO_K + 1.6), ('c', FOX, FOZ, 2.6), ('c', MPX, MPZ, 2.2), ('c', pcx, pcz, 2.4), ('c', pcx + 0.707 * 2.5, pcz - 0.707 * 2.5, 1.8), ('c', jmx, jmz, 2.8), ('c', fsx, fsz, 2.4), ('r', cbx, cbz, 2.6, 2.2),
-         ('r', csx, csz, 6.0, 6.0), ('r', c2x, c2z, 4.2, 4.2), ('r', c3x, c3z, 4.2, 4.2), ('r', crx, crz, 3.8, 3.2), ('r', (crx + ccx) / 2, (crz + ccz) / 2, abs(crx - ccx) / 2 + 2.6, abs(crz - ccz) / 2 + 2.6)]
+         ('r', csx, csz, 6.0, 6.0), ('r', c2x, c2z, 5.4, 5.4), ('r', c3x, c3z, 5.4, 5.4), ('r', crx, crz, 3.8, 3.2), ('r', (crx + ccx) / 2, (crz + ccz) / 2, abs(crx - ccx) / 2 + 2.6, abs(crz - ccz) / 2 + 2.6)]
 def na_zona(x, z, m=0.0):
     for zn in ZONAS:
         if zn[0] == 'c' and math.hypot(x - zn[1], z - zn[2]) < zn[3] + m: return True
@@ -410,7 +410,7 @@ for s_ in (-0.4, -0.2, 0.0, 0.2, 0.4):
 # bebedouro e cocho afastados um do outro, com passagem entre eles
 # comedouro dentro do aprisco, encostado no fundo (longe da porteira); as ovelhas ficam entre ele e a porteira
 mjx, mjz = apx - math.cos(gcr) * 0.75, apz + math.sin(gcr) * 0.75
-poe('casa-porta\\pastoril.glb', 'Manjedoura', mjx, mjz, gcr + math.pi / 2, 0.75, y=HAPR, afunda=0.0, exporta=False)
+poe('casa-porta\\pastoril.glb', 'Cocho', mjx, mjz, gcr + math.pi / 2, 0.62, y=HAPR, afunda=0.0, exporta=False)
 OBST.append((round(mjx, 2), round(mjz, 2), 0.55))
 PASTO_C = (apx + math.cos(gcr) * 0.55, apz - math.sin(gcr) * 0.55)
 # bebedouro dos bichos junto do poço
@@ -447,18 +447,29 @@ ARV = []
 def arvore(arq, no, x, z, k=1.0, raio=0.6, forca=False):
     if not forca and (not livre(x, z, raio * 1.6) or any(math.hypot(x - ax, z - az) < 3.0 for ax, az in ARV)): return False
     poe(arq, no, x, z, random.random() * 6.28, k, afunda=0.12); ARV.append((x, z)); OBST.append((round(x, 2), round(z, 2), raio)); return True
-OLIV = [('casa-porta\\arvores_tripo.glb', n) for n in ['Arvore2', 'Arvore3', 'Arvore8', 'Arvore9']]     # só árvores modeladas (nada de folha em cartão)
+OLIV = [('casa-porta\\arvores_tripo.glb', n) for n in ['Arvore2', 'Arvore3', 'Arvore8', 'Arvore9']]
+NOVAS = [('casa-porta\\arvores_frondosas.glb', 'Arvore_Grande'), ('casa-porta\\arvores_frondosas.glb', 'Arvore_Pequena'), ('casa-porta\\arvores_par.glb', 'Arvores_Par')]     # só árvores modeladas (nada de folha em cartão)
 CIP = ('diorama-ciprestes\\ciprestes.glb', 'Cipreste2_Esguio')
 # o alto: três ciprestes e grandes pedras ao lado da estrada
 for a, b, k in [(0.86, 1.02, 1.25), (0.91, 1.06, 1.15), (1.03, 0.9, 1.3)]:
     x, z = xz(a, b); arvore(*CIP, x, z, k, 0.4, forca=True)
 for a, b, no, k in [(1.0, 0.84, 'Rocha6', 1.7), (1.03, 0.88, 'Rocha9', 1.5), (0.96, 0.82, 'Rocha3', 1.3), (0.99, 0.78, 'Rocha8', 1.1), (0.78, 1.0, 'Rocha6', 1.5), (0.82, 1.05, 'Rocha9', 1.2)]:
-    x, z = xz(a, b); poe('casa-porta\\rochas.glb', no, x, z, random.random() * 6, k, afunda=0.15); OBST.append((round(x, 2), round(z, 2), 0.6 * k))
+    x, z = xz(a, b)
+    if na_zona(x, z, 0.5): continue
+    poe('casa-porta\\rochas.glb', no, x, z, random.random() * 6, k, afunda=0.15); OBST.append((round(x, 2), round(z, 2), 0.6 * k))
 # olival à esquerda (nos socalcos) e algumas à direita no alto
-for a, b in [(0.66, 1.02), (0.52, 0.99), (0.38, 0.96), (0.24, 0.93), (0.10, 0.90), (0.30, 0.80), (0.16, 0.79), (0.04, 0.78)]:
-    x, z = xz(a, b); arvore(*OLIV[random.randrange(4)], x, z, 0.75 + random.random() * 0.15, 0.5)
-for a, b in [(0.93, 0.66), (0.80, 0.72), (0.66, 0.70)]:
-    x, z = xz(a, b); arvore(*OLIV[random.randrange(4)], x, z, 0.75, 0.5)
+def bosque(a0, b0, R, n, lista, k0, k1):
+    cx_, cz_ = xz(a0, b0); feitas = 0
+    for j in range(n * 6):
+        if feitas >= n: break
+        ang = random.random() * 6.283; rr = R * math.sqrt(random.random()); x, z = cx_ + math.cos(ang) * rr, cz_ + math.sin(ang) * rr
+        if not livre(x, z, 0.5) or any(math.hypot(x - ax, z - az) < 1.7 for ax, az in ARV): continue
+        arq_, no_ = random.choice(lista); kk = (k0 + random.random() * (k1 - k0)) * (0.55 if ('frondosas' in arq_ or 'arvores_par' in arq_) else 1.0)
+        poe(arq_, no_, x, z, random.random() * 6.28, kk, afunda=0.12); ARV.append((x, z)); OBST.append((round(x, 2), round(z, 2), 0.5)); feitas += 1
+BOSQ = OLIV + NOVAS + NOVAS
+bosque(0.60, 1.16, 3.2, 9, BOSQ, 0.8, 1.05)      # acima da figueira, à esquerda da estrada
+bosque(0.85, 0.80, 3.0, 8, BOSQ, 0.8, 1.05)      # atrás da ínsula, à esquerda da casa do varal
+bosque(0.05, 0.98, 2.6, 7, BOSQ, 0.75, 1.0)      # canto esquerdo, atrás do forno
 # figueiras com folhas e a seca
 if False:
     mseca = bpy.data.materials.new('Seca'); mseca.use_nodes = True; next(n for n in mseca.node_tree.nodes if n.type == 'BSDF_PRINCIPLED').inputs['Base Color'].default_value = (0.55, 0.52, 0.48, 1)
@@ -472,11 +483,10 @@ if False:
         a = i * 1.05 + 0.3; p1 = top + Vector((math.cos(a) * 0.9, math.sin(a) * 0.9, 0.9 + (i % 2) * 0.3)); galho(top, p1, 0.1)
         for j in (-0.5, 0.6): galho(p1, p1 + Vector((math.cos(a + j) * 0.6, math.sin(a + j) * 0.6, 0.5)), 0.05)
 # eira: colheita.glb (o disco de pedra) com pilhas, sacos e cestos
-poe('colheita-trigo\\colheita.glb', 'Eira', ex, ez, 0.3, (EIRA_R * 2) / 2.84, y=HEIRA, afunda=0.02)
+poe('casas\\casas_betfage.glb', 'Peneira_Graos', ex, ez, 3 * math.pi / 4, 5.0, y=HEIRA, afunda=0.01)     # eira nova: 5 m x 3,3 m
 for dx, dz, no, k in [(3.4, -2.6, 'Feixe_Pilha', 1.1), (4.2, -0.8, 'Feixe_Pilha', 1.0), (-3.2, -3.0, 'Cesto_Graos', 1.2), (-2.4, -3.8, 'Cesto_Espigas', 1.1)]:
     x, z = plano(ex + dx, ez + dz); poe('colheita-trigo\\colheita.glb', no, x, z, random.random() * 6, k); OBST.append((round(x, 2), round(z, 2), 0.5))
-poe('casas\\casas_betfage.glb', 'Trilho_Debulhar', ex - 1.3, ez - 1.3, 0.9, 1.0, y=HEIRA + 0.06, afunda=0.0); OBST.append((round(ex - 1.3, 2), round(ez - 1.3, 2), 0.6))
-poe('casas\\casas_betfage.glb', 'Peneira_Graos', ex + 0.5, ez + 1.7, 0.3, 0.9, y=HEIRA + 0.06, afunda=0.0)
+poe('casas\\casas_betfage.glb', 'Trilho_Debulhar', ex - 1.2, ez + 1.2, 3 * math.pi / 4 + 0.4, 1.15, y=HEIRA + 0.1, afunda=0.0); OBST.append((round(ex - 1.2, 2), round(ez + 1.2, 2), 0.6))
 for dx, dz in [(3.0, 1.6), (3.6, 2.2), (2.6, 2.4)]:
     x, z = plano(ex + dx, ez + dz, 0.35); poe('casa-porta\\objetos_casa.glb', 'Saco', x, z, random.random() * 6, 1.15)
 # trigal: só alguns tufos na prévia (no jogo é instanciado)
@@ -516,7 +526,8 @@ def grupo(cx_, cz_, R, n, tipo, lista, k0, k1, ok):
         x, z = cx_ + math.cos(ang) * rr, cz_ + math.sin(ang) * rr
         k = k0 + random.random() * (k1 - k0); r = (0.62 if tipo == 'mata' else 0.6) * k     # copas encostam (mata fechada), mas tronco não nasce em pedra
         if not ok(x, z) or not cabe(x, z, r): continue
-        poe(*random.choice(lista), x, z, random.random() * 6.28, k, afunda=0.15 if tipo == 'mata' else 0.2)
+        arq_, no_ = random.choice(lista); kk = k * (0.55 if ('frondosas' in arq_ or 'arvores_par' in arq_) else 1.0)
+        poe(arq_, no_, x, z, random.random() * 6.28, kk, afunda=0.15 if tipo == 'mata' else 0.2)
         REG.append((x, z, r)); OBST.append((round(x, 2), round(z, 2), 0.5 if tipo == 'mata' else 0.6 * k)); n -= 1
 for x_, z_, r_ in OBST: REG.append((x_, z_, r_ * 0.8))
 # perto da câmera (bordas da frente): bosquezinhos baixos e montes de pedra, bem separados
@@ -530,7 +541,7 @@ for i in range(300):
     x, z = xz(a, b)
     if not perto_ok(x, z) or any(math.hypot(x - p_, z - q_) < 8 for p_, q_ in cs): continue
     cs.append((x, z))
-    if random.random() < 0.65: grupo(x, z, 2.6, random.randint(4, 7), 'mata', BAIXAS, 0.85, 1.15, perto_ok)
+    if random.random() < 0.65: grupo(x, z, 3.0, random.randint(6, 10), 'mata', BAIXAS, 0.8, 1.1, perto_ok)
     else: grupo(x, z, 2.0, random.randint(4, 6), 'pedra', PEDRAS, 0.6, 1.3, perto_ok)
 
 # ---------------- moitas espinhosas e malvas (instanciadas no jogo), sempre de frente para a câmera ----------------
@@ -559,7 +570,7 @@ for x, z in [(csx + 3.0, csz + 3.2), (pcx + 1.7, pcz + 1.0), (ix + 7.2, iz + 5.0
 # ---------------- ao longe: pequenas matas agrupadas e pedregais, no fundo, nos lados e além do alto ----------------
 LONGE = True
 random.seed(5)
-MATA = [('casa-porta\\arvores_tripo.glb', n) for n in ['Arvore1', 'Arvore2', 'Arvore3', 'Arvore7', 'Arvore8', 'Arvore9']] + [CIP, CIP, ('diorama-ciprestes\\ciprestes.glb', 'Cipreste1_Redondo')]
+MATA = [('casa-porta\\arvores_tripo.glb', n) for n in ['Arvore1', 'Arvore2', 'Arvore3', 'Arvore7', 'Arvore8', 'Arvore9']] + NOVAS * 3 + [CIP, CIP, ('diorama-ciprestes\\ciprestes.glb', 'Cipreste1_Redondo')]
 REG += []
 def longe_ok(x, z):
     a, b = ab(x, z)
@@ -569,11 +580,11 @@ for i in range(600):
     a, b = random.uniform(-0.6, 2.4), random.uniform(-0.6, 2.4)
     if not (a > 1.15 or b > 1.15) or a + b > 3.6: continue
     x, z = xz(a, b)
-    if not longe_ok(x, z) or any(math.hypot(x - cx_, z - cz_) < 10 for cx_, cz_, _ in centros): continue
+    if not longe_ok(x, z) or any(math.hypot(x - cx_, z - cz_) < 13 for cx_, cz_, _ in centros): continue
     centros.append((x, z, 'mata' if random.random() < 0.7 else 'pedra'))
     if len(centros) >= 34: break
 for cx_, cz_, tipo in centros:
-    if tipo == 'mata': grupo(cx_, cz_, 3.4, random.randint(10, 16), 'mata', MATA, 1.0, 1.5, longe_ok)
+    if tipo == 'mata': grupo(cx_, cz_, 4.6, random.randint(16, 24), 'mata', MATA, 0.95, 1.45, longe_ok)
     else: grupo(cx_, cz_, 3.0, random.randint(7, 11), 'pedra', PEDRAS, 0.9, 2.0, longe_ok)
 LONGE = False
 

@@ -74,14 +74,14 @@ const baixar = async (url) => {
   }
 };
 const sombra = (r) => r.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
-const LAY = await (await fetch('betfage_layout.json?v=20')).json();
+const LAY = await (await fetch('betfage_layout.json?v=21')).json();
 const S = LAY.S;
 // coordenadas do diorama: a = rumo ao canto direito, b = rumo ao canto esquerdo (0,0 = canto da frente)
 const AB = (x, z) => [(S / 2 - z) / S, (S / 2 - x) / S];
 const XZ = (a, b) => [S / 2 - b * S, S / 2 - a * S];
 const ARQS = [...new Set(LAY.objetos.map((o) => o.glb))];
 const [gCen, gCasaP, gTrigo, gColh, gBoi, gOve, gJum, gJog, gObj, nAldeao, nFaixa, nCarreg, nRobusto, nBotoes, nMoco, nPastor, nMagro, nRapaz, ...gArqs] = await Promise.all([
-  baixar('betfage_cenario.glb?v=20'), baixar('../casa-porta/insula.glb'), baixar('../trigal/trigo.glb'), baixar('../colheita-trigo/colheita.glb'),
+  baixar('betfage_cenario.glb?v=21'), baixar('../casa-porta/insula.glb'), baixar('../trigal/trigo.glb'), baixar('../colheita-trigo/colheita.glb'),
   baixar('../animais/boi.glb'), baixar('../animais/ovelha.glb'), baixar('../animais/jumento.glb'), baixar('../vila-betania/discipulo_acoes.glb'), baixar('../casa-porta/objetos_casa.glb'),
   baixar('../personagens/aldeao.glb'), baixar('../personagens/mulher_faixa.glb'), baixar('../personagens/carregador.glb'),
   baixar('../personagens/robusto.glb'), baixar('../personagens/mulher_botoes.glb'), baixar('../personagens/moco.glb'),
@@ -233,7 +233,8 @@ for (const o of LAY.objetos) {
   const m = KIT[o.glb]?.[o.no]; if (!m) continue;
   const n = m.clone(); n.position.set(...o.p); n.rotation.y += o.r; n.scale.multiplyScalar(o.k); sombra(n); scene.add(n);
   if (/^Casa(2|_Sobrado|_Alcapao|_Varal)$/.test(o.no)) { FADE.push(n); n.userData.casa = true; CONSTR.push(n); }
-  if (o.no === 'Manjedoura') FORNO.manj = n;
+  if (o.no === 'Cocho') { if (Math.hypot(o.p[0] - LAY.manjedoura[0], o.p[2] - LAY.manjedoura[2]) < 1) FORNO.manj = n; else FORNO.bebe = n; }
+  if (o.no === 'Peneira_Graos') FORNO.eira = n;
   if (o.no === 'Forno_Barro') FORNO.o = n, FORNO.r = o.r;
   if (o.no === 'Bancada') FORNO.mesa = n;
   if (ALTOS.test(o.no)) FADE.push(n);
@@ -418,25 +419,31 @@ function fornoPasso(dt, t) {
     m.scale.setScalar(0.6 + k * 2.6); m.material.opacity = 0.5 * Math.min(1, u.t * 3) * (1 - k); m.rotation.set(u.t, u.t * 0.7, 0);
   }
 }
-// comedouro do aprisco com trigo dentro: um monte de palha dourada e espigas espetadas
-if (FORNO.manj) {
-  FORNO.manj.updateMatrixWorld(true);
-  const bx = new THREE.Box3().setFromObject(FORNO.manj), rc = new THREE.Raycaster(), fundo = [];
-  for (let i = 0; i < 60; i++) {
-    const x = bx.min.x + 0.15 + rnd() * (bx.max.x - bx.min.x - 0.3), z = bx.min.z + 0.15 + rnd() * (bx.max.z - bx.min.z - 0.3);
-    rc.set(V3(x, bx.max.y + 1, z), V3(0, -1, 0)); const h = rc.intersectObject(FORNO.manj, true)[0];
-    if (h && h.point.y > bx.min.y + 0.3 && h.point.y < bx.max.y - 0.05) fundo.push(h.point);
+// comedouro (palha com espigas) e bebedouro (água): acha o fundo do cocho por raios e põe o enchimento na boca
+function enche(obj, cor, espigas) {
+  obj.updateMatrixWorld(true);
+  const bx = new THREE.Box3().setFromObject(obj), rc = new THREE.Raycaster(), dentro = [];
+  for (let i = 0; i < 160; i++) {
+    const x = bx.min.x + rnd() * (bx.max.x - bx.min.x), z = bx.min.z + rnd() * (bx.max.z - bx.min.z);
+    rc.set(V3(x, bx.max.y + 1, z), V3(0, -1, 0)); const h = rc.intersectObject(obj, true)[0];
+    if (h && h.point.y < bx.max.y - 0.12 && h.point.y > bx.min.y + 0.05) dentro.push(h.point);
   }
-  if (fundo.length) {
-    const c = fundo.reduce((a, p) => a.add(p), V3(0, 0, 0)).multiplyScalar(1 / fundo.length);
-    const palha = new THREE.Mesh(new THREE.SphereGeometry(1, 10, 5, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xd9b45a, roughness: 1, flatShading: true }));
-    palha.position.copy(c).add(V3(0, -0.02, 0)); palha.scale.set(0.42, 0.16, 0.42); palha.rotation.y = LAY.manjedoura[3]; palha.castShadow = palha.receiveShadow = true; scene.add(palha);
-    const src = KT.Trigo_Maduro;
-    if (src) { const n = 9, inst = new THREE.InstancedMesh(src.geometry, src.material, n), m4 = new THREE.Matrix4(), q = new THREE.Quaternion();
-      for (let i = 0; i < n; i++) { const p = fundo[i % fundo.length]; q.setFromEuler(new THREE.Euler((rnd() - 0.5) * 1.2, rnd() * 6, (rnd() - 0.5) * 1.2)); inst.setMatrixAt(i, m4.compose(V3(p.x, c.y + 0.02, p.z), q, V3(0.35, 0.3, 0.35))); }
-      inst.castShadow = true; scene.add(inst); }
+  if (dentro.length < 6) return;
+  const c = dentro.reduce((a, p) => a.add(p), V3(0, 0, 0)).multiplyScalar(1 / dentro.length);
+  // elipse que cabe nos pontos de dentro (eixos do próprio cocho)
+  const ry = obj.rotation.y, ux = V3(Math.cos(ry), 0, -Math.sin(ry)), uz = V3(Math.sin(ry), 0, Math.cos(ry));
+  let ax = 0, az = 0; for (const p of dentro) { const d = p.clone().sub(c); ax = Math.max(ax, Math.abs(d.dot(ux))); az = Math.max(az, Math.abs(d.dot(uz))); }
+  const y = bx.max.y - 0.1;
+  const tampa = new THREE.Mesh(new THREE.CircleGeometry(1, 16), new THREE.MeshStandardMaterial({ color: cor, roughness: espigas ? 1 : 0.35, flatShading: true }));
+  tampa.rotation.set(-Math.PI / 2, 0, ry); tampa.scale.set(ax * 0.98, az * 0.98, 1); tampa.position.set(c.x, y, c.z); tampa.receiveShadow = true; scene.add(tampa);
+  if (espigas && KT.Trigo_Maduro) {
+    const n = 10, inst = new THREE.InstancedMesh(KT.Trigo_Maduro.geometry, KT.Trigo_Maduro.material, n), m4 = new THREE.Matrix4(), q = new THREE.Quaternion();
+    for (let i = 0; i < n; i++) { const p = c.clone().addScaledVector(ux, (rnd() - 0.5) * ax * 1.4).addScaledVector(uz, (rnd() - 0.5) * az * 1.2); q.setFromEuler(new THREE.Euler(Math.PI / 2 - 0.25, ry + (rnd() - 0.5) * 0.6, 0)); inst.setMatrixAt(i, m4.compose(V3(p.x, y - 0.02, p.z), q, V3(0.3, 0.32, 0.3))); }
+    inst.castShadow = true; scene.add(inst);
   }
 }
+if (FORNO.manj) enche(FORNO.manj, 0xd8b45c, true);
+if (FORNO.bebe) enche(FORNO.bebe, 0x4f7f86, false);
 // pães (pita) na mesa ao lado do forno: põe sobre o tampo achado por raio de cima
 if (FORNO.mesa) {
   FORNO.mesa.updateMatrixWorld(true);
@@ -616,17 +623,17 @@ function atadeiraPasso(dt) {
   maos(st, aE || pos(st.os.bE[2]), aD || pos(st.os.bD[2]), dt, aE ? 1 : 0, 10);
 }
 // carroça com boi (embaixo, à direita, entre o trigal e o pé do morro)
-const CARRO = { x: LAY.carro.x, z: LAY.carro.z, r: -Math.PI / 2, n: 0, max: 8 };
-const carroca = CO.Carroca.clone(); sombra(carroca); carroca.position.set(CARRO.x, LAY.carro.y - 0.02, CARRO.z); carroca.rotation.y = CARRO.r; scene.add(carroca);
-const carga = CO.Carroca_Carga.clone(); sombra(carga); carroca.add(carga); carga.visible = false;
+const CARRO = { x: LAY.carro.x, z: LAY.carro.z, r: 0, n: 0, max: 8 };
+const carroca = KIT['casa-porta/oficios.glb'].Carroca.clone(); sombra(carroca); /* a carroça do kit modelado (rodas de raios, varais) */ carroca.position.set(CARRO.x, LAY.carro.y - 0.02, CARRO.z); carroca.rotation.y = CARRO.r; scene.add(carroca);
+const carga = CO.Carroca_Carga.clone(); sombra(carga); carroca.add(carga); carga.visible = false; carga.rotation.y = Math.PI / 2; carga.position.set(0, 0.2, 0.35);
 caixaDe(carroca, 0.2); carroca.updateMatrixWorld(true);
 const LADO_C = CO0.NPC_Carregar.clone().sub(CO0.Carroca);
 const LUGAR_C = (() => { const b = new THREE.Box3().setFromObject(carroca); return V3((b.min.x + b.max.x) / 2, 0, b.min.z - 0.55); })();   // atrás da carroça, do lado do trigal
 const boiCarro = ator(gBoi, 1.45, 0, 0, 0, 'Parado');
 {
   const b = new THREE.Box3().setFromObject(carroca), c = b.getCenter(new THREE.Vector3());
-  const ponta = V3(Math.cos(-CARRO.r), 0, Math.sin(-CARRO.r));
-  boiCarro.o.position.set(c.x + ponta.x * 2.8, 0, c.z + ponta.z * 2.8); chao(boiCarro);
+  const ponta = V3(Math.sin(CARRO.r), 0, Math.cos(CARRO.r));
+  boiCarro.o.position.set(c.x + ponta.x * 2.7, 0, c.z + ponta.z * 2.7); chao(boiCarro);
   boiCarro.o.rotation.y = Math.atan2(boiCarro.o.position.x - c.x, boiCarro.o.position.z - c.z);
   CIRC.push({ x: boiCarro.o.position.x, z: boiCarro.o.position.z, r: 0.9 });
 }
@@ -678,7 +685,7 @@ function carregadorPasso(dt) {
 function atualizaCarga() { carga.visible = CARRO.n > 0; carga.scale.set(1, Math.max(0.15, CARRO.n / CARRO.max), 1); }
 
 // ---------- eira: mangual e joeira ----------
-const EI = LAY.eira, EIRA_Y = EI.y;
+const EI = LAY.eira, EIRA_Y = (() => { if (!FORNO.eira) return EI.y; FORNO.eira.updateMatrixWorld(true); const rc = new THREE.Raycaster(V3(EI.x + 0.6, EI.y + 5, EI.z + 0.6), V3(0, -1, 0)); const h = rc.intersectObject(FORNO.eira, true)[0]; return h ? h.point.y - 0.03 : EI.y; })();
 const MONTE = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xe2c27e, roughness: 1, flatShading: true }));
 MONTE.position.set(EI.x + 0.3, EIRA_Y + 0.05, EI.z - 0.2); MONTE.scale.set(1.0, 0.28, 0.85); MONTE.receiveShadow = MONTE.castShadow = true; scene.add(MONTE);
 const debulhador = corpo(ator(nRobusto, 1.72, EI.x - 0.8, EI.z + 0.8, 0, 'Parado'));
@@ -923,7 +930,7 @@ function atualizaFade() {
 setTimeout(() => { fade.style.opacity = 0; setTimeout(() => { fade.textContent = ''; fala('Betfagé, a aldeia dos figos verdes, no caminho de Jerusalém.'); }, 900); setTimeout(() => fala('Suba a estrada até o alto do monte.'), 5200); setTimeout(() => fala(''), 9000); }, 1200);
 
 // a ínsula puxa para o creme acinzentado das pedras dos muros (o modelo veio muito avermelhado)
-INS.g.traverse((m) => {
+for (const alvo of [INS.g, ...CONSTR]) alvo.traverse((m) => {
   if (!m.isMesh) return;
   m.material.onBeforeCompile = (sh) => { sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
     float lum = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11));
