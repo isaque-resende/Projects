@@ -87,18 +87,16 @@ a0, a1, b0, b1 = CAMPO_AB
 cx0, cz1 = xz(a0, b0); cx1, cz0 = xz(a1, b1)
 CAMPO = (min(cx0, cx1), max(cx0, cx1), min(cz0, cz1), max(cz0, cz1))
 ccx, ccz = (CAMPO[0] + CAMPO[1]) / 2, (CAMPO[2] + CAMPO[3]) / 2
-HCAMPO = h_base(ccx, ccz) - 0.3
-pad_rect(ccx, ccz, (CAMPO[1] - CAMPO[0]) / 2 + 0.6, (CAMPO[3] - CAMPO[2]) / 2 + 0.6, 2.4, HCAMPO)
-CARRO_AB = (0.925, 0.10); crx, crz = xz(*CARRO_AB); HCARRO = HCAMPO; pad_rect(crx, crz + 1.0, 3.2, 4.2, 2.0, HCARRO)
+HCAMPO = h_base(ccx, ccz) - 0.3      # (só referência; o trigal acompanha o terreno)
+CARRO_AB = (0.925, 0.10); crx, crz = xz(*CARRO_AB); HCARRO = h_socalco(crx, crz + 1.0); pad_rect(crx, crz + 1.0, 2.6, 3.6, 2.6, HCARRO)
 # entre o trigal e a carroça, chão plano (o carregador vai e volta sem subir barranco)
-pad_rect((crx + ccx) / 2, (crz + ccz) / 2, abs(crx - ccx) / 2 + 2.0, abs(crz - ccz) / 2 + 2.0, 2.0, HCAMPO)
 apx, apz = xz(*APRISCO_AB); HAPR = h_base(apx, apz); pad_circ(apx, apz, 1.45 * APRISCO_K + 0.6, 2.2, HAPR)
 cbx, cbz = xz(*COCHO_AB); HCB = h_base(cbx, cbz); pad_rect(cbx, cbz, 2.4, 1.6, 1.8, HCB)
 pcx, pcz = xz(*POCO_AB); HPOCO = h_base(pcx, pcz); pad_circ(pcx, pcz, 1.6, 1.6, HPOCO); pad_circ(pcx + 0.707 * 2.5, pcz - 0.707 * 2.5, 1.3, 1.4, HPOCO)
 jmx, jmz = xz(*JUM_AB); HJUM = HINS; pad_circ(jmx, jmz, 1.8, 1.6, HJUM)     # na altura do pátio da ínsula (senão rebaixa o pátio e a escada fica no ar)
 fsx, fsz = xz(*FIGSECA_AB); HFIG = HR[dist_estrada(fsx, fsz)[1]]; pad_circ(fsx, fsz, 2.6, 2.0, HFIG)
 csx, csz = xz(*CASA_AB); HCASA = h_socalco(csx, csz); pad_rect(csx, csz, 5.8, 5.8, 3.6, HCASA)
-c2x, c2z = xz(*CASA2_AB); HC2 = h_socalco(c2x, c2z); pad_rect(c2x, c2z, 4.3, 4.3, 3.6, HC2)
+c2x, c2z = xz(*CASA2_AB); HC2 = HCASA; pad_rect(c2x, c2z, 4.3, 4.3, 3.6, HC2)
 c3x, c3z = xz(*CASA3_AB); HC3 = h_socalco(c3x, c3z); pad_rect(c3x, c3z, 4.3, 4.3, 3.6, HC3)
 FOX, FOZ = csx - 0.707 * 5.6 + 0.707 * 1.6, csz + 0.707 * 5.6 + 0.707 * 1.6          # forno à esquerda da casa (na tela), um pouco à frente
 MPX, MPZ = FOX + 0.707 * 2.4 + 0.707 * 0.9, FOZ + 0.707 * 2.4 - 0.707 * 0.9          # mesa de pão ao lado
@@ -297,7 +295,12 @@ def muro_linha(pp, alt=0.9, vao=0.12, seg=2.0, filtro=None, arrimo=False):
         if na_zona(mx, mz) or na_zona(A[0], A[1]) or na_zona(B[0], B[1]): continue
         if arrimo:
             dh, lo, hi, cm, larg, ux, uz = degrau(mx, mz)
-            if dh < 0.8: continue        # sem barranco de verdade aqui: não põe muro solto no meio da grama
+            if dh < 0.8:
+                if dh > 0.45 and i % 2 == 0:        # barranco baixo: marca o recorte com pedras alinhadas no alto, sem muro
+                    for s_ in (0.15, 0.5, 0.85):
+                        px_, pz_ = A[0] + (B[0] - A[0]) * s_ + ux * (cm + 0.35), A[1] + (B[1] - A[1]) * s_ + uz * (cm + 0.35)
+                        if not na_zona(px_, pz_, 0.5): poe('casa-porta\\rochas.glb', random.choice(['Rocha1', 'Rocha4', 'Rocha7']), px_, pz_, math.atan2(-(B[1] - A[1]), B[0] - A[0]) + random.random() * 0.4, 0.6 + random.random() * 0.15, afunda=0.1)
+                continue
             # o muro fica no meio do barranco, grosso o bastante para cobri-lo, do pé (enterrado 0,2) até um palmo acima do patamar de cima
             A = (A[0] + ux * cm, A[1] + uz * cm); B = (B[0] + ux * cm, B[1] + uz * cm)
             plano[-1] = (A, B, hi + 0.1 - (lo - 0.2), lo - 0.2, min(1.9, max(0.75, larg + 0.45)))
@@ -449,10 +452,20 @@ CIP = ('diorama-ciprestes\\ciprestes.glb', 'Cipreste2_Esguio')
 # o alto: três ciprestes e grandes pedras ao lado da estrada
 for a, b, k in [(0.86, 1.02, 1.25), (0.91, 1.06, 1.15), (1.03, 0.9, 1.3)]:
     x, z = xz(a, b); arvore(*CIP, x, z, k, 0.4, forca=True)
-for a, b, no, k in [(1.0, 0.84, 'Rocha6', 1.7), (1.03, 0.88, 'Rocha9', 1.5), (0.96, 0.82, 'Rocha3', 1.3), (0.99, 0.78, 'Rocha8', 1.1), (0.78, 1.0, 'Rocha6', 1.5), (0.82, 1.05, 'Rocha9', 1.2)]:
-    x, z = xz(a, b)
-    if na_zona(x, z, 0.5): continue
-    poe('casa-porta\\rochas.glb', no, x, z, random.random() * 6, k, afunda=0.15); OBST.append((round(x, 2), round(z, 2), 0.6 * k))
+# pedras pequenas enfileiradas na beira da estrada (marcam o caminho)
+random.seed(21)
+PEQ = [('casa-porta\\rochas.glb', n) for n in ['Rocha1', 'Rocha2', 'Rocha4', 'Rocha5', 'Rocha7', 'Rocha8']]
+for i in range(0, len(AMOS) - 1, 5):
+    p = AMOS[i]; q = AMOS[min(len(AMOS) - 1, i + 1)] - AMOS[max(0, i - 1)]; q.z = 0
+    if q.length < 1e-6: continue
+    q.normalize()
+    for lado in (1, -1):
+        if random.random() < 0.3: continue
+        off = MEIA + 0.35 + random.random() * 0.25
+        x, z = p.x - q.y * off * lado, p.y + q.x * off * lado
+        a_, b_ = ab(x, z)
+        if not (-0.15 < a_ < 1.25 and -0.15 < b_ < 1.25) or na_zona(x, z, 0.6) or perto_casa(x, z, 0.8): continue
+        poe(*random.choice(PEQ), x, z, random.random() * 6.28, 0.55 + random.random() * 0.3, afunda=0.08); OBST.append((round(x, 2), round(z, 2), 0.35))
 # olival à esquerda (nos socalcos) e algumas à direita no alto
 ESP = {
     'cedros':    ([CIP, CIP, ('diorama-ciprestes\\ciprestes.glb', 'Cipreste1_Redondo')], 0.95, 0.9, 1.3),
@@ -507,7 +520,7 @@ if RENDER:
 # carroça, feixes em pé, prensa, cocho
 poe('colheita-trigo\\colheita.glb', 'Carroca', crx, crz, -math.pi / 2, 1.0, y=HCARRO, afunda=0.02, jogo=False)
 for a, b in [(0.86, 0.02), (0.88, 0.0), (0.85, -0.01), (0.89, 0.04), (0.87, 0.05)]:
-    x, z = xz(a, b); poe('colheita-trigo\\colheita.glb', 'Feixe_EmPe', x, z, random.random() * 6, 1.0, y=HCAMPO); OBST.append((round(x, 2), round(z, 2), 0.3))
+    x, z = xz(a, b); poe('colheita-trigo\\colheita.glb', 'Feixe_EmPe', x, z, random.random() * 6, 1.0); OBST.append((round(x, 2), round(z, 2), 0.3))
 cox, coz = jmx, jmz
 # arredores da aldeia
 for a, b, no in [(0.87, 0.25, 'Cesto_Alca'), (0.80, 0.62, 'Lenha'), (0.86, 0.21, 'Banquinho')]:
@@ -515,9 +528,7 @@ for a, b, no in [(0.87, 0.25, 'Cesto_Alca'), (0.80, 0.62, 'Lenha'), (0.86, 0.21,
 # beira da estrada embaixo: árvores e pedras
 for a, b in [(0.05, 0.28), (0.10, 0.44), (0.30, 0.10)]:
     x, z = xz(a, b); arvore('casa-porta\\arvores_tripo.glb', random.choice(['Arvore1', 'Arvore7', 'Arvore9']), x, z, 0.9, 0.4)
-for a, b, no in [(0.08, 0.32, 'Rocha1'), (0.30, 0.15, 'Rocha3'), (0.06, 0.04, 'Rocha8')]:
-    x, z = xz(a, b)
-    if livre(x, z, 1): poe('casa-porta\\rochas.glb', no, x, z, random.random() * 6, 0.7); OBST.append((round(x, 2), round(z, 2), 0.5))
+
 
 # ---------------- sangria: mata e pedras fora do quadrado ----------------
 ALTAS = OLIV + [CIP, ('diorama-ciprestes\\ciprestes.glb', 'Cipreste1_Redondo'), ('casa-porta\\arvores_tripo.glb', 'Arvore3')]
@@ -548,7 +559,7 @@ for i in range(300):
     if not perto_ok(x, z) or any(math.hypot(x - p_, z - q_) < 8 for p_, q_ in cs): continue
     cs.append((x, z))
     if random.random() < 0.65: bosque_esp(x, z, 3.2, random.randint(5, 8), random.choice(['escuras', 'oliveiras']), perto_ok, REG)
-    else: grupo(x, z, 2.0, random.randint(4, 6), 'pedra', PEDRAS, 0.6, 1.3, perto_ok)
+
 
 # ---------------- moitas espinhosas e malvas (instanciadas no jogo), sempre de frente para a câmera ----------------
 PLANTAS = []
