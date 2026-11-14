@@ -19,14 +19,14 @@ def sm(e0, e1, x):
 
 # ---------------- o que o jogo já tem (mesmas posições da página) ----------------
 CASAS = [(-3, -10.5, 0.1), (6.2, -11, -0.05)]
-CASAS_NOVAS = [('Casa_Sobrado', 17.0, -12.0, -0.25), ('Casa_Alcapao', 25.0, -2.5, -0.55), ('Casa_Varal', -24.0, 13.0, 0.35 - math.pi / 2)]
+CASAS_NOVAS = [('Casa_Sobrado', 17.0, -12.0, -0.25), ('Casa_Alcapao', 25.0, -2.5, -0.55), ('Casa_Varal', -26.5, 18.0, 0.35 - math.pi / 2)]
 BARRACAS = [('Barraca5', 1.0, 4.6, 0.15), ('Barraca2', 6.4, 4.6, -0.1)]     # feirinha ao sul da estrada, longe das portas
-APRISCO = (-12.4, 9.6); FORNO = (1.2, -6.2); LAGAR = (-20.0, 8.6); POCO = (-4.6, 4.6)
+APRISCO = (-12.4, 9.6); FORNO = (1.2, -6.2); LAGAR = (-19.0, 12.0); POCO = (-4.6, 4.6)
 LAV = (4.4, 15.6, 7.4, 13.4)
 TUMULO = (-18.0, -11.5, -0.38)
 PEDRA_TUM = (-13.54, -8.43); FRENTE_TUM = (0.929, 0.371)
 PLACA = (-28.5, 5.6)
-PATIOS = [(1.6, -6.1, 3.0), (-20.0, 8.6, 3.4), (1.4, -2.8, 4.4), (-2.8, -6.2, 2.6), (-4.6, 4.6, 2.2), (-12.4, 9.6, 3.6)]
+PATIOS = [(1.6, -6.1, 3.0), (-19.0, 12.0, 3.4), (1.4, -2.8, 4.4), (-2.8, -6.2, 2.6), (-4.6, 4.6, 2.2), (-12.4, 9.6, 3.6)]
 # caminhos (iguais aos da página) + o do túmulo
 L, F = PEDRA_TUM, FRENTE_TUM
 CAMINHOS = [
@@ -183,7 +183,7 @@ def importa(arq):
 for arq in ['casa-porta\\muretas.glb', 'casa-porta\\rochas.glb', 'casa-porta\\arvores_tripo.glb', 'casa-porta\\arvores_frondosas.glb',
             'casa-porta\\arvores_par.glb', 'diorama-ciprestes\\ciprestes.glb', 'casa-porta\\tamareiras.glb', 'casa-porta\\casa_porta.glb',
             'casa-porta\\barracas.glb', 'casa-porta\\parreiras_tripo.glb', 'casa-porta\\pastoril.glb', 'casa-porta\\oficios.glb',
-            'casa-porta\\tumulo_rocha.glb', 'casa-porta\\tumulo_pedra.glb', 'forno-pao\\forno.glb', 'lagar\\lagar.glb', 'casas\\casas_betfage.glb', 'casa-porta\\insula.glb']:
+            'casa-porta\\tumulo_rocha.glb', 'casa-porta\\tumulo_pedra.glb', 'forno-pao\\forno.glb', 'lagar\\lagar.glb', 'casas\\casas_betfage.glb', 'casa-porta\\insula.glb', 'parreiras\\parreiras_v2.glb', 'cesto-uvas\\cesto_uvas.glb']:
     importa(arq)
 col_proto.hide_render = True; col_proto.hide_viewport = True
 
@@ -218,7 +218,7 @@ for nome, (x, z) in [('Forno_Corpo', FORNO), ('Lagar_Rocha', LAGAR)]:
     poe(arq, nome, x, z, 0.4 if nome.startswith('Forno') else 0.7, 1.0, y=0, afunda=0, col=col_ref, jogo=False)
 
 # ---------------- zonas livres (nada de árvore, pedra ou muro em cima) ----------------
-ZONAS = [(x, z, 4.6) for x, z, r in CASAS] + [(x, z, 5.2 if 'Sobrado' in n_ else 3.6) for n_, x, z, r in CASAS_NOVAS] + [(x, z, 2.6) for _, x, z, _ in BARRACAS] + [
+ZONAS = [(-18.6, 17.0, 4.2)] + [(x, z, 4.6) for x, z, r in CASAS] + [(x, z, 5.2 if 'Sobrado' in n_ else 3.6) for n_, x, z, r in CASAS_NOVAS] + [(x, z, 2.6) for _, x, z, _ in BARRACAS] + [
          (APRISCO[0], APRISCO[1], 4.2), (FORNO[0], FORNO[1], 2.6), (LAGAR[0], LAGAR[1], 3.2), (POCO[0], POCO[1], 2.6), (PLACA[0], PLACA[1], 1.4),
          (TUMULO[0], TUMULO[1], 8.0), (PEDRA_TUM[0] + FRENTE_TUM[0] * 2.5, PEDRA_TUM[1] + FRENTE_TUM[1] * 2.5, 3.0), (-4.4, 11.4, 2.0)]
 def livre(x, z, r=0.5):
@@ -277,9 +277,15 @@ bosque(19.5, 3.5, 2.8, 4, 'oliveiras', dentro)        # olival pequeno entre o l
 bosque(27.0, 16.0, 3.4, 6, 'oliveiras', dentro)       # olival na borda da frente, à direita
 bosque(-26.0, -16.0, 3.4, 5, 'cedros', dentro)        # cedros no barranco, atrás do túmulo
 bosque(8.0, 19.5, 3.0, 4, 'escuras', dentro)          # bosquezinho na frente
-bosque(-14.0, 19.0, 3.0, 4, 'carvalhos', dentro)      # carvalhos na frente, à esquerda
-bosque(-15.0, 17.5, 2.6, 3, 'carvalhos', dentro)      # carvalhos atrás do aprisco
+bosque(-6.0, 20.5, 3.0, 4, 'carvalhos', dentro)       # carvalhos na frente
 bosque(26.0, -15.0, 3.0, 5, 'escuras', dentro)        # canto de trás, à direita das casas
+VINHA = []
+for fi, zf in enumerate((15.4, 17.0, 18.6)):
+    for k_, xf in enumerate([-21.6 + i * 1.5 for i in range(5)]):
+        x_, z_ = xf + (0.35 if fi % 2 else 0), zf
+        poe('parreiras\\parreiras_v2.glb', 'Parreira2_Poste', x_, z_, (random.random() - 0.5) * 0.5, 0.9, afunda=0.05); REG.append((x_, z_, 0.6)); VINHA.append((x_, z_))
+for dx, dz, r_ in [(2.0, 1.4, 0.3), (-2.1, 1.0, 1.2), (1.4, -2.0, 2.0)]:
+    poe('cesto-uvas\\cesto_uvas.glb', 'CestoUvas', LAGAR[0] + dx, LAGAR[1] + dz, r_, 1.0, afunda=0.0); REG.append((LAGAR[0] + dx, LAGAR[1] + dz, 0.5))
 # fora da vila: matas por espécie, com clareiras; pedregais à parte
 LONGE = True
 random.seed(5)

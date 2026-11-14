@@ -24,6 +24,7 @@
 <body>
 <div id="fade"></div>
 <button id="acao"></button>
+<div style="position:fixed;right:8px;top:calc(6px + env(safe-area-inset-top));font:11px system-ui;color:#4a352099;z-index:9;pointer-events:none">v8</div>
 <div id="fala"></div>
 <button id="pularIntro">Pular introdução</button>
 <div id="dica">Direcional, WASD ou toque para andar · Shift corre · Espaço pula · roda/pinça: zoom</div>
@@ -126,7 +127,7 @@ function por(modelo, x, z, r = 0, k = 1, { fade = false, caixa = false, circ = 0
 }
 
 // ---------- cenário do Blender: terreno (vila plana, morros em volta), caminhos, muretas; árvores e pedras do layout ----------
-const [gCen, LAYB] = await Promise.all([baixar('betania_cenario.glb?v=7'), fetch('betania_layout.json?v=7').then((r) => r.json())]);
+const [gCen, LAYB] = await Promise.all([baixar('betania_cenario.glb?v=8'), fetch('betania_layout.json?v=8').then((r) => r.json())]);
 // terreno e caminhos com sombreamento suave e a cor misturada entre os vértices (visual "prado", igual a Betfagé)
 function suaviza(mesh) {
   const g0 = mesh.geometry, pos = g0.attributes.position, col = g0.attributes.color, idx = g0.index;
@@ -361,7 +362,7 @@ const gLagar = await baixar('../lagar/lagar.glb');
   const L = nos(gLagar), base = L.Lagar_Rocha.position.clone();
   const lagar = new THREE.Group();
   for (const o of Object.values(L)) { const c = o.clone(); c.position.sub(base); lagar.add(c); }
-  lagar.position.set(-20.0, 0, 8.6); lagar.rotation.y = 0.7; sombra(lagar); scene.add(lagar);
+  lagar.position.set(-19.0, 0, 12.0); lagar.rotation.y = 0.7; sombra(lagar); scene.add(lagar);
   lagar.updateWorldMatrix(true, true); caixaDe(lagar, 0.35);
   const mundo = (n) => L[n].position.clone().sub(base).applyMatrix4(lagar.matrixWorld);
   globalThis.LAGAR = { tanque: mundo('Lagar_Uvas_6'), cesto: mundo('Lagar_CestoUvas'), jarro: mundo('Lagar_Jarro'), r: lagar.rotation.y };
@@ -900,7 +901,11 @@ renderer.domElement.addEventListener('pointermove', (e) => {
 const solta = (e) => {
   if (toques.size === 1 && !arrastou) {
     ndc.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); ray.setFromCamera(ndc, camera);
-    const h = ray.intersectObjects(CAMT.on ? [CAMT.g] : [ground, ...CASAS.map((c) => c.g)], true)[0]; if (h) alvoToque = h.point.clone();
+    const h = ray.intersectObjects(CAMT.on ? [CAMT.g] : [ground, TUM.tum, ...CASAS.map((c) => c.g)], true)[0];
+    const perto = (a, r) => h && Math.hypot(h.point.x - a.x, h.point.z - a.z) < r;
+    const alvoPorta = portaPerto && portaPerto.mundo(portaPerto.px, portaPerto.pz);
+    if (botao.style.display === 'block' && h && ((pedraPerto || tumbaPerto) && perto(TUM.lugar, 2.8) || (alvoPorta && perto(alvoPorta, 2.0)))) acionar();
+    else if (h) alvoToque = h.point.clone();
   }
   toques.delete(e.pointerId);
 };
