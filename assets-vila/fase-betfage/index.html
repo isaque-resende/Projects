@@ -74,14 +74,14 @@ const baixar = async (url) => {
   }
 };
 const sombra = (r) => r.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
-const LAY = await (await fetch('betfage_layout.json?v=9')).json();
+const LAY = await (await fetch('betfage_layout.json?v=11')).json();
 const S = LAY.S;
 // coordenadas do diorama: a = rumo ao canto direito, b = rumo ao canto esquerdo (0,0 = canto da frente)
 const AB = (x, z) => [(S / 2 - z) / S, (S / 2 - x) / S];
 const XZ = (a, b) => [S / 2 - b * S, S / 2 - a * S];
 const ARQS = [...new Set(LAY.objetos.map((o) => o.glb))];
 const [gCen, gCasaP, gTrigo, gColh, gBoi, gOve, gJum, gJog, gObj, nAldeao, nFaixa, nCarreg, nRobusto, nBotoes, nMoco, nPastor, nMagro, nRapaz, ...gArqs] = await Promise.all([
-  baixar('betfage_cenario.glb?v=9'), baixar('../casa-porta/casa_porta.glb'), baixar('../trigal/trigo.glb'), baixar('../colheita-trigo/colheita.glb'),
+  baixar('betfage_cenario.glb?v=11'), baixar('../casa-porta/insula.glb'), baixar('../trigal/trigo.glb'), baixar('../colheita-trigo/colheita.glb'),
   baixar('../animais/boi.glb'), baixar('../animais/ovelha.glb'), baixar('../animais/jumento.glb'), baixar('../vila-betania/discipulo_acoes.glb'), baixar('../casa-porta/objetos_casa.glb'),
   baixar('../personagens/aldeao.glb'), baixar('../personagens/mulher_faixa.glb'), baixar('../personagens/carregador.glb'),
   baixar('../personagens/robusto.glb'), baixar('../personagens/mulher_botoes.glb'), baixar('../personagens/moco.glb'),
@@ -156,46 +156,25 @@ for (const o of LAY.objetos) {
 }
 
 // ---------- casas geminadas, em degraus ----------
-const CASAP = gCasaP.scene; CASAP.children.forEach((c) => c.position.set(0, 0, 0));
-const CASAS = [];
-const PASSO = 0.12, ABERTO = -1.75;
-for (const cs of LAY.casas) {
-  const [x, y0, z] = cs.p, r = cs.r;
-  const g = new THREE.Group(); for (const c of [...CASAP.children]) g.add(c.clone(true));
-  g.scale.set(...cs.k); g.updateMatrixWorld(true);
-  const porta = g.getObjectByName('Casa2_Porta'), corpo = g.getObjectByName('Casa2');
-  const bp = new THREE.Box3().setFromObject(porta);
-  const px = (bp.min.x + bp.max.x) / 2, pz = bp.max.z;
-  g.position.set(x, y0, z); g.rotation.y = r; sombra(g); scene.add(g); FADE.push(g);
-  g.updateMatrixWorld(true);
-  const cx = new THREE.Box3().setFromObject(g);
-  const GX0 = cx.min.x - 0.2, GZ0 = cx.min.z - 0.2;
-  const GW = Math.ceil((cx.max.x - cx.min.x + 0.4) / PASSO) + 1, GD = Math.ceil((cx.max.z - cx.min.z + 0.4) / PASSO) + 1;
-  const ALT = new Float32Array(GW * GD);
-  const pos = corpo.geometry.attributes.position, idx = corpo.geometry.index, m = corpo.matrixWorld;
-  const A = new THREE.Vector3(), B = new THREE.Vector3(), Cc = new THREE.Vector3();
-  const n = idx ? idx.count : pos.count;
-  for (let t = 0; t < n; t += 3) {
-    A.fromBufferAttribute(pos, idx ? idx.getX(t) : t).applyMatrix4(m); B.fromBufferAttribute(pos, idx ? idx.getX(t + 1) : t + 1).applyMatrix4(m); Cc.fromBufferAttribute(pos, idx ? idx.getX(t + 2) : t + 2).applyMatrix4(m);
-    const i0 = Math.max(0, Math.floor((Math.min(A.x, B.x, Cc.x) - GX0) / PASSO)), i1 = Math.min(GW - 1, Math.ceil((Math.max(A.x, B.x, Cc.x) - GX0) / PASSO));
-    const k0 = Math.max(0, Math.floor((Math.min(A.z, B.z, Cc.z) - GZ0) / PASSO)), k1 = Math.min(GD - 1, Math.ceil((Math.max(A.z, B.z, Cc.z) - GZ0) / PASSO));
-    const d = (B.z - Cc.z) * (A.x - Cc.x) + (Cc.x - B.x) * (A.z - Cc.z);
-    if (Math.abs(d) < 1e-6) { for (let i = i0; i <= i1; i++) for (let k = k0; k <= k1; k++) { const yy = Math.max(A.y, B.y, Cc.y); if (yy > ALT[i * GD + k]) ALT[i * GD + k] = yy; } continue; }
-    for (let i = i0; i <= i1; i++) for (let k = k0; k <= k1; k++) {
-      const xx = GX0 + i * PASSO, zz = GZ0 + k * PASSO;
-      const w1 = ((B.z - Cc.z) * (xx - Cc.x) + (Cc.x - B.x) * (zz - Cc.z)) / d, w2 = ((Cc.z - A.z) * (xx - Cc.x) + (A.x - Cc.x) * (zz - Cc.z)) / d, w3 = 1 - w1 - w2;
-      if (w1 < -0.02 || w2 < -0.02 || w3 < -0.02) continue;
-      const yy = w1 * A.y + w2 * B.y + w3 * Cc.y; if (yy > ALT[i * GD + k]) ALT[i * GD + k] = yy;
-    }
+const CASAS = [];        // (as portas das casas avulsas não existem mais: a aldeia é uma ínsula só)
+const ABERTO = -1.75;
+// a ínsula: casas geminadas em L em volta de um pátio, com escada externa; dá para subir nos terraços
+const INS = { g: gCasaP.scene };
+INS.g.position.set(...LAY.insula.p); INS.g.rotation.y = LAY.insula.r; sombra(INS.g); scene.add(INS.g); FADE.push(INS.g);
+INS.g.updateMatrixWorld(true);
+INS.alt = mapaAltura(INS.g.getObjectByName('Insula'), 0.15);
+INS.caixa = new THREE.Box3().setFromObject(INS.g);
+// pátio: o ponto de chão (sem telhado) mais perto do meio da ínsula, do lado da câmera
+{
+  const b = INS.caixa, y0 = LAY.insula.p[1]; let melhor = null, dm = 1e9;
+  for (let x = b.min.x + 0.5; x < b.max.x; x += 0.25) for (let z = b.min.z + 0.5; z < b.max.z; z += 0.25) {
+    if (INS.alt(x, z) > y0 + 0.15 || INS.alt(x + 0.6, z) > y0 + 0.15 || INS.alt(x - 0.6, z) > y0 + 0.15 || INS.alt(x, z + 0.6) > y0 + 0.15 || INS.alt(x, z - 0.6) > y0 + 0.15) continue;
+    const d = Math.hypot(x - (b.min.x + b.max.x) / 2, z - (b.min.z + b.max.z) / 2); if (d < dm) { dm = d; melhor = V3(x, y0, z); }
   }
-  const co = Math.cos(r), si = Math.sin(r), ks = cs.k;
-  CASAS.push({ g, porta, ALT, GX0, GZ0, GW, GD, px: px * ks[0], pz: pz * ks[2], x, z, y0, co, si, aberta: false, ang: 0, caixa: cx,
-    local(wx, wz) { const dx = wx - x, dz = wz - z; return [dx * co - dz * si, dx * si + dz * co]; },
-    alt(wx, wz) { const i = Math.round((wx - GX0) / PASSO), k = Math.round((wz - GZ0) / PASSO); return (i < 0 || k < 0 || i >= GW || k >= GD) ? 0 : ALT[i * GD + k]; },
-    mundo(lx, lz) { return V3(x + lx * co + lz * si, y0, z - lx * si + lz * co); } });
+  INS.patio = melhor || V3((b.min.x + b.max.x) / 2, y0, b.max.z + 1);
 }
-const alturaEm = (x, z) => { let h = terreno(x, z); for (const c of CASAS) h = Math.max(h, c.alt(x, z)); return h; };
-const naCasa = (x, z, m = 0) => CASAS.some((c) => x > c.caixa.min.x - m && x < c.caixa.max.x + m && z > c.caixa.min.z - m && z < c.caixa.max.z + m);
+const alturaEm = (x, z) => Math.max(terreno(x, z), INS.alt(x, z));
+const naCasa = (x, z, m = 0) => INS.alt(x, z) > LAY.insula.p[1] + 0.3 && x > INS.caixa.min.x - m && x < INS.caixa.max.x + m && z > INS.caixa.min.z - m && z < INS.caixa.max.z + m;
 
 // ---------- trigal maduro: instâncias que se abrem quando alguém anda por dentro ----------
 const CAMPO = LAY.campo;
@@ -554,7 +533,7 @@ const JUM = { visto: false, anel: new THREE.Mesh(new THREE.RingGeometry(1.5, 1.9
 JUM.anel.rotation.x = -Math.PI / 2; scene.add(JUM.anel);
 const conv1 = ator(nMagro, 1.7, 0, 0, 0, 'Conversando'), conv2 = ator(nRapaz, 1.66, 0, 0, 0, 'Conversando');
 {
-  const c = CASAS[2], p = c.mundo(c.px - 0.2, c.pz + 1.6);
+  const p = INS.patio;
   conv1.o.position.set(p.x - 0.5, 0, p.z); conv2.o.position.set(p.x + 0.5, 0, p.z + 0.2); chao(conv1); chao(conv2);
   conv1.o.rotation.y = Math.PI / 2 - 0.2; conv2.o.rotation.y = -Math.PI / 2 - 0.2; conv1.r0 = conv1.o.rotation.y; conv2.r0 = conv2.o.rotation.y;
   for (const n of [conv1, conv2]) CIRC.push({ x: n.o.position.x, z: n.o.position.z, r: 0.35 });
@@ -630,7 +609,7 @@ renderer.domElement.addEventListener('pointermove', (e) => {
 const soltaToque = (e) => {
   if (toques.size === 1 && !arrastou) {
     ndc.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); ray.setFromCamera(ndc, camera);
-    const h = ray.intersectObjects([TERRENO, ...CASAS.map((c) => c.g)], true)[0]; if (h) alvoToque = h.point.clone();
+    const h = ray.intersectObjects([TERRENO, INS.g], true)[0]; if (h) alvoToque = h.point.clone();
   }
   toques.delete(e.pointerId);
 };
