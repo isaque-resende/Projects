@@ -20,13 +20,13 @@ def sm(e0, e1, x):
 # ---------------- o que o jogo já tem (mesmas posições da página) ----------------
 CASAS = [(-3, -10.5, 0.1), (6.2, -11, -0.05)]
 CASAS_NOVAS = [('Casa_Sobrado', 17.0, -12.0, -0.25), ('Casa_Alcapao', 25.0, -2.5, -0.55), ('Casa_Varal', -26.5, 18.0, 0.35 - math.pi / 2)]
-BARRACAS = [('Barraca5', 1.0, 4.6, 0.15), ('Barraca2', 6.4, 4.6, -0.1)]     # feirinha ao sul da estrada, longe das portas
-APRISCO = (-12.4, 9.6); FORNO = (1.2, -6.2); LAGAR = (-19.0, 12.0); POCO = (-4.6, 4.6)
+BARRACAS = [('Barraca5', 10.2, -3.4, 0.15), ('Barraca2', 17.8, -3.0, -0.2)]     # feirinha ao sul da estrada, longe das portas
+APRISCO = (-12.4, 9.6); FORNO = (1.2, -6.2); LAGAR = (-22.0, 11.5); POCO = (-4.6, 4.6)
 LAV = (4.4, 15.6, 7.4, 13.4)
 TUMULO = (-18.0, -11.5, -0.38)
 PEDRA_TUM = (-13.54, -8.43); FRENTE_TUM = (0.929, 0.371)
 PLACA = (-28.5, 5.6)
-PATIOS = [(1.6, -6.1, 3.0), (-19.0, 12.0, 3.4), (1.4, -2.8, 4.4), (-2.8, -6.2, 2.6), (-4.6, 4.6, 2.2), (-12.4, 9.6, 3.6)]
+PATIOS = [(1.6, -6.1, 3.0), (-22.0, 11.5, 3.4), (10.2, -3.4, 2.6), (17.8, -3.0, 2.6), (1.4, -2.8, 4.4), (-2.8, -6.2, 2.6), (-4.6, 4.6, 2.2), (-12.4, 9.6, 3.6)]
 # caminhos (iguais aos da página) + o do túmulo
 L, F = PEDRA_TUM, FRENTE_TUM
 CAMINHOS = [
@@ -220,7 +220,7 @@ for nome, (x, z) in [('Forno_Corpo', FORNO), ('Lagar_Rocha', LAGAR)]:
 # ---------------- zonas livres (nada de árvore, pedra ou muro em cima) ----------------
 ZONAS = [(LAGAR[0], LAGAR[1] + 1.5, 5.0)] + [(x, z, 4.6) for x, z, r in CASAS] + [(x, z, 5.2 if 'Sobrado' in n_ else 3.6) for n_, x, z, r in CASAS_NOVAS] + [(x, z, 2.6) for _, x, z, _ in BARRACAS] + [
          (APRISCO[0], APRISCO[1], 4.2), (FORNO[0], FORNO[1], 2.6), (LAGAR[0], LAGAR[1], 3.2), (POCO[0], POCO[1], 2.6), (PLACA[0], PLACA[1], 1.4),
-         (TUMULO[0], TUMULO[1], 8.0), (PEDRA_TUM[0] + FRENTE_TUM[0] * 2.5, PEDRA_TUM[1] + FRENTE_TUM[1] * 2.5, 3.0), (-4.4, 11.4, 2.0)]
+         (TUMULO[0], TUMULO[1], 8.0), (PEDRA_TUM[0] + FRENTE_TUM[0] * 2.5, PEDRA_TUM[1] + FRENTE_TUM[1] * 2.5, 3.0), (-6.8, 14.6, 2.0), (POCO[0] + 2.4, POCO[1] + 1.0, 1.4)]
 def livre(x, z, r=0.5):
     if dist_cam(x, z)[0] < 0.8 + r * 0.5: return False
     if LAV[0] - 1.2 - r < x < LAV[1] + 1.2 + r and LAV[2] - 1.2 - r < z < LAV[3] + 1.2 + r: return False
@@ -245,8 +245,6 @@ def mureta(xa, za, xb, zb, nome='Mureta_Baixa'):
         REG.append((mx, mz, 1.1))
 # lavoura: mureta baixa no lado de trás e no lado esquerdo, com uma passagem
 x0, x1, z0, z1 = LAV
-mureta(x0 - 0.9, z0 - 0.9, (x0 + x1) / 2 - 1.0, z0 - 0.9); mureta((x0 + x1) / 2 + 1.0, z0 - 0.9, x1 + 0.9, z0 - 0.9)
-mureta(x0 - 0.9, z0 - 0.9, x0 - 0.9, z1 + 0.6)
 # corte da estrada de Jerusalém, saindo da vila (os dois lados, onde o morro começa)
 for lado in (1, -1):
     pts = [(x, 3.0 + lado * 2.9) for x in (-32.0, -36.0, -40.0, -44.0)]
@@ -270,7 +268,8 @@ def bosque(cx, cz, R, n, esp, ok):
         poe(*random.choice(lista), x, z, random.random() * 6.28, k, afunda=0.12); REG.append((x, z, r)); feitas += 1
 dentro = lambda x, z: livre(x, z, 0.6)
 # dentro da vila: poucas e com sentido
-poe('casa-porta\\tamareiras.glb', 'Tamareiras', -4.4, 11.4, 0.2, 0.7, afunda=0.05); REG.append((-4.4, 11.4, 1.6))
+poe('casa-porta\\tamareiras.glb', 'Tamareiras', -6.8, 14.6, 0.2, 0.7, afunda=0.05); REG.append((-6.8, 14.6, 1.6))
+poe('casa-porta\\pastoril.glb', 'Cocho', POCO[0] + 2.4, POCO[1] + 1.0, math.pi / 4, 0.75, afunda=0.0); REG.append((POCO[0] + 2.4, POCO[1] + 1.0, 1.0))
 for x, z, no, k in [(-7.4, -13.6, 'Cipreste2_Esguio', 0.8), (-8.6, -2.4, 'Cipreste1_Redondo', 0.75), (-11.0, -15.2, 'Cipreste2_Esguio', 0.85), (-6.2, -15.8, 'Cipreste2_Esguio', 0.75)]:
     poe('diorama-ciprestes\\ciprestes.glb', no, x, z, random.random() * 6, k, afunda=0.1); REG.append((x, z, 0.9))
 bosque(19.5, 3.5, 2.8, 4, 'oliveiras', dentro)        # olival pequeno entre o lagar e a lavoura
@@ -281,7 +280,7 @@ bosque(-6.0, 20.5, 3.0, 4, 'carvalhos', dentro)       # carvalhos na frente
 bosque(26.0, -15.0, 3.0, 5, 'escuras', dentro)        # canto de trás, à direita das casas
 VINHA = []
 for no_, dx, dz, r_ in [('Parreira2_Poste', -1.6, 3.2, 0.2), ('Parreira2_Poste', 0.2, 3.6, -0.3), ('Parreira2_Poste', 2.4, 3.0, 0.5),
-                        ('Parreira1_Pergola', -3.6, 0.6, math.pi / 2), ('Parreira3_PergolaCurta', 3.8, -0.4, math.pi / 2 + 0.3)]:
+                        ('Parreira1_Pergola', -3.6, 0.6, math.pi / 2), ('Parreira3_PergolaCurta', 2.9, 1.6, math.pi / 2 + 0.3)]:
     x_, z_ = LAGAR[0] + dx, LAGAR[1] + dz
     poe('parreiras\\parreiras_v2.glb', no_, x_, z_, r_, 1.0, afunda=0.05); REG.append((x_, z_, 1.0)); VINHA.append((x_, z_))
 for dx, dz, r_ in [(2.0, 1.4, 0.3), (-2.1, 1.0, 1.2), (1.4, -2.0, 2.0)]:
