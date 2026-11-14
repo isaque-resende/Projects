@@ -30,9 +30,10 @@ EIRA_AB = (0.05, 0.72); EIRA_R = 2.4
 FIGSECA_AB = (0.72, 1.18)        # figueira amaldiçoada: no socalco de cima, à esquerda da estrada
 POCO_AB = (0.17, 0.38)           # poço onde antes ficava a figueira
 JUM_AB = (0.48, 0.32)            # jumenta e jumentinho, entre a ínsula e a estrada
-APRISCO_AB = (0.43, -0.02); APRISCO_K = 1.75
+APRISCO_AB = (0.43, -0.02); APRISCO_K = 1.75; APRISCO_R = 0.52   # gira o vão (no -Y do modelo) para quase de frente à câmera
+FORNO_AB = (0.22, 0.90)
 COCHO_AB = (0.60, -0.05)         # bebedouro e cocho, ao lado do aprisco
-CASA_AB = (0.25, 1.07); CASA_R = math.pi / 4   # casa avulsa à esquerda da eira
+CASA_AB = (0.25, 1.07); CASA_R = math.pi / 4; CASA_K = 0.68   # casa avulsa à esquerda da eira
 
 # curva da estrada amostrada
 pts = [Vector((x, z, 0)) for x, z in ESTRADA]
@@ -88,15 +89,15 @@ CAMPO = (min(cx0, cx1), max(cx0, cx1), min(cz0, cz1), max(cz0, cz1))
 ccx, ccz = (CAMPO[0] + CAMPO[1]) / 2, (CAMPO[2] + CAMPO[3]) / 2
 HCAMPO = h_base(ccx, ccz) - 0.3
 pad_rect(ccx, ccz, (CAMPO[1] - CAMPO[0]) / 2 + 0.6, (CAMPO[3] - CAMPO[2]) / 2 + 0.6, 2.4, HCAMPO)
-CARRO_AB = (0.925, 0.10); crx, crz = xz(*CARRO_AB); HCARRO = HCAMPO; pad_rect(crx, crz, 3.2, 2.6, 2.0, HCARRO)
+CARRO_AB = (0.925, 0.10); crx, crz = xz(*CARRO_AB); HCARRO = HCAMPO; pad_rect(crx, crz + 1.0, 3.2, 4.2, 2.0, HCARRO)
 # entre o trigal e a carroça, chão plano (o carregador vai e volta sem subir barranco)
 pad_rect((crx + ccx) / 2, (crz + ccz) / 2, abs(crx - ccx) / 2 + 2.0, abs(crz - ccz) / 2 + 2.0, 2.0, HCAMPO)
 apx, apz = xz(*APRISCO_AB); HAPR = h_base(apx, apz); pad_circ(apx, apz, 1.45 * APRISCO_K + 0.6, 2.2, HAPR)
-cbx, cbz = xz(*COCHO_AB); HCB = h_base(cbx, cbz); pad_rect(cbx, cbz, 1.8, 1.4, 1.8, HCB)
+cbx, cbz = xz(*COCHO_AB); HCB = h_base(cbx, cbz); pad_rect(cbx, cbz, 2.4, 1.6, 1.8, HCB)
 pcx, pcz = xz(*POCO_AB); HPOCO = h_base(pcx, pcz); pad_circ(pcx, pcz, 1.6, 1.6, HPOCO)
-jmx, jmz = xz(*JUM_AB); HJUM = h_base(jmx, jmz); pad_circ(jmx, jmz, 2.0, 2.0, HJUM)
+jmx, jmz = xz(*JUM_AB); HJUM = HINS; pad_circ(jmx, jmz, 1.8, 1.6, HJUM)     # na altura do pátio da ínsula (senão rebaixa o pátio e a escada fica no ar)
 fsx, fsz = xz(*FIGSECA_AB); HFIG = h_socalco(fsx, fsz); pad_circ(fsx, fsz, 1.6, 1.6, HFIG)
-csx, csz = xz(*CASA_AB); HCASA = h_socalco(csx, csz); pad_rect(csx, csz, 4.6, 4.6, 2.2, HCASA)
+csx, csz = xz(*CASA_AB); HCASA = h_socalco(csx, csz); pad_rect(csx, csz, 3.4, 3.4, 2.0, HCASA)
 
 def altura(x, z):
     h = h_socalco(x, z)
@@ -252,7 +253,7 @@ def muro(xa, za, xb, zb, alt=0.9, i=0, base=None):
     n.scale = (o.scale[0] * sx, o.scale[1], o.scale[2] * sz)
     s = 0.0
     while s <= L: OBST.append((round(xa + (xb - xa) * s / L, 2), round(za + (zb - za) * s / L, 2), 0.42)); s += 0.6
-ZONAS = [('c', apx, apz, 1.45 * APRISCO_K + 1.2), ('c', pcx, pcz, 2.4), ('c', jmx, jmz, 2.8), ('c', fsx, fsz, 2.4), ('r', cbx, cbz, 2.6, 2.2),
+ZONAS = [('c', apx, apz, 1.45 * APRISCO_K + 1.6), ('c', *xz(*FORNO_AB), 1.6), ('c', pcx, pcz, 2.4), ('c', jmx, jmz, 2.8), ('c', fsx, fsz, 2.4), ('r', cbx, cbz, 2.6, 2.2),
          ('r', csx, csz, 5.0, 5.0), ('r', crx, crz, 3.8, 3.2), ('r', (crx + ccx) / 2, (crz + ccz) / 2, abs(crx - ccx) / 2 + 2.6, abs(crz - ccz) / 2 + 2.6)]
 def na_zona(x, z, m=0.0):
     for zn in ZONAS:
@@ -360,27 +361,63 @@ px_, pz_ = apx, apz
 poe('casa-porta\insula.glb', 'Insula', ix, iz, INSULA_R, 1.0, y=HINS, afunda=0, jogo=False)
 INSULA_LAY = {'p': [round(ix, 3), HINS, round(iz, 3)], 'r': INSULA_R}
 
+def plano(x, z, r=0.5):
+    for raio in [0.0] + [0.3 * i for i in range(1, 12)]:
+        for k in range(1 if raio == 0 else 12):
+            px, pz = x + math.cos(k * 0.5236) * raio, z + math.sin(k * 0.5236) * raio
+            hs = [altura(px + math.cos(j * 1.047) * r, pz + math.sin(j * 1.047) * r) for j in range(6)] + [altura(px, pz)]
+            if max(hs) - min(hs) < 0.12 and dist_estrada(px, pz)[0] > MEIA + 0.3 and not perto_casa(px, pz, 0.3): return px, pz
+    return x, z
 # aprisco (curral de pedra), bebedouro e cocho, poço, casa avulsa: entram antes das árvores para elas desviarem
-poe('casa-porta\\pastoril.glb', 'Muro_Curvo', apx, apz, 2.2, APRISCO_K, y=HAPR, afunda=0.03)
-for k in range(28):
-    t_ = k / 28 * 6.283; rr = 1.3 * APRISCO_K
-    OBST.append((round(apx + math.cos(t_) * rr, 2), round(apz + math.sin(t_) * rr, 2), 0.3))
-poe('casa-porta\\pastoril.glb', 'Cocho', cbx - 0.9, cbz + 0.2, 0.75, 0.75, y=HCB, afunda=0.0)       # bebedouro (de pedra, com água)
-poe('casa-porta\\pastoril.glb', 'Manjedoura', cbx + 0.9, cbz - 0.3, 0.75, 0.85, y=HCB, afunda=0.0)  # cocho de madeira (com feno)
-OBST += [(round(cbx - 0.9, 2), round(cbz + 0.2, 2), 0.75), (round(cbx + 0.9, 2), round(cbz - 0.3, 2), 0.7)]
+ap = poe('casa-porta\\pastoril.glb', 'Muro_Curvo', apx, apz, APRISCO_R, APRISCO_K, y=HAPR, afunda=0.03, exporta=True, jogo=False)
+# alarga o vão do curral (o modelo tem ~0,9 m): apaga as pedras a menos de 27° do -Y local
+VAO = 27
+for ob in [ap] + list(ap.children_recursive):
+    if ob.type != 'MESH': continue
+    ob.data = ob.data.copy(); bmv = bmesh.new(); bmv.from_mesh(ob.data)
+    fora = [fc for fc in bmv.faces if abs(math.degrees(math.atan2(fc.calc_center_median().y, fc.calc_center_median().x)) + 90) < VAO]
+    bmesh.ops.delete(bmv, geom=fora, context='FACES'); bmv.to_mesh(ob.data); bmv.free()
+RM = 1.14 * APRISCO_K                                   # raio médio da parede
+gc = -90 + math.degrees(APRISCO_R)                      # direção do vão no Blender (graus)
+for k in range(40):
+    ang = k * 9.0
+    if abs((ang - gc + 180) % 360 - 180) < VAO + 4: continue
+    bx, by = math.cos(math.radians(ang)) * RM, math.sin(math.radians(ang)) * RM
+    OBST.append((round(apx + bx, 2), round(apz - by, 2), 0.38))
+# porteira aberta: presa na beira do vão, virada para fora
+g0 = math.radians(gc - VAO); hx, hy = math.cos(g0) * RM, math.sin(g0) * RM
+PK = 0.6; PW = 2.63 * PK
+gx, gy = hx + math.cos(g0) * PW / 2, hy + math.sin(g0) * PW / 2
+poe('casa-porta\\pastoril.glb', 'Porteira', apx + gx, apz - gy, g0, PK, y=HAPR, afunda=0.0)
+for s_ in (0.25, 0.5, 0.75):
+    OBST.append((round(apx + hx + math.cos(g0) * PW * s_, 2), round(apz - hy - math.sin(g0) * PW * s_, 2), 0.25))
+# bebedouro e cocho afastados um do outro, com passagem entre eles
+poe('casa-porta\\pastoril.glb', 'Cocho', cbx - 1.3, cbz + 0.4, 0.75, 0.75, y=HCB, afunda=0.0)       # bebedouro (de pedra, com água)
+poe('casa-porta\\pastoril.glb', 'Manjedoura', cbx + 1.3, cbz - 0.5, 0.75, 0.85, y=HCB, afunda=0.0)  # cocho de madeira (com feno)
+OBST += [(round(cbx - 1.3, 2), round(cbz + 0.4, 2), 0.7), (round(cbx + 1.3, 2), round(cbz - 0.5, 2), 0.65)]
 poe('casa-porta\\oficios.glb', 'Poco', pcx, pcz, 0.8, 1.0, y=HPOCO, afunda=0.0); OBST.append((round(pcx, 2), round(pcz, 2), 1.15))
-poe('casa-porta\\casa_porta.glb', 'Casa2', csx, csz, CASA_R, 1.0, y=HCASA, afunda=0.02)
+# boca do poço: o modelo não tem fundo (aparecia a grama); um disco de água escura logo abaixo da borda
+_hc = Vector((-0.292, 0.112, 0)); _hc.rotate(mathutils.Euler((0, 0, 0.8)))
+_bm = bmesh.new(); _c = bmesh.ops.create_circle(_bm, cap_ends=True, segments=16, radius=0.5)
+for _v in _bm.verts: _v.co += Vector((pcx + _hc.x, -pcz + _hc.y, HPOCO + 0.55))
+_me = bpy.data.meshes.new('Poco_Agua'); _bm.to_mesh(_me); _bm.free()
+_ca = _me.color_attributes.new('Col', 'BYTE_COLOR', 'CORNER')
+for _l in _ca.data: _l.color_srgb = (0.13, 0.17, 0.17, 1)
+_ag = bpy.data.objects.new('Poco_Agua', _me); col_exp.objects.link(_ag); _ag.data.materials.append(mat_vc('Agua'))
+poe('casa-porta\\casa_porta.glb', 'Casa2', csx, csz, CASA_R, CASA_K, y=HCASA, afunda=0.02)
+CASA_OBST = []     # só para as árvores desviarem; no jogo a casa tem pisos e paredes de verdade (sobe a escada)
 for i in range(-3, 4):
     for k in range(-2, 3):
-        lx, lz = i * 1.0, k * 1.15; ca_, sa_ = math.cos(CASA_R), math.sin(CASA_R)
-        OBST.append((round(csx + lx * ca_ + lz * sa_, 2), round(csz - lx * sa_ + lz * ca_, 2), 0.75))
+        lx, lz = i * 1.0 * CASA_K, k * 1.15 * CASA_K; ca_, sa_ = math.cos(CASA_R), math.sin(CASA_R)
+        CASA_OBST.append((csx + lx * ca_ + lz * sa_, csz - lx * sa_ + lz * ca_, 0.75))
+fox, foz = plano(*xz(*FORNO_AB), 0.8); poe('casa-porta\\oficios.glb', 'Forno_Barro', fox, foz, math.pi / 4, 1.0, afunda=0.03); OBST.append((round(fox, 2), round(foz, 2), 0.9))
 OBST.append((round(fsx, 2), round(fsz, 2), 1.8))     # a figueira seca fica sozinha, sem árvore na frente
 OBST.append((round(jmx, 2), round(jmz, 2), 1.6))     # lugar dos jumentos (o jogo põe os animais; árvores não nascem aí)
 
 # árvores, pedras e objetos
 def livre(x, z, r=1.0):
     d, _ = dist_estrada(x, z)
-    return d > MEIA + 0.6 + r * 0.5 and not perto_casa(x, z, 0.8 + r * 0.4) and not no_campo(x, z, 0.4 + r * 0.4) and math.hypot(x - ex, z - ez) > EIRA_R + 1 + r * 0.4 and all(math.hypot(x - ox, z - oz) > oR + r * 0.6 for ox, oz, oR in OBST)
+    return d > MEIA + 0.6 + r * 0.5 and not perto_casa(x, z, 0.8 + r * 0.4) and not no_campo(x, z, 0.4 + r * 0.4) and math.hypot(x - ex, z - ez) > EIRA_R + 1 + r * 0.4 and not na_zona(x, z, 0.8) and all(math.hypot(x - ox, z - oz) > oR + r * 0.6 for ox, oz, oR in OBST + CASA_OBST)
 ARV = []
 def arvore(arq, no, x, z, k=1.0, raio=0.6, forca=False):
     if not forca and (not livre(x, z, raio * 1.6) or any(math.hypot(x - ax, z - az) < 3.0 for ax, az in ARV)): return False
@@ -412,9 +449,9 @@ if False:
 # eira: colheita.glb (o disco de pedra) com pilhas, sacos e cestos
 poe('colheita-trigo\\colheita.glb', 'Eira', ex, ez, 0.3, (EIRA_R * 2) / 2.84, y=HEIRA, afunda=0.02)
 for dx, dz, no, k in [(3.4, -2.6, 'Feixe_Pilha', 1.1), (4.2, -0.8, 'Feixe_Pilha', 1.0), (-3.2, -3.0, 'Cesto_Graos', 1.2), (-2.4, -3.8, 'Cesto_Espigas', 1.1)]:
-    poe('colheita-trigo\\colheita.glb', no, ex + dx, ez + dz, random.random() * 6, k); OBST.append((round(ex + dx, 2), round(ez + dz, 2), 0.5))
+    x, z = plano(ex + dx, ez + dz); poe('colheita-trigo\\colheita.glb', no, x, z, random.random() * 6, k); OBST.append((round(x, 2), round(z, 2), 0.5))
 for dx, dz in [(3.0, 1.6), (3.6, 2.2), (2.6, 2.4)]:
-    poe('casa-porta\\objetos_casa.glb', 'Saco', ex + dx, ez + dz, random.random() * 6, 1.15)
+    x, z = plano(ex + dx, ez + dz, 0.35); poe('casa-porta\\objetos_casa.glb', 'Saco', x, z, random.random() * 6, 1.15)
 # trigal: só alguns tufos na prévia (no jogo é instanciado)
 TRIGO = ('trigal\\trigo.glb', 'Trigo_Maduro')
 if RENDER:
@@ -430,8 +467,8 @@ for a, b in [(0.86, 0.02), (0.88, 0.0), (0.85, -0.01), (0.89, 0.04), (0.87, 0.05
     x, z = xz(a, b); poe('colheita-trigo\\colheita.glb', 'Feixe_EmPe', x, z, random.random() * 6, 1.0, y=HCAMPO); OBST.append((round(x, 2), round(z, 2), 0.3))
 cox, coz = jmx, jmz
 # arredores da aldeia
-for a, b, no in [(0.70, 0.12, 'Cesto_Alca'), (0.86, 0.50, 'Lenha'), (0.66, 0.11, 'Banquinho')]:
-    x, z = xz(a, b); poe('casa-porta\\objetos_casa.glb', no, x, z, random.random() * 6, 1.2); OBST.append((round(x, 2), round(z, 2), 0.3))
+for a, b, no in [(0.87, 0.25, 'Cesto_Alca'), (0.80, 0.62, 'Lenha'), (0.86, 0.21, 'Banquinho')]:
+    x, z = plano(*xz(a, b)); poe('casa-porta\\objetos_casa.glb', no, x, z, random.random() * 6, 1.2); OBST.append((round(x, 2), round(z, 2), 0.3))
 # beira da estrada embaixo: árvores e pedras
 for a, b in [(0.05, 0.28), (0.10, 0.44), (0.30, 0.10)]:
     x, z = xz(a, b); arvore('casa-porta\\arvores_tripo.glb', random.choice(['Arvore1', 'Arvore7', 'Arvore9']), x, z, 0.9, 0.4)
@@ -515,7 +552,7 @@ if EXPORT:
     lay = {'S': S, 'estrada': [[round(p.x, 2), round(p.y, 2)] for p in AMOS[::3]], 'meia': MEIA, 'insula': INSULA_LAY,
            'campo': {'x0': CAMPO[0], 'x1': CAMPO[1], 'z0': CAMPO[2], 'z1': CAMPO[3], 'y': HCAMPO},
            'eira': {'x': ex, 'z': ez, 'r': EIRA_R, 'y': HEIRA}, 'carro': {'x': crx, 'z': crz, 'y': HCARRO},
-           'figseca': [fsx, fsz], 'pasto': [px_, pz_], 'cocho': [cox, coz], 'objetos': LAYOUT, 'obst': OBST, 'plantas': PLANTAS}
+           'figseca': [fsx, fsz], 'pasto': [px_, pz_], 'cocho': [cox, coz], 'objetos': LAYOUT, 'obst': OBST, 'plantas': PLANTAS, 'casa': {'p': [round(csx, 3), round(HCASA - 0.02, 3), round(csz, 3)], 'r': CASA_R, 'k': CASA_K}}
     json.dump(lay, open(OUT + '\\betfage_layout.json', 'w'), separators=(',', ':'))
     print('EXPORT', os.path.getsize(saida), len(LAYOUT), len(OBST), 'PLANTAS', len(PLANTAS))
 print('MUROS', len([o for o in col_exp.objects if o.name.startswith('Muro')]))
