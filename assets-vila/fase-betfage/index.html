@@ -74,14 +74,14 @@ const baixar = async (url) => {
   }
 };
 const sombra = (r) => r.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
-const LAY = await (await fetch('betfage_layout.json?v=11')).json();
+const LAY = await (await fetch('betfage_layout.json?v=12')).json();
 const S = LAY.S;
 // coordenadas do diorama: a = rumo ao canto direito, b = rumo ao canto esquerdo (0,0 = canto da frente)
 const AB = (x, z) => [(S / 2 - z) / S, (S / 2 - x) / S];
 const XZ = (a, b) => [S / 2 - b * S, S / 2 - a * S];
 const ARQS = [...new Set(LAY.objetos.map((o) => o.glb))];
 const [gCen, gCasaP, gTrigo, gColh, gBoi, gOve, gJum, gJog, gObj, nAldeao, nFaixa, nCarreg, nRobusto, nBotoes, nMoco, nPastor, nMagro, nRapaz, ...gArqs] = await Promise.all([
-  baixar('betfage_cenario.glb?v=11'), baixar('../casa-porta/insula.glb'), baixar('../trigal/trigo.glb'), baixar('../colheita-trigo/colheita.glb'),
+  baixar('betfage_cenario.glb?v=12'), baixar('../casa-porta/insula.glb'), baixar('../trigal/trigo.glb'), baixar('../colheita-trigo/colheita.glb'),
   baixar('../animais/boi.glb'), baixar('../animais/ovelha.glb'), baixar('../animais/jumento.glb'), baixar('../vila-betania/discipulo_acoes.glb'), baixar('../casa-porta/objetos_casa.glb'),
   baixar('../personagens/aldeao.glb'), baixar('../personagens/mulher_faixa.glb'), baixar('../personagens/carregador.glb'),
   baixar('../personagens/robusto.glb'), baixar('../personagens/mulher_botoes.glb'), baixar('../personagens/moco.glb'),
@@ -162,7 +162,37 @@ const ABERTO = -1.75;
 const INS = { g: gCasaP.scene };
 INS.g.position.set(...LAY.insula.p); INS.g.rotation.y = LAY.insula.r; sombra(INS.g); scene.add(INS.g); FADE.push(INS.g);
 INS.g.updateMatrixWorld(true);
-INS.alt = mapaAltura(INS.g.getObjectByName('Insula'), 0.15);
+// pisos: cada célula guarda as alturas de todas as faces viradas para cima (chão, degraus, terraços);
+// paredes: o trecho de altura ocupado por faces de pé. Assim o beiral não vira chão e a parede barra a passagem.
+function mapaCamadas(mesh, P = 0.2) {
+  mesh.updateWorldMatrix(true, false);
+  const cx = new THREE.Box3().setFromObject(mesh), X0 = cx.min.x - 0.3, Z0 = cx.min.z - 0.3;
+  const W = Math.ceil((cx.max.x - cx.min.x + 0.6) / P) + 1, D = Math.ceil((cx.max.z - cx.min.z + 0.6) / P) + 1;
+  const PISO = Array.from({ length: W * D }, () => []), PA0 = new Float32Array(W * D).fill(1e9), PA1 = new Float32Array(W * D).fill(-1e9);
+  const pos = mesh.geometry.attributes.position, idx = mesh.geometry.index, m = mesh.matrixWorld, n = idx ? idx.count : pos.count;
+  const A = new THREE.Vector3(), B = new THREE.Vector3(), C = new THREE.Vector3(), N = new THREE.Vector3(), Q = new THREE.Vector3();
+  const cel = (x, z) => { const i = Math.round((x - X0) / P), k = Math.round((z - Z0) / P); return i < 0 || k < 0 || i >= W || k >= D ? -1 : i * D + k; };
+  for (let t = 0; t < n; t += 3) {
+    A.fromBufferAttribute(pos, idx ? idx.getX(t) : t).applyMatrix4(m); B.fromBufferAttribute(pos, idx ? idx.getX(t + 1) : t + 1).applyMatrix4(m); C.fromBufferAttribute(pos, idx ? idx.getX(t + 2) : t + 2).applyMatrix4(m);
+    N.subVectors(B, A).cross(Q.subVectors(C, A)); const area = N.length(); if (area < 1e-7) continue; N.divideScalar(area);
+    const L = Math.max(A.distanceTo(B), B.distanceTo(C), C.distanceTo(A)), s = Math.max(2, Math.ceil(L / (P * 0.5)));
+    const piso = Math.abs(N.y) > 0.6;
+    for (let i = 0; i <= s; i++) for (let k = 0; k <= s - i; k++) {
+      const u = i / s, v = k / s; Q.copy(A).multiplyScalar(1 - u - v).addScaledVector(B, u).addScaledVector(C, v);
+      const c = cel(Q.x, Q.z); if (c < 0) continue;
+      if (piso) { const l = PISO[c]; if (!l.some((y) => Math.abs(y - Q.y) < 0.08)) l.push(Q.y); }
+      else { if (Q.y < PA0[c]) PA0[c] = Q.y; if (Q.y > PA1[c]) PA1[c] = Q.y; }
+    }
+  }
+  return {
+    // o piso mais alto que dá para alcançar a partir da altura y (subindo no máximo 0,55)
+    piso: (x, z, y) => { const c = cel(x, z); if (c < 0) return -1e9; let b = -1e9; for (const h of PISO[c]) if (h <= y + 0.55 && h > b) b = h; return b; },
+    alto: (x, z) => { const c = cel(x, z); if (c < 0) return -1e9; let b = -1e9; for (const h of PISO[c]) if (h > b) b = h; return b; },
+    parede: (x, z, y) => { const c = cel(x, z); return c >= 0 && PA1[c] > y + 0.6 && PA0[c] < y + 1.5; },
+  };
+}
+INS.cam = mapaCamadas(INS.g.getObjectByName('Insula'), 0.2);
+INS.alt = (x, z) => Math.max(0, INS.cam.alto(x, z));
 INS.caixa = new THREE.Box3().setFromObject(INS.g);
 // pátio: o ponto de chão (sem telhado) mais perto do meio da ínsula, do lado da câmera
 {
@@ -173,7 +203,7 @@ INS.caixa = new THREE.Box3().setFromObject(INS.g);
   }
   INS.patio = melhor || V3((b.min.x + b.max.x) / 2, y0, b.max.z + 1);
 }
-const alturaEm = (x, z) => Math.max(terreno(x, z), INS.alt(x, z));
+const alturaEm = (x, z, y = 1e9) => Math.max(terreno(x, z), INS.cam.piso(x, z, y));
 const naCasa = (x, z, m = 0) => INS.alt(x, z) > LAY.insula.p[1] + 0.3 && x > INS.caixa.min.x - m && x < INS.caixa.max.x + m && z > INS.caixa.min.z - m && z < INS.caixa.max.z + m;
 
 // ---------- trigal maduro: instâncias que se abrem quando alguém anda por dentro ----------
@@ -245,9 +275,27 @@ function rebrota() { for (const w of TRIGO) if (w.cortado) { w.cortado = false; 
 {
   const [x, z] = LAY.figseca, y = terreno(x, z);
   const g = (await baixar('../figueiras/figueira_seca.glb')).scene;
-  g.position.set(x, y - 0.08, z); g.rotation.y = 2.2; g.scale.setScalar(0.85); sombra(g); scene.add(g); FADE.push(g);
+  g.position.set(x, y - 0.06, z); g.rotation.y = Math.PI / 4; g.scale.setScalar(0.6); sombra(g); scene.add(g); FADE.push(g);
   const fol = new THREE.MeshStandardMaterial({ color: 0x8a6a3c, roughness: 1, flatShading: true, side: THREE.DoubleSide });
-  for (let i = 0; i < 18; i++) { const a = rnd() * 6.28, r = 0.6 + rnd() * 1.6, fx = x + Math.cos(a) * r, fz = z + Math.sin(a) * r, f = new THREE.Mesh(new THREE.CircleGeometry(0.08, 4), fol); f.position.set(fx, terreno(fx, fz) + 0.05, fz); f.rotation.set(-Math.PI / 2 + (rnd() - 0.5) * 0.5, 0, rnd() * 6); scene.add(f); }
+  for (let i = 0; i < 14; i++) { const a = rnd() * 6.28, r = 0.5 + rnd() * 1.1, fx = x + Math.cos(a) * r, fz = z + Math.sin(a) * r, f = new THREE.Mesh(new THREE.CircleGeometry(0.08, 4), fol); f.position.set(fx, terreno(fx, fz) + 0.05, fz); f.rotation.set(-Math.PI / 2 + (rnd() - 0.5) * 0.5, 0, rnd() * 6); scene.add(f); }
+}
+
+// ---------- moitas espinhosas e malvas: uma InstancedMesh por malha, posições e giro (de frente para a câmera) vêm do layout ----------
+{
+  const gP = await baixar('../flores/plantas_betfage.glb?v=1');
+  const PL = {}; for (const n of gP.scene.children) PL[n.name] = n;
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3(), loc = new THREE.Matrix4();
+  for (const [nome, raiz] of Object.entries(PL)) {
+    const lista = LAY.plantas.filter((e) => e[0] === nome); if (!lista.length) continue;
+    raiz.position.set(0, 0, 0); raiz.updateMatrixWorld(true);
+    raiz.traverse((mm) => {
+      if (!mm.isMesh) return;
+      loc.copy(mm.matrixWorld);
+      const inst = new THREE.InstancedMesh(mm.geometry, mm.material, lista.length);
+      lista.forEach(([, x, y, z, r, k], i) => { q.setFromAxisAngle(CIMA, r); s.setScalar(k); inst.setMatrixAt(i, m4.compose(p.set(x, y, z), q, s).multiply(loc)); });
+      inst.castShadow = inst.receiveShadow = true; inst.frustumCulled = false; scene.add(inst);
+    });
+  }
 }
 
 // ---------- personagens ----------
@@ -521,11 +569,12 @@ function joeiradeiraPasso(dt, t) {
   maos(st, H.clone().addScaledVector(d, 0.45), H.clone(), dt, 1, 18);
 }
 
-// ---------- aldeia: jumenta e jumentinho junto ao cocho, conversa à porta ----------
+// ---------- aldeia: jumenta e jumentinho amarrados, conversa no pátio ----------
 const [cox, coz] = LAY.cocho;
-const jumenta = ator(gJum, 1.35, cox + 1.5, coz + 0.1, -0.7, 'Parado');
-const jumentinho = ator(gJum, 0.9, cox + 1.1, coz - 1.1, -0.2, 'Comer');
-const ESTACA = V3(cox + 0.6, 0, coz + 1.0); ESTACA.y = terreno(ESTACA.x, ESTACA.z);
+// lado a lado no plano da câmera (eixo (1, 0, -1)), de perfil, para os dois aparecerem inteiros
+const jumenta = ator(gJum, 1.35, cox + 0.75, coz - 0.75, 3 * Math.PI / 4 + 0.25, 'Parado');
+const jumentinho = ator(gJum, 0.9, cox - 0.7, coz + 0.6, Math.PI / 4 + 0.7, 'Comer');
+const ESTACA = V3(cox + 0.1, 0, coz - 0.9); ESTACA.y = terreno(ESTACA.x, ESTACA.z);
 { const m = cil(0.06); barra(m, ESTACA, ESTACA.clone().add(V3(0, 1.1, 0))); CIRC.push({ x: ESTACA.x, z: ESTACA.z, r: 0.15 }, { x: jumenta.o.position.x, z: jumenta.o.position.z, r: 0.6 }, { x: jumentinho.o.position.x, z: jumentinho.o.position.z, r: 0.45 }); }
 const CORDA_J = cil(0.012, new THREE.MeshStandardMaterial({ color: 0xc9b07a, roughness: 1 }));
 // os jumentos de Mc 11,2: chão batido em volta e um brilho suave no chão até o jogador chegar perto
@@ -539,17 +588,13 @@ const conv1 = ator(nMagro, 1.7, 0, 0, 0, 'Conversando'), conv2 = ator(nRapaz, 1.
   for (const n of [conv1, conv2]) CIRC.push({ x: n.o.position.x, z: n.o.position.z, r: 0.35 });
 }
 // ovelhas no cercado de baixo, com o pastor; e algumas no socalco de cima, à direita
-const PASTO = { x: LAY.pasto[0], z: LAY.pasto[1], r: 1.8 };
-const pastor = ator(nPastor, 1.68, PASTO.x - 2.2, PASTO.z + 2.0, 2.4, 'Parado');
+const PASTO = { x: LAY.pasto[0], z: LAY.pasto[1], r: 1.3 };
+const pastor = ator(nPastor, 1.68, PASTO.x + 2.3, PASTO.z + 2.3, Math.PI + Math.PI / 4, 'Parado');
 CIRC.push({ x: pastor.o.position.x, z: pastor.o.position.z, r: 0.35 });
 const ovelhas = [];
-for (let i = 0; i < 4; i++) {
+for (let i = 0; i < 6; i++) {
   const a = rnd() * 6.28, r = rnd() * PASTO.r;
   const o = ator(gOve, 0.8, PASTO.x + Math.cos(a) * r, PASTO.z + Math.sin(a) * r, rnd() * 6.28, rnd() < 0.6 ? 'Comer' : 'Parado'); o.alvo = null; o.espera = rnd() * 4; o.area = PASTO; ovelhas.push(o);
-}
-{
-  const [x, z] = XZ(0.86, 0.70), area = { x, z, r: 2.0 };
-  for (let i = 0; i < 3; i++) { const o = ator(gOve, 0.8, x + (rnd() - 0.5) * 2, z + (rnd() - 0.5) * 2, rnd() * 6.28, 'Comer'); o.alvo = null; o.espera = rnd() * 4; o.area = area; ovelhas.push(o); }
 }
 // alguém subindo e descendo a estrada
 const andante = ator(nMoco, 1.68, 0, 0, 0, 'Andar');
@@ -557,23 +602,6 @@ let tRota = 0.2, sentido = 1, pausa = 0;
 const tMin = (() => { for (let i = 0; i < AMOS.length; i++) { const [a, b] = AB(AMOS[i].x, AMOS[i].z); if (a + b > 0.1) return i / AMOS.length; } return 0.1; })();
 const tMax = (() => { for (let i = AMOS.length - 1; i >= 0; i--) { const [a, b] = AB(AMOS[i].x, AMOS[i].z); if (a + b < 1.9) return i / AMOS.length; } return 0.9; })();
 
-// tufos de grama (um draw call), dentro do diorama
-{
-  const t = tl.load('../figueiras/tex/grama_tufo.webp'); t.colorSpace = THREE.SRGBColorSpace;
-  const a = new THREE.PlaneGeometry(0.5, 0.5); a.translate(0, 0.23, 0);
-  const b = a.clone(); b.rotateY(Math.PI / 2);
-  const geo = mergeGeometries([a, b]); const nn = geo.attributes.normal; for (let i = 0; i < nn.count; i++) nn.setXYZ(i, 0, 1, 0);
-  const N = 300, gr = new THREE.InstancedMesh(geo, new THREE.MeshStandardMaterial({ map: t, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 1 }), N);
-  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3();
-  let k = 0;
-  for (let i = 0; i < 6000 && k < N; i++) {
-    const [x, z] = XZ(-0.1 + rnd() * 1.2, -0.1 + rnd() * 1.2);
-    if (naEstrada(x, z, 0.5) || naCasa(x, z, 0.5) || noCampo(x, z, 0.4) || bate(x, z, 0.3) || Math.hypot(x - EI.x, z - EI.z) < EI.r + 1) continue;
-    p.set(x, terreno(x, z) - 0.02, z); q.setFromAxisAngle(CIMA, rnd() * 3.14); const e = 0.6 + rnd() * 0.6; s.set(e, e, e);
-    gr.setMatrixAt(k++, m4.compose(p, q, s));
-  }
-  gr.count = k; gr.receiveShadow = true; scene.add(gr);
-}
 
 // ---------- jogador ----------
 const INICIO = (() => { const i = Math.round(tMin * AMOS.length) + 2; const p = AMOS[Math.min(AMOS.length - 1, i)]; return V3(p.x, 0, p.z); })();
@@ -689,6 +717,15 @@ function atualizaFade() {
 
 setTimeout(() => { fade.style.opacity = 0; setTimeout(() => { fade.textContent = ''; fala('Betfagé, a aldeia dos figos verdes, no caminho de Jerusalém.'); }, 900); setTimeout(() => fala('Suba a estrada até o alto do monte.'), 5200); setTimeout(() => fala(''), 9000); }, 1200);
 
+// a ínsula puxa para o creme acinzentado das pedras dos muros (o modelo veio muito avermelhado)
+INS.g.traverse((m) => {
+  if (!m.isMesh) return;
+  m.material.onBeforeCompile = (sh) => { sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
+    float lum = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11));
+    diffuseColor.rgb = mix(diffuseColor.rgb, lum * vec3(1.08, 1.03, 0.9), 0.72);`); };
+  m.material.customProgramCacheKey = () => 'insula-creme'; m.material.needsUpdate = true;
+});
+
 // ---------- laço ----------
 const relogio = new THREE.Clock();
 const fw = new THREE.Vector3(), rt = new THREE.Vector3(), mv = new THREE.Vector3();
@@ -717,7 +754,8 @@ const laco = (forca) => {
     const moveis = [[andante, 0.55], [ceifeiro, 0.5], [atadeira, 0.5], [carregador, 0.5], ...ovelhas.map((o) => [o, 0.6])];
     const rente = p.y - terreno(p.x, p.z) < 0.4;
     const livreJ = (x, z) => naArea(x, z) && !naFolha(x, z) && (!rente || !bate(x, z, 0.25)) &&
-      (passagem(x, z) || alturaEm(x, z) <= p.y + 0.55) &&
+      !INS.cam.parede(x, z, p.y) && !INS.cam.parede(x + mv.x * 0.25, z + mv.z * 0.25, p.y) &&
+      (passagem(x, z) || terreno(x, z) <= p.y + 0.55) &&
       !moveis.some(([m, r]) => { const d = Math.hypot(m.o.position.x - x, m.o.position.z - z); return d < r && d < Math.hypot(m.o.position.x - p.x, m.o.position.z - p.z); });
     const x0 = p.x, z0 = p.z;
     if (livreJ(nx, nz)) { p.x = nx; p.z = nz; }
@@ -729,7 +767,7 @@ const laco = (forca) => {
     if (andou) jog.toca(corre ? 'Correr' : 'Andar');
   }
   const pas = passagem(pj.x, pj.z);
-  const chaoJ = pas ? Math.max(terreno(pj.x, pj.z), CASAS.find((c) => c.aberta)?.y0 ?? 0) : alturaEm(pj.x, pj.z);
+  const chaoJ = pas ? Math.max(terreno(pj.x, pj.z), CASAS.find((c) => c.aberta)?.y0 ?? 0) : alturaEm(pj.x, pj.z, pj.y + (jogNoChao ? 0 : -0.5));
   if (jogNoChao && pj.y - chaoJ > 0.55) jogNoChao = false;
   if (jogNoChao) pj.y += (chaoJ - pj.y) * Math.min(1, dt * 18);
   else { jogVy -= 14 * dt; pj.y += jogVy * dt; if (pj.y <= chaoJ) { pj.y = chaoJ; jogVy = 0; jogNoChao = true; } }
