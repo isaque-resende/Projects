@@ -74,14 +74,14 @@ const baixar = async (url) => {
   }
 };
 const sombra = (r) => r.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
-const LAY = await (await fetch('betfage_layout.json?v=18')).json();
+const LAY = await (await fetch('betfage_layout.json?v=19')).json();
 const S = LAY.S;
 // coordenadas do diorama: a = rumo ao canto direito, b = rumo ao canto esquerdo (0,0 = canto da frente)
 const AB = (x, z) => [(S / 2 - z) / S, (S / 2 - x) / S];
 const XZ = (a, b) => [S / 2 - b * S, S / 2 - a * S];
 const ARQS = [...new Set(LAY.objetos.map((o) => o.glb))];
 const [gCen, gCasaP, gTrigo, gColh, gBoi, gOve, gJum, gJog, gObj, nAldeao, nFaixa, nCarreg, nRobusto, nBotoes, nMoco, nPastor, nMagro, nRapaz, ...gArqs] = await Promise.all([
-  baixar('betfage_cenario.glb?v=18'), baixar('../casa-porta/insula.glb'), baixar('../trigal/trigo.glb'), baixar('../colheita-trigo/colheita.glb'),
+  baixar('betfage_cenario.glb?v=19'), baixar('../casa-porta/insula.glb'), baixar('../trigal/trigo.glb'), baixar('../colheita-trigo/colheita.glb'),
   baixar('../animais/boi.glb'), baixar('../animais/ovelha.glb'), baixar('../animais/jumento.glb'), baixar('../vila-betania/discipulo_acoes.glb'), baixar('../casa-porta/objetos_casa.glb'),
   baixar('../personagens/aldeao.glb'), baixar('../personagens/mulher_faixa.glb'), baixar('../personagens/carregador.glb'),
   baixar('../personagens/robusto.glb'), baixar('../personagens/mulher_botoes.glb'), baixar('../personagens/moco.glb'),
@@ -150,6 +150,7 @@ function caixaDe(obj, enc = 0) { obj.updateWorldMatrix(true, true); const b = ne
 // objetos do layout (árvores, pedras, eira, feixes, cestos...)
 const ALTOS = /Oliveira|Cipreste|Arvore|Figueira/;
 const CONSTR = [];       // construções com pisos e paredes (a ínsula e a casa avulsa)
+const FORNO = {};        // forno de barro (tabun): fogo dentro, fumaça pela boca de cima; pães na mesa ao lado
 // ao longe (matas e pedregais): uma InstancedMesh por malha de cada modelo
 {
   const grupos = {};
@@ -171,6 +172,8 @@ for (const o of LAY.objetos) {
   const m = KIT[o.glb]?.[o.no]; if (!m) continue;
   const n = m.clone(); n.position.set(...o.p); n.rotation.y += o.r; n.scale.multiplyScalar(o.k); sombra(n); scene.add(n);
   if (o.no === 'Casa2') { FADE.push(n); n.userData.casa = true; CONSTR.push(n); }
+  if (o.no === 'Forno_Barro') FORNO.o = n, FORNO.r = o.r;
+  if (o.no === 'Bancada') FORNO.mesa = n;
   if (ALTOS.test(o.no)) FADE.push(n);
 }
 
@@ -320,6 +323,50 @@ function rebrota() { for (const w of TRIGO) if (w.cortado) { w.cortado = false; 
       lista.forEach(([, x, y, z, r, k], i) => { q.setFromAxisAngle(CIMA, r); s.setScalar(k); inst.setMatrixAt(i, m4.compose(p.set(x, y, z), q, s).multiply(loc)); });
       inst.castShadow = inst.receiveShadow = true; inst.frustumCulled = false; scene.add(inst);
     });
+  }
+}
+
+// ---------- forno: chamas pela boca de cima, brasa, luz que tremula e fumaça subindo ----------
+if (FORNO.o) {
+  const p = FORNO.o.position, r = FORNO.r, lx = -0.547, lz = -0.087;           // boca do tabun no modelo
+  const boca = V3(p.x + lx * Math.cos(r) + lz * Math.sin(r), p.y + 1.12, p.z - lx * Math.sin(r) + lz * Math.cos(r));
+  FORNO.boca = boca;
+  const brasa = new THREE.Mesh(new THREE.CircleGeometry(0.27, 10), new THREE.MeshBasicMaterial({ color: 0xff5a14 }));
+  brasa.rotation.x = -Math.PI / 2; brasa.position.copy(boca).add(V3(0, -0.06, 0)); scene.add(brasa);
+  FORNO.chamas = [];
+  const corC = [0xffd25a, 0xff9a2e, 0xff6a1a];
+  for (let i = 0; i < 5; i++) {
+    const m = new THREE.Mesh(new THREE.ConeGeometry(0.07 + (i % 2) * 0.03, 0.34, 5), new THREE.MeshBasicMaterial({ color: corC[i % 3], transparent: true, opacity: 0.9, depthWrite: false, blending: THREE.AdditiveBlending }));
+    const a = i / 5 * 6.28, d = i ? 0.12 : 0; m.userData = { x: Math.cos(a) * d, z: Math.sin(a) * d, f: rnd() * 6 };
+    scene.add(m); FORNO.chamas.push(m);
+  }
+  FORNO.luz = new THREE.PointLight(0xff8a3a, 2.2, 5, 1.6); FORNO.luz.position.copy(boca).add(V3(0, 0.3, 0)); scene.add(FORNO.luz);
+  FORNO.fumaca = [];
+  const matF = new THREE.MeshStandardMaterial({ color: 0xd8d2c8, roughness: 1, transparent: true, opacity: 0.5, depthWrite: false, flatShading: true });
+  for (let i = 0; i < 16; i++) { const m = new THREE.Mesh(new THREE.IcosahedronGeometry(0.16, 0), matF.clone()); m.userData = { t: i / 16 * 4.0 }; scene.add(m); FORNO.fumaca.push(m); }
+}
+function fornoPasso(dt, t) {
+  if (!FORNO.o) return;
+  const b = FORNO.boca;
+  FORNO.chamas.forEach((m, i) => { const u = m.userData, s = 0.75 + 0.35 * Math.sin(t * 9 + u.f) + 0.15 * Math.sin(t * 23 + i); m.scale.set(1, s, 1); m.position.set(b.x + u.x, b.y + 0.1 * s - 0.02, b.z + u.z); m.rotation.y = t * 2 + i; });
+  FORNO.luz.intensity = 1.8 + 0.6 * Math.sin(t * 11) + 0.3 * Math.sin(t * 27);
+  for (const m of FORNO.fumaca) {
+    const u = m.userData; u.t = (u.t + dt) % 4.0; const k = u.t / 4.0;
+    m.position.set(b.x + Math.sin(u.t * 1.3 + m.id) * 0.12 + k * 0.9, b.y + 0.25 + k * 3.2, b.z + Math.cos(u.t * 1.1 + m.id) * 0.12 - k * 0.6);
+    m.scale.setScalar(0.6 + k * 2.6); m.material.opacity = 0.5 * Math.min(1, u.t * 3) * (1 - k); m.rotation.set(u.t, u.t * 0.7, 0);
+  }
+}
+// pães (pita) na mesa ao lado do forno: põe sobre o tampo achado por raio de cima
+if (FORNO.mesa) {
+  FORNO.mesa.updateMatrixWorld(true);
+  const cx = new THREE.Box3().setFromObject(FORNO.mesa), rc = new THREE.Raycaster(), mat = new THREE.MeshStandardMaterial({ color: 0xc98a48, roughness: 1, flatShading: true });
+  const geo = new THREE.CylinderGeometry(0.14, 0.15, 0.035, 9);
+  let n = 0;
+  for (let i = 0; i < 40 && n < 7; i++) {
+    const x = cx.min.x + 0.2 + rnd() * (cx.max.x - cx.min.x - 0.4), z = cx.min.z + 0.2 + rnd() * (cx.max.z - cx.min.z - 0.4);
+    rc.set(V3(x, cx.max.y + 1, z), V3(0, -1, 0)); const h = rc.intersectObject(FORNO.mesa, true)[0];
+    if (!h || h.point.y < cx.min.y + 0.55 || h.point.y > cx.min.y + 1.0) continue;
+    const pao = new THREE.Mesh(geo, mat); pao.position.set(x, h.point.y + 0.02, z); pao.rotation.set((rnd() - 0.5) * 0.15, rnd() * 3, (rnd() - 0.5) * 0.15); pao.castShadow = true; scene.add(pao); n++;
   }
 }
 
@@ -648,6 +695,49 @@ addEventListener('keydown', (e) => { tecla[e.code] = true; if (e.code === 'KeyE'
 addEventListener('keyup', (e) => { tecla[e.code] = false; });
 let alvoToque = null;
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+// caminho até o ponto tocado: A* numa grade de 35 cm, desviando de muros, árvores, objetos, paredes e barrancos altos
+let TRILHA = [];
+function caminho(de, ate) {
+  const P = 0.35, M = 7;
+  const x0 = Math.min(de.x, ate.x) - M, z0 = Math.min(de.z, ate.z) - M;
+  const W = Math.min(260, Math.ceil((Math.abs(de.x - ate.x) + 2 * M) / P)), D = Math.min(260, Math.ceil((Math.abs(de.z - ate.z) + 2 * M) / P));
+  const idx = (i, k) => i * D + k, cx = (i) => x0 + i * P, cz = (k) => z0 + k * P;
+  const livreC = (x, z, y) => naArea(x, z) && !bate(x, z, 0.28) && !paredeEm(x, z, y);
+  const si = Math.round((de.x - x0) / P), sk = Math.round((de.z - z0) / P);
+  let gi = Math.round((ate.x - x0) / P), gk = Math.round((ate.z - z0) / P);
+  // se o destino cai dentro de algo, usa a célula livre mais perto
+  if (!livreC(cx(gi), cz(gk), ate.y)) {
+    let melhor = null, dm = 1e9;
+    for (let a = -6; a <= 6; a++) for (let b = -6; b <= 6; b++) { const i = gi + a, k = gk + b; if (i < 0 || k < 0 || i >= W || k >= D) continue; if (livreC(cx(i), cz(k), ate.y) && a * a + b * b < dm) { dm = a * a + b * b; melhor = [i, k]; } }
+    if (!melhor) return []; [gi, gk] = melhor;
+  }
+  const G = new Float32Array(W * D).fill(1e9), Y = new Float32Array(W * D), DE = new Int32Array(W * D).fill(-1), fechado = new Uint8Array(W * D);
+  const aberto = [[0, si, sk]]; G[idx(si, sk)] = 0; Y[idx(si, sk)] = de.y;
+  const hz = (i, k) => Math.hypot(i - gi, k - gk);
+  let achou = false, passos = 0;
+  while (aberto.length && passos++ < 40000) {
+    let bi = 0; for (let j = 1; j < aberto.length; j++) if (aberto[j][0] < aberto[bi][0]) bi = j;
+    const [, i, k] = aberto[bi]; aberto[bi] = aberto[aberto.length - 1]; aberto.pop();
+    const c = idx(i, k); if (fechado[c]) continue; fechado[c] = 1;
+    if (i === gi && k === gk) { achou = true; break; }
+    for (const [a, b, cs] of [[1, 0, 1], [-1, 0, 1], [0, 1, 1], [0, -1, 1], [1, 1, 1.414], [1, -1, 1.414], [-1, 1, 1.414], [-1, -1, 1.414]]) {
+      const ni = i + a, nk = k + b; if (ni < 0 || nk < 0 || ni >= W || nk >= D) continue;
+      const nc = idx(ni, nk); if (fechado[nc]) continue;
+      const x = cx(ni), z = cz(nk), y = Y[c];
+      if (!livreC(x, z, y) || terreno(x, z) > y + 0.55) continue;
+      const ny = alturaEm(x, z, y); if (ny > y + 0.55) continue;
+      const g = G[c] + cs + Math.max(0, ny - y) * 2;
+      if (g < G[nc]) { G[nc] = g; Y[nc] = ny; DE[nc] = c; aberto.push([g + hz(ni, nk), ni, nk]); }
+    }
+  }
+  if (!achou) return [];
+  const pts = []; for (let c = idx(gi, gk); c !== -1; c = DE[c]) pts.push(V3(cx(Math.floor(c / D)), 0, cz(c % D)));
+  pts.reverse();
+  // enxuga: mantém só os pontos onde o rumo muda
+  const out = []; for (let j = 1; j < pts.length; j++) { const a = pts[j - 1], b = pts[j], c2 = pts[j + 1]; if (!c2 || Math.abs((b.x - a.x) * (c2.z - b.z) - (b.z - a.z) * (c2.x - b.x)) > 1e-4) out.push(b); }
+  if (out.length) out[out.length - 1] = V3(ate.x, 0, ate.z);
+  return out;
+}
 const toques = new Map(); let pinca0 = 0, dist0 = 0, arrastou = false;
 renderer.domElement.addEventListener('pointerdown', (e) => {
   toques.set(e.pointerId, [e.clientX, e.clientY]); arrastou = false;
@@ -660,7 +750,7 @@ renderer.domElement.addEventListener('pointermove', (e) => {
 const soltaToque = (e) => {
   if (toques.size === 1 && !arrastou) {
     ndc.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); ray.setFromCamera(ndc, camera);
-    const h = ray.intersectObjects([TERRENO, INS.g], true)[0]; if (h) alvoToque = h.point.clone();
+    const h = ray.intersectObjects([TERRENO, INS.g, ...CONSTR], true)[0]; if (h) { alvoToque = h.point.clone(); TRILHA = caminho(jog.o.position, alvoToque); }
   }
   toques.delete(e.pointerId);
 };
@@ -774,7 +864,11 @@ const laco = (forca) => {
     if (tecla.KeyD || tecla.ArrowRight) mv.add(rt); if (tecla.KeyA || tecla.ArrowLeft) mv.sub(rt);
     if (JOY.on && Math.hypot(JOY.x, JOY.y) > 0.15) mv.addScaledVector(fw, -JOY.y).addScaledVector(rt, JOY.x);
     if (mv.lengthSq() > 0) alvoToque = null;
-    else if (alvoToque) { mv.subVectors(alvoToque, jog.o.position).setY(0); if (mv.length() < 0.15) { alvoToque = null; mv.set(0, 0, 0); } }
+    else if (alvoToque) {
+      while (TRILHA.length > 1 && Math.hypot(TRILHA[0].x - jog.o.position.x, TRILHA[0].z - jog.o.position.z) < 0.3) TRILHA.shift();
+      const alvo = TRILHA.length ? TRILHA[0] : alvoToque;
+      mv.subVectors(alvo, jog.o.position).setY(0); if (mv.length() < 0.15) { alvoToque = null; TRILHA = []; mv.set(0, 0, 0); }
+    }
   }
   for (const c of CASAS) { c.ang += ((c.aberta ? ABERTO : 0) - c.ang) * Math.min(1, dt * 5); c.porta.rotation.y = c.ang; }
   const pj = jog.o.position;
@@ -822,7 +916,7 @@ const laco = (forca) => {
   botao.style.display = (saida || portaPerto) && !fora ? 'block' : 'none';
 
   UT.uP.value[0].copy(pj); UT.uP.value[1].copy(ceifeiro.o.position); UT.uP.value[2].copy(atadeira.o.position); UT.uP.value[3].copy(carregador.o.position);
-  ceifeiroPasso(dt, t); atadeiraPasso(dt); carregadorPasso(dt); debulhadorPasso(dt, t); joeiradeiraPasso(dt, t); partPasso(dt);
+  fornoPasso(dt, t); ceifeiroPasso(dt, t); atadeiraPasso(dt); carregadorPasso(dt); debulhadorPasso(dt, t); joeiradeiraPasso(dt, t); partPasso(dt);
   if (rnd() < dt * 0.08) boiCarro.toca(boiCarro.atual === 'Comer' ? 'Parado' : 'Comer');
   if (rnd() < dt * 0.06) jumenta.toca(jumenta.atual === 'Comer' ? 'Parado' : 'Comer');
   { const c = jumenta.o.position.clone().add(V3(0, 0.9, 0)).addScaledVector(frente(jumenta), 0.5); barra(CORDA_J, ESTACA.clone().add(V3(0, 0.95, 0)), c); }

@@ -31,7 +31,7 @@ FIGSECA_AB = (0.70, 1.045)        # figueira amaldiçoada: no socalco de cima, �
 POCO_AB = (0.17, 0.38)           # poço onde antes ficava a figueira
 JUM_AB = (0.48, 0.32)            # jumenta e jumentinho, entre a ínsula e a estrada
 APRISCO_AB = (0.43, -0.02); APRISCO_K = 1.75; APRISCO_R = 0.52   # gira o vão (no -Y do modelo) para quase de frente à câmera
-FORNO_AB = (0.22, 0.90)
+FORNO_AB = (0.37, 1.03)
 COCHO_AB = (0.60, -0.05)         # bebedouro e cocho, ao lado do aprisco
 CASA_AB = (0.25, 1.07); CASA_R = math.pi / 4; CASA_K = 0.68   # casa avulsa à esquerda da eira
 
@@ -97,6 +97,9 @@ pcx, pcz = xz(*POCO_AB); HPOCO = h_base(pcx, pcz); pad_circ(pcx, pcz, 1.6, 1.6, 
 jmx, jmz = xz(*JUM_AB); HJUM = HINS; pad_circ(jmx, jmz, 1.8, 1.6, HJUM)     # na altura do pátio da ínsula (senão rebaixa o pátio e a escada fica no ar)
 fsx, fsz = xz(*FIGSECA_AB); HFIG = HR[dist_estrada(fsx, fsz)[1]]; pad_circ(fsx, fsz, 1.7, 1.8, HFIG)
 csx, csz = xz(*CASA_AB); HCASA = h_socalco(csx, csz); pad_rect(csx, csz, 3.4, 3.4, 2.0, HCASA)
+FOX, FOZ = csx - 0.707 * 4.3 + 0.707 * 1.2, csz + 0.707 * 4.3 + 0.707 * 1.2          # forno à esquerda da casa (na tela), um pouco à frente
+MPX, MPZ = FOX - 0.707 * 2.6 + 0.707 * 0.6, FOZ + 0.707 * 2.6 + 0.707 * 0.6          # mesa de pão ao lado
+pad_circ(FOX, FOZ, 1.9, 1.8, HCASA); pad_circ(MPX, MPZ, 1.5, 1.6, HCASA)
 
 def altura(x, z):
     h = h_socalco(x, z)
@@ -241,19 +244,25 @@ def perto_casa(x, z, m):
     if abs(x - ix) < INSULA_W / 2 + m and abs(z - iz) < INSULA_D / 2 + m: return True
     return False
 def no_campo(x, z, m=0): return CAMPO[0] - m < x < CAMPO[1] + m and CAMPO[2] - m < z < CAMPO[3] + m
-def muro(xa, za, xb, zb, alt=0.9, i=0, base=None):
-    m = MUROS[i % 4]; o = PROTO[('casa-porta\\muros_kit.glb', m)]
+def muro(xa, za, xb, zb, alt=0.9, i=0, base=None, esp=None):
     L = math.hypot(xb - xa, zb - za); mx, mz = (xa + xb) / 2, (za + zb) / 2
     y = min(altura(xa, za), altura(xb, zb), altura(mx, mz)) - 0.1 if base is None else base
-    n = copia(o, col_exp)
-    n.location = (mx, -mz, y)
     yaw = math.atan2(-(zb - za), xb - xa)
-    n.rotation_mode = 'XYZ'; n.rotation_euler = (o.rotation_euler[0], o.rotation_euler[1], o.rotation_euler[2] + yaw)
-    sx = L / DM[m][0] * 1.06; sz = alt / DM[m][2]
-    n.scale = (o.scale[0] * sx, o.scale[1], o.scale[2] * sz)
+    # quantas fiadas cabem na altura: cada fiada fica com a proporção natural do módulo (no máximo 15% de ajuste)
+    alt_mod = sum(DM[m][2] for m in MUROS) / 4
+    nf = max(1, round(alt / alt_mod)); sz_ = alt / (nf * alt_mod)
+    yy = y
+    for c in range(nf):
+        m = MUROS[(i + c) % 4]; o = PROTO[('casa-porta\\muros_kit.glb', m)]
+        n = copia(o, col_exp)
+        n.location = (mx, -mz, yy)
+        n.rotation_mode = 'XYZ'; n.rotation_euler = (o.rotation_euler[0], o.rotation_euler[1], o.rotation_euler[2] + yaw + (math.pi if c % 2 else 0))
+        sx = L / DM[m][0] * 1.04; sy = (esp / DM[m][1]) if esp else 1.0; sz = alt_mod * sz_ / DM[m][2]
+        n.scale = (o.scale[0] * sx, o.scale[1] * sy, o.scale[2] * sz)
+        yy += alt_mod * sz_ * 0.97
     s = 0.0
-    while s <= L: OBST.append((round(xa + (xb - xa) * s / L, 2), round(za + (zb - za) * s / L, 2), 0.42)); s += 0.6
-ZONAS = [('c', apx, apz, 1.45 * APRISCO_K + 1.6), ('c', *xz(*FORNO_AB), 1.6), ('c', pcx, pcz, 2.4), ('c', jmx, jmz, 2.8), ('c', fsx, fsz, 2.4), ('r', cbx, cbz, 2.6, 2.2),
+    while s <= L: OBST.append((round(xa + (xb - xa) * s / L, 2), round(za + (zb - za) * s / L, 2), 0.42 if not esp else max(0.42, esp / 2))); s += 0.6
+ZONAS = [('c', apx, apz, 1.45 * APRISCO_K + 1.6), ('c', FOX, FOZ, 2.6), ('c', MPX, MPZ, 2.2), ('c', pcx, pcz, 2.4), ('c', jmx, jmz, 2.8), ('c', fsx, fsz, 2.4), ('r', cbx, cbz, 2.6, 2.2),
          ('r', csx, csz, 5.0, 5.0), ('r', crx, crz, 3.8, 3.2), ('r', (crx + ccx) / 2, (crz + ccz) / 2, abs(crx - ccx) / 2 + 2.6, abs(crz - ccz) / 2 + 2.6)]
 def na_zona(x, z, m=0.0):
     for zn in ZONAS:
@@ -261,11 +270,13 @@ def na_zona(x, z, m=0.0):
         if zn[0] == 'r' and abs(x - zn[1]) < zn[3] + m and abs(z - zn[2]) < zn[4] + m: return True
     return False
 def degrau(x, z):
-    # desnível real do terreno final atravessando o barranco (perpendicular às curvas de nível)
+    # atravessa o barranco pelo gradiente: desnível, pé, topo, meio e largura do barranco de verdade (terreno final)
     ga = (h_base(x + 0.1, z) - h_base(x - 0.1, z)) / 0.2; gb = (h_base(x, z + 0.1) - h_base(x, z - 0.1)) / 0.2; gl = math.hypot(ga, gb) or 1
     ux, uz = ga / gl, gb / gl
-    hi = max(altura(x + ux * d, z + uz * d) for d in (0.5, 0.8, 1.1)); lo = min(altura(x - ux * d, z - uz * d) for d in (0.3, 0.6))
-    return hi - lo, lo
+    perfil = [(k * 0.1, altura(x + ux * k * 0.1, z + uz * k * 0.1)) for k in range(-18, 19)]
+    lo = min(h for _, h in perfil[:12]); hi = max(h for _, h in perfil[-12:])
+    t1 = next((d for d, h in perfil if h > lo + 0.12), 0.0); t2 = next((d for d, h in perfil if h > hi - 0.12), 0.0)
+    return hi - lo, lo, hi, (t1 + t2) / 2, max(0.0, t2 - t1), ux, uz
 def muro_linha(pp, alt=0.9, vao=0.12, seg=2.3, filtro=None, arrimo=False):
     # pp: lista (x, z); reamostra por comprimento
     tot = [0.0]
@@ -286,14 +297,16 @@ def muro_linha(pp, alt=0.9, vao=0.12, seg=2.3, filtro=None, arrimo=False):
         if filtro and not filtro(mx, mz): continue
         if na_zona(mx, mz) or na_zona(A[0], A[1]) or na_zona(B[0], B[1]): continue
         if arrimo:
-            dh, lo = degrau(mx, mz)
+            dh, lo, hi, cm, larg, ux, uz = degrau(mx, mz)
             if dh < 1.2: continue        # sem barranco de verdade aqui: não põe muro solto no meio da grama
-            plano[-1] = (A, B, min(dh + 0.18, P_T + 0.4), lo - 0.15)
-        else: plano[-1] = (A, B, alt, None)
+            # o muro fica no meio do barranco, grosso o bastante para cobri-lo, do pé (enterrado 0,2) até um palmo acima do patamar de cima
+            A = (A[0] + ux * cm, A[1] + uz * cm); B = (B[0] + ux * cm, B[1] + uz * cm)
+            plano[-1] = (A, B, hi + 0.1 - (lo - 0.2), lo - 0.2, min(1.9, max(0.75, larg + 0.45)))
+        else: plano[-1] = (A, B, alt, None, None)
     for i, p in enumerate(plano):
         if p is None: continue
         if arrimo and (i == 0 or plano[i - 1] is None) and (i == len(plano) - 1 or plano[i + 1] is None): continue
-        muro(p[0][0], p[0][1], p[1][0], p[1][1], p[2], i, base=p[3])
+        muro(p[0][0], p[0][1], p[1][0], p[1][1], p[2], i, base=p[3], esp=p[4])
 
 # arrimo dos socalcos: curvas de nível do relevo base (no pé de cada barranco)
 def mascara(x, z):
@@ -384,13 +397,13 @@ for k in range(40):
     if abs((ang - gc + 180) % 360 - 180) < VAO + 4: continue
     bx, by = math.cos(math.radians(ang)) * RM, math.sin(math.radians(ang)) * RM
     OBST.append((round(apx + bx, 2), round(apz - by, 2), 0.38))
-# porteira aberta: presa na beira do vão, virada para fora
-g0 = math.radians(gc - VAO); hx, hy = math.cos(g0) * RM, math.sin(g0) * RM
-PK = 0.6; PW = 2.63 * PK
-gx, gy = hx + math.cos(g0) * PW / 2, hy + math.sin(g0) * PW / 2
-poe('casa-porta\\pastoril.glb', 'Porteira', apx + gx, apz - gy, g0, PK, y=HAPR, afunda=0.0)
-for s_ in (0.25, 0.5, 0.75):
-    OBST.append((round(apx + hx + math.cos(g0) * PW * s_, 2), round(apz - hy - math.sin(g0) * PW * s_, 2), 0.25))
+# porteira fechada: atravessa o vão de uma beira à outra
+gcr = math.radians(gc); corda = 2 * RM * math.sin(math.radians(VAO)); dm_ = RM * math.cos(math.radians(VAO))
+PK = (corda + 0.25) / 2.63
+gx, gy = math.cos(gcr) * dm_, math.sin(gcr) * dm_
+poe('casa-porta\\pastoril.glb', 'Porteira', apx + gx, apz - gy, gcr + math.pi / 2, PK, y=HAPR, afunda=0.0)
+for s_ in (-0.4, -0.2, 0.0, 0.2, 0.4):
+    OBST.append((round(apx + gx - math.sin(gcr) * corda * s_, 2), round(apz - gy - math.cos(gcr) * corda * s_, 2), 0.25))
 # bebedouro e cocho afastados um do outro, com passagem entre eles
 poe('casa-porta\\pastoril.glb', 'Cocho', cbx - 1.3, cbz + 0.4, 0.75, 0.75, y=HCB, afunda=0.0)       # bebedouro (de pedra, com água)
 poe('casa-porta\\pastoril.glb', 'Manjedoura', cbx + 1.3, cbz - 0.5, 0.75, 0.85, y=HCB, afunda=0.0)  # cocho de madeira (com feno)
@@ -410,7 +423,10 @@ for i in range(-3, 4):
     for k in range(-2, 3):
         lx, lz = i * 1.0 * CASA_K, k * 1.15 * CASA_K; ca_, sa_ = math.cos(CASA_R), math.sin(CASA_R)
         CASA_OBST.append((csx + lx * ca_ + lz * sa_, csz - lx * sa_ + lz * ca_, 0.75))
-fox, foz = plano(*xz(*FORNO_AB), 0.8); poe('casa-porta\\oficios.glb', 'Forno_Barro', fox, foz, math.pi / 4, 1.0, afunda=0.03); OBST.append((round(fox, 2), round(foz, 2), 0.9))
+fox, foz = FOX, FOZ; poe('casa-porta\\oficios.glb', 'Forno_Barro', fox, foz, math.pi / 4, 1.0, afunda=0.03)
+OBST += [(round(fox - 0.39, 2), round(foz + 0.39, 2), 0.75), (round(fox + 0.45, 2), round(foz - 0.45, 2), 0.55)]
+# mesa de pão: do lado direito do forno (eixo da tela)
+mpx, mpz = MPX, MPZ; poe('casa-porta\\oficios.glb', 'Bancada', mpx, mpz, math.pi / 4, 0.85, afunda=0.02); OBST.append((round(mpx, 2), round(mpz, 2), 0.8))
 OBST.append((round(fsx, 2), round(fsz, 2), 0.45)); CASA_OBST.append((fsx, fsz, 1.8))     # o jogador chega junto do tronco; árvores ficam longe
 OBST.append((round(jmx, 2), round(jmz, 2), 1.6))     # lugar dos jumentos (o jogo põe os animais; árvores não nascem aí)
 
@@ -480,25 +496,31 @@ for a, b, no in [(0.08, 0.32, 'Rocha1'), (0.30, 0.15, 'Rocha3'), (0.06, 0.04, 'R
 ALTAS = OLIV + [CIP, ('diorama-ciprestes\\ciprestes.glb', 'Cipreste1_Redondo'), ('casa-porta\\arvores_tripo.glb', 'Arvore3')]
 BAIXAS = [('casa-porta\\arvores_tripo.glb', n) for n in ['Arvore1', 'Arvore7', 'Arvore9']]
 PEDRAS = [('casa-porta\\rochas.glb', n) for n in ['Rocha1', 'Rocha2', 'Rocha4', 'Rocha5', 'Rocha7', 'Rocha8']]
-for lado in range(4):
-    for i in range(34):
-        t = (i + random.random() * 0.6) / 48 * 1.3 - 0.15
-        for camada, (d0, d1, prob) in enumerate([(0.06, 0.15, 0.6), (0.15, 0.35, 0.5), (0.35, 0.7, 0.45)]):
-            if random.random() > prob: continue
-            dd = d0 + random.random() * (d1 - d0)
-            if lado == 0: a, b = t, -dd           # borda da frente-direita (perto da câmera)
-            elif lado == 1: a, b = -dd, t         # borda da frente-esquerda (perto da câmera)
-            elif lado == 2: a, b = 1 + dd, t      # fundo-direita
-            else: a, b = t, 1 + dd                # fundo-esquerda
-            x, z = xz(a, b)
-            d, _ = dist_estrada(x, z)
-            if d < MEIA + 2.5: continue
-            perto = lado < 2
-            if perto and dd < 0.15 and random.random() < 0.7: continue
-            if perto and random.random() < 0.3:
-                if livre(x, z, 1): poe(*random.choice(PEDRAS), x, z, random.random() * 6, 0.7 + random.random() * 0.8, afunda=0.1); OBST.append((round(x, 2), round(z, 2), 0.6))
-            else:
-                arvore(*random.choice(BAIXAS if perto else ALTAS), x, z, 0.85 + random.random() * 0.35, 0.5)
+REG = []           # (x, z, r) de tudo que já está no chão de fora: árvore não nasce em pedra, nem pedra em árvore
+def cabe(x, z, r): return all(math.hypot(x - a_, z - b_) > r + c_ for a_, b_, c_ in REG)
+def grupo(cx_, cz_, R, n, tipo, lista, k0, k1, ok):
+    for j in range(n * 3):
+        if n <= 0: break
+        ang = random.random() * 6.283; rr = R * math.sqrt(random.random())
+        x, z = cx_ + math.cos(ang) * rr, cz_ + math.sin(ang) * rr
+        k = k0 + random.random() * (k1 - k0); r = (0.62 if tipo == 'mata' else 0.6) * k     # copas encostam (mata fechada), mas tronco não nasce em pedra
+        if not ok(x, z) or not cabe(x, z, r): continue
+        poe(*random.choice(lista), x, z, random.random() * 6.28, k, afunda=0.15 if tipo == 'mata' else 0.2)
+        REG.append((x, z, r)); OBST.append((round(x, 2), round(z, 2), 0.5 if tipo == 'mata' else 0.6 * k)); n -= 1
+for x_, z_, r_ in OBST: REG.append((x_, z_, r_ * 0.8))
+# perto da câmera (bordas da frente): bosquezinhos baixos e montes de pedra, bem separados
+random.seed(3)
+def perto_ok(x, z):
+    a, b = ab(x, z)
+    return (a < -0.05 or b < -0.05) and a > -0.75 and b > -0.75 and dist_estrada(x, z)[0] > MEIA + 2.2
+cs = []
+for i in range(300):
+    a, b = random.uniform(-0.7, 1.15), random.uniform(-0.7, 1.15)
+    x, z = xz(a, b)
+    if not perto_ok(x, z) or any(math.hypot(x - p_, z - q_) < 8 for p_, q_ in cs): continue
+    cs.append((x, z))
+    if random.random() < 0.65: grupo(x, z, 2.6, random.randint(4, 7), 'mata', BAIXAS, 0.85, 1.15, perto_ok)
+    else: grupo(x, z, 2.0, random.randint(4, 6), 'pedra', PEDRAS, 0.6, 1.3, perto_ok)
 
 # ---------------- moitas espinhosas e malvas (instanciadas no jogo), sempre de frente para a câmera ----------------
 PLANTAS = []
@@ -527,32 +549,21 @@ for x, z in [(csx + 3.0, csz + 3.2), (pcx + 1.7, pcz + 1.0), (ix + 7.2, iz + 5.0
 LONGE = True
 random.seed(5)
 MATA = [('casa-porta\\arvores_tripo.glb', n) for n in ['Arvore1', 'Arvore2', 'Arvore3', 'Arvore7', 'Arvore8', 'Arvore9']] + [CIP, CIP, ('diorama-ciprestes\\ciprestes.glb', 'Cipreste1_Redondo')]
+REG += []
 def longe_ok(x, z):
     a, b = ab(x, z)
     return (a > 1.12 or b > 1.12) and dist_estrada(x, z)[0] > MEIA + 3.0
 centros = []
-for i in range(400):
+for i in range(600):
     a, b = random.uniform(-0.6, 2.4), random.uniform(-0.6, 2.4)
     if not (a > 1.15 or b > 1.15) or a + b > 3.6: continue
     x, z = xz(a, b)
-    if not longe_ok(x, z) or any(math.hypot(x - cx_, z - cz_) < 9 for cx_, cz_, _ in centros): continue
-    centros.append((x, z, 'mata' if random.random() < 0.68 else 'pedra'))
-    if len(centros) >= 30: break
+    if not longe_ok(x, z) or any(math.hypot(x - cx_, z - cz_) < 10 for cx_, cz_, _ in centros): continue
+    centros.append((x, z, 'mata' if random.random() < 0.7 else 'pedra'))
+    if len(centros) >= 34: break
 for cx_, cz_, tipo in centros:
-    n = random.randint(7, 13) if tipo == 'mata' else random.randint(6, 10)
-    R = 4.5 if tipo == 'mata' else 3.5
-    for j in range(n):
-        ang = random.random() * 6.283; rr = R * math.sqrt(random.random())
-        x, z = cx_ + math.cos(ang) * rr, cz_ + math.sin(ang) * rr
-        if not longe_ok(x, z): continue
-        if tipo == 'mata': poe(*random.choice(MATA), x, z, random.random() * 6.28, 1.0 + random.random() * 0.6, afunda=0.15)
-        else: poe(*random.choice(PEDRAS), x, z, random.random() * 6.28, 0.9 + random.random() * 1.3, afunda=0.2)
-# entre os grupos, árvores soltas para não ficar calvo
-for i in range(140):
-    a, b = random.uniform(-0.5, 2.3), random.uniform(-0.5, 2.3)
-    if not (a > 1.12 or b > 1.12) or a + b > 3.6: continue
-    x, z = xz(a, b)
-    if longe_ok(x, z): poe(*random.choice(MATA), x, z, random.random() * 6.28, 0.9 + random.random() * 0.5, afunda=0.15)
+    if tipo == 'mata': grupo(cx_, cz_, 3.4, random.randint(10, 16), 'mata', MATA, 1.0, 1.5, longe_ok)
+    else: grupo(cx_, cz_, 3.0, random.randint(7, 11), 'pedra', PEDRAS, 0.9, 2.0, longe_ok)
 LONGE = False
 
 # ---------------- câmera e luz para a prévia ----------------
