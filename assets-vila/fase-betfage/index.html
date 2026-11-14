@@ -262,21 +262,13 @@ function poeTrigo(w, alto) {
 function corta(x, z, r) { for (const w of TRIGO) if (!w.cortado && Math.hypot(w.x - x, w.z - z) < r) { w.cortado = true; poeTrigo(w, false); } }
 function rebrota() { for (const w of TRIGO) if (w.cortado) { w.cortado = false; poeTrigo(w, true); } }
 
-// ---------- figueira amaldiçoada: seca desde a raiz (provisória, à beira da estrada) ----------
+// ---------- figueira amaldiçoada: seca desde a raiz, à beira da estrada ----------
 {
   const [x, z] = LAY.figseca, y = terreno(x, z);
-  const g = new THREE.Group(), mat = new THREE.MeshStandardMaterial({ color: 0xa69d92, roughness: 1, flatShading: true });
-  const galho = (a, b, r0, r1) => { const d = b.clone().sub(a), L = d.length(); const m = new THREE.Mesh(new THREE.CylinderGeometry(r1, r0, L, 5), mat); m.position.copy(a).add(b).multiplyScalar(0.5); m.quaternion.setFromUnitVectors(CIMA, d.normalize()); g.add(m); };
-  const tronco = V3(0, 1.4, 0); galho(V3(0, 0, 0), tronco, 0.26, 0.18);
-  let s = 5;
-  for (let i = 0; i < 6; i++) {
-    const a = i / 6 * Math.PI * 2 + 0.4, p1 = tronco.clone().add(V3(Math.cos(a) * 0.8, 0.8 + (i % 2) * 0.3, Math.sin(a) * 0.8)); galho(tronco, p1, 0.12, 0.07);
-    for (let j = 0; j < 2; j++) { s = (s * 16807) % 2147483647; const b = a + (j ? 0.6 : -0.5); galho(p1, p1.clone().add(V3(Math.cos(b) * 0.55, 0.45 + (s % 100) / 300, Math.sin(b) * 0.55)), 0.06, 0.02); }
-  }
-  for (let i = 0; i < 4; i++) { const a = i * 1.7; galho(V3(Math.cos(a) * 0.15, 0.12, Math.sin(a) * 0.15), V3(Math.cos(a) * 0.7, -0.05, Math.sin(a) * 0.7), 0.09, 0.035); }
-  g.position.set(x, y - 0.05, z); sombra(g); scene.add(g); FADE.push(g);
+  const g = (await baixar('../figueiras/figueira_seca.glb')).scene;
+  g.position.set(x, y - 0.08, z); g.rotation.y = 2.2; g.scale.setScalar(0.72); sombra(g); scene.add(g); FADE.push(g);
   const fol = new THREE.MeshStandardMaterial({ color: 0x8a6a3c, roughness: 1, flatShading: true, side: THREE.DoubleSide });
-  for (let i = 0; i < 18; i++) { const a = rnd() * 6.28, r = 0.4 + rnd() * 1.4, fx = x + Math.cos(a) * r, fz = z + Math.sin(a) * r, f = new THREE.Mesh(new THREE.CircleGeometry(0.08, 4), fol); f.position.set(fx, terreno(fx, fz) + 0.05, fz); f.rotation.set(-Math.PI / 2 + (rnd() - 0.5) * 0.5, 0, rnd() * 6); scene.add(f); }
+  for (let i = 0; i < 18; i++) { const a = rnd() * 6.28, r = 0.6 + rnd() * 1.6, fx = x + Math.cos(a) * r, fz = z + Math.sin(a) * r, f = new THREE.Mesh(new THREE.CircleGeometry(0.08, 4), fol); f.position.set(fx, terreno(fx, fz) + 0.05, fz); f.rotation.set(-Math.PI / 2 + (rnd() - 0.5) * 0.5, 0, rnd() * 6); scene.add(f); }
 }
 
 // ---------- personagens ----------

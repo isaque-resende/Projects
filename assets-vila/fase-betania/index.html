@@ -370,24 +370,19 @@ por(R.Rocha3, -17.5, 13.6, 0.8, 1, { circ: 0.6 });
 // túmulo de Lázaro: gruta na rocha, fora da vila, à direita; entrada (com a pedra) virada para a vila e a câmera
 const TUM = {}, ROLA = 1;   // lado para onde a pedra rola (ao longo da face)
 {
-  const cena = (await baixar('../casa-porta/tumulo_lazaro.glb')).scene;
-  const tum = cena.clone(true); tum.position.set(-14.2, 0, -8.6); tum.rotation.y = -1.36; sombra(tum); scene.add(tum); FADE.push(tum);
+  // rochedo de 16 m com a porta da gruta (0,9 x 1,7 m) na face +x; a pedra redonda (2 m) é um modelo à parte
+  const [gRocha, gPedra] = await Promise.all([baixar('../casa-porta/tumulo_rocha.glb'), baixar('../casa-porta/tumulo_pedra.glb')]);
+  const tum = gRocha.scene; tum.position.set(-18, 0, -11.5); tum.rotation.y = -0.38; sombra(tum); scene.add(tum); FADE.push(tum);
   tum.updateMatrixWorld(true);
-  RELEVO.push(mapaAltura(tum.getObjectByName('Tumulo_Lazaro')));
-  // a pedra recortada do modelo é só uma casca; no lugar dela vai um disco maciço do mesmo tamanho
-  const casca = tum.getObjectByName('Tumulo_Pedra'); casca.visible = false;
-  const rP = 1.15;
-  const geoP = new THREE.CylinderGeometry(rP, rP, 0.42, 16, 1); geoP.rotateX(Math.PI / 2);
-  { const pa = geoP.attributes.position; for (let i = 0; i < pa.count; i++) { const x = pa.getX(i), y = pa.getY(i), z = pa.getZ(i); const r = Math.hypot(x, y); const b = 1 + 0.04 * Math.sin(Math.atan2(y, x) * 5); pa.setXYZ(i, x * b, y * b, z * (r < 0.1 ? 1.25 : 1)); } geoP.computeVertexNormals(); }
-  const pedra = new THREE.Mesh(geoP, new THREE.MeshStandardMaterial({ color: 0xdcb48a, roughness: 1, flatShading: true }));
-  // tapa a boca da gruta, encostada na rocha
-  pedra.position.copy(casca.position).add(new THREE.Vector3(0.35, 0.06, 0.5)); pedra.rotation.y = -0.55; pedra.castShadow = pedra.receiveShadow = true; tum.add(pedra);
+  RELEVO.push(mapaAltura(tum.getObjectByName('Tumulo_Rocha')));
+  const boca = tum.getObjectByName('Tumulo_Boca');
+  const pedra = gPedra.scene.getObjectByName('Tumulo_Pedra'); pedra.position.set(0, 0, 0); sombra(pedra);
+  const rP = 1.02;
+  // a pedra fica de pé na soleira, encostada na face, tapando a porta (o eixo fino do disco aponta para fora da face)
+  pedra.position.copy(boca.position).add(new THREE.Vector3(0.3, rP - 0.02, 0)); pedra.rotation.set(0, Math.PI / 2, 0); tum.add(pedra);
   Object.assign(TUM, { tum, pedra, p0: pedra.position.clone(), q0: pedra.quaternion.clone(), k: 0, alvo: 0, raio: rP });
-  // a boca escura da gruta, logo atrás da pedra
-  const boca = new THREE.Mesh(new THREE.CircleGeometry(TUM.raio * 0.8, 20), new THREE.MeshBasicMaterial({ color: 0x120b06 }));
-  boca.position.copy(TUM.p0).add(new THREE.Vector3(0, 0.02, 0.33).applyQuaternion(TUM.q0)); boca.quaternion.copy(TUM.q0).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI)); tum.add(boca);
   TUM.circ = { x: 0, z: 0, r: TUM.raio * 0.9 }; CIRC.push(TUM.circ);
-  TUM.frente = new THREE.Vector3(0, 0, -1).applyQuaternion(tum.quaternion).setY(0).normalize();   // a face da pedra olha para -z do modelo
+  TUM.frente = new THREE.Vector3(1, 0, 0).applyQuaternion(tum.quaternion).setY(0).normalize();   // a porta olha para +x do modelo
   TUM.lugar = pedra.getWorldPosition(new THREE.Vector3()).setY(0);
   { const L = TUM.lugar, F = TUM.frente; caminho([[-10, 2.2], [-7.4, -2.4], [L.x + F.x * 3.6 + 0.4, L.z + F.z * 3.6 + 1.2], [L.x + F.x * 1.5, L.z + F.z * 1.5]], 0.85); }
   // ciprestes atrás e pedras soltas, como num lugar de sepulturas
@@ -401,7 +396,7 @@ for (let i = 0; i < 52; i++) {
   const rx = 25 + rnd() * 6, rz = 19 + rnd() * 5;
   const x = Math.cos(a) * rx, z = Math.sin(a) * rz;
   if (Math.abs(z - 3) < 3.5 && x < 0) continue;      // a estrada para Jerusalém fica aberta
-  if (Math.hypot(x - TUM.tum.position.x, z - TUM.tum.position.z) < 8.5) continue;   // o rochedo do túmulo já fecha esse canto
+  if (Math.hypot(x - TUM.tum.position.x, z - TUM.tum.position.z) < 12.5) continue;   // o rochedo do túmulo já fecha esse canto
   const lista = [C.Cipreste2_Esguio, C.Cipreste1_Redondo, FR.Arvore_Pequena, AT.Arvore1, AT.Arvore3, AT.Arvore5, AT.Arvore8, AT.Arvore9, T.Tamareiras].filter(Boolean);
   if (z > 7 || x > 22) { const pd = [R.Rocha1, R.Rocha4, R.Rocha5, R.Rocha7, R.Rocha8].filter(Boolean); por(pd[i % pd.length], x, z, rnd() * 6.28, 0.7 + rnd() * 0.5); continue; }
   BORDA.push(por(lista[Math.floor(rnd() * lista.length)], x, z, rnd() * 6.28, 0.85 + rnd() * 0.35, { fade: z > 8 }));
@@ -1210,7 +1205,7 @@ const laco = (forca) => {
   TUM.k += Math.sign(TUM.alvo - TUM.k) * Math.min(Math.abs(TUM.alvo - TUM.k), dt * 0.35);
   {
     const e = TUM.k * TUM.k * (3 - 2 * TUM.k), dist = 2.2 * e;
-    TUM.pedra.position.copy(TUM.p0).add(new THREE.Vector3(ROLA * dist, 0, -0.12 * Math.sin(Math.PI * e)).applyQuaternion(TUM.q0));
+    TUM.pedra.position.copy(TUM.p0).add(new THREE.Vector3(ROLA * dist, 0, 0.12 * Math.sin(Math.PI * e)).applyQuaternion(TUM.q0));
     TUM.pedra.quaternion.copy(TUM.q0).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -ROLA * dist / TUM.raio));   // gira em torno do próprio eixo (normal da face)
     const pw = TUM.pedra.getWorldPosition(new THREE.Vector3()); TUM.circ.x = pw.x; TUM.circ.z = pw.z;
   }
