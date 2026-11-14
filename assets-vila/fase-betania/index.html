@@ -24,7 +24,7 @@
 <body>
 <div id="fade"></div>
 <button id="acao"></button>
-<div style="position:fixed;right:8px;top:calc(6px + env(safe-area-inset-top));font:11px system-ui;color:#4a352099;z-index:9;pointer-events:none">v11</div>
+<div style="position:fixed;right:8px;top:calc(6px + env(safe-area-inset-top));font:11px system-ui;color:#4a352099;z-index:9;pointer-events:none">v12</div>
 <div id="fala"></div>
 <button id="pularIntro">Pular introdução</button>
 <div id="dica">Direcional, WASD ou toque para andar · Shift corre · Espaço pula · roda/pinça: zoom</div>
@@ -451,7 +451,7 @@ foguista.A.Parado && (foguista.A.Parado.timeScale = 0.8);
 // lagar: um homem pisa as uvas dentro do tanque; outro traz o cesto
 const pisador = ator(nMagro, 1.66, LG.tanque.x, LG.tanque.z, LG.r, 'Parado');
 pisador.o.position.y = LG.tanque.y - 0.05;
-const ajudante = ator(nAldeao, 1.7, LG.cesto.x + 0.9, LG.cesto.z + 0.9, LG.r - 2.2, 'Conversando');
+const ajudante = ator(nAldeao, 1.7, 19.6, -3.6, Math.atan2(17.8 - 19.6, -3.0 + 3.6), 'Conversando');   // freguês na barraca da direita
 for (const n of [foguista, ajudante]) CIRC.push({ x: n.o.position.x, z: n.o.position.z, r: 0.35 });
 // ---------- animação sob medida: IK de dois ossos (braço e perna) por cima do clipe parado ----------
 const _q1 = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), _q3 = new THREE.Quaternion();
