@@ -389,6 +389,21 @@ const TUM = {}, ROLA = 1;   // lado para onde a pedra rola (ao longo da face)
   por(C.Cipreste2_Esguio, -7.4, -13.6, 1.0, 0.8, { circ: 0.4 }); por(C.Cipreste1_Redondo, -8.6, -2.4, 0.5, 0.75, { circ: 0.4 });
   por(R.Rocha6, TUM.lugar.x + TUM.frente.x * 2.4 + 2.2, TUM.lugar.z + TUM.frente.z * 2.4 - 0.6, -0.4, 0.6, { circ: 0.4 });
 }
+// câmara interna do túmulo: cenário à parte, bem abaixo do chão (a câmera de dentro nunca vê a vila)
+const CAMT = { on: false, base: new THREE.Vector3(0, -60, 0) };
+{
+  const g = (await baixar('../casa-porta/tumulo_camara.glb')).scene;
+  // o mapa de alturas só guarda valores acima de zero: mede com a câmara na origem e desloca depois
+  g.updateMatrixWorld(true); const alt0 = mapaAltura(g.getObjectByName('Tumulo_Camara'));
+  g.position.copy(CAMT.base); sombra(g); scene.add(g); g.updateMatrixWorld(true);
+  CAMT.g = g; CAMT.alt = (x, z) => CAMT.base.y + alt0(x - CAMT.base.x, z - CAMT.base.z);
+  const b = new THREE.Box3().setFromObject(g); CAMT.box = b;
+  // paredes em -x e -z; aberto (cortado) em +x e +z, do lado da câmera; a soleira fica no meio do lado +z
+  CAMT.area = { x0: b.min.x + 0.55, x1: b.max.x - 0.3, z0: b.min.z + 0.55, z1: b.max.z - 0.3 };
+  CAMT.entrada = new THREE.Vector3((b.min.x + b.max.x) / 2, 0, b.max.z - 0.75);
+  CAMT.centro = b.getCenter(new THREE.Vector3()); CAMT.centro.y = b.min.y + 0.7;
+  CAMT.luz = new THREE.PointLight(0xffc27a, 0, 14, 1.2); CAMT.luz.position.set(CAMT.entrada.x + 0.9, b.min.y + 2.6, CAMT.entrada.z + 0.9); scene.add(CAMT.luz);
+}
 // cortina de árvores fora da área de jogo
 const BORDA = [];
 for (let i = 0; i < 52; i++) {
@@ -900,7 +915,7 @@ renderer.domElement.addEventListener('pointermove', (e) => {
 const solta = (e) => {
   if (toques.size === 1 && !arrastou) {
     ndc.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); ray.setFromCamera(ndc, camera);
-    const h = ray.intersectObjects([ground, ...CASAS.map((c) => c.g)], true)[0]; if (h) alvoToque = h.point.clone();
+    const h = ray.intersectObjects(CAMT.on ? [CAMT.g] : [ground, ...CASAS.map((c) => c.g)], true)[0]; if (h) alvoToque = h.point.clone();
   }
   toques.delete(e.pointerId);
 };
@@ -911,7 +926,7 @@ renderer.domElement.addEventListener('pointercancel', (e) => toques.delete(e.poi
 const botao = document.getElementById('acao'), fade = document.getElementById('fade');
 let fora = false;
 botao.onclick = () => acionar();
-let portaPerto = null, pedraPerto = false, jogVy = 0, jogNoChao = true;
+let portaPerto = null, pedraPerto = false, tumbaPerto = false, jogVy = 0, jogNoChao = true;
 // direcional virtual (canto esquerdo de baixo)
 const JOY = { on: false, x: 0, y: 0, id: null };
 {
@@ -949,8 +964,73 @@ function entrarCasa(c) {
   };
   setTimeout(() => { addEventListener('keydown', sair); fade.addEventListener('click', sair); }, 900);
 }
+// entrar e sair do túmulo: corte seco para o preto, e a cena interna
+const CEU0 = { bg: scene.background.clone(), fog: scene.fog };
+function corte(fn) {
+  fora = true; alvoToque = null; botao.style.display = 'none';
+  fade.style.transition = 'none'; fade.textContent = ''; fade.style.opacity = 1;
+  setTimeout(() => { fn(); fade.style.transition = 'opacity 1.4s'; fade.style.opacity = 0; setTimeout(() => { fade.style.transition = ''; fora = false; }, 1400); }, 700);
+}
+function entrarTumba() {
+  corte(() => {
+    CAMT.on = true; jogVy = 0; jogNoChao = true;
+    const p = CAMT.entrada; jog.o.position.set(p.x, CAMT.alt(p.x, p.z), p.z); jog.o.rotation.y = Math.PI;
+    scene.background = new THREE.Color(0x000000); scene.fog = null;
+    hemi.intensity = 0.45; sun.intensity = 0.9; CAMT.luz.intensity = 12;
+    distT = distTumba(); foco.copy(CAMT.centro);
+  });
+}
+function sairTumba() {
+  corte(() => {
+    CAMT.on = false; jogVy = 0; jogNoChao = true;
+    const p = TUM.lugar.clone().addScaledVector(TUM.frente, 1.8); jog.o.position.set(p.x, 0, p.z); jog.o.rotation.y = Math.atan2(TUM.frente.x, TUM.frente.z);
+    scene.background = CEU0.bg.clone(); scene.fog = CEU0.fog;
+    hemi.intensity = 1.3; sun.intensity = 3.1; CAMT.luz.intensity = 0;
+    foco.copy(jog.o.position);
+  });
+}
+// a câmera de dentro enquadra só a câmara (fundo preto, sem vazar para fora do cenário)
+let distT = 16;
+const distTumba = () => { const s = CAMT.box.getSize(new THREE.Vector3()); const f = Math.tan(THREE.MathUtils.degToRad(12)); return Math.max((s.y + s.z * 0.75) * 0.62 / f, (Math.hypot(s.x, s.z) * 0.58) / f / camera.aspect); };
+function tumbaPasso(dt) {
+  if (!CAMT.on) return false;
+  fw.copy(DIR).negate().setY(0).normalize(); rt.set(-fw.z, 0, fw.x);
+  mv.set(0, 0, 0);
+  if (!fora) {
+    if (tecla.KeyW || tecla.ArrowUp) mv.add(fw); if (tecla.KeyS || tecla.ArrowDown) mv.sub(fw);
+    if (tecla.KeyD || tecla.ArrowRight) mv.add(rt); if (tecla.KeyA || tecla.ArrowLeft) mv.sub(rt);
+    if (JOY.on && Math.hypot(JOY.x, JOY.y) > 0.15) mv.addScaledVector(fw, -JOY.y).addScaledVector(rt, JOY.x);
+    if (mv.lengthSq() > 0) alvoToque = null;
+    else if (alvoToque) { mv.subVectors(alvoToque, jog.o.position).setY(0); if (mv.length() < 0.12) { alvoToque = null; mv.set(0, 0, 0); } }
+  }
+  const p = jog.o.position, A = CAMT.area;
+  let andou = false;
+  if (mv.lengthSq() > 0) {
+    mv.normalize(); const v = 1.6 * dt;
+    const ok = (x, z) => x > A.x0 && x < A.x1 && z > A.z0 && z < A.z1 && CAMT.alt(x, z) <= p.y + 0.45;
+    const x0 = p.x, z0 = p.z, nx = p.x + mv.x * v, nz = p.z + mv.z * v;
+    if (ok(nx, nz)) { p.x = nx; p.z = nz; } else if (ok(nx, p.z)) p.x = nx; else if (ok(p.x, nz)) p.z = nz; else alvoToque = null;
+    andou = Math.hypot(p.x - x0, p.z - z0) > v * 0.3;
+    lerpAng(jog.o, Math.atan2(mv.x, mv.z), Math.min(1, dt * 12));
+    // passou da soleira, para fora: volta à luz
+    if (!fora && nz > A.z1 - 0.02 && Math.abs(p.x - CAMT.entrada.x) < 1.0 && mv.z > 0.3) sairTumba();
+  }
+  p.y += (CAMT.alt(p.x, p.z) - p.y) * Math.min(1, dt * 16);
+  jog.toca(andou ? 'Andar' : 'Parado');
+  if (!fora) { botao.textContent = (toqueTela ? '' : 'E: ') + 'sair do túmulo'; botao.style.display = 'block'; }
+  // câmera: o mesmo ângulo de fora; segue um pouco o jogador, sem sair da câmara
+  distT = distTumba(); const d = Math.min(distAlvo, distT);
+  const alvo = CAMT.centro.clone().lerp(p, 0.25); alvo.y = CAMT.centro.y;
+  foco.lerp(alvo, Math.min(1, dt * 3));
+  camera.position.copy(foco).addScaledVector(DIR, d); camera.lookAt(foco);
+  sun.position.set(foco.x - 6, foco.y + 14, foco.z + 8); sun.target.position.copy(foco);
+  CAMT.luz.intensity = 12 + Math.sin(performance.now() * 0.011) * 1.2 + Math.sin(performance.now() * 0.027) * 0.8;   // luz que entra tremula de leve
+  return true;
+}
 function acionar() {
   if (botao.style.display !== 'block' || fora) return;
+  if (CAMT.on) { sairTumba(); return; }
+  if (tumbaPerto) { entrarTumba(); return; }
   if (pedraPerto && jog.o.position.x >= -21) { TUM.alvo = TUM.alvo ? 0 : 1; return; }
   if (portaPerto && jog.o.position.x >= -21) { portaPerto.aberta = !portaPerto.aberta; return; }
   fora = true; botao.style.display = 'none';
@@ -1105,6 +1185,7 @@ const laco = (forca) => {
   const dt = forca || Math.min(relogio.getDelta(), 0.05), t = relogio.elapsedTime;
   for (const m of MIX) m.update(dt);
   if (introPasso(dt)) { renderer.render(scene, camera); return; }
+  if (tumbaPasso(dt)) { renderer.render(scene, camera); return; }
 
   // jogador
   fw.copy(DIR).negate().setY(0).normalize(); rt.set(-fw.z, 0, fw.x);
@@ -1155,9 +1236,11 @@ const laco = (forca) => {
     if (Math.abs(lx - c.px) < 0.45 && lz < c.pz - 0.45) entrarCasa(c);
   }
   const naSaida = jog.o.position.x < -21;
-  pedraPerto = pj.y < 0.6 && Math.hypot(pj.x - TUM.lugar.x, pj.z - TUM.lugar.z) < 3.6 && Math.abs(TUM.k - TUM.alvo) < 0.01;
+  pedraPerto = pj.y < 1.2 && Math.hypot(pj.x - TUM.lugar.x, pj.z - TUM.lugar.z) < 3.6 && Math.abs(TUM.k - TUM.alvo) < 0.01;
+  tumbaPerto = pedraPerto && TUM.alvo === 1 && TUM.k > 0.99 && Math.hypot(pj.x - TUM.lugar.x, pj.z - TUM.lugar.z) < 2.2;
   portaPerto = CASAS.find((c) => pj.y < 0.3 && c.mundo(c.px, c.pz).distanceTo(new THREE.Vector3(pj.x, 0, pj.z)) < 2.0) || null;
   if (naSaida) botao.textContent = (toqueTela ? '' : 'E: ') + 'seguir para Jerusalém';
+  else if (tumbaPerto) botao.textContent = (toqueTela ? '' : 'E: ') + 'entrar no túmulo';
   else if (pedraPerto) botao.textContent = (toqueTela ? '' : 'E: ') + (TUM.alvo ? 'rolar a pedra de volta' : 'rolar a pedra');
   else if (portaPerto) botao.textContent = (toqueTela ? '' : 'E: ') + (portaPerto.aberta ? 'fechar a porta' : 'abrir a porta');
   botao.style.display = (naSaida || portaPerto || pedraPerto) && !fora ? 'block' : 'none';

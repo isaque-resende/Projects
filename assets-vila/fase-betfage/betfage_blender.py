@@ -51,9 +51,9 @@ def h_base(x, z):
     a, b = ab(x, z); s = (a + b) / 2; d = a - b
     if s < 0: h = 2.0 * s
     elif s <= 1: h = 12.0 * s ** 1.25
-    else: h = 12.0 - 30.0 * (s - 1) ** 1.1      # o cume: atrás dele o morro cai forte (o céu aparece atrás)
-    h -= 22.0 * (max(0.0, a - 1.0) + max(0.0, b - 1.0))      # bordas do fundo caem
-    dc = max(-1.15, min(1.15, d)); h -= 5.0 * dc * dc + 1.5 * (abs(d) - abs(dc))
+    elif s <= 1.3: h = 12.0 + 15.0 * (s - 1) - 25.0 * (s - 1) ** 2      # passa do alto da subida e vira um espigão largo
+    else: h = 14.25 - 2.5 * (s - 1.3)                                   # do outro lado o monte desce devagar (rumo a Jerusalém)
+    dc = max(-1.3, min(1.3, d)); h -= 3.2 * dc * dc + 2.0 * (abs(d) - abs(dc))   # para os lados a encosta continua, sem cair
     h += 0.18 * math.sin(x * 0.37 + 1.1) * math.cos(z * 0.31 - 0.4) + 0.08 * math.sin(x * 0.9 + z * 0.7)
     return max(h, -3.0 + 0.4 * math.sin(x * 0.2) * math.cos(z * 0.23))
 
@@ -305,7 +305,7 @@ for nivel in range(1, 12):
         trecho = []
         for x, z in cadeia:
             a, b = ab(x, z)
-            ok = -0.15 < a < 1.12 and -0.15 < b < 1.12 and mascara(x, z) > 0.6
+            ok = -0.3 < a < 1.45 and -0.3 < b < 1.45 and mascara(x, z) > 0.6
             if ok:
                 ga = (h_base(x + 0.1, z) - h_base(x - 0.1, z)) / 0.2; gb = (h_base(x, z + 0.1) - h_base(x, z - 0.1)) / 0.2; gl = math.hypot(ga, gb) or 1
                 trecho.append((x - ga / gl * 0.25, z - gb / gl * 0.25))
@@ -396,7 +396,7 @@ poe('colheita-trigo\\colheita.glb', 'Carroca', crx, crz, -math.pi / 2, 1.0, y=HC
 for a, b in [(0.88, 0.04), (0.91, 0.06), (0.89, 0.0), (0.94, 0.02), (0.85, 0.0)]:
     x, z = xz(a, b); poe('colheita-trigo\\colheita.glb', 'Feixe_EmPe', x, z, random.random() * 6, 1.0); OBST.append((round(x, 2), round(z, 2), 0.3))
 prx, prz = xz(0.60, -0.04); poe('casa-porta\\oficios.glb', 'Lagar_Pedra', prx, prz, 0.6, 0.55); OBST.append((round(prx, 2), round(prz, 2), 1.2))
-cox, coz = xz(0.47, 0.02); poe('casa-porta\\pastoril.glb', 'Cocho', cox, coz, 0.0, 0.7); OBST.append((round(cox, 2), round(coz, 2), 0.7))
+cox, coz = xz(0.40, 0.12); poe('casa-porta\\pastoril.glb', 'Cocho', cox, coz, 0.0, 0.7); OBST.append((round(cox, 2), round(coz, 2), 0.7))
 # arredores da aldeia
 for a, b, no in [(0.43, 0.40, 'Jarro_Alto'), (0.44, 0.43, 'Pote_Escuro'), (0.61, 0.15, 'Cesto_Alca'), (0.62, 0.40, 'Lenha'), (0.62, 0.20, 'Banquinho')]:
     x, z = xz(a, b); poe('casa-porta\\objetos_casa.glb', no, x, z, random.random() * 6, 1.2); OBST.append((round(x, 2), round(z, 2), 0.3))

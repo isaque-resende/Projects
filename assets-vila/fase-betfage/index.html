@@ -74,14 +74,14 @@ const baixar = async (url) => {
   }
 };
 const sombra = (r) => r.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
-const LAY = await (await fetch('betfage_layout.json?v=8')).json();
+const LAY = await (await fetch('betfage_layout.json?v=9')).json();
 const S = LAY.S;
 // coordenadas do diorama: a = rumo ao canto direito, b = rumo ao canto esquerdo (0,0 = canto da frente)
 const AB = (x, z) => [(S / 2 - z) / S, (S / 2 - x) / S];
 const XZ = (a, b) => [S / 2 - b * S, S / 2 - a * S];
 const ARQS = [...new Set(LAY.objetos.map((o) => o.glb))];
 const [gCen, gCasaP, gTrigo, gColh, gBoi, gOve, gJum, gJog, gObj, nAldeao, nFaixa, nCarreg, nRobusto, nBotoes, nMoco, nPastor, nMagro, nRapaz, ...gArqs] = await Promise.all([
-  baixar('betfage_cenario.glb?v=8'), baixar('../casa-porta/casa_porta.glb'), baixar('../trigal/trigo.glb'), baixar('../colheita-trigo/colheita.glb'),
+  baixar('betfage_cenario.glb?v=9'), baixar('../casa-porta/casa_porta.glb'), baixar('../trigal/trigo.glb'), baixar('../colheita-trigo/colheita.glb'),
   baixar('../animais/boi.glb'), baixar('../animais/ovelha.glb'), baixar('../animais/jumento.glb'), baixar('../vila-betania/discipulo_acoes.glb'), baixar('../casa-porta/objetos_casa.glb'),
   baixar('../personagens/aldeao.glb'), baixar('../personagens/mulher_faixa.glb'), baixar('../personagens/carregador.glb'),
   baixar('../personagens/robusto.glb'), baixar('../personagens/mulher_botoes.glb'), baixar('../personagens/moco.glb'),
@@ -266,7 +266,7 @@ function rebrota() { for (const w of TRIGO) if (w.cortado) { w.cortado = false; 
 {
   const [x, z] = LAY.figseca, y = terreno(x, z);
   const g = (await baixar('../figueiras/figueira_seca.glb')).scene;
-  g.position.set(x, y - 0.08, z); g.rotation.y = 2.2; g.scale.setScalar(0.72); sombra(g); scene.add(g); FADE.push(g);
+  g.position.set(x, y - 0.08, z); g.rotation.y = 2.2; g.scale.setScalar(0.85); sombra(g); scene.add(g); FADE.push(g);
   const fol = new THREE.MeshStandardMaterial({ color: 0x8a6a3c, roughness: 1, flatShading: true, side: THREE.DoubleSide });
   for (let i = 0; i < 18; i++) { const a = rnd() * 6.28, r = 0.6 + rnd() * 1.6, fx = x + Math.cos(a) * r, fz = z + Math.sin(a) * r, f = new THREE.Mesh(new THREE.CircleGeometry(0.08, 4), fol); f.position.set(fx, terreno(fx, fz) + 0.05, fz); f.rotation.set(-Math.PI / 2 + (rnd() - 0.5) * 0.5, 0, rnd() * 6); scene.add(f); }
 }
@@ -544,11 +544,14 @@ function joeiradeiraPasso(dt, t) {
 
 // ---------- aldeia: jumenta e jumentinho junto ao cocho, conversa à porta ----------
 const [cox, coz] = LAY.cocho;
-const jumenta = ator(gJum, 1.2, cox + 0.9, coz + 1.1, 2.4, 'Parado');
-const jumentinho = ator(gJum, 0.8, cox + 1.8, coz + 0.3, 2.0, 'Comer');
-const ESTACA = V3(cox + 0.1, 0, coz + 1.9); ESTACA.y = terreno(ESTACA.x, ESTACA.z);
+const jumenta = ator(gJum, 1.35, cox + 1.5, coz + 0.1, -0.7, 'Parado');
+const jumentinho = ator(gJum, 0.9, cox + 1.1, coz - 1.1, -0.2, 'Comer');
+const ESTACA = V3(cox + 0.6, 0, coz + 1.0); ESTACA.y = terreno(ESTACA.x, ESTACA.z);
 { const m = cil(0.06); barra(m, ESTACA, ESTACA.clone().add(V3(0, 1.1, 0))); CIRC.push({ x: ESTACA.x, z: ESTACA.z, r: 0.15 }, { x: jumenta.o.position.x, z: jumenta.o.position.z, r: 0.6 }, { x: jumentinho.o.position.x, z: jumentinho.o.position.z, r: 0.45 }); }
 const CORDA_J = cil(0.012, new THREE.MeshStandardMaterial({ color: 0xc9b07a, roughness: 1 }));
+// os jumentos de Mc 11,2: chão batido em volta e um brilho suave no chão até o jogador chegar perto
+const JUM = { visto: false, anel: new THREE.Mesh(new THREE.RingGeometry(1.5, 1.9, 40), new THREE.MeshBasicMaterial({ color: 0xfff1c8, transparent: true, opacity: 0.4, depthWrite: false })) };
+JUM.anel.rotation.x = -Math.PI / 2; scene.add(JUM.anel);
 const conv1 = ator(nMagro, 1.7, 0, 0, 0, 'Conversando'), conv2 = ator(nRapaz, 1.66, 0, 0, 0, 'Conversando');
 {
   const c = CASAS[2], p = c.mundo(c.px - 0.2, c.pz + 1.6);
@@ -771,6 +774,9 @@ const laco = (forca) => {
   if (rnd() < dt * 0.08) boiCarro.toca(boiCarro.atual === 'Comer' ? 'Parado' : 'Comer');
   if (rnd() < dt * 0.06) jumenta.toca(jumenta.atual === 'Comer' ? 'Parado' : 'Comer');
   { const c = jumenta.o.position.clone().add(V3(0, 0.9, 0)).addScaledVector(frente(jumenta), 0.5); barra(CORDA_J, ESTACA.clone().add(V3(0, 0.95, 0)), c); }
+  if (!JUM.visto && jog.o.position.distanceTo(jumenta.o.position) < 3.2) { JUM.visto = true; fala('Uma jumenta amarrada, e um jumentinho com ela, em que ninguém ainda montou.'); setTimeout(() => fala(''), 5000); }
+  JUM.anel.position.set(jumenta.o.position.x * 0.6 + jumentinho.o.position.x * 0.4, 0, jumenta.o.position.z * 0.6 + jumentinho.o.position.z * 0.4); JUM.anel.position.y = terreno(JUM.anel.position.x, JUM.anel.position.z) + 0.06;
+  JUM.anel.material.opacity = JUM.visto ? Math.max(0, JUM.anel.material.opacity - dt * 0.3) : 0.35 + 0.15 * Math.sin(t * 2.5);
   for (const o of ovelhas) {
     if (o.alvo) {
       const d = new THREE.Vector3().subVectors(o.alvo, o.o.position).setY(0);
