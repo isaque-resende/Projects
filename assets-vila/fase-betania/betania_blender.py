@@ -218,7 +218,7 @@ for nome, (x, z) in [('Forno_Corpo', FORNO), ('Lagar_Rocha', LAGAR)]:
     poe(arq, nome, x, z, 0.4 if nome.startswith('Forno') else 0.7, 1.0, y=0, afunda=0, col=col_ref, jogo=False)
 
 # ---------------- zonas livres (nada de árvore, pedra ou muro em cima) ----------------
-ZONAS = [(-18.6, 17.0, 4.2)] + [(x, z, 4.6) for x, z, r in CASAS] + [(x, z, 5.2 if 'Sobrado' in n_ else 3.6) for n_, x, z, r in CASAS_NOVAS] + [(x, z, 2.6) for _, x, z, _ in BARRACAS] + [
+ZONAS = [(LAGAR[0], LAGAR[1] + 1.5, 5.0)] + [(x, z, 4.6) for x, z, r in CASAS] + [(x, z, 5.2 if 'Sobrado' in n_ else 3.6) for n_, x, z, r in CASAS_NOVAS] + [(x, z, 2.6) for _, x, z, _ in BARRACAS] + [
          (APRISCO[0], APRISCO[1], 4.2), (FORNO[0], FORNO[1], 2.6), (LAGAR[0], LAGAR[1], 3.2), (POCO[0], POCO[1], 2.6), (PLACA[0], PLACA[1], 1.4),
          (TUMULO[0], TUMULO[1], 8.0), (PEDRA_TUM[0] + FRENTE_TUM[0] * 2.5, PEDRA_TUM[1] + FRENTE_TUM[1] * 2.5, 3.0), (-4.4, 11.4, 2.0)]
 def livre(x, z, r=0.5):
@@ -280,10 +280,10 @@ bosque(8.0, 19.5, 3.0, 4, 'escuras', dentro)          # bosquezinho na frente
 bosque(-6.0, 20.5, 3.0, 4, 'carvalhos', dentro)       # carvalhos na frente
 bosque(26.0, -15.0, 3.0, 5, 'escuras', dentro)        # canto de trás, à direita das casas
 VINHA = []
-for fi, zf in enumerate((15.4, 17.0, 18.6)):
-    for k_, xf in enumerate([-21.6 + i * 1.5 for i in range(5)]):
-        x_, z_ = xf + (0.35 if fi % 2 else 0), zf
-        poe('parreiras\\parreiras_v2.glb', 'Parreira2_Poste', x_, z_, (random.random() - 0.5) * 0.5, 0.9, afunda=0.05); REG.append((x_, z_, 0.6)); VINHA.append((x_, z_))
+for no_, dx, dz, r_ in [('Parreira2_Poste', -1.6, 3.2, 0.2), ('Parreira2_Poste', 0.2, 3.6, -0.3), ('Parreira2_Poste', 2.4, 3.0, 0.5),
+                        ('Parreira1_Pergola', -3.6, 0.6, math.pi / 2), ('Parreira3_PergolaCurta', 3.8, -0.4, math.pi / 2 + 0.3)]:
+    x_, z_ = LAGAR[0] + dx, LAGAR[1] + dz
+    poe('parreiras\\parreiras_v2.glb', no_, x_, z_, r_, 1.0, afunda=0.05); REG.append((x_, z_, 1.0)); VINHA.append((x_, z_))
 for dx, dz, r_ in [(2.0, 1.4, 0.3), (-2.1, 1.0, 1.2), (1.4, -2.0, 2.0)]:
     poe('cesto-uvas\\cesto_uvas.glb', 'CestoUvas', LAGAR[0] + dx, LAGAR[1] + dz, r_, 1.0, afunda=0.0); REG.append((LAGAR[0] + dx, LAGAR[1] + dz, 0.5))
 # fora da vila: matas por espécie, com clareiras; pedregais à parte
