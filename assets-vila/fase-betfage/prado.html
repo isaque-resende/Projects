@@ -74,14 +74,14 @@ const baixar = async (url) => {
   }
 };
 const sombra = (r) => r.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
-const LAY = await (await fetch('betfage_layout.json?v=19')).json();
+const LAY = await (await fetch('betfage_layout.json?v=20')).json();
 const S = LAY.S;
 // coordenadas do diorama: a = rumo ao canto direito, b = rumo ao canto esquerdo (0,0 = canto da frente)
 const AB = (x, z) => [(S / 2 - z) / S, (S / 2 - x) / S];
 const XZ = (a, b) => [S / 2 - b * S, S / 2 - a * S];
 const ARQS = [...new Set(LAY.objetos.map((o) => o.glb))];
 const [gCen, gCasaP, gTrigo, gColh, gBoi, gOve, gJum, gJog, gObj, nAldeao, nFaixa, nCarreg, nRobusto, nBotoes, nMoco, nPastor, nMagro, nRapaz, ...gArqs] = await Promise.all([
-  baixar('betfage_cenario.glb?v=19'), baixar('../casa-porta/insula.glb'), baixar('../trigal/trigo.glb'), baixar('../colheita-trigo/colheita.glb'),
+  baixar('betfage_cenario.glb?v=20'), baixar('../casa-porta/insula.glb'), baixar('../trigal/trigo.glb'), baixar('../colheita-trigo/colheita.glb'),
   baixar('../animais/boi.glb'), baixar('../animais/ovelha.glb'), baixar('../animais/jumento.glb'), baixar('../vila-betania/discipulo_acoes.glb'), baixar('../casa-porta/objetos_casa.glb'),
   baixar('../personagens/aldeao.glb'), baixar('../personagens/mulher_faixa.glb'), baixar('../personagens/carregador.glb'),
   baixar('../personagens/robusto.glb'), baixar('../personagens/mulher_botoes.glb'), baixar('../personagens/moco.glb'),
@@ -159,6 +159,30 @@ function suaviza(mesh, verdeia) {
 }
 suaviza(TERRENO, true);
 gCen.scene.traverse((o) => { if (o.isMesh && o.name.startsWith('Betfage_Estrada')) suaviza(o, false); });
+// texturas pintadas (grama e terra), projetadas de cima pelo mundo; a cor de vértice decide onde é grama e onde é terra
+const texChao = (url) => { const x = tl.load(url); x.colorSpace = THREE.SRGBColorSpace; x.wrapS = x.wrapT = THREE.RepeatWrapping; x.anisotropy = 4; return x; };
+const TX = { grama: texChao('tex/grama.webp?v=1'), terra: texChao('tex/terra.webp?v=1') };
+function texturiza(mesh, soTerra) {
+  const m = mesh.material;
+  m.onBeforeCompile = (sh) => {
+    sh.uniforms.uGrama = { value: TX.grama }; sh.uniforms.uTerra = { value: TX.terra };
+    sh.vertexShader = 'varying vec3 vWP; varying vec3 vWN;\n' + sh.vertexShader.replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\n vWP = (modelMatrix * vec4(transformed, 1.0)).xyz; vWN = normalize(mat3(modelMatrix) * objectNormal);');
+    sh.fragmentShader = 'uniform sampler2D uGrama; uniform sampler2D uTerra; varying vec3 vWP; varying vec3 vWN;\n' + sh.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
+      vec3 vc = vColor.rgb;
+      vec3 tg = texture2D(uGrama, vWP.xz * 0.2).rgb;
+      vec3 tt = texture2D(uTerra, vWP.xz * 0.16 + 0.37).rgb;
+      float gr = ${soTerra ? '0.0' : 'smoothstep(-0.045, 0.0, vc.g - vc.r) * smoothstep(0.55, 0.8, vWN.y)'};
+      float seco = ${soTerra ? '0.0' : '1.0 - smoothstep(-0.01, 0.04, vc.g - vc.r)'};
+      tg = mix(tg, vec3(dot(tg, vec3(0.3, 0.59, 0.11))), 0.18) * vec3(0.9, 0.88, 0.8);              // grama menos neon
+      tg = mix(tg, tg * vec3(1.15, 1.0, 0.65), seco * 0.6);                                         // capim seco amarelado
+      float lt = dot(tt, vec3(0.3, 0.59, 0.11));
+      vec3 terra = mix(tt, vec3(lt) * vec3(1.18, 1.02, 0.78), 0.45) * 1.05;                         // terra bege, menos laranja
+      diffuseColor.rgb = mix(terra, tg, gr);`);
+  };
+  m.customProgramCacheKey = () => 'chao-tex-' + soTerra; m.needsUpdate = true;
+}
+texturiza(TERRENO, false);
+gCen.scene.traverse((o) => { if (o.isMesh && o.name.startsWith('Betfage_Estrada')) texturiza(o, true); });
 const terreno = mapaAltura(TERRENO);
 // matas mais fechadas ao longe: cada árvore distante ganha duas vizinhas
 {
@@ -208,7 +232,8 @@ for (const o of LAY.objetos) {
   if (o.f) continue;
   const m = KIT[o.glb]?.[o.no]; if (!m) continue;
   const n = m.clone(); n.position.set(...o.p); n.rotation.y += o.r; n.scale.multiplyScalar(o.k); sombra(n); scene.add(n);
-  if (o.no === 'Casa2') { FADE.push(n); n.userData.casa = true; CONSTR.push(n); }
+  if (/^Casa(2|_Sobrado|_Alcapao|_Varal)$/.test(o.no)) { FADE.push(n); n.userData.casa = true; CONSTR.push(n); }
+  if (o.no === 'Manjedoura') FORNO.manj = n;
   if (o.no === 'Forno_Barro') FORNO.o = n, FORNO.r = o.r;
   if (o.no === 'Bancada') FORNO.mesa = n;
   if (ALTOS.test(o.no)) FADE.push(n);
@@ -391,6 +416,25 @@ function fornoPasso(dt, t) {
     const u = m.userData; u.t = (u.t + dt) % 4.0; const k = u.t / 4.0;
     m.position.set(b.x + Math.sin(u.t * 1.3 + m.id) * 0.12 + k * 0.9, b.y + 0.25 + k * 3.2, b.z + Math.cos(u.t * 1.1 + m.id) * 0.12 - k * 0.6);
     m.scale.setScalar(0.6 + k * 2.6); m.material.opacity = 0.5 * Math.min(1, u.t * 3) * (1 - k); m.rotation.set(u.t, u.t * 0.7, 0);
+  }
+}
+// comedouro do aprisco com trigo dentro: um monte de palha dourada e espigas espetadas
+if (FORNO.manj) {
+  FORNO.manj.updateMatrixWorld(true);
+  const bx = new THREE.Box3().setFromObject(FORNO.manj), rc = new THREE.Raycaster(), fundo = [];
+  for (let i = 0; i < 60; i++) {
+    const x = bx.min.x + 0.15 + rnd() * (bx.max.x - bx.min.x - 0.3), z = bx.min.z + 0.15 + rnd() * (bx.max.z - bx.min.z - 0.3);
+    rc.set(V3(x, bx.max.y + 1, z), V3(0, -1, 0)); const h = rc.intersectObject(FORNO.manj, true)[0];
+    if (h && h.point.y > bx.min.y + 0.3 && h.point.y < bx.max.y - 0.05) fundo.push(h.point);
+  }
+  if (fundo.length) {
+    const c = fundo.reduce((a, p) => a.add(p), V3(0, 0, 0)).multiplyScalar(1 / fundo.length);
+    const palha = new THREE.Mesh(new THREE.SphereGeometry(1, 10, 5, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xd9b45a, roughness: 1, flatShading: true }));
+    palha.position.copy(c).add(V3(0, -0.02, 0)); palha.scale.set(0.42, 0.16, 0.42); palha.rotation.y = LAY.manjedoura[3]; palha.castShadow = palha.receiveShadow = true; scene.add(palha);
+    const src = KT.Trigo_Maduro;
+    if (src) { const n = 9, inst = new THREE.InstancedMesh(src.geometry, src.material, n), m4 = new THREE.Matrix4(), q = new THREE.Quaternion();
+      for (let i = 0; i < n; i++) { const p = fundo[i % fundo.length]; q.setFromEuler(new THREE.Euler((rnd() - 0.5) * 1.2, rnd() * 6, (rnd() - 0.5) * 1.2)); inst.setMatrixAt(i, m4.compose(V3(p.x, c.y + 0.02, p.z), q, V3(0.35, 0.3, 0.35))); }
+      inst.castShadow = true; scene.add(inst); }
   }
 }
 // pães (pita) na mesa ao lado do forno: põe sobre o tampo achado por raio de cima
@@ -577,7 +621,7 @@ const carroca = CO.Carroca.clone(); sombra(carroca); carroca.position.set(CARRO.
 const carga = CO.Carroca_Carga.clone(); sombra(carga); carroca.add(carga); carga.visible = false;
 caixaDe(carroca, 0.2); carroca.updateMatrixWorld(true);
 const LADO_C = CO0.NPC_Carregar.clone().sub(CO0.Carroca);
-const LUGAR_C = carroca.localToWorld(V3(LADO_C.x, 0, LADO_C.z + 0.25)); LUGAR_C.y = 0;
+const LUGAR_C = (() => { const b = new THREE.Box3().setFromObject(carroca); return V3((b.min.x + b.max.x) / 2, 0, b.min.z - 0.55); })();   // atrás da carroça, do lado do trigal
 const boiCarro = ator(gBoi, 1.45, 0, 0, 0, 'Parado');
 {
   const b = new THREE.Box3().setFromObject(carroca), c = b.getCenter(new THREE.Vector3());
@@ -697,7 +741,7 @@ const conv1 = ator(nMagro, 1.7, 0, 0, 0, 'Conversando'), conv2 = ator(nRapaz, 1.
   for (const n of [conv1, conv2]) CIRC.push({ x: n.o.position.x, z: n.o.position.z, r: 0.35 });
 }
 // ovelhas no cercado de baixo, com o pastor; e algumas no socalco de cima, à direita
-const PASTO = { x: LAY.pasto[0], z: LAY.pasto[1], r: 1.0 };      // três ovelhas no aprisco, sem pastor
+const PASTO = { x: LAY.pasto[0], z: LAY.pasto[1], r: 0.7 };      // três ovelhas no aprisco, sem pastor
 const ovelhas = [];
 for (let i = 0; i < 3; i++) {
   const a = i * 2.1 + rnd() * 0.5, r = 0.4 + rnd() * 0.6;

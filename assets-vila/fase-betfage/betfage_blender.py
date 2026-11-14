@@ -33,7 +33,8 @@ JUM_AB = (0.48, 0.32)            # jumenta e jumentinho, entre a ínsula e a est
 APRISCO_AB = (0.43, -0.02); APRISCO_K = 1.75; APRISCO_R = 0.52   # gira o vão (no -Y do modelo) para quase de frente à câmera
 FORNO_AB = (0.37, 1.03)
 COCHO_AB = (0.60, -0.05)         # bebedouro e cocho, ao lado do aprisco
-CASA_AB = (0.25, 1.07); CASA_R = math.pi / 4; CASA_K = 0.68   # casa avulsa à esquerda da eira
+CASA_AB = (0.25, 1.09); CASA_R = math.pi / 4; CASA_K = 1.0     # sobrado (casa nova de dois níveis com escada)
+CASA2_AB = (0.50, 1.17); CASA3_AB = (0.99, 0.57)               # casa do alçapão (socalco de cima) e casa do varal (atrás da ínsula)   # casa avulsa à esquerda da eira
 
 # curva da estrada amostrada
 pts = [Vector((x, z, 0)) for x, z in ESTRADA]
@@ -93,11 +94,13 @@ CARRO_AB = (0.925, 0.10); crx, crz = xz(*CARRO_AB); HCARRO = HCAMPO; pad_rect(cr
 pad_rect((crx + ccx) / 2, (crz + ccz) / 2, abs(crx - ccx) / 2 + 2.0, abs(crz - ccz) / 2 + 2.0, 2.0, HCAMPO)
 apx, apz = xz(*APRISCO_AB); HAPR = h_base(apx, apz); pad_circ(apx, apz, 1.45 * APRISCO_K + 0.6, 2.2, HAPR)
 cbx, cbz = xz(*COCHO_AB); HCB = h_base(cbx, cbz); pad_rect(cbx, cbz, 2.4, 1.6, 1.8, HCB)
-pcx, pcz = xz(*POCO_AB); HPOCO = h_base(pcx, pcz); pad_circ(pcx, pcz, 1.6, 1.6, HPOCO)
+pcx, pcz = xz(*POCO_AB); HPOCO = h_base(pcx, pcz); pad_circ(pcx, pcz, 1.6, 1.6, HPOCO); pad_circ(pcx + 0.707 * 2.5, pcz - 0.707 * 2.5, 1.3, 1.4, HPOCO)
 jmx, jmz = xz(*JUM_AB); HJUM = HINS; pad_circ(jmx, jmz, 1.8, 1.6, HJUM)     # na altura do pátio da ínsula (senão rebaixa o pátio e a escada fica no ar)
 fsx, fsz = xz(*FIGSECA_AB); HFIG = HR[dist_estrada(fsx, fsz)[1]]; pad_circ(fsx, fsz, 1.7, 1.8, HFIG)
-csx, csz = xz(*CASA_AB); HCASA = h_socalco(csx, csz); pad_rect(csx, csz, 3.4, 3.4, 2.0, HCASA)
-FOX, FOZ = csx - 0.707 * 4.3 + 0.707 * 1.2, csz + 0.707 * 4.3 + 0.707 * 1.2          # forno à esquerda da casa (na tela), um pouco à frente
+csx, csz = xz(*CASA_AB); HCASA = h_socalco(csx, csz); pad_rect(csx, csz, 4.6, 4.6, 2.0, HCASA)
+c2x, c2z = xz(*CASA2_AB); HC2 = h_socalco(c2x, c2z); pad_rect(c2x, c2z, 3.0, 3.0, 1.8, HC2)
+c3x, c3z = xz(*CASA3_AB); HC3 = h_socalco(c3x, c3z); pad_rect(c3x, c3z, 3.0, 3.0, 1.8, HC3)
+FOX, FOZ = csx - 0.707 * 5.6 + 0.707 * 1.6, csz + 0.707 * 5.6 + 0.707 * 1.6          # forno à esquerda da casa (na tela), um pouco à frente
 MPX, MPZ = FOX - 0.707 * 2.6 + 0.707 * 0.6, FOZ + 0.707 * 2.6 + 0.707 * 0.6          # mesa de pão ao lado
 pad_circ(FOX, FOZ, 1.9, 1.8, HCASA); pad_circ(MPX, MPZ, 1.5, 1.6, HCASA)
 
@@ -228,7 +231,7 @@ def poe(arq, no, x, z, r=0.0, k=1.0, y=None, afunda=0.05, exporta=False, jogo=Tr
 
 for arq in ['casa-porta\\muros_kit.glb', 'casa-porta\\insula.glb', 'diorama-ciprestes\\ciprestes.glb', 'casa-porta\\casa_porta.glb',
             'casa-porta\\rochas.glb', 'colheita-trigo\\colheita.glb', 'casa-porta\\pastoril.glb', 'casa-porta\\oficios.glb', 'casa-porta\\objetos_casa.glb',
-            'casa-porta\\arvores_tripo.glb', 'trigal\\trigo.glb']:
+            'casa-porta\\arvores_tripo.glb', 'trigal\\trigo.glb', 'casas\\casas_betfage.glb']:
     importa(arq)
 col_proto.hide_render = True; col_proto.hide_viewport = True
 
@@ -262,8 +265,8 @@ def muro(xa, za, xb, zb, alt=0.9, i=0, base=None, esp=None):
         yy += alt_mod * sz_ * 0.97
     s = 0.0
     while s <= L: OBST.append((round(xa + (xb - xa) * s / L, 2), round(za + (zb - za) * s / L, 2), 0.42 if not esp else max(0.42, esp / 2))); s += 0.6
-ZONAS = [('c', apx, apz, 1.45 * APRISCO_K + 1.6), ('c', FOX, FOZ, 2.6), ('c', MPX, MPZ, 2.2), ('c', pcx, pcz, 2.4), ('c', jmx, jmz, 2.8), ('c', fsx, fsz, 2.4), ('r', cbx, cbz, 2.6, 2.2),
-         ('r', csx, csz, 5.0, 5.0), ('r', crx, crz, 3.8, 3.2), ('r', (crx + ccx) / 2, (crz + ccz) / 2, abs(crx - ccx) / 2 + 2.6, abs(crz - ccz) / 2 + 2.6)]
+ZONAS = [('c', apx, apz, 1.45 * APRISCO_K + 1.6), ('c', FOX, FOZ, 2.6), ('c', MPX, MPZ, 2.2), ('c', pcx, pcz, 2.4), ('c', pcx + 0.707 * 2.5, pcz - 0.707 * 2.5, 1.8), ('c', jmx, jmz, 2.8), ('c', fsx, fsz, 2.4), ('r', cbx, cbz, 2.6, 2.2),
+         ('r', csx, csz, 6.0, 6.0), ('r', c2x, c2z, 4.2, 4.2), ('r', c3x, c3z, 4.2, 4.2), ('r', crx, crz, 3.8, 3.2), ('r', (crx + ccx) / 2, (crz + ccz) / 2, abs(crx - ccx) / 2 + 2.6, abs(crz - ccz) / 2 + 2.6)]
 def na_zona(x, z, m=0.0):
     for zn in ZONAS:
         if zn[0] == 'c' and math.hypot(x - zn[1], z - zn[2]) < zn[3] + m: return True
@@ -405,10 +408,14 @@ poe('casa-porta\\pastoril.glb', 'Porteira', apx + gx, apz - gy, gcr + math.pi / 
 for s_ in (-0.4, -0.2, 0.0, 0.2, 0.4):
     OBST.append((round(apx + gx - math.sin(gcr) * corda * s_, 2), round(apz - gy - math.cos(gcr) * corda * s_, 2), 0.25))
 # bebedouro e cocho afastados um do outro, com passagem entre eles
-poe('casa-porta\\pastoril.glb', 'Cocho', cbx - 1.3, cbz + 0.4, 0.75, 0.75, y=HCB, afunda=0.0)       # bebedouro (de pedra, com água)
-poe('casa-porta\\pastoril.glb', 'Manjedoura', cbx + 1.3, cbz - 0.5, 0.75, 0.85, y=HCB, afunda=0.0)  # cocho de madeira (com feno)
-OBST += [(round(cbx - 1.3, 2), round(cbz + 0.4, 2), 0.7), (round(cbx + 1.3, 2), round(cbz - 0.5, 2), 0.65)]
+# comedouro dentro do aprisco, encostado no fundo (longe da porteira); as ovelhas ficam entre ele e a porteira
+mjx, mjz = apx - math.cos(gcr) * 0.75, apz + math.sin(gcr) * 0.75
+poe('casa-porta\\pastoril.glb', 'Manjedoura', mjx, mjz, gcr + math.pi / 2, 0.75, y=HAPR, afunda=0.0, exporta=False)
+OBST.append((round(mjx, 2), round(mjz, 2), 0.55))
+PASTO_C = (apx + math.cos(gcr) * 0.55, apz - math.sin(gcr) * 0.55)
+# bebedouro dos bichos junto do poço
 poe('casa-porta\\oficios.glb', 'Poco', pcx, pcz, 0.8, 1.0, y=HPOCO, afunda=0.0); OBST.append((round(pcx, 2), round(pcz, 2), 1.15))
+bbx, bbz = plano(pcx + 0.707 * 2.5, pcz - 0.707 * 2.5, 0.9); poe('casa-porta\\pastoril.glb', 'Cocho', bbx, bbz, math.pi / 4, 0.75, afunda=0.0); OBST.append((round(bbx, 2), round(bbz, 2), 0.75))
 # boca do poço: o modelo não tem fundo (aparecia a grama); um disco de água escura logo abaixo da borda
 _hc = Vector((-0.292, 0.112, 0)); _hc.rotate(mathutils.Euler((0, 0, 0.8)))
 _bm = bmesh.new(); _c = bmesh.ops.create_circle(_bm, cap_ends=True, segments=16, radius=0.5)
@@ -417,12 +424,14 @@ _me = bpy.data.meshes.new('Poco_Agua'); _bm.to_mesh(_me); _bm.free()
 _ca = _me.color_attributes.new('Col', 'BYTE_COLOR', 'CORNER')
 for _l in _ca.data: _l.color_srgb = (0.13, 0.17, 0.17, 1)
 _ag = bpy.data.objects.new('Poco_Agua', _me); col_exp.objects.link(_ag); _ag.data.materials.append(mat_vc('Agua'))
-poe('casa-porta\\casa_porta.glb', 'Casa2', csx, csz, CASA_R, CASA_K, y=HCASA, afunda=0.02)
+poe('casas\\casas_betfage.glb', 'Casa_Sobrado', csx, csz, CASA_R, 1.0, y=HCASA, afunda=0.02)
+poe('casas\\casas_betfage.glb', 'Casa_Alcapao', c2x, c2z, math.pi / 4, 1.0, y=HC2, afunda=0.02)
+poe('casas\\casas_betfage.glb', 'Casa_Varal', c3x, c3z, -math.pi / 4, 1.0, y=HC3, afunda=0.02)      # porta na face +x: gira para a câmera
 CASA_OBST = []     # só para as árvores desviarem; no jogo a casa tem pisos e paredes de verdade (sobe a escada)
-for i in range(-3, 4):
-    for k in range(-2, 3):
-        lx, lz = i * 1.0 * CASA_K, k * 1.15 * CASA_K; ca_, sa_ = math.cos(CASA_R), math.sin(CASA_R)
-        CASA_OBST.append((csx + lx * ca_ + lz * sa_, csz - lx * sa_ + lz * ca_, 0.75))
+for cx_, cz_, hw in [(csx, csz, 3.5), (c2x, c2z, 1.9), (c3x, c3z, 2.0)]:
+    for i in range(-3, 4):
+        for k in range(-3, 4):
+            CASA_OBST.append((cx_ + i * hw / 3, cz_ + k * hw / 3, 0.8))
 fox, foz = FOX, FOZ; poe('casa-porta\\oficios.glb', 'Forno_Barro', fox, foz, math.pi / 4, 1.0, afunda=0.03)
 OBST += [(round(fox - 0.39, 2), round(foz + 0.39, 2), 0.75), (round(fox + 0.45, 2), round(foz - 0.45, 2), 0.55)]
 # mesa de pão: do lado direito do forno (eixo da tela)
@@ -466,6 +475,8 @@ if False:
 poe('colheita-trigo\\colheita.glb', 'Eira', ex, ez, 0.3, (EIRA_R * 2) / 2.84, y=HEIRA, afunda=0.02)
 for dx, dz, no, k in [(3.4, -2.6, 'Feixe_Pilha', 1.1), (4.2, -0.8, 'Feixe_Pilha', 1.0), (-3.2, -3.0, 'Cesto_Graos', 1.2), (-2.4, -3.8, 'Cesto_Espigas', 1.1)]:
     x, z = plano(ex + dx, ez + dz); poe('colheita-trigo\\colheita.glb', no, x, z, random.random() * 6, k); OBST.append((round(x, 2), round(z, 2), 0.5))
+poe('casas\\casas_betfage.glb', 'Trilho_Debulhar', ex - 1.3, ez - 1.3, 0.9, 1.0, y=HEIRA + 0.06, afunda=0.0); OBST.append((round(ex - 1.3, 2), round(ez - 1.3, 2), 0.6))
+poe('casas\\casas_betfage.glb', 'Peneira_Graos', ex + 0.5, ez + 1.7, 0.3, 0.9, y=HEIRA + 0.06, afunda=0.0)
 for dx, dz in [(3.0, 1.6), (3.6, 2.2), (2.6, 2.4)]:
     x, z = plano(ex + dx, ez + dz, 0.35); poe('casa-porta\\objetos_casa.glb', 'Saco', x, z, random.random() * 6, 1.15)
 # trigal: só alguns tufos na prévia (no jogo é instanciado)
@@ -595,7 +606,7 @@ if EXPORT:
     lay = {'S': S, 'estrada': [[round(p.x, 2), round(p.y, 2)] for p in AMOS[::3]], 'meia': MEIA, 'insula': INSULA_LAY,
            'campo': {'x0': CAMPO[0], 'x1': CAMPO[1], 'z0': CAMPO[2], 'z1': CAMPO[3], 'y': HCAMPO},
            'eira': {'x': ex, 'z': ez, 'r': EIRA_R, 'y': HEIRA}, 'carro': {'x': crx, 'z': crz, 'y': HCARRO},
-           'figseca': [fsx, fsz], 'pasto': [px_, pz_], 'cocho': [cox, coz], 'objetos': LAYOUT, 'obst': OBST, 'plantas': PLANTAS, 'casa': {'p': [round(csx, 3), round(HCASA - 0.02, 3), round(csz, 3)], 'r': CASA_R, 'k': CASA_K}}
+           'figseca': [fsx, fsz], 'pasto': [round(PASTO_C[0], 3), round(PASTO_C[1], 3)], 'manjedoura': [round(mjx, 3), round(HAPR, 3), round(mjz, 3), round(gcr + math.pi / 2, 3)], 'cocho': [cox, coz], 'objetos': LAYOUT, 'obst': OBST, 'plantas': PLANTAS, 'casa': {'p': [round(csx, 3), round(HCASA - 0.02, 3), round(csz, 3)], 'r': CASA_R, 'k': CASA_K}}
     json.dump(lay, open(OUT + '\\betfage_layout.json', 'w'), separators=(',', ':'))
     print('EXPORT', os.path.getsize(saida), len(LAYOUT), len(OBST), 'PLANTAS', len(PLANTAS))
 print('MUROS', len([o for o in col_exp.objects if o.name.startswith('Muro')]))
