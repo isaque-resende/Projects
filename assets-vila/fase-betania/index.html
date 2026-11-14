@@ -64,49 +64,15 @@ const tex = (url, rep) => {
   t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()); if (rep) t.repeat.set(rep, rep); return t;
 };
 
-// ---------- chão: grande o bastante para a câmera nunca ver a borda ----------
-// sem textura: cor por triângulo (facetado), manchas grandes e suaves de verde e capim seco
-const ground = (() => {
-  const g = new THREE.PlaneGeometry(200, 200, 110, 110).toNonIndexed();
-  const p = g.attributes.position, cor = [];
-  const h = (x, y) => { const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return s - Math.floor(s); };
-  const ruido = (x, y) => { const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
-    const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
-    return (h(xi, yi) * (1 - u) + h(xi + 1, yi) * u) * (1 - v) + (h(xi, yi + 1) * (1 - u) + h(xi + 1, yi + 1) * u) * v; };
-  const verde = new THREE.Color(0xffffff), verdeE = new THREE.Color(0xd8e0c4), seco = new THREE.Color(0xfff1d2), c = new THREE.Color();
-  for (let i = 0; i < p.count; i += 3) {
-    const x = (p.getX(i) + p.getX(i + 1) + p.getX(i + 2)) / 3, y = (p.getY(i) + p.getY(i + 1) + p.getY(i + 2)) / 3;
-    const n1 = ruido(x / 14 + 5, y / 14 + 9), n2 = ruido(x / 6, y / 6);
-    c.copy(verde).lerp(verdeE, THREE.MathUtils.smoothstep(n1, 0.35, 0.75) * 0.8);
-    c.lerp(seco, THREE.MathUtils.smoothstep(n2 * 0.6 + n1 * 0.4, 0.55, 0.8) * 0.55);
-    c.multiplyScalar(0.96 + h(x, y) * 0.07);
-    for (let k = 0; k < 3; k++) cor.push(c.r, c.g, c.b);
-  }
-  g.setAttribute('color', new THREE.Float32BufferAttribute(cor, 3));
-  return new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: tex('tex/grama.webp', 9), vertexColors: true, roughness: 1, flatShading: true }));
-})();
-ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+// ---------- chão: vem do Blender (betania_blender.py), carregado mais abaixo ----------
+let ground = null;
 
 // ---------- caminhos de terra ----------
 const CAMINHOS = [];
 function caminho(pts, larg) {
   const curva = new THREE.CatmullRomCurve3(pts.map(([x, z]) => new THREE.Vector3(x, 0, z)));
-  const N = Math.max(20, Math.round(curva.getLength() * 2)), pos = [], uv = [], idx = [];
-  for (let i = 0; i <= N; i++) {
-    const t = i / N, p = curva.getPointAt(t), tg = curva.getTangentAt(t);
-    const w = 1.45 * larg * (0.9 + 0.12 * Math.sin(t * 13 + pts.length)), L = curva.getLength();
-    pos.push(p.x - tg.z * w, 0.02, p.z + tg.x * w, p.x + tg.z * w, 0.02, p.z - tg.x * w);
-    uv.push(0, t * L / (2.9 * larg), 1, t * L / (2.9 * larg));
-  }
-  for (let i = 0; i < N; i++) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
-  const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: tex('tex/estrada.webp'), roughness: 1, polygonOffset: true, polygonOffsetFactor: -1 }));
-  m.receiveShadow = true; scene.add(m);
   CAMINHOS.push({ curva, larg });
 }
-// estrada para Jerusalém (sai pelo oeste, à esquerda) e ruelas
 // estrada para Jerusalém (sai pelo oeste) atravessa a vila; ruelas levam a cada porta e ao aprisco
 caminho([[-60, 3], [-30, 3.2], [-20, 2.8], [-10, 2.2], [-2, 0.8], [6, 0.4], [12, 1.0], [16, 1.6]], 1.5);
 caminho([[-2, 0.8], [-2.5, -3.5], [-2.7, -6.6]], 1.0);
@@ -157,6 +123,80 @@ function por(modelo, x, z, r = 0, k = 1, { fade = false, caixa = false, circ = 0
   if (circ) CIRC.push({ x, z, r: circ * k });
   if (fade) FADE.push(n);
   return n;
+}
+
+// ---------- cenário do Blender: terreno (vila plana, morros em volta), caminhos, muretas; árvores e pedras do layout ----------
+const [gCen, LAYB] = await Promise.all([baixar('betania_cenario.glb?v=2'), fetch('betania_layout.json?v=2').then((r) => r.json())]);
+// terreno e caminhos com sombreamento suave e a cor misturada entre os vértices (visual "prado", igual a Betfagé)
+function suaviza(mesh) {
+  const g0 = mesh.geometry, pos = g0.attributes.position, col = g0.attributes.color, idx = g0.index;
+  const mapa = new Map(), P = [], C = [], N = [], I = [], n = idx ? idx.count : pos.count;
+  for (let t = 0; t < n; t++) {
+    const v = idx ? idx.getX(t) : t, x = pos.getX(v), y = pos.getY(v), z = pos.getZ(v), k = Math.round(x * 50) + '_' + Math.round(z * 50) + '_' + Math.round(y * 50);
+    let j = mapa.get(k);
+    if (j === undefined) { j = P.length / 3; mapa.set(k, j); P.push(x, y, z); C.push(0, 0, 0); N.push(0); }
+    if (col) { C[j * 3] += col.getX(v); C[j * 3 + 1] += col.getY(v); C[j * 3 + 2] += col.getZ(v); N[j]++; }
+    I.push(j);
+  }
+  for (let j = 0; j < N.length; j++) if (N[j]) for (let c = 0; c < 3; c++) C[j * 3 + c] /= N[j];
+  const g1 = new THREE.BufferGeometry(); g1.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g1.setAttribute('color', new THREE.Float32BufferAttribute(C, 3)); g1.setIndex(I); g1.computeVertexNormals();
+  mesh.geometry = g1;
+}
+const texChao = (url) => { const x = tl.load(url); x.colorSpace = THREE.SRGBColorSpace; x.wrapS = x.wrapT = THREE.RepeatWrapping; x.anisotropy = 4; return x; };
+const TXC = { grama: texChao('../fase-betfage/tex/grama.webp?v=1'), terra: texChao('../fase-betfage/tex/terra.webp?v=1') };
+function matChao(soTerra, offset) {
+  const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, ...(offset ? { polygonOffset: true, polygonOffsetFactor: -2 } : {}) });
+  m.onBeforeCompile = (sh) => {
+    sh.uniforms.uGrama = { value: TXC.grama }; sh.uniforms.uTerra = { value: TXC.terra };
+    sh.vertexShader = 'varying vec3 vWP; varying vec3 vWN;\n' + sh.vertexShader.replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\n vWP = (modelMatrix * vec4(transformed, 1.0)).xyz; vWN = normalize(mat3(modelMatrix) * objectNormal);');
+    sh.fragmentShader = 'uniform sampler2D uGrama; uniform sampler2D uTerra; varying vec3 vWP; varying vec3 vWN;\n' + sh.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
+      vec3 vc = vColor.rgb;
+      vec3 tg = texture2D(uGrama, vWP.xz * 0.2).rgb;
+      vec3 tt = texture2D(uTerra, vWP.xz * 0.16 + 0.37).rgb;
+      float gr = ${soTerra ? '0.0' : 'smoothstep(-0.045, 0.0, vc.g - vc.r) * smoothstep(0.55, 0.8, vWN.y)'};
+      float seco = ${soTerra ? '0.0' : '1.0 - smoothstep(-0.01, 0.04, vc.g - vc.r)'};
+      tg = mix(tg, vec3(dot(tg, vec3(0.3, 0.59, 0.11))), 0.18) * vec3(0.9, 0.88, 0.8);
+      tg = mix(tg, tg * vec3(1.15, 1.0, 0.65), seco * 0.6);
+      float lt = dot(tt, vec3(0.3, 0.59, 0.11));
+      vec3 terra = mix(tt, vec3(lt) * vec3(1.18, 1.02, 0.78), 0.45) * 1.05;
+      diffuseColor.rgb = mix(terra, tg, gr);`);
+  };
+  m.customProgramCacheKey = () => 'chao-bet-' + soTerra; return m;
+}
+gCen.scene.traverse((o) => {
+  if (!o.isMesh) return;
+  if (o.name.startsWith('Betania_Terreno')) { suaviza(o); o.material = matChao(false, false); o.receiveShadow = true; ground = o; }
+  else if (o.name.startsWith('Betania_Caminhos')) { suaviza(o); o.material = matChao(true, true); o.receiveShadow = true; }
+  else { o.castShadow = true; o.receiveShadow = true; }
+});
+scene.add(gCen.scene);
+// árvores e pedras (posições fixas do Blender); as de longe vão instanciadas
+{
+  const ARQB = [...new Set(LAYB.objetos.map((o) => o.glb))];
+  const gB = await Promise.all(ARQB.map((a) => baixar('../' + a)));
+  const KB = Object.fromEntries(ARQB.map((a, i) => [a, nos(gB[i])]));
+  for (const k of Object.values(KB)) for (const o of Object.values(k)) o.position.set(0, 0, 0);
+  const grupos = {};
+  for (const o of LAYB.objetos) if (o.f) (grupos[o.glb + '|' + o.no] ||= []).push(o);
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3();
+  for (const lista of Object.values(grupos)) {
+    const raiz = KB[lista[0].glb]?.[lista[0].no]; if (!raiz) continue;
+    raiz.updateMatrixWorld(true);
+    raiz.traverse((mm) => {
+      if (!mm.isMesh) return;
+      const inst = new THREE.InstancedMesh(mm.geometry, mm.material, lista.length);
+      lista.forEach((o, i) => { q.setFromEuler(new THREE.Euler(raiz.rotation.x, raiz.rotation.y + o.r, raiz.rotation.z)); s.copy(raiz.scale).multiplyScalar(o.k); m4.compose(p.set(...o.p), q, s); m4.multiply(raiz.matrixWorld.clone().invert().multiply(mm.matrixWorld)); inst.setMatrixAt(i, m4); });
+      inst.castShadow = false; inst.receiveShadow = true; inst.frustumCulled = false; scene.add(inst);
+    });
+  }
+  for (const o of LAYB.objetos) {
+    if (o.f) continue;
+    const m = KB[o.glb]?.[o.no]; if (!m) continue;
+    const n = m.clone(); n.position.set(...o.p); n.rotation.y += o.r; n.scale.multiplyScalar(o.k); sombra(n); scene.add(n);
+    const alto = /Arvore|Cipreste|Tamareira/.test(o.no);
+    if (alto) FADE.push(n);
+    CIRC.push({ x: o.p[0], z: o.p[2], r: alto ? 0.45 : 0.35 * o.k + 0.15 });
+  }
 }
 
 // ---------- casas (todas ao fundo, de frente para a câmera) ----------
@@ -317,56 +357,15 @@ const LAV = { x0: 4.4, x1: 15.6, z0: 7.4, z1: 13.4 };
   m.rotation.x = -Math.PI / 2; m.position.set((LAV.x0 + LAV.x1) / 2, 0.03, (LAV.z0 + LAV.z1) / 2); m.receiveShadow = true; scene.add(m);
 }
 
-// ---------- pátios de terra batida (borda esfumada) e manchas soltas no gramado ----------
-{
-  const cv = document.createElement('canvas'); cv.width = cv.height = 128;
-  const cx = cv.getContext('2d'), gr = cx.createRadialGradient(64, 64, 20, 64, 64, 64);
-  gr.addColorStop(0, '#fff'); gr.addColorStop(0.7, '#fff'); gr.addColorStop(1, '#000');
-  cx.fillStyle = gr; cx.fillRect(0, 0, 128, 128);
-  const borda = new THREE.CanvasTexture(cv);
-  const patio = tex('tex/patio.webp');
-  for (const [x, z, r] of [[1.6, -6.1, 3.0], [11.0, -2.6, 3.4], [1.4, -2.8, 4.4], [-2.8, -6.2, 2.6]]) {
-    const g = new THREE.CircleGeometry(r, 28), uv = g.attributes.uv;
-    for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * r / 2.5, uv.getY(i) * r / 2.5);
-    g.setAttribute('uv1', new THREE.Float32BufferAttribute(g.attributes.uv.array.map((v) => v / (r / 2.5)), 2));
-    const mat = new THREE.MeshStandardMaterial({ map: patio, alphaMap: borda, transparent: true, depthWrite: false, roughness: 1, polygonOffset: true, polygonOffsetFactor: -1.5 });
-    mat.alphaMap.channel = 1;
-    const m = new THREE.Mesh(g, mat); m.rotation.x = -Math.PI / 2; m.position.set(x, 0.015, z); m.receiveShadow = true; scene.add(m);
-  }
-  // manchas: atlas 3x3 (verde, seco, terra / flores brancas, flores lilás, folhas / pedrinhas, verde grande, flores mistas)
-  const pos = [], uvs = [], idx = []; let n = 0;
-  const peso = [2, 1, 1, 3, 3, 2, 2, 1, 4];
-  const escolhe = () => { let r = rnd() * 19; for (let i = 0; i < 9; i++) { r -= peso[i]; if (r < 0) return i; } return 0; };
-  for (let k = 0; k < 400 && n < 140; k++) {
-    const x = -32 + rnd() * 64, z = -26 + rnd() * 52;
-    if (naEstrada(x, z, 1.2)) continue;
-    if (x > LAV.x0 - 0.8 && x < LAV.x1 + 0.8 && z > LAV.z0 - 0.8 && z < LAV.z1 + 0.8) continue;
-    const c = escolhe(), s = (c < 3 || c === 7 ? 1.6 + rnd() * 1.6 : 0.6 + rnd() * 0.5), a = rnd() * 6.28;
-    const u0 = (c % 3) / 3, v0 = 1 - (Math.floor(c / 3) + 1) / 3;
-    const co = Math.cos(a) * s, si = Math.sin(a) * s;
-    for (const [dx, dz, u, v] of [[-1, -1, 0, 1], [1, -1, 1, 1], [1, 1, 1, 0], [-1, 1, 0, 0]]) {
-      pos.push(x + dx * co - dz * si, 0.01 + n * 0.0001, z + dx * si + dz * co); uvs.push(u0 + u / 3, v0 + v / 3);
-    }
-    const b = n * 4; idx.push(b, b + 2, b + 1, b, b + 3, b + 2); n++;
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2)); g.setIndex(idx); g.computeVertexNormals();
-  const t = tex('tex/manchas.webp'); t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
-  const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: t, opacity: 0.8, transparent: true, depthWrite: false, roughness: 1, polygonOffset: true, polygonOffsetFactor: -1 }));
-  m.receiveShadow = true; scene.add(m);
-}
-
 // ---------- árvores: poucas dentro da vila, uma cortina nas bordas (sangria) ----------
 const AT = nos(gTripo), AP = nos(gPar), T = nos(gTam), C = nos(gCip), FR = nos(gFrond), R = nos(gRoch), OB = nos(gObj);
 for (const o of [...Object.values(AT), ...Object.values(AP), ...Object.values(T), ...Object.values(FR), ...Object.values(R), ...Object.values(OB), ...Object.values(C)]) o.position.set(0, 0, 0);
-por(T.Tamareiras, -4.4, 11.4, 0.2, 0.7, { fade: true });
-CIRC.push({ x: -4.4 - 1.4, z: 11.4, r: 0.35 }, { x: -4.4 + 1.2, z: 11.4, r: 0.35 });
+
 // objetos junto às casas
 por(OB.Jarro_Alto, -5.6, -6.6, 0, 1.3, { circ: 0.3 }); por(OB.Pote_Escuro, -5.0, -6.2, 0, 1.3, { circ: 0.3 });
 por(OB.Cesto_Alca, 9.0, -7.0, 0.4, 1, { circ: 0.3 }); por(OB.Lenha, -1.3, -5.6, 0.3, 1, { circ: 0.3 });
 por(OB.Saco, 12.6, -5.6, 0, 1.1, { circ: 0.3 }); por(OB.Banquinho, 8.2, -7.0, 1.0, 1, { circ: 0.3 });
-por(R.Rocha3, -17.5, 13.6, 0.8, 1, { circ: 0.6 });
+
 // túmulo de Lázaro: gruta na rocha, fora da vila, à direita; entrada (com a pedra) virada para a vila e a câmera
 const TUM = {}, ROLA = 1;   // lado para onde a pedra rola (ao longo da face)
 {
@@ -386,8 +385,7 @@ const TUM = {}, ROLA = 1;   // lado para onde a pedra rola (ao longo da face)
   TUM.lugar = pedra.getWorldPosition(new THREE.Vector3()).setY(0);
   { const L = TUM.lugar, F = TUM.frente; caminho([[-10, 2.2], [-7.4, -2.4], [L.x + F.x * 3.6 + 0.4, L.z + F.z * 3.6 + 1.2], [L.x + F.x * 1.5, L.z + F.z * 1.5]], 0.85); }
   // ciprestes atrás e pedras soltas, como num lugar de sepulturas
-  por(C.Cipreste2_Esguio, -7.4, -13.6, 1.0, 0.8, { circ: 0.4 }); por(C.Cipreste1_Redondo, -8.6, -2.4, 0.5, 0.75, { circ: 0.4 });
-  por(R.Rocha6, TUM.lugar.x + TUM.frente.x * 2.4 + 2.2, TUM.lugar.z + TUM.frente.z * 2.4 - 0.6, -0.4, 0.6, { circ: 0.4 });
+
 }
 // câmara interna do túmulo: cenário à parte, bem abaixo do chão (a câmera de dentro nunca vê a vila)
 const CAMT = { on: false, base: new THREE.Vector3(0, -60, 0) };
@@ -404,37 +402,6 @@ const CAMT = { on: false, base: new THREE.Vector3(0, -60, 0) };
   CAMT.centro = b.getCenter(new THREE.Vector3()); CAMT.centro.y = b.min.y + 0.7;
   CAMT.luz = new THREE.PointLight(0xffc27a, 0, 14, 1.2); CAMT.luz.position.set(CAMT.entrada.x + 0.9, b.min.y + 2.6, CAMT.entrada.z + 0.9); scene.add(CAMT.luz);
 }
-// cortina de árvores fora da área de jogo
-const BORDA = [];
-for (let i = 0; i < 52; i++) {
-  const a = (i / 52) * Math.PI * 2;
-  const rx = 25 + rnd() * 6, rz = 19 + rnd() * 5;
-  const x = Math.cos(a) * rx, z = Math.sin(a) * rz;
-  if (Math.abs(z - 3) < 3.5 && x < 0) continue;      // a estrada para Jerusalém fica aberta
-  if (Math.hypot(x - TUM.tum.position.x, z - TUM.tum.position.z) < 12.5) continue;   // o rochedo do túmulo já fecha esse canto
-  const lista = [C.Cipreste2_Esguio, C.Cipreste1_Redondo, FR.Arvore_Pequena, AT.Arvore1, AT.Arvore3, AT.Arvore5, AT.Arvore8, AT.Arvore9, T.Tamareiras].filter(Boolean);
-  if (z > 7 || x > 22) { const pd = [R.Rocha1, R.Rocha4, R.Rocha5, R.Rocha7, R.Rocha8].filter(Boolean); por(pd[i % pd.length], x, z, rnd() * 6.28, 0.7 + rnd() * 0.5); continue; }
-  BORDA.push(por(lista[Math.floor(rnd() * lista.length)], x, z, rnd() * 6.28, 0.85 + rnd() * 0.35, { fade: z > 8 }));
-}
-
-// tufos de grama (um draw call), fora dos caminhos, da lavoura e das casas
-{
-  const t = tl.load('../figueiras/tex/grama_tufo.webp'); t.colorSpace = THREE.SRGBColorSpace;
-  const a = new THREE.PlaneGeometry(0.6, 0.6); a.translate(0, 0.28, 0);
-  const b = a.clone(); b.rotateY(Math.PI / 2);
-  const geo = mergeGeometries([a, b]); const nn = geo.attributes.normal; for (let i = 0; i < nn.count; i++) nn.setXYZ(i, 0, 1, 0);
-  const N = 380, gr = new THREE.InstancedMesh(geo, new THREE.MeshStandardMaterial({ map: t, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 1 }), N);
-  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3();
-  let k = 0;
-  for (let i = 0; i < 8000 && k < N; i++) {
-    const x = (rnd() * 2 - 1) * 30, z = (rnd() * 2 - 1) * 23;
-    if (naEstrada(x, z, 0.6) || bate(x, z, 0.4) || alturaEm(x, z) > 0.02 || alturaEm(x + 0.4, z) > 0.02 || alturaEm(x, z + 0.4) > 0.02 || (x > LAV.x0 - 0.5 && x < LAV.x1 + 0.5 && z > LAV.z0 - 0.5 && z < LAV.z1 + 0.5)) continue;
-    p.set(x, 0, z); q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rnd() * 3.14); const e = 0.5 + rnd() * 0.7; s.set(e, e, e);
-    gr.setMatrixAt(k++, m4.compose(p, q, s));
-  }
-  gr.count = k; gr.receiveShadow = true; scene.add(gr);
-}
-
 // ---------- personagens e animais ----------
 const MIX = [];
 function ator(g, altura, x, z, r, clipe) {

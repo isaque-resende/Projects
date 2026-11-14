@@ -1,0 +1,1333 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#d9d2bf">
+<title>Fase de Betânia</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #d9d2bf; font-family: system-ui, sans-serif; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  #fade { position: fixed; inset: 0; background: #000; opacity: 1; pointer-events: none; transition: opacity .9s; display: flex; align-items: center; justify-content: center; color: #f3e9d2; font-size: 22px; letter-spacing: .04em; }
+  #acao { position: fixed; left: 50%; bottom: calc(26px + env(safe-area-inset-bottom)); transform: translateX(-50%); padding: 12px 20px; border: 0; border-radius: 12px; background: #fdf6e3; color: #4a3520; font-size: 16px; box-shadow: 0 3px 12px #0003; display: none; }
+  #fala { position: fixed; left: 50%; bottom: calc(110px + env(safe-area-inset-bottom)); transform: translateX(-50%); max-width: min(86vw, 560px); text-align: center; color: #fdf6e3; font: italic 19px/1.45 Georgia, serif; text-shadow: 0 2px 8px #000c; opacity: 0; transition: opacity .8s; pointer-events: none; }
+  #pularIntro { position: fixed; right: 14px; top: calc(12px + env(safe-area-inset-top)); padding: 8px 14px; border: 0; border-radius: 10px; background: #fdf6e3cc; color: #4a3520; font-size: 14px; display: none; z-index: 8; }
+  #dica { position: fixed; left: 12px; top: calc(10px + env(safe-area-inset-top)); color: #4a3520; background: #fdf6e3cc; padding: 6px 10px; border-radius: 8px; font-size: 13px; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="fade"></div>
+<button id="acao"></button>
+<div id="fala"></div>
+<button id="pularIntro">Pular introdução</button>
+<div id="dica">Direcional, WASD ou toque para andar · Shift corre · Espaço pula · roda/pinça: zoom</div>
+<script type="module">
+// Fase de Betânia: vila compacta em vista isométrica. A câmera não gira: só acompanha o jogador
+// (com limite) e aproxima/afasta. O que fica entre a câmera e o jogador fica transparente.
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xd9d2bf);
+scene.fog = new THREE.Fog(0xd9d2bf, 55, 95);
+const hemi = new THREE.HemisphereLight(0xd6ebff, 0xc9a47a, 1.3); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xffe2b8, 3.1);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -26, right: 26, top: 26, bottom: -26, near: 1, far: 80 });
+sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.03;
+scene.add(sun, sun.target);
+
+let seed = 7;
+const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+const tl = new THREE.TextureLoader();
+const tex = (url, rep) => {
+  const t = tl.load(url); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()); if (rep) t.repeat.set(rep, rep); return t;
+};
+
+// ---------- chão: grande o bastante para a câmera nunca ver a borda ----------
+// sem textura: cor por triângulo (facetado), manchas grandes e suaves de verde e capim seco
+const ground = (() => {
+  const g = new THREE.PlaneGeometry(200, 200, 110, 110).toNonIndexed();
+  const p = g.attributes.position, cor = [];
+  const h = (x, y) => { const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return s - Math.floor(s); };
+  const ruido = (x, y) => { const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
+    const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+    return (h(xi, yi) * (1 - u) + h(xi + 1, yi) * u) * (1 - v) + (h(xi, yi + 1) * (1 - u) + h(xi + 1, yi + 1) * u) * v; };
+  const verde = new THREE.Color(0xffffff), verdeE = new THREE.Color(0xd8e0c4), seco = new THREE.Color(0xfff1d2), c = new THREE.Color();
+  for (let i = 0; i < p.count; i += 3) {
+    const x = (p.getX(i) + p.getX(i + 1) + p.getX(i + 2)) / 3, y = (p.getY(i) + p.getY(i + 1) + p.getY(i + 2)) / 3;
+    const n1 = ruido(x / 14 + 5, y / 14 + 9), n2 = ruido(x / 6, y / 6);
+    c.copy(verde).lerp(verdeE, THREE.MathUtils.smoothstep(n1, 0.35, 0.75) * 0.8);
+    c.lerp(seco, THREE.MathUtils.smoothstep(n2 * 0.6 + n1 * 0.4, 0.55, 0.8) * 0.55);
+    c.multiplyScalar(0.96 + h(x, y) * 0.07);
+    for (let k = 0; k < 3; k++) cor.push(c.r, c.g, c.b);
+  }
+  g.setAttribute('color', new THREE.Float32BufferAttribute(cor, 3));
+  return new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: tex('tex/grama.webp', 9), vertexColors: true, roughness: 1, flatShading: true }));
+})();
+ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+
+// ---------- caminhos de terra ----------
+const CAMINHOS = [];
+function caminho(pts, larg) {
+  const curva = new THREE.CatmullRomCurve3(pts.map(([x, z]) => new THREE.Vector3(x, 0, z)));
+  const N = Math.max(20, Math.round(curva.getLength() * 2)), pos = [], uv = [], idx = [];
+  for (let i = 0; i <= N; i++) {
+    const t = i / N, p = curva.getPointAt(t), tg = curva.getTangentAt(t);
+    const w = 1.45 * larg * (0.9 + 0.12 * Math.sin(t * 13 + pts.length)), L = curva.getLength();
+    pos.push(p.x - tg.z * w, 0.02, p.z + tg.x * w, p.x + tg.z * w, 0.02, p.z - tg.x * w);
+    uv.push(0, t * L / (2.9 * larg), 1, t * L / (2.9 * larg));
+  }
+  for (let i = 0; i < N; i++) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
+  const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: tex('tex/estrada.webp'), roughness: 1, polygonOffset: true, polygonOffsetFactor: -1 }));
+  m.receiveShadow = true; scene.add(m);
+  CAMINHOS.push({ curva, larg });
+}
+// estrada para Jerusalém (sai pelo oeste, à esquerda) e ruelas
+// estrada para Jerusalém (sai pelo oeste) atravessa a vila; ruelas levam a cada porta e ao aprisco
+caminho([[-60, 3], [-30, 3.2], [-20, 2.8], [-10, 2.2], [-2, 0.8], [6, 0.4], [12, 1.0], [16, 1.6]], 1.5);
+caminho([[-2, 0.8], [-2.5, -3.5], [-2.7, -6.6]], 1.0);
+caminho([[6, 0.4], [6.1, -3.5], [6.3, -7.2]], 1.0);
+caminho([[12, 1.0], [14.2, -2.2], [14.6, -5.8]], 0.9);
+caminho([[-10, 2.2], [-7.6, 6.4], [-8.2, 10.6]], 0.9);
+const naEstrada = (x, z, m) => CAMINHOS.some(({ curva, larg }) => {
+  for (let i = 0; i <= 80; i++) { const p = curva.getPointAt(i / 80); if (Math.hypot(p.x - x, p.z - z) < larg + m) return true; }
+  return false;
+});
+
+// ---------- carregamento ----------
+const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+const baixar = async (url) => {
+  for (let k = 0; ; k++) {
+    try { return await loader.loadAsync(url); } catch (e) { if (k >= 3) throw e; await new Promise((r) => setTimeout(r, 400 * (k + 1))); }
+  }
+};
+const sombra = (r) => r.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+const nos = (g) => { const m = {}; for (const n of g.scene.children) { m[n.name] = n; } return m; };
+
+// só a leva nova (modelada, com volume) + forno de pão
+const [gCasaP, gMuros, gForno, gTripo, gPar, gTam, gCip, gFrond, gRoch, gObj, gParr, gBarr, gBoi, gOve, gJog, ...gNpc] = await Promise.all([
+  baixar('../casa-porta/casa_porta.glb'), baixar('../casa-porta/muros_kit.glb'), baixar('../forno-pao/forno.glb'),
+  baixar('../casa-porta/arvores_tripo.glb'), baixar('../casa-porta/arvores_par.glb'),
+  baixar('../casa-porta/tamareiras.glb?v=4'), baixar('../diorama-ciprestes/ciprestes.glb'), baixar('../casa-porta/arvores_frondosas.glb'),
+  baixar('../casa-porta/rochas.glb'), baixar('../casa-porta/objetos_casa.glb'),
+  baixar('../casa-porta/parreiras_tripo.glb'), baixar('../casa-porta/barracas.glb'),
+  baixar('../animais/boi.glb'), baixar('../animais/ovelha.glb'), baixar('../vila-betania/discipulo_acoes.glb'),
+  baixar('../personagens/marta.glb'), baixar('../personagens/lazaro.glb'), baixar('../personagens/pastor.glb'),
+  baixar('../personagens/aldeao.glb'), baixar('../personagens/mulher_lenco.glb'), baixar('../personagens/robusto.glb'),
+  baixar('../personagens/mulher_botoes.glb'), baixar('../personagens/magro.glb'), baixar('../personagens/moco.glb'),
+]);
+
+// obstáculos: caixas (x0, x1, z0, z1) e círculos
+const CAIXAS = [], CIRC = [];
+const FADE = [];                                    // objetos altos que somem quando tampam o jogador
+const bate = (x, z, m = 0.3) => bateAnel(x, z, m) || CAIXAS.some((c) => x > c.x0 - m && x < c.x1 + m && z > c.z0 - m && z < c.z1 + m) || CIRC.some((c) => Math.hypot(c.x - x, c.z - z) < c.r + m);
+function caixaDe(obj, enc = 0) {
+  obj.updateWorldMatrix(true, true);
+  const b = new THREE.Box3().setFromObject(obj);
+  CAIXAS.push({ x0: b.min.x + enc, x1: b.max.x - enc, z0: b.min.z + enc, z1: b.max.z - enc });
+}
+function por(modelo, x, z, r = 0, k = 1, { fade = false, caixa = false, circ = 0, y = 0 } = {}) {
+  const n = modelo.clone(); n.position.set(x, y, z); n.rotation.y = r; n.scale.setScalar(k);
+  sombra(n); scene.add(n);
+  if (caixa) caixaDe(n, typeof caixa === 'number' ? caixa : 0.15);
+  if (circ) CIRC.push({ x, z, r: circ * k });
+  if (fade) FADE.push(n);
+  return n;
+}
+
+// ---------- casas (todas ao fundo, de frente para a câmera) ----------
+const CASAP = gCasaP.scene; CASAP.children.forEach((c) => c.position.set(0, 0, 0));
+const CASAS = [];
+const PASSO = 0.12, ABERTO = -1.75;
+for (const [x, z, r] of [[-3, -10.5, 0.1], [6.2, -11, -0.05], [15, -9.8, -0.35]]) {
+  const g = new THREE.Group(); for (const c of [...CASAP.children]) g.add(c.clone(true));
+  g.updateMatrixWorld(true);
+  const porta = g.getObjectByName('Casa2_Porta'), corpo = g.getObjectByName('Casa2');
+  const bp = new THREE.Box3().setFromObject(porta);
+  const px = (bp.min.x + bp.max.x) / 2, pz = bp.max.z;            // ponto da porta, no espaço da casa
+  g.position.set(x, 0, z); g.rotation.y = r; sombra(g); scene.add(g); FADE.push(g);
+  g.updateMatrixWorld(true);
+  // rasteriza os triângulos da casa numa grade (cada célula guarda a maior altura)
+  const cx = new THREE.Box3().setFromObject(g);
+  const GX0 = cx.min.x - 0.2, GZ0 = cx.min.z - 0.2;
+  const GW = Math.ceil((cx.max.x - cx.min.x + 0.4) / PASSO) + 1, GD = Math.ceil((cx.max.z - cx.min.z + 0.4) / PASSO) + 1;
+  const ALT = new Float32Array(GW * GD);
+  const pos = corpo.geometry.attributes.position, idx = corpo.geometry.index, m = corpo.matrixWorld;
+  const A = new THREE.Vector3(), B = new THREE.Vector3(), C = new THREE.Vector3();
+  const n = idx ? idx.count : pos.count;
+  for (let t = 0; t < n; t += 3) {
+    A.fromBufferAttribute(pos, idx ? idx.getX(t) : t).applyMatrix4(m); B.fromBufferAttribute(pos, idx ? idx.getX(t + 1) : t + 1).applyMatrix4(m); C.fromBufferAttribute(pos, idx ? idx.getX(t + 2) : t + 2).applyMatrix4(m);
+    const i0 = Math.max(0, Math.floor((Math.min(A.x, B.x, C.x) - GX0) / PASSO)), i1 = Math.min(GW - 1, Math.ceil((Math.max(A.x, B.x, C.x) - GX0) / PASSO));
+    const k0 = Math.max(0, Math.floor((Math.min(A.z, B.z, C.z) - GZ0) / PASSO)), k1 = Math.min(GD - 1, Math.ceil((Math.max(A.z, B.z, C.z) - GZ0) / PASSO));
+    const d = (B.z - C.z) * (A.x - C.x) + (C.x - B.x) * (A.z - C.z);
+    if (Math.abs(d) < 1e-6) {           // triângulo de pé (parede)
+      for (let i = i0; i <= i1; i++) for (let k = k0; k <= k1; k++) { const y = Math.max(A.y, B.y, C.y); if (y > ALT[i * GD + k]) ALT[i * GD + k] = y; }
+      continue;
+    }
+    for (let i = i0; i <= i1; i++) for (let k = k0; k <= k1; k++) {
+      const xx = GX0 + i * PASSO, zz = GZ0 + k * PASSO;
+      const w1 = ((B.z - C.z) * (xx - C.x) + (C.x - B.x) * (zz - C.z)) / d, w2 = ((C.z - A.z) * (xx - C.x) + (A.x - C.x) * (zz - C.z)) / d, w3 = 1 - w1 - w2;
+      if (w1 < -0.02 || w2 < -0.02 || w3 < -0.02) continue;
+      const y = w1 * A.y + w2 * B.y + w3 * C.y; if (y > ALT[i * GD + k]) ALT[i * GD + k] = y;
+    }
+  }
+  const co = Math.cos(r), si = Math.sin(r);
+  CASAS.push({ g, porta, ALT, GX0, GZ0, GW, GD, px, pz, x, z, co, si, aberta: false, ang: 0,
+    local(wx, wz) { const dx = wx - x, dz = wz - z; return [dx * co - dz * si, dx * si + dz * co]; },
+    alt(wx, wz) { const i = Math.round((wx - GX0) / PASSO), k = Math.round((wz - GZ0) / PASSO); return (i < 0 || k < 0 || i >= GW || k >= GD) ? 0 : ALT[i * GD + k]; },
+    mundo(lx, lz) { return new THREE.Vector3(x + lx * co + lz * si, 0, z - lx * si + lz * co); } });
+}
+const RELEVO = [];   // outros volumes onde se pisa (o rochedo do túmulo)
+const alturaEm = (x, z) => { let h = 0; for (const c of CASAS) h = Math.max(h, c.alt(x, z)); for (const r of RELEVO) h = Math.max(h, r(x, z)); return h; };
+// mapa de alturas de uma malha qualquer (mesma ideia das casas)
+function mapaAltura(mesh) {
+  mesh.updateWorldMatrix(true, false);
+  const cx = new THREE.Box3().setFromObject(mesh), P = 0.15;
+  const GX0 = cx.min.x - 0.2, GZ0 = cx.min.z - 0.2;
+  const GW = Math.ceil((cx.max.x - cx.min.x + 0.4) / P) + 1, GD = Math.ceil((cx.max.z - cx.min.z + 0.4) / P) + 1;
+  const ALT = new Float32Array(GW * GD);
+  const pos = mesh.geometry.attributes.position, idx = mesh.geometry.index, m = mesh.matrixWorld;
+  const A = new THREE.Vector3(), B = new THREE.Vector3(), C = new THREE.Vector3();
+  const n = idx ? idx.count : pos.count;
+  for (let t = 0; t < n; t += 3) {
+    A.fromBufferAttribute(pos, idx ? idx.getX(t) : t).applyMatrix4(m); B.fromBufferAttribute(pos, idx ? idx.getX(t + 1) : t + 1).applyMatrix4(m); C.fromBufferAttribute(pos, idx ? idx.getX(t + 2) : t + 2).applyMatrix4(m);
+    const i0 = Math.max(0, Math.floor((Math.min(A.x, B.x, C.x) - GX0) / P)), i1 = Math.min(GW - 1, Math.ceil((Math.max(A.x, B.x, C.x) - GX0) / P));
+    const k0 = Math.max(0, Math.floor((Math.min(A.z, B.z, C.z) - GZ0) / P)), k1 = Math.min(GD - 1, Math.ceil((Math.max(A.z, B.z, C.z) - GZ0) / P));
+    const d = (B.z - C.z) * (A.x - C.x) + (C.x - B.x) * (A.z - C.z);
+    if (Math.abs(d) < 1e-6) { for (let i = i0; i <= i1; i++) for (let k = k0; k <= k1; k++) { const y = Math.max(A.y, B.y, C.y); if (y > ALT[i * GD + k]) ALT[i * GD + k] = y; } continue; }
+    for (let i = i0; i <= i1; i++) for (let k = k0; k <= k1; k++) {
+      const xx = GX0 + i * P, zz = GZ0 + k * P;
+      const w1 = ((B.z - C.z) * (xx - C.x) + (C.x - B.x) * (zz - C.z)) / d, w2 = ((C.z - A.z) * (xx - C.x) + (A.x - C.x) * (zz - C.z)) / d, w3 = 1 - w1 - w2;
+      if (w1 < -0.02 || w2 < -0.02 || w3 < -0.02) continue;
+      const y = w1 * A.y + w2 * B.y + w3 * C.y; if (y > ALT[i * GD + k]) ALT[i * GD + k] = y;
+    }
+  }
+  return (wx, wz) => { const i = Math.round((wx - GX0) / P), k = Math.round((wz - GZ0) / P); return (i < 0 || k < 0 || i >= GW || k >= GD) ? 0 : ALT[i * GD + k]; };
+}
+
+// ---------- largo: duas barracas; parreira junto à casa de Marta; aprisco de pedra ----------
+const MU = nos(gMuros), BA = nos(gBarr), PA = nos(gParr);
+for (const o of [...Object.values(MU), ...Object.values(BA), ...Object.values(PA)]) o.position.set(0, 0, 0);
+const B5 = { x: 3.4, z: -3.4 };
+por(BA.Barraca5, B5.x, B5.z, 0.15, 1, { caixa: 0.25, fade: true });
+por(BA.Barraca2, -0.6, -3.0, -0.2, 1, { caixa: 0.25, fade: true });
+por(PA.Parreira_Arco, 9.2, -5.4, 0, 1, { fade: true });
+CIRC.push({ x: 9.2 - 1.23, z: -5.4, r: 0.22 }, { x: 9.2 + 1.16, z: -5.4, r: 0.22 });
+por(PA.Parreira_Poste, 7.4, -4.8, 0.4, 1, { circ: 0.22 });
+const [gPast, gOfi] = await Promise.all([baixar('../casa-porta/pastoril.glb'), baixar('../casa-porta/oficios.glb')]);
+// aprisco: muro circular de pedra com porteira (a porteira abre quando o jogador chega perto)
+let APR = null;
+function bateAnel(x, z, m) {
+  if (!APR) return false;
+  const dx = x - APR.x, dz = z - APR.z, d = Math.hypot(dx, dz);
+  if (Math.abs(d - APR.rm) > APR.esp / 2 + m) return false;
+  let a = Math.atan2(dz, dx) + APR.r; a = Math.atan2(Math.sin(a), Math.cos(a));
+  let g = a - APR.gap; g = Math.atan2(Math.sin(g), Math.cos(g));
+  if (Math.abs(g) > APR.meia) return true;          // muro
+  return APR.ab < 0.9;                              // vão: só passa com a porteira aberta
+}
+{
+  const AX = -12.4, AZ = 9.6, K = 2.2, KY = 1.3;
+  const muro = nos(gPast).Muro_Curvo.clone(); muro.position.set(0, 0, 0);
+  // descobre o vão do anel pelos vértices
+  const angs = []; const v = new THREE.Vector3(); let rIn = 1e9, rOut = 0;
+  muro.updateMatrixWorld(true);
+  muro.traverse((o) => { if (!o.isMesh) return; const pa = o.geometry.attributes.position; for (let i = 0; i < pa.count; i++) { v.fromBufferAttribute(pa, i).applyMatrix4(o.matrixWorld); angs.push(Math.atan2(v.z, v.x)); const r = Math.hypot(v.x, v.z); rOut = Math.max(rOut, r); if (v.y > 0.3) rIn = Math.min(rIn, r); } });
+  angs.sort((a, b) => a - b);
+  let gMax = 0, gA = 0;
+  for (let i = 0; i < angs.length; i++) { const a = angs[i], b = i + 1 < angs.length ? angs[i + 1] : angs[0] + Math.PI * 2; if (b - a > gMax) { gMax = b - a; gA = (a + b) / 2; } }
+  const alvoAng = Math.PI / 4;                       // vão virado para a câmera (+x +z)
+  const r = gA - alvoAng;
+  muro.scale.set(K, KY, K); muro.rotation.y = r; muro.position.set(AX, 0, AZ); sombra(muro); scene.add(muro);
+  const rm = (rIn + rOut) / 2 * K;
+  APR = { x: AX, z: AZ, r, gap: gA, meia: gMax / 2 + 0.02, rm, esp: (rOut - rIn) * K + 0.1, ab: 0, alvoAb: 0 };
+  // porteira atravessada no vão, presa por uma das pontas (dobradiça)
+  const port = nos(gPast).Porteira.clone(); port.position.set(0, 0, 0);
+  const larg = 2 * rm * Math.sin(gMax / 2) + 0.7, kp = larg / 2.63;
+  port.scale.setScalar(kp); sombra(port);
+  const phi = alvoAng, c = new THREE.Vector3(AX + Math.cos(phi) * (rm + 0.25), 0, AZ + Math.sin(phi) * (rm + 0.25));
+  const tg = new THREE.Vector3(-Math.sin(phi), 0, Math.cos(phi));
+  const piv = new THREE.Group(); piv.position.copy(c).addScaledVector(tg, -larg / 2);
+  const base = Math.atan2(-tg.z, tg.x);
+  piv.rotation.y = base; port.position.set(larg / 2, 0, 0); piv.add(port); scene.add(piv);
+  APR.piv = piv; APR.base = base; APR.centroPorta = c;
+  globalThis.APRISCO = { x0: AX - 1.45, x1: AX + 1.45, z0: AZ - 1.45, z1: AZ + 1.45 };
+}
+{
+  const F = nos(gForno);
+  const base = F.Forno_Corpo.position.clone();
+  const forno = new THREE.Group();
+  for (const [n, o] of Object.entries(F)) if (n.startsWith('Forno_') && !/Chama|Brasa|Massa_[23]/.test(n)) { const c = o.clone(); c.position.sub(base); forno.add(c); }
+  forno.position.set(1.2, 0, -6.2); forno.rotation.y = 0.4; sombra(forno); scene.add(forno); CIRC.push({ x: 1.2, z: -6.2, r: 1.0 });
+  // brasa e chamas acesas
+  for (const n of ['Forno_Brasa', 'Forno_Chamas', 'Forno_ChamaBoca']) if (F[n]) { const c = F[n].clone(); c.position.sub(base); forno.add(c); }
+  forno.updateWorldMatrix(true, true);
+  globalThis.FORNO = {};
+  for (const n of ['Forno_Boca', 'Forno_Massa_1', 'Forno_Pao_1', 'Forno_Pao_2', 'Forno_Pao_3', 'Forno_Corpo']) {
+    const o = forno.children.find((c) => c.name === n || c.name.startsWith(n)); if (!o) continue;
+    globalThis.FORNO[n] = new THREE.Box3().setFromObject(o);
+  }
+  for (const n of ['NPC_Amassar', 'NPC_Aticar', 'NPC_Assar']) {
+    const e = F[n]; const p = e.position.clone().sub(base).applyMatrix4(forno.matrixWorld);
+    const q = new THREE.Quaternion().setFromRotationMatrix(forno.matrixWorld).multiply(e.quaternion);
+    globalThis.FORNO[n] = { p, r: new THREE.Euler().setFromQuaternion(q, 'YXZ').y };
+  }
+}
+// lagar de pisar uvas, à frente, entre o aprisco e a lavoura
+const gLagar = await baixar('../lagar/lagar.glb');
+{
+  const L = nos(gLagar), base = L.Lagar_Rocha.position.clone();
+  const lagar = new THREE.Group();
+  for (const o of Object.values(L)) { const c = o.clone(); c.position.sub(base); lagar.add(c); }
+  lagar.position.set(11.0, 0, -2.6); lagar.rotation.y = 0.3; sombra(lagar); scene.add(lagar);
+  lagar.updateWorldMatrix(true, true); caixaDe(lagar, 0.35);
+  const mundo = (n) => L[n].position.clone().sub(base).applyMatrix4(lagar.matrixWorld);
+  globalThis.LAGAR = { tanque: mundo('Lagar_Uvas_6'), cesto: mundo('Lagar_CestoUvas'), jarro: mundo('Lagar_Jarro'), r: lagar.rotation.y };
+}
+
+// ---------- lavoura: terra arada à frente-direita ----------
+const LAV = { x0: 4.4, x1: 15.6, z0: 7.4, z1: 13.4 };
+{
+  const t = tex('tex/arada.webp'); t.center.set(0.5, 0.5); t.rotation = Math.PI / 2; t.repeat.set(0.9, 1.6);
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(LAV.x1 - LAV.x0, LAV.z1 - LAV.z0), new THREE.MeshStandardMaterial({ map: t, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2 }));
+  m.rotation.x = -Math.PI / 2; m.position.set((LAV.x0 + LAV.x1) / 2, 0.03, (LAV.z0 + LAV.z1) / 2); m.receiveShadow = true; scene.add(m);
+}
+
+// ---------- pátios de terra batida (borda esfumada) e manchas soltas no gramado ----------
+{
+  const cv = document.createElement('canvas'); cv.width = cv.height = 128;
+  const cx = cv.getContext('2d'), gr = cx.createRadialGradient(64, 64, 20, 64, 64, 64);
+  gr.addColorStop(0, '#fff'); gr.addColorStop(0.7, '#fff'); gr.addColorStop(1, '#000');
+  cx.fillStyle = gr; cx.fillRect(0, 0, 128, 128);
+  const borda = new THREE.CanvasTexture(cv);
+  const patio = tex('tex/patio.webp');
+  for (const [x, z, r] of [[1.6, -6.1, 3.0], [11.0, -2.6, 3.4], [1.4, -2.8, 4.4], [-2.8, -6.2, 2.6]]) {
+    const g = new THREE.CircleGeometry(r, 28), uv = g.attributes.uv;
+    for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * r / 2.5, uv.getY(i) * r / 2.5);
+    g.setAttribute('uv1', new THREE.Float32BufferAttribute(g.attributes.uv.array.map((v) => v / (r / 2.5)), 2));
+    const mat = new THREE.MeshStandardMaterial({ map: patio, alphaMap: borda, transparent: true, depthWrite: false, roughness: 1, polygonOffset: true, polygonOffsetFactor: -1.5 });
+    mat.alphaMap.channel = 1;
+    const m = new THREE.Mesh(g, mat); m.rotation.x = -Math.PI / 2; m.position.set(x, 0.015, z); m.receiveShadow = true; scene.add(m);
+  }
+  // manchas: atlas 3x3 (verde, seco, terra / flores brancas, flores lilás, folhas / pedrinhas, verde grande, flores mistas)
+  const pos = [], uvs = [], idx = []; let n = 0;
+  const peso = [2, 1, 1, 3, 3, 2, 2, 1, 4];
+  const escolhe = () => { let r = rnd() * 19; for (let i = 0; i < 9; i++) { r -= peso[i]; if (r < 0) return i; } return 0; };
+  for (let k = 0; k < 400 && n < 140; k++) {
+    const x = -32 + rnd() * 64, z = -26 + rnd() * 52;
+    if (naEstrada(x, z, 1.2)) continue;
+    if (x > LAV.x0 - 0.8 && x < LAV.x1 + 0.8 && z > LAV.z0 - 0.8 && z < LAV.z1 + 0.8) continue;
+    const c = escolhe(), s = (c < 3 || c === 7 ? 1.6 + rnd() * 1.6 : 0.6 + rnd() * 0.5), a = rnd() * 6.28;
+    const u0 = (c % 3) / 3, v0 = 1 - (Math.floor(c / 3) + 1) / 3;
+    const co = Math.cos(a) * s, si = Math.sin(a) * s;
+    for (const [dx, dz, u, v] of [[-1, -1, 0, 1], [1, -1, 1, 1], [1, 1, 1, 0], [-1, 1, 0, 0]]) {
+      pos.push(x + dx * co - dz * si, 0.01 + n * 0.0001, z + dx * si + dz * co); uvs.push(u0 + u / 3, v0 + v / 3);
+    }
+    const b = n * 4; idx.push(b, b + 2, b + 1, b, b + 3, b + 2); n++;
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2)); g.setIndex(idx); g.computeVertexNormals();
+  const t = tex('tex/manchas.webp'); t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+  const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: t, opacity: 0.8, transparent: true, depthWrite: false, roughness: 1, polygonOffset: true, polygonOffsetFactor: -1 }));
+  m.receiveShadow = true; scene.add(m);
+}
+
+// ---------- árvores: poucas dentro da vila, uma cortina nas bordas (sangria) ----------
+const AT = nos(gTripo), AP = nos(gPar), T = nos(gTam), C = nos(gCip), FR = nos(gFrond), R = nos(gRoch), OB = nos(gObj);
+for (const o of [...Object.values(AT), ...Object.values(AP), ...Object.values(T), ...Object.values(FR), ...Object.values(R), ...Object.values(OB), ...Object.values(C)]) o.position.set(0, 0, 0);
+por(T.Tamareiras, -4.4, 11.4, 0.2, 0.7, { fade: true });
+CIRC.push({ x: -4.4 - 1.4, z: 11.4, r: 0.35 }, { x: -4.4 + 1.2, z: 11.4, r: 0.35 });
+// objetos junto às casas
+por(OB.Jarro_Alto, -5.6, -6.6, 0, 1.3, { circ: 0.3 }); por(OB.Pote_Escuro, -5.0, -6.2, 0, 1.3, { circ: 0.3 });
+por(OB.Cesto_Alca, 9.0, -7.0, 0.4, 1, { circ: 0.3 }); por(OB.Lenha, -1.3, -5.6, 0.3, 1, { circ: 0.3 });
+por(OB.Saco, 12.6, -5.6, 0, 1.1, { circ: 0.3 }); por(OB.Banquinho, 8.2, -7.0, 1.0, 1, { circ: 0.3 });
+por(R.Rocha3, -17.5, 13.6, 0.8, 1, { circ: 0.6 });
+// túmulo de Lázaro: gruta na rocha, fora da vila, à direita; entrada (com a pedra) virada para a vila e a câmera
+const TUM = {}, ROLA = 1;   // lado para onde a pedra rola (ao longo da face)
+{
+  // rochedo de 16 m com a porta da gruta (0,9 x 1,7 m) na face +x; a pedra redonda (2 m) é um modelo à parte
+  const [gRocha, gPedra] = await Promise.all([baixar('../casa-porta/tumulo_rocha.glb'), baixar('../casa-porta/tumulo_pedra.glb')]);
+  const tum = gRocha.scene; tum.position.set(-18, 0, -11.5); tum.rotation.y = -0.38; sombra(tum); scene.add(tum); FADE.push(tum);
+  tum.updateMatrixWorld(true);
+  RELEVO.push(mapaAltura(tum.getObjectByName('Tumulo_Rocha')));
+  const boca = tum.getObjectByName('Tumulo_Boca');
+  const pedra = gPedra.scene.getObjectByName('Tumulo_Pedra'); pedra.position.set(0, 0, 0); sombra(pedra);
+  const rP = 1.02;
+  // a pedra fica de pé na soleira, encostada na face, tapando a porta (o eixo fino do disco aponta para fora da face)
+  pedra.position.copy(boca.position).add(new THREE.Vector3(0.3, rP - 0.02, 0)); pedra.rotation.set(0, Math.PI / 2, 0); tum.add(pedra);
+  Object.assign(TUM, { tum, pedra, p0: pedra.position.clone(), q0: pedra.quaternion.clone(), k: 0, alvo: 0, raio: rP });
+  TUM.circ = { x: 0, z: 0, r: TUM.raio * 0.9 }; CIRC.push(TUM.circ);
+  TUM.frente = new THREE.Vector3(1, 0, 0).applyQuaternion(tum.quaternion).setY(0).normalize();   // a porta olha para +x do modelo
+  TUM.lugar = pedra.getWorldPosition(new THREE.Vector3()).setY(0);
+  { const L = TUM.lugar, F = TUM.frente; caminho([[-10, 2.2], [-7.4, -2.4], [L.x + F.x * 3.6 + 0.4, L.z + F.z * 3.6 + 1.2], [L.x + F.x * 1.5, L.z + F.z * 1.5]], 0.85); }
+  // ciprestes atrás e pedras soltas, como num lugar de sepulturas
+  por(C.Cipreste2_Esguio, -7.4, -13.6, 1.0, 0.8, { circ: 0.4 }); por(C.Cipreste1_Redondo, -8.6, -2.4, 0.5, 0.75, { circ: 0.4 });
+  por(R.Rocha6, TUM.lugar.x + TUM.frente.x * 2.4 + 2.2, TUM.lugar.z + TUM.frente.z * 2.4 - 0.6, -0.4, 0.6, { circ: 0.4 });
+}
+// câmara interna do túmulo: cenário à parte, bem abaixo do chão (a câmera de dentro nunca vê a vila)
+const CAMT = { on: false, base: new THREE.Vector3(0, -60, 0) };
+{
+  const g = (await baixar('../casa-porta/tumulo_camara.glb')).scene;
+  // o mapa de alturas só guarda valores acima de zero: mede com a câmara na origem e desloca depois
+  g.updateMatrixWorld(true); const alt0 = mapaAltura(g.getObjectByName('Tumulo_Camara'));
+  g.position.copy(CAMT.base); sombra(g); scene.add(g); g.updateMatrixWorld(true);
+  CAMT.g = g; CAMT.alt = (x, z) => CAMT.base.y + alt0(x - CAMT.base.x, z - CAMT.base.z);
+  const b = new THREE.Box3().setFromObject(g); CAMT.box = b;
+  // paredes em -x e -z; aberto (cortado) em +x e +z, do lado da câmera; a soleira fica no meio do lado +z
+  CAMT.area = { x0: b.min.x + 0.55, x1: b.max.x - 0.3, z0: b.min.z + 0.55, z1: b.max.z - 0.3 };
+  CAMT.entrada = new THREE.Vector3((b.min.x + b.max.x) / 2, 0, b.max.z - 0.75);
+  CAMT.centro = b.getCenter(new THREE.Vector3()); CAMT.centro.y = b.min.y + 0.7;
+  CAMT.luz = new THREE.PointLight(0xffc27a, 0, 14, 1.2); CAMT.luz.position.set(CAMT.entrada.x + 0.9, b.min.y + 2.6, CAMT.entrada.z + 0.9); scene.add(CAMT.luz);
+}
+// cortina de árvores fora da área de jogo
+const BORDA = [];
+for (let i = 0; i < 52; i++) {
+  const a = (i / 52) * Math.PI * 2;
+  const rx = 25 + rnd() * 6, rz = 19 + rnd() * 5;
+  const x = Math.cos(a) * rx, z = Math.sin(a) * rz;
+  if (Math.abs(z - 3) < 3.5 && x < 0) continue;      // a estrada para Jerusalém fica aberta
+  if (Math.hypot(x - TUM.tum.position.x, z - TUM.tum.position.z) < 12.5) continue;   // o rochedo do túmulo já fecha esse canto
+  const lista = [C.Cipreste2_Esguio, C.Cipreste1_Redondo, FR.Arvore_Pequena, AT.Arvore1, AT.Arvore3, AT.Arvore5, AT.Arvore8, AT.Arvore9, T.Tamareiras].filter(Boolean);
+  if (z > 7 || x > 22) { const pd = [R.Rocha1, R.Rocha4, R.Rocha5, R.Rocha7, R.Rocha8].filter(Boolean); por(pd[i % pd.length], x, z, rnd() * 6.28, 0.7 + rnd() * 0.5); continue; }
+  BORDA.push(por(lista[Math.floor(rnd() * lista.length)], x, z, rnd() * 6.28, 0.85 + rnd() * 0.35, { fade: z > 8 }));
+}
+
+// tufos de grama (um draw call), fora dos caminhos, da lavoura e das casas
+{
+  const t = tl.load('../figueiras/tex/grama_tufo.webp'); t.colorSpace = THREE.SRGBColorSpace;
+  const a = new THREE.PlaneGeometry(0.6, 0.6); a.translate(0, 0.28, 0);
+  const b = a.clone(); b.rotateY(Math.PI / 2);
+  const geo = mergeGeometries([a, b]); const nn = geo.attributes.normal; for (let i = 0; i < nn.count; i++) nn.setXYZ(i, 0, 1, 0);
+  const N = 380, gr = new THREE.InstancedMesh(geo, new THREE.MeshStandardMaterial({ map: t, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 1 }), N);
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3();
+  let k = 0;
+  for (let i = 0; i < 8000 && k < N; i++) {
+    const x = (rnd() * 2 - 1) * 30, z = (rnd() * 2 - 1) * 23;
+    if (naEstrada(x, z, 0.6) || bate(x, z, 0.4) || alturaEm(x, z) > 0.02 || alturaEm(x + 0.4, z) > 0.02 || alturaEm(x, z + 0.4) > 0.02 || (x > LAV.x0 - 0.5 && x < LAV.x1 + 0.5 && z > LAV.z0 - 0.5 && z < LAV.z1 + 0.5)) continue;
+    p.set(x, 0, z); q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rnd() * 3.14); const e = 0.5 + rnd() * 0.7; s.set(e, e, e);
+    gr.setMatrixAt(k++, m4.compose(p, q, s));
+  }
+  gr.count = k; gr.receiveShadow = true; scene.add(gr);
+}
+
+// ---------- personagens e animais ----------
+const MIX = [];
+function ator(g, altura, x, z, r, clipe) {
+  const o = SkeletonUtils.clone(g.scene); sombra(o);
+  const b = new THREE.Box3().setFromObject(o); o.scale.setScalar(altura / (b.max.y - b.min.y));
+  o.position.set(x, 0, z); o.rotation.y = r; scene.add(o);
+  const mx = new THREE.AnimationMixer(o); MIX.push(mx); o.userData.mx = mx;
+  const A = Object.fromEntries(g.animations.map((c) => [c.name, mx.clipAction(c)]));
+  const st = { o, A, atual: '' };
+  st.toca = (n) => { if (n === st.atual || !A[n]) return; A[n].reset().fadeIn(0.2).play(); if (A[st.atual]) A[st.atual].fadeOut(0.2); st.atual = n; };
+  st.toca(clipe); A[clipe] && (A[clipe].time = rnd() * 2);
+  return st;
+}
+const [nMarta, nLazaro, nPastor, nAldeao, nLenco, nRobusto, nBotoes, nMagro, nMoco] = gNpc;
+// forno: uma mulher sova a massa na mesa, um rapaz atiça o fogo
+const FO = globalThis.FORNO, LG = globalThis.LAGAR;
+const padeira = ator(nBotoes, 1.6, FO.NPC_Amassar.p.x, FO.NPC_Amassar.p.z, FO.NPC_Amassar.r, 'Parado');
+const foguista = ator(nMoco, 1.66, -0.6, -5.0, Math.atan2(1.8, -1.2), 'Parado');
+foguista.A.Parado && (foguista.A.Parado.timeScale = 0.8);
+// lagar: um homem pisa as uvas dentro do tanque; outro traz o cesto
+const pisador = ator(nMagro, 1.66, LG.tanque.x, LG.tanque.z, LG.r, 'Parado');
+pisador.o.position.y = LG.tanque.y - 0.05;
+const ajudante = ator(nAldeao, 1.7, LG.cesto.x + 0.9, LG.cesto.z + 0.9, LG.r - 2.2, 'Conversando');
+for (const n of [foguista, ajudante]) CIRC.push({ x: n.o.position.x, z: n.o.position.z, r: 0.35 });
+// ---------- animação sob medida: IK de dois ossos (braço e perna) por cima do clipe parado ----------
+const _q1 = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), _q3 = new THREE.Quaternion();
+const _A = new THREE.Vector3(), _B = new THREE.Vector3(), _C = new THREE.Vector3(), _T = new THREE.Vector3(), _P = new THREE.Vector3(), _D = new THREE.Vector3(), _E = new THREE.Vector3();
+const CIMA = new THREE.Vector3(0, 1, 0);
+function giraMundo(osso, q) { osso.getWorldQuaternion(_q2); osso.parent.getWorldQuaternion(_q3); osso.quaternion.copy(_q3.invert().multiply(q.clone().multiply(_q2))); osso.updateMatrixWorld(true); }
+function alinha(osso, de, para) { if (de.lengthSq() < 1e-8 || para.lengthSq() < 1e-8) return; _q1.setFromUnitVectors(de.normalize(), para.normalize()); giraMundo(osso, _q1); }
+function ik(a, b, c, alvo, polo, peso = 1) {
+  a.getWorldPosition(_A); b.getWorldPosition(_B); c.getWorldPosition(_C);
+  _T.copy(_C).lerp(alvo, peso);
+  const l1 = _A.distanceTo(_B), l2 = _B.distanceTo(_C);
+  const dir = _D.copy(_T).sub(_A); let d = dir.length(); d = THREE.MathUtils.clamp(d, Math.abs(l1 - l2) + 1e-3, (l1 + l2) * 0.999); dir.normalize();
+  const pl = _P.copy(polo).sub(_A); pl.addScaledVector(dir, -pl.dot(dir)).normalize();
+  const x = (l1 * l1 - l2 * l2 + d * d) / (2 * d), h = Math.sqrt(Math.max(0, l1 * l1 - x * x));
+  const bd = _E.copy(_A).addScaledVector(dir, x).addScaledVector(pl, h);
+  alinha(a, _B.clone().sub(_A), bd.clone().sub(_A));
+  b.getWorldPosition(_B); c.getWorldPosition(_C);
+  alinha(b, _C.clone().sub(_B), _A.clone().addScaledVector(dir, d).sub(_B));
+}
+function corpo(st) {
+  const g = (n) => st.o.getObjectByName(n);
+  st.os = { pelvis: g('pelvis'), sp: g('spine_02'), sp3: g('spine_03'), cab: g('Head'),
+    bE: [g('upperarm_l'), g('lowerarm_l'), g('hand_l')], bD: [g('upperarm_r'), g('lowerarm_r'), g('hand_r')],
+    pE: [g('thigh_l'), g('calf_l'), g('foot_l')], pD: [g('thigh_r'), g('calf_r'), g('foot_r')] };
+  st.mE = null; st.mD = null; st.inc = 0; st.desce = 0; st.pesoB = 0;
+  return st;
+}
+const frente = (st) => new THREE.Vector3(Math.sin(st.o.rotation.y), 0, Math.cos(st.o.rotation.y));
+const pos = (o) => o.getWorldPosition(new THREE.Vector3());
+// inclina o tronco para a frente (ang em rad), repartido entre dois ossos da coluna
+function inclina(st, ang) {
+  if (Math.abs(ang) < 1e-3) return;
+  const eixo = new THREE.Vector3().crossVectors(CIMA, frente(st)).normalize();
+  const q = new THREE.Quaternion().setFromAxisAngle(eixo, ang * 0.6); giraMundo(st.os.sp, q);
+  q.setFromAxisAngle(eixo, ang * 0.4); giraMundo(st.os.sp3, q);
+}
+// mãos para os alvos (suavizados); peso 0 = deixa o clipe
+function maos(st, aE, aD, dt, peso = 1, rapidez = 10) {
+  st.pesoB += (peso - st.pesoB) * Math.min(1, dt * 6);
+  if (st.pesoB < 0.01) { st.mE = null; st.mD = null; return; }
+  if (!st.mE) { st.mE = pos(st.os.bE[2]); st.mD = pos(st.os.bD[2]); }
+  st.mE.lerp(aE, Math.min(1, dt * rapidez)); st.mD.lerp(aD, Math.min(1, dt * rapidez));
+  const f = frente(st), atras = f.clone().multiplyScalar(-0.5);
+  const lado = pos(st.os.bE[0]).sub(pos(st.os.bD[0])).setY(0).normalize();
+  ik(...st.os.bE, st.mE, pos(st.os.bE[0]).add(atras).addScaledVector(lado, 0.4).add(new THREE.Vector3(0, -0.4, 0)), st.pesoB);
+  ik(...st.os.bD, st.mD, pos(st.os.bD[0]).add(atras).addScaledVector(lado, -0.4).add(new THREE.Vector3(0, -0.4, 0)), st.pesoB);
+}
+// pernas: pés nos alvos, joelho para a frente
+function pernas(st, pE, pD) {
+  const f = frente(st);
+  ik(...st.os.pE, pE, pos(st.os.pE[0]).addScaledVector(f, 1).add(new THREE.Vector3(0, -0.3, 0)));
+  ik(...st.os.pD, pD, pos(st.os.pD[0]).addScaledVector(f, 1).add(new THREE.Vector3(0, -0.3, 0)));
+}
+const lerpAng = (o, alvo, k) => { let d = alvo - o.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d)); o.rotation.y += d * k; };
+function anda(st, alvo, dt, vel = 0.9) {
+  const d = alvo.clone().sub(st.o.position).setY(0), L = d.length();
+  if (L < 0.05) return true;
+  d.normalize(); st.o.position.addScaledVector(d, Math.min(vel * dt, L)); lerpAng(st.o, Math.atan2(d.x, d.z), Math.min(1, dt * 8)); st.toca('Andar');
+  return false;
+}
+
+// ---------- padeira: sova, molda, põe a massa na pá, assa pela boca de cima do forno e traz o pão na pá ----------
+corpo(padeira); padeira.toca('Parado');
+const CF = FO.Forno_Corpo, centroForno = CF.getCenter(new THREE.Vector3()).setY(0);
+const raioForno = Math.min(CF.max.x - CF.min.x, CF.max.z - CF.min.z) / 2;
+const TOPO = centroForno.clone().setY(CF.max.y);
+const PA_A = FO.NPC_Amassar.p.clone().setY(0);
+const MASSA = FO.Forno_Massa_1 ? FO.Forno_Massa_1.getCenter(new THREE.Vector3()) : PA_A.clone().setY(0.6);
+const MESA_Y = MASSA.y;
+const dirMesa = PA_A.clone().sub(centroForno).setY(0).normalize();
+const PA_B = centroForno.clone().addScaledVector(dirMesa, raioForno + 0.38);          // ao lado do forno, do lado da mesa
+const angA = Math.atan2(MASSA.x - PA_A.x, MASSA.z - PA_A.z), angB = Math.atan2(centroForno.x - PA_B.x, centroForno.z - PA_B.z);
+const matMassa = new THREE.MeshStandardMaterial({ color: 0xeedcb8, roughness: 1, flatShading: true });
+const matPao = new THREE.MeshStandardMaterial({ color: 0xc98b45, roughness: 1, flatShading: true });
+const PAO = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 5), matMassa); PAO.castShadow = true; scene.add(PAO);
+const PAES = [];
+// pá de padeiro: lâmina na origem, cabo ao longo de +x
+const madPa = new THREE.MeshStandardMaterial({ color: 0x9a7048, roughness: 1, flatShading: true });
+const PAH = new THREE.Group();
+{
+  const cabo = new THREE.Mesh(new THREE.CylinderGeometry(0.017, 0.021, 1.2, 6), madPa); cabo.rotation.z = -Math.PI / 2; cabo.position.x = 0.74;
+  const lam = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.014, 10), madPa); lam.scale.z = 0.85;
+  PAH.add(cabo, lam); sombra(PAH); scene.add(PAH);
+}
+const EIXO_X = new THREE.Vector3(1, 0, 0);
+const lateralMesa = new THREE.Vector3(-dirMesa.z, 0, dirMesa.x);
+const PA_REPOUSO = { B: MASSA.clone().addScaledVector(lateralMesa, -0.42).setY(MESA_Y + 0.02), d: dirMesa.clone().addScaledVector(lateralMesa, -0.25).normalize() };
+const PAD = { e: 'sova', t: 0, B: PA_REPOUSO.B.clone(), d: PA_REPOUSO.d.clone(), naPa: false };
+padeira.o.rotation.y = angA;
+function padeiraPasso(dt, t) {
+  const st = padeira, o = st.o, f = frente(st);
+  PAD.t += dt;
+  const T = PAD.t, muda = (e) => { PAD.e = e; PAD.t = 0; };
+  const lado = pos(st.os.bE[0]).sub(pos(st.os.bD[0])).setY(0).normalize();
+  const peito = pos(st.os.sp3);
+  let aE = null, aD = null, inc = 0, segura = false;
+  let alvoB = PA_REPOUSO.B, alvoD = PA_REPOUSO.d, rapPa = 8;
+  const carregaB = () => peito.clone().addScaledVector(f, 0.8).add(new THREE.Vector3(0, -0.3, 0));
+  const paraPeito = (B) => peito.clone().addScaledVector(f, 0.05).add(new THREE.Vector3(0, -0.15, 0)).sub(B).normalize();
+  const massaMesa = MASSA.clone().setY(MESA_Y + 0.05);
+  switch (PAD.e) {
+    case 'sova': {                                    // mãos alternadas: empurra com a base da mão e dobra de volta
+      st.toca('Parado'); lerpAng(o, angA, Math.min(1, dt * 6));
+      const k = t * 3.6, pE = Math.sin(k), pD = Math.sin(k + Math.PI * 0.6);
+      aE = massaMesa.clone().addScaledVector(lado, 0.07).addScaledVector(f, 0.02 + 0.08 * pE).add(new THREE.Vector3(0, 0.03 - 0.04 * Math.max(0, pE), 0));
+      aD = massaMesa.clone().addScaledVector(lado, -0.07).addScaledVector(f, 0.02 + 0.08 * pD).add(new THREE.Vector3(0, 0.03 - 0.04 * Math.max(0, pD), 0));
+      inc = 0.38 + 0.08 * Math.max(0, Math.max(pE, pD));
+      const esm = 0.5 * (Math.max(0, pE) + Math.max(0, pD));
+      PAO.material = matMassa; PAO.position.copy(massaMesa).addScaledVector(f, 0.03 * (pE + pD)); PAO.position.y = MESA_Y + 0.04;
+      PAO.scale.set(1 + 0.25 * esm, 0.55 - 0.15 * esm, 1 + 0.15 * esm);
+      if (T > 8) muda('molda');
+      break;
+    }
+    case 'molda': {                                   // achata a massa num disco
+      st.toca('Parado');
+      const k = Math.min(1, T / 1.2);
+      aE = massaMesa.clone().addScaledVector(lado, 0.1).add(new THREE.Vector3(0, 0.05 - 0.03 * Math.sin(T * 10), 0));
+      aD = massaMesa.clone().addScaledVector(lado, -0.1).add(new THREE.Vector3(0, 0.05 - 0.03 * Math.sin(T * 10 + 1.5), 0));
+      inc = 0.38; PAO.position.copy(massaMesa).setY(MESA_Y + 0.03); PAO.scale.set(1.2 + 0.2 * k, 0.4 - 0.15 * k, 1.2 + 0.2 * k);
+      if (T > 1.3) muda('poe');
+      break;
+    }
+    case 'poe': {                                     // leva a massa até a lâmina da pá
+      st.toca('Parado');
+      const k = Math.min(1, T / 0.8), alvo = PAD.B.clone().add(new THREE.Vector3(0, 0.03, 0));
+      const m = massaMesa.clone().lerp(alvo, k); m.y += Math.sin(k * Math.PI) * 0.12;
+      aE = m.clone().addScaledVector(lado, 0.1).add(new THREE.Vector3(0, 0.04, 0)); aD = m.clone().addScaledVector(lado, -0.1).add(new THREE.Vector3(0, 0.04, 0));
+      inc = 0.38; PAO.position.copy(m);
+      if (T > 0.9) { PAD.naPa = true; muda('pega'); }
+      break;
+    }
+    case 'pega': segura = true; st.toca('Parado'); inc = 0.3 * Math.max(0, 1 - T); if (T > 0.4) { alvoB = carregaB(); alvoD = paraPeito(alvoB); } if (T > 1.1) muda('leva'); break;
+    case 'leva': segura = true; alvoB = carregaB(); alvoD = paraPeito(alvoB); if (anda(st, PA_B, dt, 0.7)) muda('enfia'); break;
+    case 'enfia': case 'tira': {                      // ergue a pá, desce pela boca de cima e volta
+      segura = true; st.toca('Parado'); lerpAng(o, angB, Math.min(1, dt * 6));
+      const acima = TOPO.clone().add(new THREE.Vector3(0, 0.45, 0)), dentro = TOPO.clone().add(new THREE.Vector3(0, -0.4, 0));
+      if (T < 0.9) alvoB = acima;
+      else if (T < 1.8) alvoB = dentro;
+      else if (T < 2.4) alvoB = dentro;
+      else if (T < 3.2) alvoB = acima;
+      else alvoB = carregaB();
+      alvoD = peito.clone().add(new THREE.Vector3(0, -0.05, 0)).sub(alvoB).normalize();
+      if (alvoD.y < 0.25) { alvoD.y = 0.25; alvoD.normalize(); }
+      inc = T > 0.9 && T < 3.2 ? 0.2 : 0.05; rapPa = 5;
+      if (T > 1.9 && T < 2.0) { if (PAD.e === 'enfia') PAD.naPa = false; else { PAD.naPa = true; PAO.material = matPao; PAO.scale.set(1.5, 0.3, 1.5); } }
+      if (T > 3.7) muda(PAD.e === 'enfia' ? 'espera' : 'volta');
+      break;
+    }
+    case 'espera': {                                  // segura a pá em pé enquanto o pão assa
+      segura = true; st.toca('Parado');
+      alvoB = peito.clone().addScaledVector(f, 0.35).add(new THREE.Vector3(0, 0.75, 0)); alvoD = new THREE.Vector3(0, -1, 0).addScaledVector(f, -0.15).normalize();
+      if (T > 5) muda('tira');
+      break;
+    }
+    case 'volta': segura = true; alvoB = carregaB(); alvoD = paraPeito(alvoB); if (anda(st, PA_A, dt, 0.7)) muda('descarrega'); break;
+    case 'descarrega': {                              // inclina a pá sobre a mesa e o pão escorrega
+      segura = T < 1.6; st.toca('Parado'); lerpAng(o, angA, Math.min(1, dt * 6));
+      const lugar = MASSA.clone().addScaledVector(lateralMesa, 0.18 + 0.16 * (PAES.length % 3)).setY(MESA_Y + 0.03);
+      if (T < 0.8) { alvoB = lugar.clone().add(new THREE.Vector3(0, 0.12, 0)); alvoD = paraPeito(alvoB); }
+      else if (T < 1.6) { alvoB = PA_REPOUSO.B; alvoD = PA_REPOUSO.d; }
+      if (T > 0.8 && PAD.naPa) { const pn = PAO.clone(); pn.position.copy(lugar); scene.add(pn); PAES.push(pn); if (PAES.length > 3) scene.remove(PAES.shift()); PAD.naPa = false; }
+      inc = 0.25;
+      if (T > 1.9) muda('sova');
+      break;
+    }
+  }
+  // a pá: suaviza posição e direção
+  PAD.B.lerp(alvoB, Math.min(1, dt * rapPa)); PAD.d.lerp(alvoD, Math.min(1, dt * rapPa)).normalize();
+  PAH.position.copy(PAD.B); PAH.quaternion.setFromUnitVectors(EIXO_X, PAD.d);
+  if (segura) { aE = PAD.B.clone().addScaledVector(PAD.d, 0.75); aD = PAD.B.clone().addScaledVector(PAD.d, 1.1); }
+  if (PAD.naPa) PAO.position.copy(PAD.B).add(new THREE.Vector3(0, 0.035, 0));
+  PAO.visible = PAD.naPa || ['sova', 'molda', 'poe'].includes(PAD.e);
+  if (PAD.naPa && PAO.material === matMassa) PAO.scale.set(1.4, 0.25, 1.4);
+  st.inc += (inc - st.inc) * Math.min(1, dt * 5); inclina(st, st.inc);
+  maos(st, aE || pos(st.os.bE[2]), aD || pos(st.os.bD[2]), dt, aE ? 1 : 0, segura ? 20 : 9);
+}
+
+// ---------- pisador: só pisa as uvas, levantando um pé de cada vez, mãos na cintura ----------
+corpo(pisador); pisador.toca('Parado');
+function pisadorPasso(dt, t) {
+  const st = pisador, o = st.o;
+  lerpAng(o, LG.r + Math.sin(t * 0.3) * 0.5, 1);
+  o.position.y = LG.tanque.y - 0.05 - Math.abs(Math.sin(t * 3.4)) * 0.03;
+  o.updateMatrixWorld(true);
+  const f = frente(st);
+  const ch = o.position.y + 0.06;
+  const pE = pos(st.os.pE[2]), pD = pos(st.os.pD[2]);
+  const sE = Math.max(0, Math.sin(t * 3.4)), sD = Math.max(0, Math.sin(t * 3.4 + Math.PI));
+  pE.y = ch + sE * 0.28; pE.addScaledVector(f, sE * 0.08); pD.y = ch + sD * 0.28; pD.addScaledVector(f, sD * 0.08);
+  pernas(st, pE, pD);
+  inclina(st, 0.12);
+  const lado = pos(st.os.bE[0]).sub(pos(st.os.bD[0])).setY(0).normalize(), cint = pos(st.os.pelvis).add(new THREE.Vector3(0, 0.12, 0));
+  maos(st, cint.clone().addScaledVector(lado, 0.2).addScaledVector(f, 0.02), cint.clone().addScaledVector(lado, -0.2).addScaledVector(f, 0.02), dt, 1, 20);
+}
+const marta = ator(nMarta, 1.62, -5.0, -4.6, -0.95, 'Conversando');
+const lazaro = ator(nLazaro, 1.72, -6.4, -3.6, 2.19, 'Conversando');
+marta.r0 = -0.95; lazaro.r0 = 2.19;
+const pastor = ator(nPastor, 1.68, -8.0, 13.2, 2.6, 'Parado');
+const lenco = ator(nLenco, 1.6, B5.x + 0.25, B5.z + 1.5, Math.PI + 0.15, 'Parado');
+const vendedor = ator(nRobusto, 1.72, B5.x - 0.15, B5.z - 0.35, 0.15, 'Conversando');
+corpo(lenco); corpo(vendedor);
+CIRC.push({ x: B5.x + 0.25, z: B5.z + 1.5, r: 0.35 });
+// o vendedor fala, pega um produto no balcão e entrega; a freguesa estende a mão e recebe
+const PROD = new THREE.Mesh(new THREE.SphereGeometry(0.08, 7, 5), new THREE.MeshStandardMaterial({ color: 0xa63d2a, roughness: 1, flatShading: true }));
+PROD.castShadow = true; PROD.visible = false; scene.add(PROD);
+function barracaPasso(dt, t) {
+  const c = t % 9, fv = frente(vendedor), fl = frente(lenco);
+  const meio = vendedor.o.position.clone().lerp(lenco.o.position, 0.5).setY(1.05);
+  const balcao = vendedor.o.position.clone().addScaledVector(fv, 0.45).setY(0.92);
+  const ombroV = pos(vendedor.os.bD[0]), ombroL = pos(lenco.os.bD[0]);
+  let aV = null, aL = null;
+  if (c < 3.5) vendedor.toca('Conversando');
+  else {
+    vendedor.toca('Parado');
+    if (c < 5) aV = balcao;
+    else if (c < 7.2) aV = meio.clone().addScaledVector(fv, -0.05);
+    else aV = null;
+  }
+  if (c > 5.3 && c < 7.6) aL = meio.clone().addScaledVector(fl, -0.02);
+  PROD.visible = c > 4.4 && c < 8.6;
+  if (PROD.visible) PROD.position.copy(pos(c < 7.0 ? vendedor.os.bD[2] : lenco.os.bD[2]));
+  maos(vendedor, pos(vendedor.os.bE[2]), aV || pos(vendedor.os.bD[2]), dt, aV ? 1 : 0, 6);
+  // só o braço direito: a esquerda segue o clipe
+  if (vendedor.pesoB > 0.01) { vendedor.os.bE[0].updateMatrixWorld(true); }
+  lenco.toca('Parado');
+  maos(lenco, pos(lenco.os.bE[2]), aL || pos(lenco.os.bD[2]), dt, aL ? 1 : 0, 5);
+}
+const andante = ator(nRobusto, 1.74, 0, 0, 0, 'Andar');
+CIRC.push({ x: -5.0, z: -4.6, r: 0.35 }, { x: -6.4, z: -3.6, r: 0.35 }, { x: -8.0, z: 13.2, r: 0.35 }, { x: B5.x - 0.15, z: B5.z - 0.35, r: 0.3 });
+
+// ---------- poço: água no fundo, sarilho de madeira com roldana; uma mulher puxa o balde e enche o cântaro ----------
+const POCO = { c: new THREE.Vector3(-4.6, 0, 4.6) };
+{
+  const k = 0.8, n = nos(gOfi).Poco.clone(); n.position.set(0, 0, 0); n.scale.setScalar(k); n.updateMatrixWorld(true);
+  const v = new THREE.Vector3(), bx = new THREE.Box3(); let topo = 0;
+  n.traverse((o) => { if (!o.isMesh) return; const pa = o.geometry.attributes.position; for (let i = 0; i < pa.count; i++) { v.fromBufferAttribute(pa, i).applyMatrix4(o.matrixWorld); topo = Math.max(topo, v.y); } });
+  n.traverse((o) => { if (!o.isMesh) return; const pa = o.geometry.attributes.position; for (let i = 0; i < pa.count; i++) { v.fromBufferAttribute(pa, i).applyMatrix4(o.matrixWorld); if (v.y > topo * 0.7) bx.expandByPoint(v); } });
+  const cc = bx.getCenter(new THREE.Vector3());
+  n.position.set(POCO.c.x - cc.x, 0, POCO.c.z - cc.z); sombra(n); scene.add(n);
+  POCO.borda = topo; POCO.raio = (bx.max.x - bx.min.x) / 2;
+  CIRC.push({ x: POCO.c.x, z: POCO.c.z, r: POCO.raio + 0.1 });
+  // água escura lá embaixo, com um brilho que mexe
+  const agua = new THREE.Mesh(new THREE.CircleGeometry(POCO.raio * 0.74, 20), new THREE.MeshStandardMaterial({ color: 0x2f5f78, roughness: 0.15, metalness: 0.1 }));
+  agua.rotation.x = -Math.PI / 2; agua.position.set(POCO.c.x, POCO.borda - 0.32, POCO.c.z); scene.add(agua); POCO.agua = agua;
+  // sarilho: dois postes, travessa e roldana sobre o centro (postes de lado para quem puxa)
+  const mad = new THREE.MeshStandardMaterial({ color: 0x6b4a2c, roughness: 1, flatShading: true });
+  const H = 2.05, lat = new THREE.Vector3(0, 0, 1);
+  for (const sg of [-1, 1]) {
+    const pst = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.075, H, 6), mad);
+    pst.position.copy(POCO.c).addScaledVector(lat, sg * (POCO.raio + 0.12)).setY(H / 2); sombra(pst); scene.add(pst);
+    CIRC.push({ x: pst.position.x, z: pst.position.z, r: 0.12 });
+  }
+  const trav = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2 * (POCO.raio + 0.12) + 0.25, 6), mad);
+  trav.rotation.x = Math.PI / 2; trav.position.copy(POCO.c).setY(H - 0.05); sombra(trav); scene.add(trav);
+  const rold = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.035, 6, 12), mad);
+  rold.position.copy(POCO.c).setY(H - 0.2); sombra(rold); scene.add(rold);
+  POCO.rold = rold; POCO.topoCorda = POCO.c.clone().setY(H - 0.2);
+}
+const aguadeira = corpo(ator(nLenco, 1.58, POCO.c.x - POCO.raio - 0.5, POCO.c.z + 0.1, Math.PI / 2, 'Parado'));
+const AG = { e: 'puxa', t: 0, cheio: 0, puxado: 0 };
+const AG_LUGAR = aguadeira.o.position.clone();
+const AG_ANG = Math.atan2(POCO.c.x - AG_LUGAR.x, POCO.c.z - AG_LUGAR.z);
+const madeira = new THREE.MeshStandardMaterial({ color: 0x7a5232, roughness: 1, flatShading: true });
+const BALDE = new THREE.Group();
+{
+  const b = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.1, 0.22, 8, 1, true), madeira); b.material.side = THREE.DoubleSide;
+  const fundo = new THREE.Mesh(new THREE.CircleGeometry(0.1, 8), madeira); fundo.rotation.x = -Math.PI / 2; fundo.position.y = -0.1;
+  const alca = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.008, 4, 10, Math.PI), new THREE.MeshStandardMaterial({ color: 0x4a4a4a, roughness: 0.6 })); alca.position.y = 0.11;
+  const ag = new THREE.Mesh(new THREE.CircleGeometry(0.12, 8), new THREE.MeshStandardMaterial({ color: 0x5d9cc0, roughness: 0.2 })); ag.rotation.x = -Math.PI / 2; ag.position.y = 0.07;
+  BALDE.add(b, fundo, alca, ag); BALDE.userData.agua = ag; sombra(BALDE); scene.add(BALDE);
+}
+const matCorda = new THREE.MeshStandardMaterial({ color: 0xc9b07a, roughness: 1 });
+const CORDAS = [0, 1, 2].map(() => { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.011, 0.011, 1, 4), matCorda); m.castShadow = true; scene.add(m); return m; });
+const AGUA = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.035, 1, 6), new THREE.MeshStandardMaterial({ color: 0x8fc4e0, transparent: true, opacity: 0.7, roughness: 0.3 })); AGUA.visible = false; scene.add(AGUA);
+const CANTARO = OB.Jarro_Alto.clone(); CANTARO.scale.setScalar(1.5); sombra(CANTARO); scene.add(CANTARO);
+const altCant = new THREE.Box3().setFromObject(CANTARO).getSize(new THREE.Vector3()).y;
+const CANT_CHAO = AG_LUGAR.clone().add(new THREE.Vector3(-0.2, 0, 0.8));
+CANTARO.position.copy(CANT_CHAO);
+const CASA_AG = CASAS[1].mundo(CASAS[1].px + 0.9, CASAS[1].pz + 1.1);
+const corda = (m, a, b) => { if (!a || !b) { m.visible = false; return; } const d = b.clone().sub(a), L = d.length(); if (L < 0.01) { m.visible = false; return; } m.visible = true; m.position.copy(a).add(b).multiplyScalar(0.5); m.scale.y = L; m.quaternion.setFromUnitVectors(CIMA, d.normalize()); };
+function aguadeiraPasso(dt, t) {
+  const st = aguadeira, o = st.o, f = frente(st);
+  AG.t += dt;
+  const T = AG.t, muda = (e) => { AG.e = e; AG.t = 0; };
+  const lado = pos(st.os.bE[0]).sub(pos(st.os.bD[0])).setY(0).normalize();
+  const peito = pos(st.os.sp3);
+  let aE = null, aD = null, inc = 0, peso = 1, maoCorda = null;
+  AGUA.visible = false;
+  POCO.agua.material.color.setHSL(0.56, 0.45, 0.3 + 0.03 * Math.sin(t * 2));
+  const R = POCO.topoCorda;
+  const alca = () => BALDE.position.clone().add(new THREE.Vector3(0, 0.13, 0));
+  switch (AG.e) {
+    case 'puxa': {                                    // mão sobre mão ao longo da corda que desce da roldana
+      st.toca('Parado'); lerpAng(o, AG_ANG, Math.min(1, dt * 5));
+      const base = peito.clone().addScaledVector(f, 0.28).add(new THREE.Vector3(0, -0.15, 0));   // onde a corda chega ao corpo
+      const linha = (u) => R.clone().lerp(base, u);
+      const ciclo = 1.1, fase = (T % ciclo) / ciclo;
+      // cada mão: agarra no alto (u=0.45), puxa até embaixo (u=0.95), solta e volta por fora
+      const uMao = (ph) => ph < 0.6 ? 0.45 + 0.5 * (ph / 0.6) : 0.95 - 0.5 * ((ph - 0.6) / 0.4);
+      const fE = fase, fD = (fase + 0.5) % 1;
+      aE = linha(uMao(fE)).addScaledVector(lado, 0.05); aD = linha(uMao(fD)).addScaledVector(lado, -0.05);
+      if (fE >= 0.6) aE.addScaledVector(lado, 0.12).addScaledVector(f, -0.05);
+      if (fD >= 0.6) aD.addScaledVector(lado, -0.12).addScaledVector(f, -0.05);
+      inc = 0.12 + 0.08 * Math.sin(fase * Math.PI * 4);
+      const puxando = fE < 0.6 ? st.mE : st.mD;
+      maoCorda = puxando;
+      const sobe = Math.min(1, T / 6.5);
+      BALDE.position.copy(POCO.c).setY(POCO.borda - 0.45 + sobe * 0.8); BALDE.quaternion.identity(); BALDE.userData.agua.visible = true;
+      if (T > 6.6) muda('tira');
+      break;
+    }
+    case 'tira': {                                    // segura a corda com uma mão e puxa o balde para a borda com a outra
+      st.toca('Parado');
+      const k = Math.min(1, T / 1.0);
+      const m = POCO.c.clone().lerp(o.position, 0.55 * k).setY(POCO.borda + 0.35 + 0.15 * k);
+      BALDE.position.copy(m);
+      aE = alca().addScaledVector(lado, 0.06); aD = alca().addScaledVector(lado, -0.06); inc = 0.25;
+      if (T > 1.2) muda('vira');
+      break;
+    }
+    case 'vira': case 'despeja': {
+      st.toca('Parado');
+      lerpAng(o, Math.atan2(CANT_CHAO.x - o.position.x, CANT_CHAO.z - o.position.z), Math.min(1, dt * 4));
+      const boca = CANT_CHAO.clone().setY(altCant + 0.28);
+      const m = AG.e === 'vira' ? peito.clone().addScaledVector(f, 0.32).add(new THREE.Vector3(0, -0.3, 0)) : boca.clone().addScaledVector(f, -0.14);
+      BALDE.position.lerp(m, Math.min(1, dt * 6));
+      const tomb = AG.e === 'despeja' ? Math.min(1.5, T * 2) : 0;
+      BALDE.quaternion.setFromAxisAngle(new THREE.Vector3().crossVectors(CIMA, f).normalize(), tomb);
+      BALDE.userData.agua.visible = !(AG.e === 'despeja' && T > 2.0);
+      aE = BALDE.position.clone().addScaledVector(lado, 0.13).add(new THREE.Vector3(0, 0.06, 0)); aD = BALDE.position.clone().addScaledVector(lado, -0.13).add(new THREE.Vector3(0, -0.05, 0));
+      inc = AG.e === 'despeja' ? 0.35 : 0.1;
+      if (AG.e === 'despeja' && T > 0.5 && T < 2.2) {
+        const de = BALDE.position.clone().addScaledVector(f, 0.13), ate = CANT_CHAO.clone().setY(altCant * 0.9);
+        AGUA.position.copy(de).add(ate).multiplyScalar(0.5); AGUA.scale.y = de.distanceTo(ate); AGUA.quaternion.setFromUnitVectors(CIMA, de.clone().sub(ate).normalize()); AGUA.visible = true;
+      }
+      if (AG.e === 'vira' && T > 1.0) muda('despeja');
+      if (AG.e === 'despeja' && T > 2.6) { AG.cheio++; muda(AG.cheio >= 2 ? 'ergue' : 'devolve'); }
+      break;
+    }
+    case 'devolve': {                                 // devolve o balde ao poço e ele desce
+      st.toca('Parado'); lerpAng(o, AG_ANG, Math.min(1, dt * 5));
+      BALDE.quaternion.identity();
+      const desce = Math.max(0, (T - 0.8) / 1.2);
+      BALDE.position.lerp(POCO.c.clone().setY(POCO.borda + 0.25 - desce * 0.7), Math.min(1, dt * 6));
+      if (T < 0.9) { aE = alca().addScaledVector(lado, 0.06); aD = alca().addScaledVector(lado, -0.06); }
+      inc = 0.25; if (T > 2.1) muda('puxa');
+      break;
+    }
+    case 'ergue': {                                   // agacha, pega o cântaro e põe na cabeça
+      st.toca('Parado');
+      BALDE.quaternion.identity(); BALDE.position.lerp(POCO.c.clone().setY(POCO.borda + 0.12).addScaledVector(f, -0.15), Math.min(1, dt * 4));
+      const k = Math.min(1, T / 1.6), cab = pos(st.os.cab).add(new THREE.Vector3(0, 0.12, 0));
+      CANTARO.position.copy(CANT_CHAO.clone().lerp(cab, k));
+      aE = CANTARO.position.clone().addScaledVector(lado, 0.14).add(new THREE.Vector3(0, altCant * 0.55, 0));
+      aD = CANTARO.position.clone().addScaledVector(lado, -0.14).add(new THREE.Vector3(0, altCant * 0.55, 0));
+      inc = 0.5 * (1 - k);
+      if (T > 1.8) muda('leva');
+      break;
+    }
+    case 'leva': case 'volta': {
+      if (AG.e === 'leva') {
+        CANTARO.position.copy(pos(st.os.cab).add(new THREE.Vector3(0, 0.1, 0)));
+        aE = CANTARO.position.clone().addScaledVector(lado, 0.16).add(new THREE.Vector3(0, altCant * 0.5, 0));
+        if (anda(st, CASA_AG, dt, 0.8)) { CANTARO.position.copy(CASA_AG.clone().addScaledVector(f, 0.45)); muda('volta'); }
+      } else {
+        peso = 0;
+        if (anda(st, AG_LUGAR, dt, 0.9)) { AG.cheio = 0; CANTARO.position.copy(CANT_CHAO); BALDE.position.copy(POCO.c).setY(POCO.borda - 0.45); muda('puxa'); }
+      }
+      break;
+    }
+  }
+  // cordas: roldana → balde; roldana → mão que puxa (ou à borda); sobra enrolada no chão
+  corda(CORDAS[0], R.clone().add(new THREE.Vector3(0, -0.11, 0)), alca());
+  const chaoCorda = AG_LUGAR.clone().addScaledVector(new THREE.Vector3(0, 0, 1), -0.5).setY(0.02);
+  if (maoCorda) { corda(CORDAS[1], R.clone().add(new THREE.Vector3(-0.11, 0, 0)), maoCorda); corda(CORDAS[2], maoCorda, chaoCorda); }
+  else { const borda = POCO.c.clone().setY(POCO.borda).addScaledVector(new THREE.Vector3(-1, 0, 0), POCO.raio * 0.9); corda(CORDAS[1], R.clone().add(new THREE.Vector3(-0.11, 0, 0)), borda); corda(CORDAS[2], borda, chaoCorda); }
+  st.inc += (inc - st.inc) * Math.min(1, dt * 5); inclina(st, st.inc);
+  if (AG.e === 'leva') maos(st, aE, pos(st.os.bD[2]), dt, 1, 12);
+  else maos(st, aE || pos(st.os.bE[2]), aD || pos(st.os.bD[2]), dt, aE ? peso : 0, AG.e === 'puxa' ? 18 : 10);
+}
+
+// arado: madeira simples atrelada ao boi
+const boi = ator(gBoi, 1.55, 6, 8, Math.PI / 2, 'Andar');
+const lavrador = ator(nAldeao, 1.7, 4, 8, Math.PI / 2, 'Andar');
+const arado = new THREE.Group();
+{
+  const mad = new THREE.MeshStandardMaterial({ color: 0x6b4a2c, roughness: 1, flatShading: true });
+  const ferro = new THREE.MeshStandardMaterial({ color: 0x55504a, roughness: 0.8, flatShading: true });
+  const lanca = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 2.4, 6), mad); lanca.rotation.z = Math.PI / 2 - 0.25; lanca.position.set(1.15, 0.55, 0);
+  const rabica = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 1.0, 6), mad); rabica.rotation.z = 0.6; rabica.position.set(-0.3, 0.55, 0);
+  const relha = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.45, 5), ferro); relha.rotation.z = -Math.PI / 2 - 0.4; relha.position.set(0.15, 0.08, 0);
+  const canga = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.9), mad); canga.position.set(2.3, 1.15, 0);
+  arado.add(lanca, rabica, relha, canga); sombra(arado); scene.add(arado);
+}
+// sulcos que vão ficando para trás
+const SULCO = new THREE.MeshStandardMaterial({ color: 0x5a3d26, roughness: 1, polygonOffset: true, polygonOffsetFactor: -3 });
+const FAIXAS = [0, 1, 2, 3, 4, 5].map((i) => LAV.z0 + 0.7 + i * 0.95);
+const sulcos = FAIXAS.map((z) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 0.28), SULCO); m.rotation.x = -Math.PI / 2; m.position.set(LAV.x0 + 0.6, 0.04, z); m.scale.x = 0.001; scene.add(m); return m; });
+// percurso fechado do boi: faixa por faixa com curva em U nas pontas, depois volta pela cabeceira
+const TRILHA = []; // pontos a cada 5 cm; f = faixa da reta (ou -1)
+{
+  const xa = LAV.x0 + 0.9, xb = LAV.x1 - 0.8, P = 0.05;
+  const reta = (x0, z0, x1, z1, f) => { const L = Math.hypot(x1 - x0, z1 - z0), n = Math.ceil(L / P); for (let i = 0; i < n; i++) TRILHA.push({ x: x0 + (x1 - x0) * i / n, z: z0 + (z1 - z0) * i / n, f }); };
+  const curva = (cx, z0, lado) => { const n = Math.ceil(Math.PI * 0.5 / P); for (let i = 0; i < n; i++) { const a = Math.PI * i / n; TRILHA.push({ x: cx + lado * Math.sin(a) * 0.5, z: z0 + 0.5 - Math.cos(a) * 0.5, f: -1 }); } };
+  FAIXAS.forEach((z, i) => {
+    const ida = i % 2 === 0; reta(ida ? xa : xb, z, ida ? xb : xa, z, i);
+    if (i < FAIXAS.length - 1) curva(ida ? xb : xa, z, ida ? 1 : -1);
+  });
+  const zl = FAIXAS[FAIXAS.length - 1], zf = FAIXAS[0];
+  reta(xa, zl, xa - 0.6, zl - 0.4, -1); reta(xa - 0.6, zl - 0.4, xa - 0.6, zf + 0.4, -1); reta(xa - 0.6, zf + 0.4, xa, zf, -1);
+}
+const lav = { s: 3.5 / 0.05 };
+
+// ovelhas no aprisco
+const ovelhas = [];
+for (let i = 0; i < 5; i++) {
+  const A = globalThis.APRISCO;
+  let x, z, k = 0;
+  do { x = A.x0 + 0.6 + rnd() * (A.x1 - A.x0 - 1.2); z = A.z0 + 0.6 + rnd() * (A.z1 - A.z0 - 1.2); } while (k++ < 50 && ovelhas.some((b) => Math.hypot(b.o.position.x - x, b.o.position.z - z) < 1.0));
+  const o = ator(gOve, 0.85, x, z, rnd() * 6.28, rnd() < 0.5 ? 'Comer' : 'Parado');
+  o.alvo = null; o.espera = rnd() * 4; ovelhas.push(o);
+}
+
+// passante: dá voltas pela estrada
+const rota = new THREE.CatmullRomCurve3([[-18, 2.9], [-10, 2.4], [-2, 1.1], [6, 0.7], [12, 1.3]].map(([x, z]) => new THREE.Vector3(x, 0, z)));
+let tRota = 0, sentido = 1, pausa = 0;
+
+// ---------- jogador ----------
+const jog = ator(gJog, 1.7, 4, 3, Math.PI, 'Parado');
+const naArea = (x, z) => (x > -21 && x < 21 && z > -15 && z < 15.5) || (x < -20 && x > -27 && Math.abs(z - 3.2) < 2.6);
+
+// ---------- câmera isométrica: só segue (com limite) e faz zoom ----------
+const camera = new THREE.PerspectiveCamera(24, innerWidth / innerHeight, 0.5, 300);
+const DIR = new THREE.Vector3(1, 1.15, 1).normalize();
+let dist = innerHeight > innerWidth ? 62 : 46, distAlvo = dist;
+const DMIN = 24, DMAX = 72;
+const foco = new THREE.Vector3(0, 0, 2);
+addEventListener('wheel', (e) => { distAlvo = THREE.MathUtils.clamp(distAlvo * (e.deltaY > 0 ? 1.1 : 0.9), DMIN, DMAX); }, { passive: true });
+
+// ---------- controles ----------
+const tecla = {};
+addEventListener('keydown', (e) => { tecla[e.code] = true; if (e.code === 'KeyE') acionar(); });
+addEventListener('keyup', (e) => { tecla[e.code] = false; });
+let alvoToque = null;
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+const toques = new Map(); let pinca0 = 0, dist0 = 0, arrastou = false;
+renderer.domElement.addEventListener('pointerdown', (e) => {
+  toques.set(e.pointerId, [e.clientX, e.clientY]); arrastou = false;
+  if (toques.size === 2) { const [a, b] = [...toques.values()]; pinca0 = Math.hypot(a[0] - b[0], a[1] - b[1]); dist0 = distAlvo; }
+});
+renderer.domElement.addEventListener('pointermove', (e) => {
+  if (!toques.has(e.pointerId)) return; toques.set(e.pointerId, [e.clientX, e.clientY]);
+  if (toques.size === 2) { const [a, b] = [...toques.values()]; distAlvo = THREE.MathUtils.clamp(dist0 * pinca0 / Math.max(20, Math.hypot(a[0] - b[0], a[1] - b[1])), DMIN, DMAX); arrastou = true; }
+});
+const solta = (e) => {
+  if (toques.size === 1 && !arrastou) {
+    ndc.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); ray.setFromCamera(ndc, camera);
+    const h = ray.intersectObjects(CAMT.on ? [CAMT.g] : [ground, ...CASAS.map((c) => c.g)], true)[0]; if (h) alvoToque = h.point.clone();
+  }
+  toques.delete(e.pointerId);
+};
+renderer.domElement.addEventListener('pointerup', solta);
+renderer.domElement.addEventListener('pointercancel', (e) => toques.delete(e.pointerId));
+
+// ---------- saída para Jerusalém ----------
+const botao = document.getElementById('acao'), fade = document.getElementById('fade');
+let fora = false;
+botao.onclick = () => acionar();
+let portaPerto = null, pedraPerto = false, tumbaPerto = false, jogVy = 0, jogNoChao = true;
+// direcional virtual (canto esquerdo de baixo)
+const JOY = { on: false, x: 0, y: 0, id: null };
+{
+  const base = document.createElement('div'), pino = document.createElement('div');
+  Object.assign(base.style, { position: 'fixed', left: '22px', bottom: 'calc(22px + env(safe-area-inset-bottom))', width: '120px', height: '120px', borderRadius: '50%', background: '#fdf6e355', border: '2px solid #fdf6e3aa', touchAction: 'none', zIndex: 4 });
+  Object.assign(pino.style, { position: 'absolute', left: '35px', top: '35px', width: '50px', height: '50px', borderRadius: '50%', background: '#fdf6e3', boxShadow: '0 2px 8px #0003', pointerEvents: 'none' });
+  base.id = 'joy'; base.appendChild(pino); document.body.appendChild(base);
+  const move = (e) => {
+    const r = base.getBoundingClientRect(); let x = (e.clientX - r.left - 60) / 50, y = (e.clientY - r.top - 60) / 50;
+    const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; }
+    JOY.x = x; JOY.y = y; pino.style.left = 35 + x * 40 + 'px'; pino.style.top = 35 + y * 40 + 'px';
+  };
+  base.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); JOY.on = true; JOY.id = e.pointerId; base.setPointerCapture(e.pointerId); alvoToque = null; move(e); });
+  base.addEventListener('pointermove', (e) => { if (JOY.on && e.pointerId === JOY.id) move(e); });
+  const fim = (e) => { if (e.pointerId !== JOY.id) return; JOY.on = false; JOY.x = JOY.y = 0; pino.style.left = '35px'; pino.style.top = '35px'; };
+  base.addEventListener('pointerup', fim); base.addEventListener('pointercancel', fim);
+}
+const toqueTela = matchMedia('(pointer: coarse)').matches;
+function pular() { if (jogNoChao && !fora) { jogVy = 5.2; jogNoChao = false; } }
+addEventListener('keydown', (e) => { if (e.code === 'Space') { e.preventDefault(); pular(); } });
+if (toqueTela) {
+  const b = document.createElement('button'); b.textContent = 'Pular';
+  Object.assign(b.style, { position: 'fixed', right: '18px', bottom: 'calc(22px + env(safe-area-inset-bottom))', padding: '18px 20px', borderRadius: '50%', border: 0, background: '#fdf6e3', color: '#4a3520', fontSize: '15px', boxShadow: '0 3px 12px #0003' });
+  b.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); pular(); });
+  document.body.appendChild(b);
+}
+function entrarCasa(c) {
+  fora = true; alvoToque = null; jog.toca('Parado');
+  fade.textContent = 'Dentro da casa · toque ou aperte uma tecla para sair'; fade.style.pointerEvents = 'auto'; fade.style.opacity = 1;
+  const sair = () => {
+    removeEventListener('keydown', sair); fade.removeEventListener('click', sair);
+    const p = c.mundo(c.px + 0.55, c.pz + 1.4); jog.o.position.set(p.x, 0, p.z); c.aberta = false;
+    fade.style.opacity = 0; fade.style.pointerEvents = 'none';
+    setTimeout(() => { fade.textContent = ''; fora = false; }, 900);
+  };
+  setTimeout(() => { addEventListener('keydown', sair); fade.addEventListener('click', sair); }, 900);
+}
+// entrar e sair do túmulo: corte seco para o preto, e a cena interna
+const CEU0 = { bg: scene.background.clone(), fog: scene.fog };
+function corte(fn) {
+  fora = true; alvoToque = null; botao.style.display = 'none';
+  fade.style.transition = 'none'; fade.textContent = ''; fade.style.opacity = 1;
+  setTimeout(() => { fn(); fade.style.transition = 'opacity 1.4s'; fade.style.opacity = 0; setTimeout(() => { fade.style.transition = ''; fora = false; }, 1400); }, 700);
+}
+function entrarTumba() {
+  corte(() => {
+    CAMT.on = true; jogVy = 0; jogNoChao = true;
+    const p = CAMT.entrada; jog.o.position.set(p.x, CAMT.alt(p.x, p.z), p.z); jog.o.rotation.y = Math.PI;
+    scene.background = new THREE.Color(0x000000); scene.fog = null;
+    hemi.intensity = 0.45; sun.intensity = 0.9; CAMT.luz.intensity = 12;
+    distT = distTumba(); foco.copy(CAMT.centro);
+  });
+}
+function sairTumba() {
+  corte(() => {
+    CAMT.on = false; jogVy = 0; jogNoChao = true;
+    const p = TUM.lugar.clone().addScaledVector(TUM.frente, 1.8); jog.o.position.set(p.x, 0, p.z); jog.o.rotation.y = Math.atan2(TUM.frente.x, TUM.frente.z);
+    scene.background = CEU0.bg.clone(); scene.fog = CEU0.fog;
+    hemi.intensity = 1.3; sun.intensity = 3.1; CAMT.luz.intensity = 0;
+    foco.copy(jog.o.position);
+  });
+}
+// a câmera de dentro enquadra só a câmara (fundo preto, sem vazar para fora do cenário)
+let distT = 16;
+const distTumba = () => { const s = CAMT.box.getSize(new THREE.Vector3()); const f = Math.tan(THREE.MathUtils.degToRad(12)); return Math.max((s.y + s.z * 0.75) * 0.62 / f, (Math.hypot(s.x, s.z) * 0.58) / f / camera.aspect); };
+function tumbaPasso(dt) {
+  if (!CAMT.on) return false;
+  fw.copy(DIR).negate().setY(0).normalize(); rt.set(-fw.z, 0, fw.x);
+  mv.set(0, 0, 0);
+  if (!fora) {
+    if (tecla.KeyW || tecla.ArrowUp) mv.add(fw); if (tecla.KeyS || tecla.ArrowDown) mv.sub(fw);
+    if (tecla.KeyD || tecla.ArrowRight) mv.add(rt); if (tecla.KeyA || tecla.ArrowLeft) mv.sub(rt);
+    if (JOY.on && Math.hypot(JOY.x, JOY.y) > 0.15) mv.addScaledVector(fw, -JOY.y).addScaledVector(rt, JOY.x);
+    if (mv.lengthSq() > 0) alvoToque = null;
+    else if (alvoToque) { mv.subVectors(alvoToque, jog.o.position).setY(0); if (mv.length() < 0.12) { alvoToque = null; mv.set(0, 0, 0); } }
+  }
+  const p = jog.o.position, A = CAMT.area;
+  let andou = false;
+  if (mv.lengthSq() > 0) {
+    mv.normalize(); const v = 1.6 * dt;
+    const ok = (x, z) => x > A.x0 && x < A.x1 && z > A.z0 && z < A.z1 && CAMT.alt(x, z) <= p.y + 0.45;
+    const x0 = p.x, z0 = p.z, nx = p.x + mv.x * v, nz = p.z + mv.z * v;
+    if (ok(nx, nz)) { p.x = nx; p.z = nz; } else if (ok(nx, p.z)) p.x = nx; else if (ok(p.x, nz)) p.z = nz; else alvoToque = null;
+    andou = Math.hypot(p.x - x0, p.z - z0) > v * 0.3;
+    lerpAng(jog.o, Math.atan2(mv.x, mv.z), Math.min(1, dt * 12));
+    // passou da soleira, para fora: volta à luz
+    if (!fora && nz > A.z1 - 0.02 && Math.abs(p.x - CAMT.entrada.x) < 1.0 && mv.z > 0.3) sairTumba();
+  }
+  p.y += (CAMT.alt(p.x, p.z) - p.y) * Math.min(1, dt * 16);
+  jog.toca(andou ? 'Andar' : 'Parado');
+  if (!fora) { botao.textContent = (toqueTela ? '' : 'E: ') + 'sair do túmulo'; botao.style.display = 'block'; }
+  // câmera: o mesmo ângulo de fora; segue um pouco o jogador, sem sair da câmara
+  distT = distTumba(); const d = Math.min(distAlvo, distT);
+  const alvo = CAMT.centro.clone().lerp(p, 0.25); alvo.y = CAMT.centro.y;
+  foco.lerp(alvo, Math.min(1, dt * 3));
+  camera.position.copy(foco).addScaledVector(DIR, d); camera.lookAt(foco);
+  sun.position.set(foco.x - 6, foco.y + 14, foco.z + 8); sun.target.position.copy(foco);
+  CAMT.luz.intensity = 12 + Math.sin(performance.now() * 0.011) * 1.2 + Math.sin(performance.now() * 0.027) * 0.8;   // luz que entra tremula de leve
+  return true;
+}
+function acionar() {
+  if (botao.style.display !== 'block' || fora) return;
+  if (CAMT.on) { sairTumba(); return; }
+  if (tumbaPerto) { entrarTumba(); return; }
+  if (pedraPerto && jog.o.position.x >= -21) { TUM.alvo = TUM.alvo ? 0 : 1; return; }
+  if (portaPerto && jog.o.position.x >= -21) { portaPerto.aberta = !portaPerto.aberta; return; }
+  fora = true; botao.style.display = 'none';
+  fade.textContent = 'A caminho de Jerusalém…'; fade.style.opacity = 1;
+  setTimeout(() => { jog.o.position.set(-17, 0, 3); jog.o.rotation.y = Math.PI / 2; fade.style.opacity = 0; setTimeout(() => { fade.textContent = ''; fora = false; }, 900); }, 2200);
+}
+// placa
+{
+  const mad = new THREE.MeshStandardMaterial({ color: 0x6b4a2c, roughness: 1, flatShading: true });
+  const poste = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 1.9, 6), mad); poste.position.set(-19.5, 0.95, 5.6);
+  const c = document.createElement('canvas'); c.width = 256; c.height = 64; const g = c.getContext('2d');
+  g.fillStyle = '#8a6a44'; g.fillRect(0, 0, 256, 64); g.fillStyle = '#f6ecd6'; g.font = 'bold 30px serif'; g.textAlign = 'center'; g.fillText('← Jerusalém', 128, 43);
+  const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace;
+  const placa = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.36, 0.06), [mad, mad, mad, mad, new THREE.MeshStandardMaterial({ map: tx, roughness: 1 }), mad]);
+  placa.position.set(-19.5, 1.6, 5.62); placa.rotation.y = 0.5;
+  sombra(poste); sombra(placa); scene.add(poste, placa); CIRC.push({ x: -19.5, z: 5.6, r: 0.2 });
+}
+
+// ---------- transparência do que tampa o jogador ----------
+for (const o of FADE) o.traverse((m) => { if (m.isMesh) { m.material = m.material.clone(); m.material.transparent = true; m.userData.op = 1; } });
+const rayCam = new THREE.Raycaster();
+function atualizaFade() {
+  const p = jog.o.position.clone(); p.y = 0.9;
+  const tampa = new Set();
+  for (const alt of [0.2, 0.9, 1.6]) {
+    p.y = alt; const d = camera.position.clone().sub(p); const L = d.length(); d.normalize();
+    rayCam.set(p, d); rayCam.far = L;
+    for (const h of rayCam.intersectObjects(FADE, true)) { let o = h.object; while (o.parent && !FADE.includes(o)) o = o.parent; tampa.add(o); }
+  }
+  for (const o of FADE) {
+    const alvo = tampa.has(o) ? 0.25 : 1;
+    o.traverse((m) => { if (m.isMesh) { m.userData.op += (alvo - m.userData.op) * 0.15; m.material.opacity = m.userData.op; m.material.depthWrite = m.userData.op > 0.95; } });
+  }
+}
+
+// ---------- laço ----------
+const relogio = new THREE.Clock();
+const fw = new THREE.Vector3(), rt = new THREE.Vector3(), mv = new THREE.Vector3();
+// ---------- abertura: domingo de madrugada, dentro de casa ----------
+// Um cômodo em corte (como diorama), longe da vila. O discípulo acorda na esteira, outros dois ainda dormem.
+const SALA = new THREE.Vector3(120, 0, 120);
+const INTRO = { on: true, t: 0, saiu: false };
+const falaEl = document.getElementById('fala'), pularEl = document.getElementById('pularIntro');
+const fala = (txt) => { if (!txt) { falaEl.style.opacity = 0; return; } falaEl.textContent = txt; falaEl.style.opacity = 1; };
+const dormentes = [];
+const PORTA_SALA = SALA.clone().add(new THREE.Vector3(-2.6, 0, 1.4));
+{
+  const V = (x, y, z) => new THREE.Vector3(x, y, z);
+  const parede = new THREE.MeshStandardMaterial({ color: 0xcaa67c, roughness: 1, flatShading: true });
+  const madeiraS = new THREE.MeshStandardMaterial({ color: 0x5e4029, roughness: 1, flatShading: true });
+  const piso = new THREE.Mesh(new THREE.BoxGeometry(6.4, 0.3, 6.4), new THREE.MeshStandardMaterial({ map: tex('tex/patio.webp', 2), roughness: 1 }));
+  piso.position.copy(SALA).setY(-0.15); piso.receiveShadow = true; scene.add(piso);
+  const caixa = (w, h, d, pos, mat = parede) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.copy(SALA).add(pos); m.castShadow = m.receiveShadow = true; scene.add(m); return m; };
+  // parede do fundo com uma janelinha (três pedaços) e parede da esquerda com a porta
+  caixa(6.4, 3.2, 0.35, V(0, 1.6, -3.2)).scale.set(1, 1, 1);
+  const jan = caixa(0.9, 0.7, 0.4, V(0.9, 2.0, -3.2), new THREE.MeshBasicMaterial({ color: 0xffe2a8 }));
+  caixa(0.35, 3.2, 6.4, V(-3.2, 1.6, 0));
+  caixa(0.12, 2.1, 1.1, V(-3.0, 1.05, 1.4), madeiraS).rotation.y = 0;           // porta (fechada)
+  caixa(6.4, 0.3, 0.6, V(0, 3.3, -3.0), madeiraS); caixa(0.6, 0.3, 6.4, V(-3.0, 3.3, 0), madeiraS);   // vigas
+  // feixe de luz da janela até o chão
+  const feixe = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.9, 3.2, 8, 1, true), new THREE.MeshBasicMaterial({ color: 0xffe7b0, transparent: true, opacity: 0.0, depthWrite: false, side: THREE.DoubleSide }));
+  feixe.position.copy(SALA).add(V(0.9, 1.1, -1.6)); feixe.rotation.x = 0.75; scene.add(feixe);
+  INTRO.feixe = feixe; INTRO.jan = jan;
+  // esteiras, jarro, lamparina apagada, lenha
+  const est = (x, z, r) => { const e = OB.Esteira.clone(); e.position.copy(SALA).add(V(x, 0.01, z)); e.rotation.y = r; e.scale.setScalar(1.4); sombra(e); scene.add(e); };
+  est(0.9, 0.2, Math.PI / 2); est(-1.4, -1.2, Math.PI / 2); est(1.9, -1.9, Math.PI / 2 + 0.2);
+  for (const [o, x, z, k] of [[OB.Jarro_Alto, -2.5, -2.6, 1.3], [OB.Pote_Escuro, -2.0, -2.7, 1.2], [OB.Lenha, 2.5, 1.9, 1], [OB.Cesto_Alca, -2.4, -0.6, 1], [OB.Banquinho, 2.3, 0.6, 1]]) {
+    if (!o) continue; const c = o.clone(); c.position.copy(SALA).add(V(x, 0, z)); c.scale.setScalar(k); sombra(c); scene.add(c);
+  }
+  // dois discípulos ainda dormindo
+  for (const [x, z, r] of [[-1.4, -1.0, 0.1], [1.9, -1.7, -0.2]]) {
+    const d = ator(gJog, 1.7, SALA.x + x, SALA.z + z + 0.8, r, 'Parado');
+    d.o.rotation.order = 'YXZ'; d.o.rotation.x = -Math.PI / 2; d.o.position.y = 0.12; d.A.Parado.timeScale = 0.35;
+    dormentes.push(d);
+  }
+}
+const ESTEIRA_J = SALA.clone().add(new THREE.Vector3(0.9, 0.12, 1.0));
+function poeDeitado() { jog.o.rotation.order = 'YXZ'; jog.o.position.copy(ESTEIRA_J); jog.o.rotation.set(-Math.PI / 2, 0, 0); jog.A.Parado.timeScale = 0.35; jog.toca('Parado'); }
+poeDeitado();
+document.getElementById('dica').style.display = 'none';
+const joyEl = () => document.getElementById('joy');
+pularEl.style.display = 'block';
+fade.textContent = 'Domingo, de madrugada.'; fade.style.opacity = 1;
+const suave = (a, b, x) => { const k = THREE.MathUtils.clamp((x - a) / (b - a), 0, 1); return k * k * (3 - 2 * k); };
+function fimIntro() {
+  INTRO.on = false; fala(''); pularEl.style.display = 'none';
+  document.getElementById('dica').style.display = ''; if (joyEl()) joyEl().style.display = '';
+  jog.o.rotation.set(0, 0, 0); jog.A.Parado.timeScale = 1;
+  const c = CASAS[0]; c.aberta = false;
+  const fora = c.mundo(c.px + 0.3, c.pz + 2.4); jog.o.position.set(fora.x, 0, fora.z);
+  hemi.intensity = 1.3; sun.intensity = 3.1; scene.fog.color.set(0xd9d2bf); scene.background.set(0xd9d2bf);
+  fade.textContent = ''; fade.style.opacity = 0;
+  setTimeout(() => fala('Explore a vila.'), 600); setTimeout(() => fala(''), 3600);
+}
+pularEl.onclick = () => { if (INTRO.on) fimIntro(); };
+// devolve true enquanto a abertura comanda a tela
+function introPasso(dt) {
+  if (!INTRO.on) return false;
+  const T = (INTRO.t += dt), o = jog.o;
+  if (joyEl()) joyEl().style.display = 'none';
+  // amanhecer: luz fria e fraca que esquenta
+  const luz = suave(2, 12, T);
+  hemi.intensity = 0.35 + 0.9 * luz; sun.intensity = 0.4 + 2.4 * luz;
+  INTRO.feixe.material.opacity = 0.05 + 0.22 * luz; INTRO.jan.material.color.setHSL(0.11, 0.9, 0.45 + 0.35 * luz);
+  scene.background.setHSL(0.6 - 0.5 * luz, 0.2, 0.08 + 0.7 * luz); scene.fog.color.copy(scene.background);
+  if (T > 2.6 && fade.style.opacity !== '0' && T < 21) { fade.style.opacity = 0; setTimeout(() => { if (INTRO.on && INTRO.t < 21) fade.textContent = ''; }, 900); }
+  const cab = o.getObjectByName('Head');
+  if (T < 6.5) {                                     // dormindo; um suspiro
+    if (T > 5 && T < 6.5) o.rotation.z = Math.sin((T - 5) * 6) * 0.04;
+  } else if (T < 9) {                                // senta e levanta devagar
+    const k = suave(6.5, 8.6, T);
+    o.rotation.set(-Math.PI / 2 * (1 - k), 0, 0);
+    o.position.y = ESTEIRA_J.y * (1 - k);
+    jog.toca(k < 0.85 ? 'Agachado' : 'Parado'); jog.A.Parado.timeScale = 1;
+  } else if (T < 19.5) {                             // olha ao redor, sem entender
+    o.rotation.set(0, Math.sin(T * 0.6) * 0.5, 0); jog.toca('Parado');
+    if (cab) cab.rotation.y += Math.sin(T * 1.3) * 0.5;
+    if (T < 12.6) fala('Betânia… a casa de Marta. Ainda estamos aqui.');
+    else if (T < 16) fala('Sexta-feira. A cruz. O corpo descido e o túmulo fechado com a pedra.');
+    else fala('Por quê? Ele disse tantas coisas… e eu não entendi nenhuma.');
+  } else if (T < 23) {                               // vai até a porta
+    fala('');
+    const d = PORTA_SALA.clone().sub(o.position).setY(0);
+    if (d.length() > 0.1) { d.normalize(); o.position.addScaledVector(d, 1.0 * dt); lerpAng(o, Math.atan2(d.x, d.z), Math.min(1, dt * 6)); jog.toca('Andar'); }
+    else jog.toca('Parado');
+    if (T > 21.6) { fade.textContent = ''; fade.style.opacity = 1; }
+  } else if (!INTRO.saiu) {                          // do lado de fora: a porta da casa de Marta abre
+    INTRO.saiu = true;
+    const c = CASAS[0]; c.aberta = true; c.ang = ABERTO;
+    const dentro = c.mundo(c.px, c.pz - 0.5); o.position.set(dentro.x, 0, dentro.z); o.rotation.set(0, Math.atan2(c.mundo(c.px, c.pz + 3).x - dentro.x, c.mundo(c.px, c.pz + 3).z - dentro.z), 0);
+    hemi.intensity = 1.3; sun.intensity = 3.1; scene.background.set(0xd9d2bf); scene.fog.color.set(0xd9d2bf);
+    fade.style.opacity = 0;
+  } else {
+    const c = CASAS[0], alvo = c.mundo(c.px + 0.3, c.pz + 2.4), d = alvo.clone().sub(o.position).setY(0);
+    if (d.length() > 0.1) { d.normalize(); o.position.addScaledVector(d, 1.1 * dt); jog.toca('Andar'); }
+    else { fimIntro(); return false; }
+  }
+  // câmera da abertura: de cima, em corte, aproximando devagar; lá fora, a câmera normal da fase
+  if (!INTRO.saiu) {
+    const alvo = SALA.clone().add(new THREE.Vector3(0, 0.6, 0));
+    const r = 15 - 3 * suave(0, 20, T);
+    camera.position.copy(alvo).add(new THREE.Vector3(0.75, 0.95, 0.85).normalize().multiplyScalar(r));
+    camera.lookAt(alvo);
+  } else {
+    foco.copy(o.position); camera.position.copy(foco).addScaledVector(DIR, 30); camera.lookAt(foco);
+  }
+  sun.position.set(camera.position.x + 6, 22, camera.position.z - 4); sun.target.position.copy(INTRO.saiu ? o.position : SALA);
+  scene.fog.near = 40; scene.fog.far = 140;
+  return true;
+}
+const laco = (forca) => {
+  const dt = forca || Math.min(relogio.getDelta(), 0.05), t = relogio.elapsedTime;
+  for (const m of MIX) m.update(dt);
+  if (introPasso(dt)) { renderer.render(scene, camera); return; }
+  if (tumbaPasso(dt)) { renderer.render(scene, camera); return; }
+
+  // jogador
+  fw.copy(DIR).negate().setY(0).normalize(); rt.set(-fw.z, 0, fw.x);
+  mv.set(0, 0, 0);
+  if (!fora) {
+    if (tecla.KeyW || tecla.ArrowUp) mv.add(fw); if (tecla.KeyS || tecla.ArrowDown) mv.sub(fw);
+    if (tecla.KeyD || tecla.ArrowRight) mv.add(rt); if (tecla.KeyA || tecla.ArrowLeft) mv.sub(rt);
+    if (JOY.on && Math.hypot(JOY.x, JOY.y) > 0.15) { mv.addScaledVector(fw, -JOY.y).addScaledVector(rt, JOY.x); }
+    if (mv.lengthSq() > 0) alvoToque = null;
+    else if (alvoToque) { mv.subVectors(alvoToque, jog.o.position).setY(0); if (mv.length() < 0.15) { alvoToque = null; mv.set(0, 0, 0); } }
+  }
+  // portas
+  for (const c of CASAS) { c.ang += ((c.aberta ? ABERTO : 0) - c.ang) * Math.min(1, dt * 5); c.porta.rotation.y = c.ang; }
+  const pj = jog.o.position;
+  const passagem = (x, z) => pj.y < 0.3 && CASAS.some((c) => { if (!(c.aberta && c.ang < -1.2)) return false; const [lx, lz] = c.local(x, z); return Math.abs(lx - c.px) < 0.45 && lz > c.pz - 1.0 && lz < c.pz + 0.8; });
+  const naFolha = (x, z) => CASAS.some((c) => { if (c.ang > -0.3) return false; const b = new THREE.Box3().setFromObject(c.porta).expandByScalar(0.18); return x > b.min.x && x < b.max.x && z > b.min.z && z < b.max.z; });
+  let andou = false;
+  if (mv.lengthSq() > 0) {
+    mv.normalize(); const corre = tecla.ShiftLeft || tecla.ShiftRight || (JOY.on && Math.hypot(JOY.x, JOY.y) > 0.9) || (alvoToque && alvoToque.distanceTo(jog.o.position) > 6);
+    const v = (corre ? 5.2 : 2.4) * dt, p = jog.o.position;
+    const nx = p.x + mv.x * v, nz = p.z + mv.z * v;
+    // não atravessa quem anda (só bloqueia se estiver se aproximando)
+    const moveis = [[andante, 0.6], [boi, 1.1], [lavrador, 0.6], [padeira, 0.5], [aguadeira, 0.5], ...ovelhas.map((o) => [o, 0.7])];
+    const noChaoBaixo = p.y < 0.4;
+    const livre = (x, z) => naArea(x, z) && !naFolha(x, z) && (!noChaoBaixo || !bate(x, z)) &&
+      (passagem(x, z) || alturaEm(x, z) <= p.y + 0.5) &&
+      !moveis.some(([m, r]) => { const d = Math.hypot(m.o.position.x - x, m.o.position.z - z); return d < r && d < Math.hypot(m.o.position.x - p.x, m.o.position.z - p.z); });
+    const x0 = p.x, z0 = p.z;
+    if (livre(nx, nz)) { p.x = nx; p.z = nz; }
+    else if (livre(nx, p.z)) p.x = nx;
+    else if (livre(p.x, nz)) p.z = nz;
+    else alvoToque = null;
+    andou = Math.hypot(p.x - x0, p.z - z0) > v * 0.3;
+    const ang = Math.atan2(mv.x, mv.z); let d = ang - jog.o.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d)); jog.o.rotation.y += d * Math.min(1, dt * 12);
+    if (andou) jog.toca(corre ? 'Correr' : 'Andar');
+  }
+  // altura: degrau, escada e terraço; pulo e queda
+  const chao = passagem(pj.x, pj.z) ? 0 : alturaEm(pj.x, pj.z);
+  if (jogNoChao && pj.y - chao > 0.5) jogNoChao = false;
+  if (jogNoChao) pj.y += (chao - pj.y) * Math.min(1, dt * 18);
+  else { jogVy -= 14 * dt; pj.y += jogVy * dt; if (pj.y <= chao) { pj.y = chao; jogVy = 0; jogNoChao = true; } }
+  if (!jogNoChao) jog.toca(jogVy > 0 ? 'Pulo_Ar' : 'Pulo_Queda');
+  else if (!andou) jog.toca('Parado');
+  // entrar pela porta aberta
+  for (const c of CASAS) {
+    if (!(c.aberta && c.ang < -1.2) || fora) continue;
+    const [lx, lz] = c.local(pj.x, pj.z);
+    if (Math.abs(lx - c.px) < 0.45 && lz < c.pz - 0.45) entrarCasa(c);
+  }
+  const naSaida = jog.o.position.x < -21;
+  pedraPerto = pj.y < 1.2 && Math.hypot(pj.x - TUM.lugar.x, pj.z - TUM.lugar.z) < 3.6 && Math.abs(TUM.k - TUM.alvo) < 0.01;
+  tumbaPerto = pedraPerto && TUM.alvo === 1 && TUM.k > 0.99 && Math.hypot(pj.x - TUM.lugar.x, pj.z - TUM.lugar.z) < 2.2;
+  portaPerto = CASAS.find((c) => pj.y < 0.3 && c.mundo(c.px, c.pz).distanceTo(new THREE.Vector3(pj.x, 0, pj.z)) < 2.0) || null;
+  if (naSaida) botao.textContent = (toqueTela ? '' : 'E: ') + 'seguir para Jerusalém';
+  else if (tumbaPerto) botao.textContent = (toqueTela ? '' : 'E: ') + 'entrar no túmulo';
+  else if (pedraPerto) botao.textContent = (toqueTela ? '' : 'E: ') + (TUM.alvo ? 'rolar a pedra de volta' : 'rolar a pedra');
+  else if (portaPerto) botao.textContent = (toqueTela ? '' : 'E: ') + (portaPerto.aberta ? 'fechar a porta' : 'abrir a porta');
+  botao.style.display = (naSaida || portaPerto || pedraPerto) && !fora ? 'block' : 'none';
+
+  // boi, arado e lavrador indo e voltando pelas faixas
+  {
+    const N = TRILHA.length, em = (k) => TRILHA[((Math.floor(k) % N) + N) % N];
+    const sAnt = lav.s; lav.s = (lav.s + 0.8 * dt / 0.05) % N;
+    if (lav.s < sAnt) sulcos.forEach((m) => { m.scale.x = 0.001; });
+    const pb = em(lav.s), pa = em(lav.s - 3.0 / 0.05), pl = em(lav.s - 3.9 / 0.05);
+    const gira = (o, de, para, k) => { const a = Math.atan2(para.x - de.x, para.z - de.z); let d = a - o.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d)); o.rotation.y += d * Math.min(1, dt * k); };
+    boi.o.position.set(pb.x, 0, pb.z); gira(boi.o, pb, em(lav.s + 12), 5);
+    arado.position.set(pa.x, 0, pa.z); arado.rotation.y = Math.atan2(-(pb.z - pa.z), pb.x - pa.x);
+    lavrador.o.position.set(pl.x, 0, pl.z); gira(lavrador.o, pl, pa, 6);
+    boi.toca('Andar'); lavrador.toca('Andar');
+    if (pa.f >= 0) {   // o arado risca a faixa em que está
+      const m = sulcos[pa.f], ini = pa.f % 2 === 0 ? LAV.x0 + 0.9 : LAV.x1 - 0.8;
+      m.scale.x = Math.max(m.scale.x, Math.abs(pa.x - ini)); m.position.x = ini + Math.sign(pa.x - ini) * m.scale.x / 2;
+    }
+  }
+
+  // ovelhas pastando e andando devagar dentro do aprisco
+  const A = globalThis.APRISCO;
+  for (const o of ovelhas) {
+    if (o.alvo) {
+      const d = new THREE.Vector3().subVectors(o.alvo, o.o.position);
+      if (d.length() < 0.1) { o.alvo = null; o.espera = 2 + rnd() * 5; o.toca(rnd() < 0.6 ? 'Comer' : 'Parado'); }
+      else {
+        d.normalize();
+        const frente = o.o.position.clone().addScaledVector(d, 0.3);
+        if (ovelhas.some((b) => b !== o && b.o.position.distanceTo(frente) < 0.75)) { o.alvo = null; o.espera = 1 + rnd() * 2; o.toca('Parado'); }
+        else { o.o.position.addScaledVector(d, 0.45 * dt); let k = Math.atan2(d.x, d.z) - o.o.rotation.y; k = Math.atan2(Math.sin(k), Math.cos(k)); o.o.rotation.y += k * Math.min(1, dt * 5); }
+      }
+    } else if ((o.espera -= dt) <= 0) {
+      o.alvo = new THREE.Vector3(A.x0 + 0.5 + rnd() * (A.x1 - A.x0 - 1), 0, A.z0 + 0.5 + rnd() * (A.z1 - A.z0 - 1)); o.toca('Andar');
+    }
+  }
+
+  // pisador gira devagar dentro do tanque
+  pisadorPasso(dt, t); padeiraPasso(dt, t); barracaPasso(dt, t); aguadeiraPasso(dt, t);
+  // porteira do aprisco abre quando o jogador chega perto
+  APR.alvoAb = jog.o.position.distanceTo(APR.centroPorta) < 2.6 ? 1.6 : 0;
+  APR.ab += (APR.alvoAb - APR.ab) * Math.min(1, dt * 3); APR.piv.rotation.y = APR.base + APR.ab;
+  // a pedra do túmulo rola de lado, girando sobre si mesma
+  TUM.k += Math.sign(TUM.alvo - TUM.k) * Math.min(Math.abs(TUM.alvo - TUM.k), dt * 0.35);
+  {
+    const e = TUM.k * TUM.k * (3 - 2 * TUM.k), dist = 2.2 * e;
+    TUM.pedra.position.copy(TUM.p0).add(new THREE.Vector3(ROLA * dist, 0, 0.12 * Math.sin(Math.PI * e)).applyQuaternion(TUM.q0));
+    TUM.pedra.quaternion.copy(TUM.q0).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -ROLA * dist / TUM.raio));   // gira em torno do próprio eixo (normal da face)
+    const pw = TUM.pedra.getWorldPosition(new THREE.Vector3()); TUM.circ.x = pw.x; TUM.circ.z = pw.z;
+  }
+  // passante
+  if (pausa > 0) { pausa -= dt; andante.toca('Parado'); }
+  else if (jog.o.position.distanceTo(andante.o.position) < 1.1) andante.toca('Parado');   // espera o jogador sair da frente
+  else {
+    andante.toca('Andar');
+    tRota += sentido * dt * 1.15 / rota.getLength();
+    if (tRota > 1 || tRota < 0) { tRota = THREE.MathUtils.clamp(tRota, 0, 1); sentido *= -1; pausa = 2.5; }
+  }
+  {
+    const pr = rota.getPointAt(tRota), tg = rota.getTangentAt(tRota).multiplyScalar(sentido);
+    andante.o.position.copy(pr);
+    let k = Math.atan2(tg.x, tg.z) - andante.o.rotation.y; k = Math.atan2(Math.sin(k), Math.cos(k)); andante.o.rotation.y += k * Math.min(1, dt * 5);
+  }
+
+  // Marta e Lázaro olham para o jogador quando ele chega perto
+  for (const n of [marta, lazaro]) {
+    const d = jog.o.position.distanceTo(n.o.position);
+    const a = d < 4 ? Math.atan2(jog.o.position.x - n.o.position.x, jog.o.position.z - n.o.position.z) : n.r0;
+    let k = a - n.o.rotation.y; k = Math.atan2(Math.sin(k), Math.cos(k)); n.o.rotation.y += k * Math.min(1, dt * 3);
+  }
+
+  // câmera
+  dist += (distAlvo - dist) * Math.min(1, dt * 6);
+  const folga = (dist - DMIN) / (DMAX - DMIN);            // afastada, anda menos (a vila já cabe)
+  const lx = 15 * (1 - folga) + 4, lz = 11 * (1 - folga) + 3;
+  const fx = THREE.MathUtils.clamp(jog.o.position.x, -lx, lx), fz = THREE.MathUtils.clamp(jog.o.position.z, -lz, lz + 1);
+  foco.x += (fx - foco.x) * Math.min(1, dt * 3); foco.z += (fz - foco.z) * Math.min(1, dt * 3); foco.y += (jog.o.position.y * 0.8 - foco.y) * Math.min(1, dt * 3);
+  camera.position.copy(foco).addScaledVector(DIR, dist); camera.lookAt(foco);
+  scene.fog.near = dist + 14; scene.fog.far = dist + 70;   // a neblina acompanha o zoom: o fundo da vila nunca some
+  sun.position.set(foco.x + 14, 22, foco.z + 9); sun.target.position.copy(foco);
+
+  atualizaFade();
+  renderer.render(scene, camera);
+};
+renderer.setAnimationLoop(() => laco());
+addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
+</script>
+</body>
+</html>
