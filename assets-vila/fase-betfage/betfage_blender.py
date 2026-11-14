@@ -27,7 +27,7 @@ MEIA = 1.5                                           # meia largura da estrada
 INSULA_AB = (0.585, 0.43); INSULA_R = -math.pi / 2; INSULA_W, INSULA_D = 13.0, 10.83   # ínsula em L (após girar: largura em x, fundo em z)
 CAMPO_AB = (1.00, 1.20, 0.02, 0.38)                    # a0,a1,b0,b1
 EIRA_AB = (0.05, 0.72); EIRA_R = 2.4
-FIGSECA_AB = (0.72, 1.18)        # figueira amaldiçoada: no socalco de cima, à esquerda da estrada
+FIGSECA_AB = (0.70, 1.045)        # figueira amaldiçoada: no socalco de cima, à esquerda da estrada
 POCO_AB = (0.17, 0.38)           # poço onde antes ficava a figueira
 JUM_AB = (0.48, 0.32)            # jumenta e jumentinho, entre a ínsula e a estrada
 APRISCO_AB = (0.43, -0.02); APRISCO_K = 1.75; APRISCO_R = 0.52   # gira o vão (no -Y do modelo) para quase de frente à câmera
@@ -76,7 +76,7 @@ def h_socalco(x, z):
     d, i = dist_estrada(x, z)
     m = sm(0.40, 0.48, s) * sm(MEIA + 0.4, MEIA + 1.4, d)
     if m > 0:
-        f = h / P_T; fl = math.floor(f); t = P_T * (fl + sm(0.8, 1.0, f - fl)); h = h + (t - h) * m
+        f = h / P_T; fl = math.floor(f); t = P_T * (fl + sm(0.88, 1.0, f - fl)); h = h + (t - h) * m
     return h
 
 # plataformas: casas (em degraus), eira, trigal, carroça
@@ -96,7 +96,7 @@ apx, apz = xz(*APRISCO_AB); HAPR = h_base(apx, apz); pad_circ(apx, apz, 1.45 * A
 cbx, cbz = xz(*COCHO_AB); HCB = h_base(cbx, cbz); pad_rect(cbx, cbz, 2.4, 1.6, 1.8, HCB)
 pcx, pcz = xz(*POCO_AB); HPOCO = h_base(pcx, pcz); pad_circ(pcx, pcz, 1.6, 1.6, HPOCO)
 jmx, jmz = xz(*JUM_AB); HJUM = HINS; pad_circ(jmx, jmz, 1.8, 1.6, HJUM)     # na altura do pátio da ínsula (senão rebaixa o pátio e a escada fica no ar)
-fsx, fsz = xz(*FIGSECA_AB); HFIG = h_socalco(fsx, fsz); pad_circ(fsx, fsz, 1.6, 1.6, HFIG)
+fsx, fsz = xz(*FIGSECA_AB); HFIG = HR[dist_estrada(fsx, fsz)[1]]; pad_circ(fsx, fsz, 1.7, 1.8, HFIG)
 csx, csz = xz(*CASA_AB); HCASA = h_socalco(csx, csz); pad_rect(csx, csz, 3.4, 3.4, 2.0, HCASA)
 
 def altura(x, z):
@@ -288,7 +288,7 @@ def muro_linha(pp, alt=0.9, vao=0.12, seg=2.3, filtro=None, arrimo=False):
         if arrimo:
             dh, lo = degrau(mx, mz)
             if dh < 1.2: continue        # sem barranco de verdade aqui: não põe muro solto no meio da grama
-            plano[-1] = (A, B, min(dh * 0.92, P_T + 0.2), lo - 0.12)
+            plano[-1] = (A, B, min(dh + 0.18, P_T + 0.4), lo - 0.15)
         else: plano[-1] = (A, B, alt, None)
     for i, p in enumerate(plano):
         if p is None: continue
@@ -303,7 +303,7 @@ def mascara(x, z):
 MS = 0.35; X0 = -S * 0.8; NMS = int(S * 1.6 / MS)
 Q = [[h_base(X0 + i * MS, X0 + k * MS) / P_T for k in range(NMS + 1)] for i in range(NMS + 1)]
 for nivel in range(1, 12):
-    iso = nivel + 0.8
+    iso = nivel + 0.94
     segs = []
     for i in range(NMS):
         for k in range(NMS):
@@ -341,7 +341,7 @@ for nivel in range(1, 12):
             ok = -0.3 < a < 1.45 and -0.3 < b < 1.45 and mascara(x, z) > 0.6
             if ok:
                 ga = (h_base(x + 0.1, z) - h_base(x - 0.1, z)) / 0.2; gb = (h_base(x, z + 0.1) - h_base(x, z - 0.1)) / 0.2; gl = math.hypot(ga, gb) or 1
-                trecho.append((x - ga / gl * 0.25, z - gb / gl * 0.25))
+                trecho.append((x - ga / gl * 0.05, z - gb / gl * 0.05))
             else:
                 if len(trecho) > 3: muro_linha(trecho, alt=P_T * 0.78, vao=0.0, arrimo=True)
                 trecho = []
@@ -411,7 +411,7 @@ for i in range(-3, 4):
         lx, lz = i * 1.0 * CASA_K, k * 1.15 * CASA_K; ca_, sa_ = math.cos(CASA_R), math.sin(CASA_R)
         CASA_OBST.append((csx + lx * ca_ + lz * sa_, csz - lx * sa_ + lz * ca_, 0.75))
 fox, foz = plano(*xz(*FORNO_AB), 0.8); poe('casa-porta\\oficios.glb', 'Forno_Barro', fox, foz, math.pi / 4, 1.0, afunda=0.03); OBST.append((round(fox, 2), round(foz, 2), 0.9))
-OBST.append((round(fsx, 2), round(fsz, 2), 1.8))     # a figueira seca fica sozinha, sem árvore na frente
+OBST.append((round(fsx, 2), round(fsz, 2), 0.45)); CASA_OBST.append((fsx, fsz, 1.8))     # o jogador chega junto do tronco; árvores ficam longe
 OBST.append((round(jmx, 2), round(jmz, 2), 1.6))     # lugar dos jumentos (o jogo põe os animais; árvores não nascem aí)
 
 # árvores, pedras e objetos

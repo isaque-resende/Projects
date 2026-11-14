@@ -74,18 +74,18 @@ const baixar = async (url) => {
   }
 };
 const sombra = (r) => r.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
-const LAY = await (await fetch('betfage_layout.json?v=15')).json();
+const LAY = await (await fetch('betfage_layout.json?v=17')).json();
 const S = LAY.S;
 // coordenadas do diorama: a = rumo ao canto direito, b = rumo ao canto esquerdo (0,0 = canto da frente)
 const AB = (x, z) => [(S / 2 - z) / S, (S / 2 - x) / S];
 const XZ = (a, b) => [S / 2 - b * S, S / 2 - a * S];
 const ARQS = [...new Set(LAY.objetos.map((o) => o.glb))];
 const [gCen, gCasaP, gTrigo, gColh, gBoi, gOve, gJum, gJog, gObj, nAldeao, nFaixa, nCarreg, nRobusto, nBotoes, nMoco, nPastor, nMagro, nRapaz, ...gArqs] = await Promise.all([
-  baixar('betfage_cenario.glb?v=15'), baixar('../casa-porta/insula.glb'), baixar('../trigal/trigo.glb'), baixar('../colheita-trigo/colheita.glb'),
+  baixar('betfage_cenario.glb?v=17'), baixar('../casa-porta/insula.glb'), baixar('../trigal/trigo.glb'), baixar('../colheita-trigo/colheita.glb'),
   baixar('../animais/boi.glb'), baixar('../animais/ovelha.glb'), baixar('../animais/jumento.glb'), baixar('../vila-betania/discipulo_acoes.glb'), baixar('../casa-porta/objetos_casa.glb'),
   baixar('../personagens/aldeao.glb'), baixar('../personagens/mulher_faixa.glb'), baixar('../personagens/carregador.glb'),
   baixar('../personagens/robusto.glb'), baixar('../personagens/mulher_botoes.glb'), baixar('../personagens/moco.glb'),
-  baixar('../personagens/pastor.glb'), baixar('../personagens/magro.glb'), baixar('../personagens/rapaz.glb'),
+  null, baixar('../personagens/magro.glb'), baixar('../personagens/rapaz.glb'),
   ...ARQS.map((a) => baixar('../' + a)),
 ]);
 const nos = (g) => { const m = {}; for (const n of g.scene.children) m[n.name] = n; return m; };
@@ -210,7 +210,8 @@ INS.caixa = new THREE.Box3().setFromObject(INS.g);
   }
   INS.patio = melhor || V3((b.min.x + b.max.x) / 2, y0, b.max.z + 1);
 }
-const alturaEm = (x, z, y = 1e9) => Math.max(terreno(x, z), pisoEm(x, z, y));
+const terrenoPe = (x, z, r = 0.16) => Math.max(terreno(x, z), terreno(x + r, z), terreno(x - r, z), terreno(x, z + r), terreno(x, z - r));
+const alturaEm = (x, z, y = 1e9) => Math.max(terrenoPe(x, z), pisoEm(x, z, y));
 const naCasa = (x, z, m = 0) => INS.alt(x, z) > LAY.insula.p[1] + 0.3 && x > INS.caixa.min.x - m && x < INS.caixa.max.x + m && z > INS.caixa.min.z - m && z < INS.caixa.max.z + m;
 
 // ---------- trigal maduro: instâncias que se abrem quando alguém anda por dentro ----------
@@ -318,7 +319,7 @@ function ator(g, altura, x, z, r, clipe) {
   st.toca(clipe); A[clipe] && (A[clipe].time = rnd() * 2);
   return st;
 }
-const chao = (st) => { st.o.position.y = terreno(st.o.position.x, st.o.position.z); };
+const chao = (st) => { const x = st.o.position.x, z = st.o.position.z, r = 0.14; st.o.position.y = Math.max(terreno(x, z), terreno(x + r, z), terreno(x - r, z), terreno(x, z + r), terreno(x, z - r)); };
 const _q1 = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), _q3 = new THREE.Quaternion();
 const _A = new THREE.Vector3(), _B = new THREE.Vector3(), _C = new THREE.Vector3(), _T = new THREE.Vector3(), _P = new THREE.Vector3(), _D = new THREE.Vector3(), _E = new THREE.Vector3();
 function giraMundo(osso, q) { osso.getWorldQuaternion(_q2); osso.parent.getWorldQuaternion(_q3); osso.quaternion.copy(_q3.invert().multiply(q.clone().multiply(_q2))); osso.updateMatrixWorld(true); }
@@ -611,13 +612,13 @@ const tMax = (() => { for (let i = AMOS.length - 1; i >= 0; i--) { const [a, b] 
 // ---------- jogador ----------
 const INICIO = (() => { const i = Math.round(tMin * AMOS.length) + 2; const p = AMOS[Math.min(AMOS.length - 1, i)]; return V3(p.x, 0, p.z); })();
 const jog = ator(gJog, 1.7, INICIO.x, INICIO.z, Math.PI + Math.PI / 4, 'Parado');
-const naArea = (x, z) => { const [a, b] = AB(x, z); return (a > -0.06 && a < 1.06 && b > -0.06 && b < 1.06) || naEstrada(x, z, 0.4) || noCampo(x, z, 1.2); };   // o trigal passa da borda do diorama: dá para andar por dentro dele
+const naArea = (x, z) => { const [a, b] = AB(x, z); return (a > -0.06 && a < 1.06 && b > -0.06 && b < 1.06) || naEstrada(x, z, 0.4) || noCampo(x, z, 1.2) || Math.hypot(x - LAY.figseca[0], z - LAY.figseca[1]) < 3.2; };   // o trigal passa da borda do diorama: dá para andar por dentro dele
 
 // ---------- câmera: o mesmo ângulo do diorama (30°, de quina); afastada mostra tudo, perto segue o jogador ----------
 const camera = new THREE.PerspectiveCamera(22, innerWidth / innerHeight, 0.5, 400);
 const DIR = V3(1, 0.8165, 1).normalize();
-const CENTRO = (() => { const [x, z] = XZ(0.56, 0.56); return V3(x, 6.0, z); })();
-const distTudo = () => { const largura = S * 1.25, alt = S * 1.05; const f = Math.tan(THREE.MathUtils.degToRad(11)); return Math.max(alt / 2 / f, largura / 2 / f / camera.aspect); };
+const CENTRO = (() => { const [x, z] = XZ(0.5, 0.5); return V3(x, 5.0, z); })();   // um pouco mais para a frente: os primeiros itens não ficam colados na borda
+const distTudo = () => { const largura = S * 1.35, alt = S * 1.18; const f = Math.tan(THREE.MathUtils.degToRad(11)); return Math.max(alt / 2 / f, largura / 2 / f / camera.aspect); };
 let dist = distTudo(), distAlvo = dist;
 const DMIN = 14;
 const DMAX = () => distTudo() * 1.08;
