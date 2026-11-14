@@ -56,9 +56,8 @@ def h_base(x, z):
     a, b = ab(x, z); s = (a + b) / 2; d = a - b
     if s < 0: h = 2.0 * s
     elif s <= 1: h = 12.0 * s ** 1.25
-    elif s <= 1.3: h = 12.0 + 15.0 * (s - 1) - 25.0 * (s - 1) ** 2      # passa do alto da subida e vira um espigão largo
-    else: h = 14.25 - 2.5 * (s - 1.3)                                   # do outro lado o monte desce devagar (rumo a Jerusalém)
-    dc = max(-1.3, min(1.3, d)); h -= 3.2 * dc * dc + 2.0 * (abs(d) - abs(dc))   # para os lados a encosta continua, sem cair
+    else: h = 12.0 + 12.0 * (s - 1) - 3.0 * (s - 1) ** 2                 # depois do alto da estrada o monte segue subindo (o cume fica além)
+    dc = max(-1.3, min(1.3, d)); h -= 3.2 * dc * dc - 2.5 * (abs(d) - abs(dc))   # para os lados a encosta torna a subir: morros em volta, sem céu
     h += 0.18 * math.sin(x * 0.37 + 1.1) * math.cos(z * 0.31 - 0.4) + 0.08 * math.sin(x * 0.9 + z * 0.7)
     return max(h, -3.0 + 0.4 * math.sin(x * 0.2) * math.cos(z * 0.23))
 
@@ -131,7 +130,7 @@ COR = {'grama': hexc('a9b46a'), 'grama2': hexc('9caa5f'), 'seca': hexc('c2bd7c')
        'campo': hexc('c8a86a'), 'eira': hexc('e3cc98')}
 
 # terreno
-EXT, PASSO = 56.0, 0.7
+EXT, PASSO = 72.0, 0.8
 N = int(EXT * 2 / PASSO)
 bm = bmesh.new()
 vs = []
@@ -206,6 +205,7 @@ def importa(arq):
     return novos
 
 LAYOUT = []        # para o jogo: {glb, no, p, r, k}
+LONGE = False      # objetos ao longe: o jogo instancia (um desenho por modelo)
 def copia(o, col):
     n = o.copy(); col.objects.link(n)
     for c in o.children:
@@ -220,7 +220,7 @@ def poe(arq, no, x, z, r=0.0, k=1.0, y=None, afunda=0.05, exporta=False, jogo=Tr
     rx, ry, rz = o.rotation_euler; n.rotation_euler = (rx, ry, rz + r)
     kk = k if isinstance(k, tuple) else (k, k, k)
     n.scale = (o.scale[0] * kk[0], o.scale[1] * kk[2], o.scale[2] * kk[1])
-    if jogo and not exporta: LAYOUT.append({'glb': arq.replace('\\', '/'), 'no': no, 'p': [round(x, 3), round(y - afunda, 3), round(z, 3)], 'r': round(r, 3), 'k': round(k, 3)})
+    if jogo and not exporta: LAYOUT.append({'glb': arq.replace('\\', '/'), 'no': no, 'p': [round(x, 3), round(y - afunda, 3), round(z, 3)], 'r': round(r, 3), 'k': round(k, 3), **({'f': 1} if LONGE else {})})
     return n
 
 for arq in ['casa-porta\\muros_kit.glb', 'casa-porta\\insula.glb', 'diorama-ciprestes\\ciprestes.glb', 'casa-porta\\casa_porta.glb',
@@ -522,6 +522,38 @@ for i in range(900):
 # algumas malvas junto da casa, do poço e da ínsula
 for x, z in [(csx + 3.0, csz + 3.2), (pcx + 1.7, pcz + 1.0), (ix + 7.2, iz + 5.0), (ix - 7.0, iz + 4.6)]:
     planta('Malva_Rosa', x, z, 0.72)
+
+# ---------------- ao longe: pequenas matas agrupadas e pedregais, no fundo, nos lados e além do alto ----------------
+LONGE = True
+random.seed(5)
+MATA = [('casa-porta\\arvores_tripo.glb', n) for n in ['Arvore1', 'Arvore2', 'Arvore3', 'Arvore7', 'Arvore8', 'Arvore9']] + [CIP, CIP, ('diorama-ciprestes\\ciprestes.glb', 'Cipreste1_Redondo')]
+def longe_ok(x, z):
+    a, b = ab(x, z)
+    return (a > 1.12 or b > 1.12) and dist_estrada(x, z)[0] > MEIA + 3.0
+centros = []
+for i in range(400):
+    a, b = random.uniform(-0.6, 2.4), random.uniform(-0.6, 2.4)
+    if not (a > 1.15 or b > 1.15) or a + b > 3.6: continue
+    x, z = xz(a, b)
+    if not longe_ok(x, z) or any(math.hypot(x - cx_, z - cz_) < 9 for cx_, cz_, _ in centros): continue
+    centros.append((x, z, 'mata' if random.random() < 0.68 else 'pedra'))
+    if len(centros) >= 30: break
+for cx_, cz_, tipo in centros:
+    n = random.randint(7, 13) if tipo == 'mata' else random.randint(6, 10)
+    R = 4.5 if tipo == 'mata' else 3.5
+    for j in range(n):
+        ang = random.random() * 6.283; rr = R * math.sqrt(random.random())
+        x, z = cx_ + math.cos(ang) * rr, cz_ + math.sin(ang) * rr
+        if not longe_ok(x, z): continue
+        if tipo == 'mata': poe(*random.choice(MATA), x, z, random.random() * 6.28, 1.0 + random.random() * 0.6, afunda=0.15)
+        else: poe(*random.choice(PEDRAS), x, z, random.random() * 6.28, 0.9 + random.random() * 1.3, afunda=0.2)
+# entre os grupos, árvores soltas para não ficar calvo
+for i in range(140):
+    a, b = random.uniform(-0.5, 2.3), random.uniform(-0.5, 2.3)
+    if not (a > 1.12 or b > 1.12) or a + b > 3.6: continue
+    x, z = xz(a, b)
+    if longe_ok(x, z): poe(*random.choice(MATA), x, z, random.random() * 6.28, 0.9 + random.random() * 0.5, afunda=0.15)
+LONGE = False
 
 # ---------------- câmera e luz para a prévia ----------------
 cam = bpy.data.objects.new('Cam', bpy.data.cameras.new('Cam')); sc.collection.objects.link(cam); sc.camera = cam
