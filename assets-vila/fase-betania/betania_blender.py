@@ -183,7 +183,7 @@ def importa(arq):
 for arq in ['casa-porta\\muretas.glb', 'casa-porta\\rochas.glb', 'casa-porta\\arvores_tripo.glb', 'casa-porta\\arvores_frondosas.glb',
             'casa-porta\\arvores_par.glb', 'diorama-ciprestes\\ciprestes.glb', 'casa-porta\\tamareiras.glb', 'casa-porta\\casa_porta.glb',
             'casa-porta\\barracas.glb', 'casa-porta\\parreiras_tripo.glb', 'casa-porta\\pastoril.glb', 'casa-porta\\oficios.glb',
-            'casa-porta\\tumulo_rocha.glb', 'casa-porta\\tumulo_pedra.glb', 'forno-pao\\forno.glb', 'lagar\\lagar.glb', 'casas\\casas_betfage.glb', 'casa-porta\\insula.glb', 'parreiras\\parreiras_v2.glb', 'cesto-uvas\\cesto_uvas.glb']:
+            'casa-porta\\tumulo_rocha.glb', 'casa-porta\\tumulo_pedra.glb', 'forno-pao\\forno.glb', 'lagar\\lagar.glb', 'casas\\casas_betfage.glb', 'casa-porta\\insula.glb', 'parreiras\\parreiras_v2.glb', 'cesto-uvas\\cesto_uvas.glb', 'flores\\flores.glb', 'flores\\plantas_betfage.glb']:
     importa(arq)
 col_proto.hide_render = True; col_proto.hide_viewport = True
 
@@ -285,6 +285,39 @@ for no_, dx, dz, r_ in [('Parreira2_Poste', -1.6, 3.2, 0.2), ('Parreira2_Poste',
     poe('parreiras\\parreiras_v2.glb', no_, x_, z_, r_, 1.0, afunda=0.05); REG.append((x_, z_, 1.0)); VINHA.append((x_, z_))
 for dx, dz, r_ in [(2.0, 1.4, 0.3), (-2.1, 1.0, 1.2), (1.4, -2.0, 2.0)]:
     poe('cesto-uvas\\cesto_uvas.glb', 'CestoUvas', LAGAR[0] + dx, LAGAR[1] + dz, r_, 1.0, afunda=0.0); REG.append((LAGAR[0] + dx, LAGAR[1] + dz, 0.5))
+# ---------------- flores e moitas espinhosas (instanciadas no jogo) ----------------
+LONGE = True
+random.seed(17)
+FLOR = ['Anemona', 'Asfodelo', 'Ciclame', 'Margarida', 'Tremoco']
+def chao_livre(x, z, r=0.5): return livre(x, z, r) and cabe(x, z, r, 1.0) and abs(x) < 33 and -23 < z < 25
+# canteiros: cada um de uma flor só, 4 a 7 touceiras juntas, nas beiradas dos caminhos e das casas
+cant = 0
+for i in range(600):
+    if cant >= 22: break
+    x, z = random.uniform(-30, 30), random.uniform(-20, 23)
+    dc, _ = dist_cam(x, z)
+    if not (0.9 < dc < 4.5) or not chao_livre(x, z, 0.6): continue
+    flor = random.choice(FLOR); cant += 1
+    for j in range(random.randint(4, 7)):
+        a_, r_ = random.random() * 6.28, random.random() * 1.3
+        px, pz = x + math.cos(a_) * r_, z + math.sin(a_) * r_
+        if not chao_livre(px, pz, 0.25): continue
+        poe('flores\\flores.glb', 'Flor_%s_%s' % (flor, random.choice(['Touceira', 'Tufo', 'Tufo'])), px, pz, random.random() * 6.28, 0.9 + random.random() * 0.4, afunda=0.02)
+        REG.append((px, pz, 0.25))
+# moitas espinhosas soltas e em pares, mais nas bordas; malvas floridas junto das casas e do poço
+n_m = 0
+for i in range(900):
+    if n_m >= 46: break
+    x, z = random.uniform(-31, 31), random.uniform(-21, 24)
+    borda = max(abs(x) / 31, abs(z - 1) / 23)
+    if random.random() > 0.35 + borda * 0.65 or not chao_livre(x, z, 0.7): continue
+    g = random.random() < 0.55
+    poe('flores\\plantas_betfage.glb', 'Moita_Espinhos_Grande' if g else 'Moita_Espinhos_Pequena', x, z, math.pi / 4 + (random.random() - 0.5) * 0.6, (0.8 + random.random() * 0.4) if g else (0.85 + random.random() * 0.3), afunda=0.03)
+    REG.append((x, z, 0.7)); n_m += 1
+for x, z in [(POCO[0] - 1.6, POCO[1] + 1.4), (-5.6, -7.4), (3.4, -8.0), (8.6, -8.4), (14.2, -7.6), (22.5, -6.0), (-21.5, 15.5), (-7.4, 12.8)]:
+    if chao_livre(x, z, 0.4): poe('flores\\plantas_betfage.glb', 'Malva_Rosa', x, z, math.pi / 4 + (random.random() - 0.5) * 0.4, 0.65 + random.random() * 0.2, afunda=0.03); REG.append((x, z, 0.5))
+LONGE = False
+
 # fora da vila: matas por espécie, com clareiras; pedregais à parte
 LONGE = True
 random.seed(5)

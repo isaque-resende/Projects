@@ -24,7 +24,7 @@
 <body>
 <div id="fade"></div>
 <button id="acao"></button>
-<div style="position:fixed;right:8px;top:calc(6px + env(safe-area-inset-top));font:11px system-ui;color:#4a352099;z-index:9;pointer-events:none">v12</div>
+<div style="position:fixed;right:8px;top:calc(6px + env(safe-area-inset-top));font:11px system-ui;color:#4a352099;z-index:9;pointer-events:none">v13</div>
 <div id="fala"></div>
 <button id="pularIntro">Pular introdução</button>
 <div id="dica">Direcional, WASD ou toque para andar · Shift corre · Espaço pula · roda/pinça: zoom</div>
@@ -127,7 +127,7 @@ function por(modelo, x, z, r = 0, k = 1, { fade = false, caixa = false, circ = 0
 }
 
 // ---------- cenário do Blender: terreno (vila plana, morros em volta), caminhos, muretas; árvores e pedras do layout ----------
-const [gCen, LAYB] = await Promise.all([baixar('betania_cenario.glb?v=10'), fetch('betania_layout.json?v=10').then((r) => r.json())]);
+const [gCen, LAYB] = await Promise.all([baixar('betania_cenario.glb?v=11'), fetch('betania_layout.json?v=11').then((r) => r.json())]);
 // terreno e caminhos com sombreamento suave e a cor misturada entre os vértices (visual "prado", igual a Betfagé)
 function suaviza(mesh) {
   const g0 = mesh.geometry, pos = g0.attributes.position, col = g0.attributes.color, idx = g0.index;
@@ -144,13 +144,13 @@ function suaviza(mesh) {
   mesh.geometry = g1;
 }
 const texChao = (url) => { const x = tl.load(url); x.colorSpace = THREE.SRGBColorSpace; x.wrapS = x.wrapT = THREE.RepeatWrapping; x.anisotropy = 4; return x; };
-const TXC = { grama: texChao('../fase-betfage/tex/grama.webp?v=1'), terra: texChao('../fase-betfage/tex/terra.webp?v=1'), grama2: texChao('tex/grama.webp'), patio: texChao('tex/patio.webp'), estrada: texChao('tex/estrada.webp') };
+const TXC = { grama: texChao('../fase-betfage/tex/grama.webp?v=1'), terra: texChao('../fase-betfage/tex/terra.webp?v=1'), grama2: texChao('tex/grama.webp'), patio: texChao('tex/patio.webp'), estrada: texChao('tex/estrada.webp'), pedras: texChao('tex/pedras.webp') };
 function matChao(soTerra, offset) {
   const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, ...(offset ? { polygonOffset: true, polygonOffsetFactor: -2 } : {}) });
   m.onBeforeCompile = (sh) => {
-    sh.uniforms.uGrama = { value: TXC.grama }; sh.uniforms.uTerra = { value: TXC.terra }; sh.uniforms.uGrama2 = { value: TXC.grama2 }; sh.uniforms.uPatio = { value: TXC.patio }; sh.uniforms.uEstrada = { value: TXC.estrada };
+    sh.uniforms.uGrama = { value: TXC.grama }; sh.uniforms.uTerra = { value: TXC.terra }; sh.uniforms.uGrama2 = { value: TXC.grama2 }; sh.uniforms.uPatio = { value: TXC.patio }; sh.uniforms.uEstrada = { value: TXC.estrada }; sh.uniforms.uPedras = { value: TXC.pedras };
     sh.vertexShader = 'varying vec3 vWP; varying vec3 vWN;\n' + sh.vertexShader.replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\n vWP = (modelMatrix * vec4(transformed, 1.0)).xyz; vWN = normalize(mat3(modelMatrix) * objectNormal);');
-    sh.fragmentShader = 'uniform sampler2D uGrama; uniform sampler2D uTerra; uniform sampler2D uGrama2; uniform sampler2D uPatio; uniform sampler2D uEstrada; varying vec3 vWP; varying vec3 vWN;\n' + sh.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
+    sh.fragmentShader = 'uniform sampler2D uGrama; uniform sampler2D uTerra; uniform sampler2D uGrama2; uniform sampler2D uPatio; uniform sampler2D uEstrada; uniform sampler2D uPedras; varying vec3 vWP; varying vec3 vWN;\n' + sh.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
       vec3 vc = vColor.rgb;
       // manchas grandes trocam entre as duas gramas (o chão não fica igual em toda parte)
       float mg = smoothstep(-0.35, 0.35, sin(vWP.x * 0.11 + 1.7) * cos(vWP.z * 0.09 - 0.6) + 0.45 * sin(vWP.x * 0.27 + vWP.z * 0.21));
@@ -166,9 +166,15 @@ function matChao(soTerra, offset) {
       tg = mix(tg, tg * vec3(1.15, 1.0, 0.65), seco * 0.6);
       float lt = dot(tt, vec3(0.3, 0.59, 0.11));
       vec3 terra = mix(tt, vec3(lt) * vec3(1.18, 1.02, 0.78), 0.45) * 1.05;
+      // manchas de pedregulho e de chão seco, espalhadas (não aparecem nos caminhos)
+      float np = sin(vWP.x * 0.23 + 4.1) * cos(vWP.z * 0.19 + 2.3) + 0.6 * sin(vWP.x * 0.51 - vWP.z * 0.37 + 1.7);
+      float nd = sin(vWP.x * 0.13 - 2.2) * cos(vWP.z * 0.17 + 0.9) + 0.5 * sin(vWP.x * 0.41 + vWP.z * 0.33);
+      vec3 tp = texture2D(uPedras, vWP.xz * 0.28).rgb;
+      tg = mix(tg, tp * vec3(1.02, 1.0, 0.94), smoothstep(1.05, 1.3, np) * 0.85);
+      tg = mix(tg, mix(tg, terra, 0.55) * vec3(1.06, 1.0, 0.86), smoothstep(0.95, 1.25, nd) * 0.7);
       diffuseColor.rgb = mix(terra, tg, gr);`);
   };
-  m.customProgramCacheKey = () => 'chao-bet-' + soTerra; return m;
+  m.customProgramCacheKey = () => 'chao-bet2-' + soTerra; return m;
 }
 gCen.scene.traverse((o) => {
   if (!o.isMesh) return;
@@ -1134,6 +1140,11 @@ function tumbaPasso(dt) {
   I.luz.intensity = 12 + Math.sin(performance.now() * 0.011) * 1.2 + Math.sin(performance.now() * 0.027) * 0.8;   // luz que entra tremula de leve
   return true;
 }
+function irBetfage() {
+  if (fora) return; fora = true; alvoToque = null; botao.style.display = 'none';
+  fade.style.transition = 'opacity .9s'; fade.textContent = 'A caminho de Betfagé…'; fade.style.opacity = 1;
+  setTimeout(() => { location.href = '../fase-betfage/'; }, 1300);
+}
 function acionar() {
   if (botao.style.display !== 'block' || fora) return;
   if (CAMT.on) { sairTumba(); return; }
@@ -1141,16 +1152,14 @@ function acionar() {
   if (tumbaPerto) { entrarTumba(); return; }
   if (pedraPerto && jog.o.position.x >= -30) { TUM.alvo = TUM.alvo ? 0 : 1; return; }
   if (portaPerto && jog.o.position.x >= -30) { CASA_ANIM = { c: portaPerto, e: 'abre', t: 0 }; fora = true; alvoToque = null; botao.style.display = 'none'; return; }
-  fora = true; botao.style.display = 'none';
-  fade.textContent = 'A caminho de Jerusalém…'; fade.style.opacity = 1;
-  setTimeout(() => { jog.o.position.set(-26, 0, 3); jog.o.rotation.y = Math.PI / 2; fade.style.opacity = 0; setTimeout(() => { fade.textContent = ''; fora = false; }, 900); }, 2200);
+  irBetfage();
 }
 // placa
 {
   const mad = new THREE.MeshStandardMaterial({ color: 0x6b4a2c, roughness: 1, flatShading: true });
   const poste = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 1.9, 6), mad); poste.position.set(-28.5, 0.95, 5.6);
   const c = document.createElement('canvas'); c.width = 256; c.height = 64; const g = c.getContext('2d');
-  g.fillStyle = '#8a6a44'; g.fillRect(0, 0, 256, 64); g.fillStyle = '#f6ecd6'; g.font = 'bold 30px serif'; g.textAlign = 'center'; g.fillText('← Jerusalém', 128, 43);
+  g.fillStyle = '#8a6a44'; g.fillRect(0, 0, 256, 64); g.fillStyle = '#f6ecd6'; g.font = 'bold 30px serif'; g.textAlign = 'center'; g.fillText('← Betfagé', 128, 43);
   const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace;
   const placa = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.36, 0.06), [mad, mad, mad, mad, new THREE.MeshStandardMaterial({ map: tx, roughness: 1 }), mad]);
   placa.position.set(-28.5, 1.6, 5.62); placa.rotation.y = 0.5;
@@ -1294,7 +1303,8 @@ const laco = (forca) => {
   pedraPerto = pj.y - chaoTerra(pj.x, pj.z) < 1.2 && Math.hypot(pj.x - TUM.lugar.x, pj.z - TUM.lugar.z) < 3.6 && Math.abs(TUM.k - TUM.alvo) < 0.01;
   tumbaPerto = pedraPerto && TUM.alvo === 1 && TUM.k > 0.99 && Math.hypot(pj.x - TUM.lugar.x, pj.z - TUM.lugar.z) < 3.4;
   portaPerto = CASAS.find((c) => pj.y < 0.3 && c.mundo(c.px, c.pz).distanceTo(new THREE.Vector3(pj.x, 0, pj.z)) < 2.6) || null;
-  if (naSaida) textoBotao((toqueTela ? '' : 'E: ') + 'seguir para Jerusalém');
+  if (naSaida) textoBotao((toqueTela ? '' : 'E: ') + 'seguir para Betfagé');
+  if (jog.o.position.x < -35 && !fora) irBetfage();          // chegou ao fim da estrada
   else if (tumbaPerto) textoBotao((toqueTela ? '' : 'E: ') + 'entrar no túmulo');
   else if (pedraPerto) textoBotao((toqueTela ? '' : 'E: ') + (TUM.alvo ? 'rolar a pedra de volta' : 'rolar a pedra'));
   else if (portaPerto) textoBotao((toqueTela ? '' : 'E: ') + 'entrar na casa');
