@@ -71,7 +71,9 @@ def h_tumulo(x, z):
     # barranco em volta do rochedo: sobe atrás e dos lados; na frente da boca o chão fica plano
     dx, dz = x - PEDRA_TUM[0], z - PEDRA_TUM[1]
     atras = -(dx * FRENTE_TUM[0] + dz * FRENTE_TUM[1]); lado = dx * -FRENTE_TUM[1] + dz * FRENTE_TUM[0]
-    return 6.5 * sm(-1.0, 5.0, atras) * math.exp(-(lado / 15.0) ** 2) + 3.5 * sm(5, 18, atras) * math.exp(-(lado / 22.0) ** 2)
+    barranco = 6.5 * sm(0.4, 5.0, atras) * math.exp(-(lado / 15.0) ** 2) + 3.5 * sm(5, 18, atras) * math.exp(-(lado / 22.0) ** 2)
+    adro = 0.62 * sm(-6.0, -2.8, atras) * (1 - sm(2.4, 4.0, abs(lado)))    # adro plano na frente da boca, na altura da soleira
+    return max(barranco, adro)
 def h_base(x, z):
     d = fora(x, z)
     ht = h_tumulo(x, z)
@@ -279,10 +281,10 @@ bosque(8.0, 19.5, 3.0, 4, 'escuras', dentro)          # bosquezinho na frente
 bosque(-6.0, 20.5, 3.0, 4, 'carvalhos', dentro)       # carvalhos na frente
 bosque(26.0, -15.0, 3.0, 5, 'escuras', dentro)        # canto de trás, à direita das casas
 VINHA = []
-for no_, dx, dz, r_ in [('Parreira2_Poste', -1.6, 3.2, 0.2), ('Parreira2_Poste', 0.2, 3.6, -0.3), ('Parreira2_Poste', 2.4, 3.0, 0.5),
-                        ('Parreira1_Pergola', -3.6, 0.6, math.pi / 2), ('Parreira3_PergolaCurta', 2.9, 1.6, math.pi / 2 + 0.3)]:
-    x_, z_ = LAGAR[0] + dx, LAGAR[1] + dz
-    poe('parreiras\\parreiras_v2.glb', no_, x_, z_, r_, 1.0, afunda=0.05); REG.append((x_, z_, 1.0)); VINHA.append((x_, z_))
+# meia-lua atrás do lagar (do lado oposto à câmera): a frente fica livre para ver o lagar
+for no_, ang in [('Parreira1_Pergola', 150), ('Parreira2_Poste', 192), ('Parreira2_Poste', 225), ('Parreira2_Poste', 258), ('Parreira3_PergolaCurta', 300)]:
+    a_ = math.radians(ang); x_, z_ = LAGAR[0] + math.cos(a_) * 3.4, LAGAR[1] + math.sin(a_) * 3.4
+    poe('parreiras\parreiras_v2.glb', no_, x_, z_, -a_ if 'Pergola' in no_ else random.random() * 6.28, 1.0, afunda=0.05); REG.append((x_, z_, 1.0)); VINHA.append((x_, z_))
 for dx, dz, r_ in [(2.0, 1.4, 0.3), (-2.1, 1.0, 1.2), (1.4, -2.0, 2.0)]:
     poe('cesto-uvas\\cesto_uvas.glb', 'CestoUvas', LAGAR[0] + dx, LAGAR[1] + dz, r_, 1.0, afunda=0.0); REG.append((LAGAR[0] + dx, LAGAR[1] + dz, 0.5))
 # ---------------- flores e moitas espinhosas (instanciadas no jogo) ----------------
