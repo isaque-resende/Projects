@@ -21,12 +21,12 @@ def sm(e0, e1, x):
 CASAS = [(-3, -10.5, 0.1), (6.2, -11, -0.05)]
 CASAS_NOVAS = [('Casa_Sobrado', 17.0, -12.0, -0.25), ('Casa_Alcapao', 25.0, -2.5, -0.55), ('Casa_Varal', -26.5, 18.0, 0.35 - math.pi / 2)]
 BARRACAS = [('Barraca5', 10.2, -3.4, 0.15), ('Barraca2', 17.8, -3.0, -0.2)]     # feirinha ao sul da estrada, longe das portas
-APRISCO = (-12.4, 9.6); FORNO = (1.2, -6.2); LAGAR = (-22.0, 11.5); POCO = (-4.6, 4.6)
+APRISCO = (-13.6, 8.4); FORNO = (1.2, -6.2); LAGAR = (-22.0, 11.5); POCO = (-4.6, 4.6)
 LAV = (4.4, 15.6, 7.4, 13.4)
 TUMULO = (-18.0, -11.5, -0.38)
 PEDRA_TUM = (-13.54, -8.43); FRENTE_TUM = (0.929, 0.371)
 PLACA = (-28.5, 5.6)
-PATIOS = [(1.6, -6.1, 3.0), (-22.0, 11.5, 3.4), (10.2, -3.4, 2.6), (17.8, -3.0, 2.6), (1.4, -2.8, 4.4), (-2.8, -6.2, 2.6), (-4.6, 4.6, 2.2), (-12.4, 9.6, 3.6)]
+PATIOS = [(1.6, -6.1, 3.0), (-22.0, 11.5, 3.4), (10.2, -3.4, 2.6), (17.8, -3.0, 2.6), (1.4, -2.8, 4.4), (-2.8, -6.2, 2.6), (-4.6, 4.6, 2.2), (-13.6, 8.4, 3.6)]
 # caminhos (iguais aos da página) + o do túmulo
 L, F = PEDRA_TUM, FRENTE_TUM
 CAMINHOS = [
@@ -220,7 +220,7 @@ for nome, (x, z) in [('Forno_Corpo', FORNO), ('Lagar_Rocha', LAGAR)]:
 # ---------------- zonas livres (nada de árvore, pedra ou muro em cima) ----------------
 ZONAS = [(LAGAR[0], LAGAR[1] + 1.5, 5.0)] + [(x, z, 4.6) for x, z, r in CASAS] + [(x, z, 5.2 if 'Sobrado' in n_ else 3.6) for n_, x, z, r in CASAS_NOVAS] + [(x, z, 2.6) for _, x, z, _ in BARRACAS] + [
          (APRISCO[0], APRISCO[1], 4.2), (FORNO[0], FORNO[1], 2.6), (LAGAR[0], LAGAR[1], 3.2), (POCO[0], POCO[1], 2.6), (PLACA[0], PLACA[1], 1.4),
-         (TUMULO[0], TUMULO[1], 8.0), (PEDRA_TUM[0] + FRENTE_TUM[0] * 2.5, PEDRA_TUM[1] + FRENTE_TUM[1] * 2.5, 3.0), (-6.8, 14.6, 2.0), (POCO[0] + 2.4, POCO[1] + 1.0, 1.4)]
+         (TUMULO[0], TUMULO[1], 8.0), (PEDRA_TUM[0] + FRENTE_TUM[0] * 2.5, PEDRA_TUM[1] + FRENTE_TUM[1] * 2.5, 3.0), (-3.6, 12.2, 2.0), (POCO[0] + 2.4, POCO[1] + 1.0, 1.4)]
 def livre(x, z, r=0.5):
     if dist_cam(x, z)[0] < 0.8 + r * 0.5: return False
     if LAV[0] - 1.2 - r < x < LAV[1] + 1.2 + r and LAV[2] - 1.2 - r < z < LAV[3] + 1.2 + r: return False
@@ -268,7 +268,7 @@ def bosque(cx, cz, R, n, esp, ok):
         poe(*random.choice(lista), x, z, random.random() * 6.28, k, afunda=0.12); REG.append((x, z, r)); feitas += 1
 dentro = lambda x, z: livre(x, z, 0.6)
 # dentro da vila: poucas e com sentido
-poe('casa-porta\\tamareiras.glb', 'Tamareiras', -6.8, 14.6, 0.2, 0.7, afunda=0.05); REG.append((-6.8, 14.6, 1.6))
+poe('casa-porta\\tamareiras.glb', 'Tamareiras', -3.6, 12.2, 0.2, 0.7, afunda=0.05); REG.append((-3.6, 12.2, 1.6))
 poe('casa-porta\\pastoril.glb', 'Cocho', POCO[0] + 2.4, POCO[1] + 1.0, math.pi / 4, 0.75, afunda=0.0); REG.append((POCO[0] + 2.4, POCO[1] + 1.0, 1.0))
 for x, z, no, k in [(-7.4, -13.6, 'Cipreste2_Esguio', 0.8), (-8.6, -2.4, 'Cipreste1_Redondo', 0.75), (-11.0, -15.2, 'Cipreste2_Esguio', 0.85), (-6.2, -15.8, 'Cipreste2_Esguio', 0.75)]:
     poe('diorama-ciprestes\\ciprestes.glb', no, x, z, random.random() * 6, k, afunda=0.1); REG.append((x, z, 0.9))
@@ -355,7 +355,7 @@ for ci in (0, 5):
             if (ci == 0 and -16 < x < 18) or not cabe(x, z, 0.35, 1.0): continue
             poe(*random.choice(PEDRAS), x, z, random.random() * 6.28, 0.5 + random.random() * 0.3, afunda=0.08); REG.append((x, z, 0.35))
 # o lugar das sepulturas: algumas pedras grandes junto ao rochedo
-for dx, dz, k in [(2.6, 4.5, 1.1), (-3.5, 6.0, 0.9), (5.8, -1.0, 0.8)]:
+for dx, dz, k in [(-3.5, 6.0, 0.9)]:
     x, z = TUMULO[0] + dx, TUMULO[1] + dz
     if cabe(x, z, 0.5, 0.7): poe(*random.choice(PEDRAS), x, z, random.random() * 6, k, afunda=0.15); REG.append((x, z, 0.6 * k))
 
