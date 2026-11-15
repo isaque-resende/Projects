@@ -197,7 +197,7 @@ LAYOUT = []; LONGE = False
 def poe(arq, no, x, z, r=0.0, k=1.0, y=None, afunda=0.05, col=None, jogo=True):
     o = PROTO.get((arq, no))
     if o is None: print('FALTA', arq, no); return None
-    if y is None: y = altura(x, z)
+    if y is None: y = max([altura(x, z)] + [altura(x + 0.35 * math.cos(a_), z + 0.35 * math.sin(a_)) for a_ in (0, 1.57, 3.14, 4.71)])   # assenta no ponto mais alto (encosta)
     n = copia(o, col or col_veg)
     n.location = (x, -z, y - afunda); n.rotation_mode = 'XYZ'
     rx, ry, rz = o.rotation_euler; n.rotation_euler = (rx, ry, rz + r)

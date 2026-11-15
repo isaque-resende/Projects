@@ -24,7 +24,7 @@
 <body>
 <div id="fade"></div>
 <button id="acao"></button>
-<div style="position:fixed;right:8px;top:calc(6px + env(safe-area-inset-top));font:11px system-ui;color:#4a352099;z-index:9;pointer-events:none">v15</div>
+<div style="position:fixed;right:8px;top:calc(6px + env(safe-area-inset-top));font:11px system-ui;color:#4a352099;z-index:9;pointer-events:none">v16</div>
 <div id="fala"></div>
 <button id="pularIntro">Pular introdução</button>
 <div id="dica">Direcional, WASD ou toque para andar · Shift corre · Espaço pula · roda/pinça: zoom</div>
@@ -127,7 +127,7 @@ function por(modelo, x, z, r = 0, k = 1, { fade = false, caixa = false, circ = 0
 }
 
 // ---------- cenário do Blender: terreno (vila plana, morros em volta), caminhos, muretas; árvores e pedras do layout ----------
-const [gCen, LAYB] = await Promise.all([baixar('betania_cenario.glb?v=13'), fetch('betania_layout.json?v=13').then((r) => r.json())]);
+const [gCen, LAYB] = await Promise.all([baixar('betania_cenario.glb?v=14'), fetch('betania_layout.json?v=14').then((r) => r.json())]);
 // terreno e caminhos com sombreamento suave e a cor misturada entre os vértices (visual "prado", igual a Betfagé)
 function suaviza(mesh) {
   const g0 = mesh.geometry, pos = g0.attributes.position, col = g0.attributes.color, idx = g0.index;
@@ -215,10 +215,22 @@ const CASAS_NOVAS = [], BEBEDOURO = [];
 
 for (const b of BEBEDOURO) {          // água dentro do cocho de pedra
   b.updateMatrixWorld(true); const bx = new THREE.Box3().setFromObject(b), rc = new THREE.Raycaster(), d = [];
-  for (let i = 0; i < 160; i++) { const x = bx.min.x + Math.random() * (bx.max.x - bx.min.x), z = bx.min.z + Math.random() * (bx.max.z - bx.min.z); rc.set(new THREE.Vector3(x, bx.max.y + 1, z), new THREE.Vector3(0, -1, 0)); const h = rc.intersectObject(b, true)[0]; if (h && h.point.y < bx.max.y - 0.12 && h.point.y > bx.min.y + 0.08) d.push(h.point); }
-  if (d.length > 5) { const c = d.reduce((a, p) => a.add(p), new THREE.Vector3()).multiplyScalar(1 / d.length), ry = b.rotation.y, ux = new THREE.Vector3(Math.cos(ry), 0, -Math.sin(ry)), uz = new THREE.Vector3(Math.sin(ry), 0, Math.cos(ry));
-    let ax = 0, az = 0; for (const p of d) { const v = p.clone().sub(c); ax = Math.max(ax, Math.abs(v.dot(ux))); az = Math.max(az, Math.abs(v.dot(uz))); }
-    const ag = new THREE.Mesh(new THREE.CircleGeometry(1, 16), new THREE.MeshStandardMaterial({ color: 0x4f8a92, roughness: 0.3 })); ag.rotation.set(-Math.PI / 2, 0, ry); const yf = Math.min(bx.max.y - 0.05, Math.max(...d.map((p) => p.y)) + 0.04); ag.scale.set(ax * 0.92, az * 0.92, 1); ag.position.set(c.x, yf, c.z); scene.add(ag); }
+  const N = 18; for (let i = 0; i <= N; i++) for (let k = 0; k <= N; k++) {
+    const x = bx.min.x + (bx.max.x - bx.min.x) * i / N, z = bx.min.z + (bx.max.z - bx.min.z) * k / N;
+    rc.set(new THREE.Vector3(x, bx.max.y + 1, z), new THREE.Vector3(0, -1, 0)); const h = rc.intersectObject(b, true)[0];
+    if (h && h.point.y < bx.max.y - 0.12 && h.point.y > bx.min.y + 0.06) d.push(h.point);
+  }
+  if (d.length > 6) {
+    const c = d.reduce((a, p) => a.add(p), new THREE.Vector3()).multiplyScalar(1 / d.length);
+    const pts = d.map((p) => [p.x, p.z]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    const cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+    const lo = [], hi = []; for (const p of pts) { while (lo.length > 1 && cr(lo[lo.length - 2], lo[lo.length - 1], p) <= 0) lo.pop(); lo.push(p); }
+    for (const p of [...pts].reverse()) { while (hi.length > 1 && cr(hi[hi.length - 2], hi[hi.length - 1], p) <= 0) hi.pop(); hi.push(p); }
+    const casco = lo.slice(0, -1).concat(hi.slice(0, -1)).map(([x, z]) => new THREE.Vector2(c.x + (x - c.x) * 0.82, -(c.z + (z - c.z) * 0.82)));
+    const yf = Math.min(bx.max.y - 0.06, Math.max(...d.map((p) => p.y)) + 0.04);
+    const ag = new THREE.Mesh(new THREE.ShapeGeometry(new THREE.Shape(casco)), new THREE.MeshStandardMaterial({ color: 0x4f8a92, roughness: 0.3 }));
+    ag.rotation.x = -Math.PI / 2; ag.position.y = yf; scene.add(ag);
+  }
 }
 function tingeCasa(raiz) {
   raiz.traverse((m) => {
@@ -353,7 +365,7 @@ function bateAnel(x, z, m) {
   const F = nos(gForno);
   const base = F.Forno_Corpo.position.clone();
   const forno = new THREE.Group();
-  for (const [n, o] of Object.entries(F)) if (n.startsWith('Forno_') && !/Chama|Brasa|Massa_[23]/.test(n)) { const c = o.clone(); c.position.sub(base); forno.add(c); }
+  for (const [n, o] of Object.entries(F)) if (n.startsWith('Forno_') && !/Chama|Brasa|Massa_[23]|Pao_/.test(n)) { const c = o.clone(); c.position.sub(base); if (n === 'Forno_Mesa') c.scale.multiply(new THREE.Vector3(1.35, 1, 1.35)); forno.add(c); }
   forno.position.set(1.2, 0, -6.2); forno.rotation.y = 0.4; sombra(forno); scene.add(forno); CIRC.push({ x: 1.2, z: -6.2, r: 1.0 });
   // brasa e chamas acesas
   for (const n of ['Forno_Brasa', 'Forno_Chamas', 'Forno_ChamaBoca']) if (F[n]) { const c = F[n].clone(); c.position.sub(base); forno.add(c); }
@@ -413,6 +425,11 @@ const TUM = {}, ROLA = 1;   // lado para onde a pedra rola (ao longo da face)
   pedra.position.copy(boca.position).add(new THREE.Vector3(0.3, rP - 0.02, 0)); pedra.rotation.set(0, Math.PI / 2, 0); tum.add(pedra);
   Object.assign(TUM, { tum, pedra, p0: pedra.position.clone(), q0: pedra.quaternion.clone(), k: 0, alvo: 0, raio: rP });
   TUM.circ = { x: 0, z: 0, r: TUM.raio * 0.9 }; CIRC.push(TUM.circ);
+  { const R2 = nos(gRoch), F2 = new THREE.Vector3(1, 0, 0).applyQuaternion(tum.quaternion).setY(0).normalize(), L2 = new THREE.Vector3(-F2.z, 0, F2.x), P0 = pedra.getWorldPosition(new THREE.Vector3()).setY(0);
+    for (const [no, df, dl, k, r] of [['Rocha6', 0.2, -2.5, 1.25, 0.4], ['Rocha9', -0.2, -3.7, 1.1, 1.3], ['Rocha3', 0.3, 2.7, 1.15, 2.2]]) {
+      const m = R2[no]; if (!m) continue; const n = m.clone(); n.position.set(0, 0, 0);
+      const p = P0.clone().addScaledVector(F2, df).addScaledVector(L2, dl); n.position.set(p.x, 0.45, p.z); n.rotation.y = r; n.scale.setScalar(k); sombra(n); scene.add(n);
+      CIRC.push({ x: p.x, z: p.z, r: 0.6 * k }); } }
   TUM.frente = new THREE.Vector3(1, 0, 0).applyQuaternion(tum.quaternion).setY(0).normalize();   // a porta olha para +x do modelo
   TUM.lugar = pedra.getWorldPosition(new THREE.Vector3()).setY(0);
   { const L = TUM.lugar, F = TUM.frente; caminho([[-10, 2.2], [-7.4, -2.4], [L.x + F.x * 3.6 + 0.4, L.z + F.z * 3.6 + 1.2], [L.x + F.x * 1.5, L.z + F.z * 1.5]], 0.85); }
@@ -420,7 +437,7 @@ const TUM = {}, ROLA = 1;   // lado para onde a pedra rola (ao longo da face)
 
 }
 // câmara interna do túmulo: cenário à parte, bem abaixo do chão (a câmera de dentro nunca vê a vila)
-const CAMT = { on: false, base: new THREE.Vector3(0, -60, 0) };
+const CAMT = { on: false, base: new THREE.Vector3(0, -60, 0), obst: [] };
 {
   const g = (await baixar('../casa-porta/tumulo_camara.glb')).scene;
   // o mapa de alturas só guarda valores acima de zero: mede com a câmara na origem e desloca depois
@@ -568,7 +585,7 @@ const PAH = new THREE.Group();
 const EIXO_X = new THREE.Vector3(1, 0, 0);
 const lateralMesa = new THREE.Vector3(-dirMesa.z, 0, dirMesa.x);
 const PA_REPOUSO = { B: MASSA.clone().addScaledVector(lateralMesa, -0.45).setY(MESA_Y + 0.02), d: dirMesa.clone().addScaledVector(lateralMesa, -0.35).setY(0).normalize() };
-const PRATO = MASSA.clone().addScaledVector(lateralMesa, 0.38).setY(MESA_Y + 0.025);     // os pães assados ficam na outra ponta da mesa
+const PRATO = MASSA.clone().addScaledVector(lateralMesa, 0.42).setY(MESA_Y + 0.025);     // os pães assados ficam na outra ponta da mesa
 const PAD = { e: 'sova', t: 0, leva: false, n: 0 };
 padeira.o.rotation.y = angA;
 // pá de padeiro fica deitada na mesa (só enfeite); o pão do tabun vai e volta nas mãos, como se faz de verdade
@@ -620,9 +637,9 @@ function padeiraPasso(dt, t) {
     case 'volta': segura(colo); if (anda(st, PA_A, dt, 0.6)) muda('descarrega'); break;
     case 'descarrega': {                              // pousa o pão no prato, na outra ponta da mesa
       st.toca('Parado'); lerpAng(o, angA, Math.min(1, dt * 6));
-      const lugar = PRATO.clone().addScaledVector(f, -0.08 + 0.12 * (PAD.n % 2)).addScaledVector(lateralMesa, 0.1 * (PAD.n % 3)).setY(MESA_Y + 0.04);
+      const lugar = PRATO.clone().addScaledVector(f, -0.1 + 0.2 * (PAD.n % 2)).setY(MESA_Y + 0.04);
       const k = sm(0, 0.8, T); if (T < 1.0) segura(colo.clone().lerp(lugar, k)); inc = 0.3 * k * (1 - sm(1.0, 1.4, T));
-      if (T > 0.9 && PAD.leva) { const pn = PAO.clone(); pn.position.copy(lugar); scene.add(pn); PAES.push(pn); PAD.n++; if (PAES.length > 3) scene.remove(PAES.shift()); PAD.leva = false; }
+      if (T > 0.9 && PAD.leva) { const pn = PAO.clone(); pn.position.copy(lugar); scene.add(pn); PAES.push(pn); PAD.n++; if (PAES.length > 2) scene.remove(PAES.shift()); PAD.leva = false; }
       if (T > 1.5) { PAO.material = matMassa; PAO.scale.set(1.05, 0.55, 1.0); muda('sova'); }
       break;
     }
@@ -658,7 +675,7 @@ const lazaro = (() => { const lat = new THREE.Vector3(-TUM.frente.z, 0, TUM.fren
   const n = ator(nLazaro, 1.72, p.x, p.z, Math.atan2(TUM.frente.x, TUM.frente.z), 'Parado'); n.r0 = n.o.rotation.y; return n; })();
 const gCleo = await baixar('../cleopas/cleopas.glb');
 const cleopas = (() => { const c = CASAS[0], p = c.mundo(c.px + 0.2, c.pz + 3.4), q = c.mundo(c.px, c.pz); const n = ator(gCleo, 1.72, p.x, p.z, Math.atan2(q.x - p.x, q.z - p.z), 'Parado'); n.r0 = n.o.rotation.y; return n; })();
-for (const n of [marta, lazaro, cleopas]) CIRC.push({ x: n.o.position.x, z: n.o.position.z, r: 0.38 });
+for (const n of [marta, lazaro, cleopas]) { n.o.position.y = chaoTerra(n.o.position.x, n.o.position.z); CIRC.push({ x: n.o.position.x, z: n.o.position.z, r: 0.38 }); }
 const NOMES = new Map([[marta, 'Marta'], [lazaro, 'Lázaro'], [cleopas, 'Cléopas']]);
 const lenco = ator(nLenco, 1.6, B5.x + 0.25, B5.z + 1.5, Math.PI + 0.15, 'Parado');
 const vendedor = ator(nRobusto, 1.72, B5.x - 0.15, B5.z - 0.35, 0.15, 'Conversando');
@@ -1038,14 +1055,25 @@ const CASAI = { on: false, base: new THREE.Vector3(0, -120, 0), txt: 'sair da ca
   cx(6.4, 0.5, 0.5, 0, 0.25, -2.55, pedraM); cx(6.4, 2.4, 0.4, 0, 1.7, -2.6, reboco);            // parede do fundo (base de pedra)
   cx(0.5, 0.5, 5.6, -2.95, 0.25, 0, pedraM); cx(0.4, 2.4, 5.6, -3.0, 1.7, 0, reboco);            // parede da esquerda
   cx(6.4, 0.25, 0.3, 0, 2.95, -2.4, madeiraI); cx(0.3, 0.25, 5.6, -2.8, 2.95, 0, madeiraI);     // vigas
-  cx(0.8, 0.6, 0.45, 1.6, 1.9, -2.6, new THREE.MeshStandardMaterial({ color: 0x3a2a1c, roughness: 1 }));   // janelinha (escura: é madrugada)
-  // soleira (a porta fica no lado aberto, à frente)
-  cx(1.2, 0.08, 0.5, 0.6, 0.04, 2.6, pedraM);
-  for (const [o, x, z, r, k] of [[OB.Esteira, -1.6, -1.2, Math.PI / 2, 1.4], [OB.Esteira, 0.4, -1.6, Math.PI / 2 + 0.15, 1.4], [OB.Jarro_Alto, -2.4, -2.1, 0, 1.3], [OB.Pote_Escuro, -1.8, -2.2, 0, 1.2],
-    [OB.Lenha, 2.5, -2.0, 0.3, 1], [OB.Cesto_Alca, -2.4, 0.6, 0.5, 1], [OB.Banquinho, 0.9, -2.0, 0, 1.2], [OB.Panela_Barro, 2.2, -0.9, 0, 1.2], [OB.Tigela_Larga, 1.5, 0.6, 0, 1.2],
-    [OB.Esteira, -1.7, 1.4, Math.PI / 2 + 0.1, 1.4], [OB.Esteira_Enrolada, -2.4, -0.6, 0, 1.3], [OB.Cesto_Oval, 2.4, 0.3, 0.4, 1.1], [OB.Jarra_Alca, 2.5, -1.3, 0, 1.2], [OB.Pilao, 1.9, 1.5, 0, 1.1], [OB.Prato, 1.25, 0.75, 0, 1.0]]) {
-    if (!o) continue; const c = o.clone(); c.position.set(x, 0, z); c.rotation.y = r; c.scale.setScalar(k); sombra(c); g.add(c);
+  const escuro = new THREE.MeshStandardMaterial({ color: 0x3a2a1c, roughness: 1 });
+  cx(0.45, 0.6, 0.8, -3.0, 1.75, -0.4, escuro);                                         // janelinha na parede da esquerda (escura: é madrugada)
+  cx(1.2, 0.08, 0.5, 0.6, 0.04, 2.6, pedraM);                                           // soleira (a porta fica no lado aberto, à frente)
+  // cama: monte de palha com a esteira por cima, encostada na parede do fundo
+  const palha = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.16, 1.05), new THREE.MeshStandardMaterial({ color: 0xcfae5c, roughness: 1, flatShading: true }));
+  palha.position.set(0.7, 0.08, -1.85); palha.castShadow = palha.receiveShadow = true; g.add(palha);
+  for (let i = 0; i < 9; i++) { const f = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.22, 3), palha.material); f.position.set(-0.3 + (i % 5) * 0.5 + (i > 4 ? 0.25 : 0), 0.08, -1.32 - (i % 2) * 0.05); f.rotation.set(Math.PI / 2 - 0.25, 0, (i - 4) * 0.2); g.add(f); }
+  if (OB.Esteira) { const e = OB.Esteira.clone(); e.position.set(0.7, 0.165, -1.85); e.scale.set(3.0, 1, 1.45); e.rotation.y = 0; sombra(e); g.add(e); }
+  // mesa baixa sob a janela, com banquinho e lamparina
+  const mesaM = madeiraI, mesa = new THREE.Group(); mesa.position.set(-2.45, 0, -0.4); g.add(mesa);
+  { const tp = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.06, 1.05), mesaM); tp.position.y = 0.52; tp.castShadow = tp.receiveShadow = true; mesa.add(tp);
+    for (const [x, z] of [[-0.26, -0.45], [0.26, -0.45], [-0.26, 0.45], [0.26, 0.45]]) { const l = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.5, 0.06), mesaM); l.position.set(x, 0.25, z); l.castShadow = true; mesa.add(l); } }
+  for (const [o, x, y, z, r, k] of [[OB.Banquinho, -1.8, 0, -0.4, Math.PI / 2, 1.3], [OB.Tigela_Larga, -2.45, 0.55, -0.05, 0, 0.8], [OB.Prato, -2.5, 0.55, -0.75, 0, 0.7],
+    [OB.Jarro_Alto, -2.55, 0, -2.15, 0, 1.3], [OB.Pote_Escuro, -2.0, 0, -2.25, 0.4, 1.2], [OB.Jarra_Alca, -2.6, 0, -1.6, 0.8, 1.2],     // cântaros no canto
+    [OB.Cesto_Raso, 2.25, 0, -1.95, 0, 1.0], [OB.Esteira_Enrolada, 2.4, 0, -0.9, Math.PI / 2, 1.1], [OB.Panela_Barro, -2.55, 0, 1.0, 0, 1.0]]) {
+    if (!o) continue; const c = o.clone(); c.position.set(x, y, z); c.rotation.y = r; c.scale.setScalar(k); sombra(c); g.add(c);
   }
+  CASAI.obst = [[0.7, -1.85, 0, 1.15, 0.6], [-2.45, -0.4, 0, 0.42, 0.6], [-1.8, -0.4, 0.3], [-2.3, -2.0, 0.55], [2.25, -1.95, 0.35], [2.4, -0.9, 0.35], [-2.55, 1.0, 0.3]];
+  CASAI.lampada = new THREE.Vector3(-2.45, 0.56, -0.62);
   CASAI.g = g; CASAI.box = new THREE.Box3(new THREE.Vector3(B.x - 3.2, B.y, B.z - 2.8), new THREE.Vector3(B.x + 3.2, B.y + 3.1, B.z + 2.8));
   CASAI.area = { x0: B.x - 2.6, x1: B.x + 3.0, z0: B.z - 2.2, z1: B.z + 2.7 };
   CASAI.entrada = new THREE.Vector3(B.x + 0.6, 0, B.z + 2.0);
@@ -1053,10 +1081,10 @@ const CASAI = { on: false, base: new THREE.Vector3(0, -120, 0), txt: 'sair da ca
   CASAI.alt = () => B.y;
   // lamparina de barro (óleo) acesa em cima do banquinho: é dela a luz do cômodo
   const barro = new THREE.MeshStandardMaterial({ color: 0xa8643a, roughness: 1, flatShading: true });
-  const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 6), barro); lamp.scale.set(1, 0.42, 0.8); lamp.position.set(0.9, 0.52, -2.0); lamp.castShadow = true; g.add(lamp);
-  const bico = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.12, 6), barro); bico.rotation.z = -Math.PI / 2; bico.position.set(1.02, 0.53, -2.0); g.add(bico);
-  const chama = new THREE.Mesh(new THREE.ConeGeometry(0.022, 0.09, 6), new THREE.MeshBasicMaterial({ color: 0xffc65a })); chama.position.set(1.08, 0.6, -2.0); g.add(chama); CASAI.chama = chama;
-  CASAI.luz = new THREE.PointLight(0xffb866, 0, 9, 1.4); CASAI.luz.position.set(B.x + 1.08, B.y + 0.75, B.z - 2.0); scene.add(CASAI.luz);
+  const LP = CASAI.lampada; const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 6), barro); lamp.scale.set(0.8, 0.42, 1); lamp.position.set(LP.x, LP.y + 0.04, LP.z); lamp.castShadow = true; g.add(lamp);
+  const bico = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.12, 6), barro); bico.rotation.x = Math.PI / 2; bico.position.set(LP.x, LP.y + 0.05, LP.z + 0.11); g.add(bico);
+  const chama = new THREE.Mesh(new THREE.ConeGeometry(0.022, 0.09, 6), new THREE.MeshBasicMaterial({ color: 0xffc65a })); chama.position.set(LP.x, LP.y + 0.12, LP.z + 0.16); g.add(chama); CASAI.chama = chama;
+  CASAI.luz = new THREE.PointLight(0xffb866, 0, 9, 1.4); CASAI.luz.position.set(B.x + LP.x, B.y + 0.85, B.z + LP.z + 0.2); scene.add(CASAI.luz);
 }
 CAMT.txt = 'sair do túmulo';
 function entrarInterior(I, depois) {
@@ -1099,7 +1127,7 @@ function tumbaPasso(dt) {
   let andou = false;
   if (mv.lengthSq() > 0) {
     mv.normalize(); const v = 1.6 * dt;
-    const ok = (x, z) => x > A.x0 && x < A.x1 && z > A.z0 && z < A.z1 && I.alt(x, z) <= p.y + 0.45;
+    const ok = (x, z) => x > A.x0 && x < A.x1 && z > A.z0 && z < A.z1 && I.alt(x, z) <= p.y + 0.45 && !(I.obst || []).some((o) => o.length === 3 ? Math.hypot(x - I.base.x - o[0], z - I.base.z - o[1]) < o[2] + 0.25 : Math.abs(x - I.base.x - o[0]) < o[3] + 0.25 && Math.abs(z - I.base.z - o[1]) < o[4] + 0.25);
     const x0 = p.x, z0 = p.z, nx = p.x + mv.x * v, nz = p.z + mv.z * v;
     if (ok(nx, nz)) { p.x = nx; p.z = nz; } else if (ok(nx, p.z)) p.x = nx; else if (ok(p.x, nz)) p.z = nz; else alvoToque = null;
     andou = Math.hypot(p.x - x0, p.z - z0) > v * 0.3;
@@ -1193,8 +1221,7 @@ const falaEl = document.getElementById('fala'), pularEl = document.getElementByI
 const fala = (txt) => { if (!txt) { falaEl.style.opacity = 0; return; } falaEl.textContent = txt; falaEl.style.opacity = 1; };
 const suave = (a, b, x) => { const k = THREE.MathUtils.clamp((x - a) / (b - a), 0, 1); return k * k * (3 - 2 * k); };
 const joyEl = () => document.getElementById('joy');
-const ESTEIRA = CASAI.base.clone().add(new THREE.Vector3(0.6, 0, -0.9));
-{ const e = OB.Esteira.clone(); e.position.copy(ESTEIRA); e.scale.setScalar(1.7); sombra(e); scene.add(e); }
+const ESTEIRA = CASAI.base.clone().add(new THREE.Vector3(0.7, 0, -1.85));
 function luzDentro(on) {
   if (on) { scene.background = new THREE.Color(0x000000); scene.fog = null; hemi.intensity = 0.5; sun.intensity = 0.6; CASAI.luz.intensity = 12; }
   else { scene.background = CEU0.bg.clone(); scene.fog = CEU0.fog; CASAI.luz.intensity = 0; }
@@ -1229,14 +1256,14 @@ function introPasso(dt) {
     // deitado (de costas, na esteira) → senta → levanta: o quadril é o pivô
     const H = 0.55, k = suave(5.0, 7.0, T), yaw = -Math.PI / 2;
     if (T < 7.6) {
-      const a = -Math.PI / 2 * (1 - k), hy = 0.16 + (H - 0.16) * k;
+      const a = -Math.PI / 2 * (1 - k), hy = 0.3 + (H - 0.3) * k;
       o.rotation.set(a, yaw, 0);
       const q = new THREE.Quaternion().setFromEuler(o.rotation), quadril = new THREE.Vector3(0, H, 0).applyQuaternion(q);
-      o.position.set(ESTEIRA.x - quadril.x, CASAI.base.y + hy - quadril.y, ESTEIRA.z - quadril.z);
+      o.position.set(ESTEIRA.x - quadril.x, CASAI.base.y + hy - quadril.y, ESTEIRA.z - quadril.z + 0.9 * k);
       jog.A.Parado.timeScale = 0.4; jog.toca(k > 0.25 ? 'Agachado' : 'Parado');
       if (T < 5) o.rotation.z = Math.sin(T * 1.6) * 0.015;     // respira
     } else if (T < 13.5) {                              // de pé, olhando em volta
-      o.rotation.set(0, yaw + Math.sin((T - 7.6) * 0.9) * 0.7, 0); o.position.set(ESTEIRA.x, CASAI.base.y, ESTEIRA.z);
+      o.rotation.set(0, yaw + Math.sin((T - 7.6) * 0.9) * 0.7, 0); o.position.set(ESTEIRA.x, CASAI.base.y, ESTEIRA.z + 0.9);
       jog.A.Parado.timeScale = 1; jog.toca('Parado');
       fala(T < 10 ? 'Betânia… a casa de Marta. Ainda estamos aqui.' : 'Sexta-feira. A cruz. O túmulo fechado com a pedra… Por quê?');
     } else {                                            // vai até a porta
