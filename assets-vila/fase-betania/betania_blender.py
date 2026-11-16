@@ -23,6 +23,10 @@ def sm(e0, e1, x):
 SO_TERRENO = '--terreno' in ARGS or globals().get('SO_TERRENO', False)     # refaz só terreno/caminhos/muretas no .blend aberto
 if SO_TERRENO:
     _lib = {'__name__': 'lib'}; exec(open(OUT + '\\exportar_betania.py', encoding='utf-8').read(), _lib); POS = _lib['le_tudo']()
+    _ant = json.load(open(OUT + '\\betania_posicoes.json', encoding='utf-8'))      # objeto apagado na cena: usa a última posição salva
+    POS['pontos'] = {**_ant['pontos'], **POS['pontos']}
+    if not POS.get('lavoura'): POS['lavoura'] = _ant['lavoura']
+    if not POS.get('caminhos'): POS['caminhos'] = _ant['caminhos']
 else:
     POS = json.load(open(OUT + '\\betania_posicoes.json', encoding='utf-8'))
 PT = POS['pontos']
@@ -36,7 +40,7 @@ TUMULO = pt('tumulo')
 # boca do túmulo: mesmo lugar relativo ao rochedo (medido no modelo)
 _c, _s = math.cos(TUMULO[2]), math.sin(TUMULO[2]); _lx, _lz = 5.2805, 1.1967
 PEDRA_TUM = (TUMULO[0] + _lx * _c + _lz * _s, TUMULO[1] - _lx * _s + _lz * _c); FRENTE_TUM = (_c, -_s)
-PLACA = pt('placa', 2)
+PLACA = pt('placa', 2) if 'placa' in PT else (-28.5, 5.6)      # sem placa: o jogo usa o lugar original
 _cd = CASAS[0]
 PATIOS = [(FORNO[0] + 0.4, FORNO[1] + 0.1, 3.0), (LAGAR[0], LAGAR[1], 3.4)] + [(x, z, 2.6) for _, x, z, _ in BARRACAS] + [
           (1.4, -2.8, 4.4), (_cd[0] + 0.2, _cd[1] + 4.3, 2.6), (POCO[0], POCO[1], 2.2), (APRISCO[0], APRISCO[1], 3.6)]

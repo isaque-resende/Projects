@@ -27,15 +27,16 @@ def assenta(x, z):
 
 
 def ajusta_alturas():
-    # árvores, pedras e flores arrastadas no plano voltam a encostar no chão (mantém o quanto você subiu/desceu à mão)
+    # todas as árvores, pedras, flores etc. são assentadas no chão, onde quer que estejam
+    # (a altura que você der à mão é ignorada: arrastar numa vista inclinada muda a altura sem querer)
     n = 0
     for o in bpy.data.objects:
         if 'glb' not in o or o.parent is not None: continue
         x, z = o.location.x, -o.location.y
-        if abs(x - o.get('x0', x)) < 0.01 and abs(z - o.get('z0', z)) < 0.01: continue
-        extra = o.location.z - o.get('y0', o.location.z)
-        o.location.z = assenta(x, z) - o.get('afunda', 0.05) + extra
-        o['x0'], o['z0'], o['y0'] = x, z, o.location.z; n += 1
+        novo = assenta(x, z) - o.get('afunda', 0.05)
+        if abs(novo - o.location.z) > 0.005: n += 1
+        o.location.z = novo
+        o['x0'], o['z0'], o['y0'] = x, z, novo
     return n
 
 
@@ -69,16 +70,30 @@ def layout():
     return L
 
 
+def trava_chao():
+    # terreno, caminhos e muretas: no lugar certo e travados (arrastar o chão sem querer desmonta tudo)
+    col = bpy.data.collections.get('Cenario_exportado')
+    for o in list(col.objects):
+        if o is None: continue
+        if o.name.startswith('Betania_'): o.location = (0, 0, 0); o.rotation_euler = (0, 0, 0); o.scale = (1, 1, 1)
+        o.hide_select = True; o.lock_location = o.lock_rotation = o.lock_scale = (True, True, True)
+
+
 def exporta(salvar=True):
+    trava_chao()
     n = ajusta_alturas()
     POS = le_tudo()
     col = bpy.data.collections.get('Cenario_exportado')
     for o in bpy.context.view_layer.objects: o.select_set(False)
+    trav = [o for o in col.all_objects if o.hide_select]
+    for o in trav: o.hide_select = False                  # o chão fica travado contra clique; solta só para exportar
     for o in col.all_objects: o.select_set(True)
     bpy.context.view_layer.objects.active = terreno()
     saida = OUT + '\\betania_cenario.glb'
     bpy.ops.export_scene.gltf(filepath=saida, use_selection=True, export_format='GLB', export_normals=False, export_vertex_color='MATERIAL',
                               export_image_format='WEBP', export_image_quality=80, export_meshopt_compression_enable=True)
+    for o in col.all_objects: o.select_set(False)
+    for o in trav: o.hide_select = True
     L = layout()
     json.dump({'objetos': L}, open(OUT + '\\betania_layout.json', 'w'), separators=(',', ':'))
     json.dump(POS, open(OUT + '\\betania_posicoes.json', 'w'), indent=1)
