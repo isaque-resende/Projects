@@ -66,8 +66,10 @@ for i, (p, w, c) in enumerate(AMOSTRAS): KD.insert(p, i)
 KD.balance()
 def dist_cam(x, z):
     co, i, d = KD.find(Vector((x, z, 0))); return d - AMOSTRAS[i][1], AMOSTRAS[i][2]
+# estrada para Jerusalém = todos os trechos de caminho que saem da vila pelo oeste (x < -40)
+ESTRADA_JER = [(p, w) for am, w in CURVAS if min(q.x for q in am) < -40 for p in am[::3]]
 def dist_estrada_jer(x, z):
-    am, w = CURVAS[0]; return min(math.hypot(p.x - x, p.y - z) for p in am[::3]) - w
+    return min(math.hypot(p.x - x, p.y - z) - w for p, w in ESTRADA_JER)
 
 # ---------------- relevo ----------------
 def fora(x, z):
@@ -478,7 +480,8 @@ if RENDER:
     sc.render.filepath = OUT + '\\betania_previa.png'; bpy.ops.render.render(write_still=True)
 # textos dentro do .blend para rodar pelo Blender (aba Scripting > Run Script)
 for nome, src in [('EXPORTAR_PARA_O_JOGO', "# exporta o que está na cena para o jogo e salva o .blend\nRODAR_EXPORTACAO = True\nexec(open(r'%s\\exportar_betania.py', encoding='utf-8').read())\n" % OUT),
-                  ('REFAZER_TERRENO', "# refaz terreno, caminhos e muretas seguindo as posições atuais (casas, túmulo, caminhos...) e exporta\nSO_TERRENO = True\nEXPORTAR = True\nexec(open(r'%s\\betania_blender.py', encoding='utf-8').read())\n" % OUT)]:
+                  ('REFAZER_TERRENO', open(OUT + '\\refazer_terreno_texto.py', encoding='utf-8').read())]:
+    if SO_TERRENO: break
     tx = bpy.data.texts.get(nome) or bpy.data.texts.new(nome); tx.clear(); tx.write(src)
 if EXPORT:
     _lib = {'__name__': 'lib'}; exec(open(OUT + '\\exportar_betania.py', encoding='utf-8').read(), _lib); _lib['exporta']()

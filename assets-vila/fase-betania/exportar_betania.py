@@ -55,7 +55,19 @@ def le_tudo():
             lav = {'x0': R3(min(xs)), 'x1': R3(max(xs)), 'z0': R3(-max(ys)), 'z1': R3(-min(ys))}
         elif o.type == 'CURVE' and 'larg' in o:
             pts = [o.matrix_world @ p.co.to_3d() for p in o.data.splines[0].points]
-            caminhos.append((o.name, {'pts': [[R3(p.x), R3(-p.y)] for p in pts], 'larg': R3(o['larg'])}))
+            # uma linha que volta por cima de si mesma (ida e volta para fazer um ramo) vira trechos separados:
+            # ponto repetido = fim do trecho; o próximo trecho começa nele. Pontos duplicados seguidos somem.
+            trechos, atual, vistos = [], [], []
+            for p in pts:
+                q = (R3(p.x), R3(-p.y))
+                if any(abs(q[0] - v[0]) < 0.02 and abs(q[1] - v[1]) < 0.02 for v in vistos):
+                    if len(atual) >= 2: trechos.append(atual)
+                    atual = [q]
+                else:
+                    atual.append(q); vistos.append(q)
+            if len(atual) >= 2: trechos.append(atual)
+            for i, tr in enumerate(trechos):
+                caminhos.append(('%s_%03d' % (o.name, i), {'pts': [list(q) for q in tr], 'larg': R3(o['larg'])}))
     caminhos.sort(key=lambda c: c[0])
     return {'versao': int(time.time()), 'pontos': dict(sorted(pontos.items())), 'caminhos': [c for _, c in caminhos], 'lavoura': lav}
 
@@ -100,8 +112,24 @@ def exporta(salvar=True):
     if salvar:
         if bpy.data.filepath: bpy.ops.wm.save_mainfile()
         else: bpy.ops.wm.save_as_mainfile(filepath=OUT + '\\betania.blend')
-    print('EXPORTADO: %d objetos no layout, %d posicoes, %d caminhos, %d assentados no chao' % (len(L), len(POS['pontos']), len(POS['caminhos']), n))
+    msg = 'EXPORTADO %s: %d objetos, %d posicoes, %d caminhos' % (time.strftime('%H:%M:%S'), len(L), len(POS['pontos']), len(POS['caminhos']))
+    print(msg); aviso(msg + ' - recarregue o jogo (Ctrl+F5)')
+
+
+def aviso(texto, icone='CHECKMARK'):
+    # janelinha na tela do Blender (sem janela, em modo -b, só imprime)
+    print(texto)
+    try:
+        if bpy.context.window_manager.windows:
+            bpy.context.window_manager.popup_menu(lambda self, ctx: self.layout.label(text=texto), title='Betânia', icon=icone)
+    except Exception:
+        pass
 
 
 if __name__ in ('__main__', '<run_path>') or globals().get('RODAR_EXPORTACAO'):
-    exporta()
+    try:
+        if bpy.context.mode != 'OBJECT': bpy.ops.object.mode_set(mode='OBJECT')     # sai do modo de edição (pontos editados entram)
+        exporta()
+    except Exception as e:
+        import traceback; traceback.print_exc(); aviso('ERRO na exportação: %s' % e, 'ERROR')
+        raise
