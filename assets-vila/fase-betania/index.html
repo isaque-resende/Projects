@@ -24,7 +24,7 @@
 <body>
 <div id="fade"></div>
 <button id="acao"></button>
-<div style="position:fixed;right:8px;top:calc(6px + env(safe-area-inset-top));font:11px system-ui;color:#4a352099;z-index:9;pointer-events:none">v16</div>
+<div style="position:fixed;right:8px;top:calc(6px + env(safe-area-inset-top));font:11px system-ui;color:#4a352099;z-index:9;pointer-events:none">v17</div>
 <div id="fala"></div>
 <button id="pularIntro">Pular introdução</button>
 <div id="dica">Direcional, WASD ou toque para andar · Shift corre · Espaço pula · roda/pinça: zoom</div>
@@ -68,6 +68,12 @@ const tex = (url, rep) => {
 // ---------- chão: vem do Blender (betania_blender.py), carregado mais abaixo ----------
 let ground = null;
 
+// ---------- posições exportadas do Blender (betania.blend > texto EXPORTAR_PARA_O_JOGO) ----------
+// sem o arquivo, cada objeto usa o valor escrito aqui como reserva
+const POS = await fetch('betania_posicoes.json', { cache: 'no-cache' }).then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
+const VER = POS.versao || 16;
+const P = (id, x, z, r = 0, k = 1) => { const o = POS.pontos?.[id]; return { x: o?.x ?? x, z: o?.z ?? z, r: o?.r ?? r, k: o?.k ?? k, de: !!o }; };
+
 // ---------- caminhos de terra ----------
 const CAMINHOS = [];
 function caminho(pts, larg) {
@@ -75,11 +81,14 @@ function caminho(pts, larg) {
   CAMINHOS.push({ curva, larg });
 }
 // estrada para Jerusalém (sai pelo oeste) atravessa a vila; ruelas levam a cada porta e ao aprisco
-caminho([[-60, 3], [-30, 3.2], [-20, 2.8], [-10, 2.2], [-2, 0.8], [6, 0.4], [12, 1.0], [16, 1.6]], 1.5);
-caminho([[-2, 0.8], [-2.5, -3.5], [-2.7, -6.6]], 1.0);
-caminho([[6, 0.4], [6.1, -3.5], [6.3, -7.2]], 1.0);
-caminho([[12, 1.0], [14.2, -2.2], [14.6, -5.8]], 0.9);
-caminho([[-10, 2.2], [-7.6, 6.4], [-8.2, 10.6]], 0.9);
+if (POS.caminhos) for (const c of POS.caminhos) caminho(c.pts, c.larg);
+else {
+  caminho([[-60, 3], [-30, 3.2], [-20, 2.8], [-10, 2.2], [-2, 0.8], [6, 0.4], [12, 1.0], [16, 1.6]], 1.5);
+  caminho([[-2, 0.8], [-2.5, -3.5], [-2.7, -6.6]], 1.0);
+  caminho([[6, 0.4], [6.1, -3.5], [6.3, -7.2]], 1.0);
+  caminho([[12, 1.0], [14.2, -2.2], [14.6, -5.8]], 0.9);
+  caminho([[-10, 2.2], [-7.6, 6.4], [-8.2, 10.6]], 0.9);
+}
 const naEstrada = (x, z, m) => CAMINHOS.some(({ curva, larg }) => {
   for (let i = 0; i <= 80; i++) { const p = curva.getPointAt(i / 80); if (Math.hypot(p.x - x, p.z - z) < larg + m) return true; }
   return false;
@@ -127,7 +136,7 @@ function por(modelo, x, z, r = 0, k = 1, { fade = false, caixa = false, circ = 0
 }
 
 // ---------- cenário do Blender: terreno (vila plana, morros em volta), caminhos, muretas; árvores e pedras do layout ----------
-const [gCen, LAYB] = await Promise.all([baixar('betania_cenario.glb?v=14'), fetch('betania_layout.json?v=14').then((r) => r.json())]);
+const [gCen, LAYB] = await Promise.all([baixar('betania_cenario.glb?v=' + VER), fetch('betania_layout.json?v=' + VER).then((r) => r.json())]);
 // terreno e caminhos com sombreamento suave e a cor misturada entre os vértices (visual "prado", igual a Betfagé)
 function suaviza(mesh) {
   const g0 = mesh.geometry, pos = g0.attributes.position, col = g0.attributes.color, idx = g0.index;
@@ -248,7 +257,7 @@ for (const n of CASAS_NOVAS) tingeCasa(n);
 const CASAP = gCasaP.scene; CASAP.children.forEach((c) => c.position.set(0, 0, 0));
 const CASAS = [];
 const PASSO = 0.12, ABERTO = -1.75;
-for (const [x, z, r] of [[-3, -10.5, 0.1], [6.2, -11, -0.05]]) {
+for (const { x, z, r } of [P('casa_discipulo', -3, -10.5, 0.1), P('casa_marta', 6.2, -11, -0.05)]) {
   const g = new THREE.Group(); for (const c of [...CASAP.children]) g.add(c.clone(true));
   g.updateMatrixWorld(true);
   const porta = g.getObjectByName('Casa2_Porta'), corpo = g.getObjectByName('Casa2');
@@ -319,9 +328,9 @@ function mapaAltura(mesh, P = 0.15) {
 // ---------- largo: duas barracas; parreira junto à casa de Marta; aprisco de pedra ----------
 const MU = nos(gMuros), BA = nos(gBarr), PA = nos(gParr);
 for (const o of [...Object.values(MU), ...Object.values(BA), ...Object.values(PA)]) o.position.set(0, 0, 0);
-const B5 = { x: 10.2, z: -3.4 };
-por(BA.Barraca5, B5.x, B5.z, 0.15, 1, { caixa: 0.25 });
-por(BA.Barraca2, 17.8, -3.0, -0.2, 1, { caixa: 0.25 });
+const B5 = P('barraca_esq', 10.2, -3.4, 0.15), B2 = P('barraca_dir', 17.8, -3.0, -0.2);
+por(BA.Barraca5, B5.x, B5.z, B5.r, 1, { caixa: 0.25 });
+por(BA.Barraca2, B2.x, B2.z, B2.r, 1, { caixa: 0.25 });
 const [gPast, gOfi] = await Promise.all([baixar('../casa-porta/pastoril.glb'), baixar('../casa-porta/oficios.glb')]);
 // aprisco: muro circular de pedra com porteira (a porteira abre quando o jogador chega perto)
 let APR = null;
@@ -335,7 +344,7 @@ function bateAnel(x, z, m) {
   return APR.ab < 0.9;                              // vão: só passa com a porteira aberta
 }
 {
-  const AX = -13.6, AZ = 8.4, K = 2.2, KY = 1.3;
+  const { x: AX, z: AZ } = P('aprisco', -13.6, 8.4), K = 2.2, KY = 1.3;
   const muro = nos(gPast).Muro_Curvo.clone(); muro.position.set(0, 0, 0);
   // descobre o vão do anel pelos vértices
   const angs = []; const v = new THREE.Vector3(); let rIn = 1e9, rOut = 0;
@@ -366,7 +375,7 @@ function bateAnel(x, z, m) {
   const base = F.Forno_Corpo.position.clone();
   const forno = new THREE.Group();
   for (const [n, o] of Object.entries(F)) if (n.startsWith('Forno_') && !/Chama|Brasa|Massa_[23]|Pao_/.test(n)) { const c = o.clone(); c.position.sub(base); if (n === 'Forno_Mesa') c.scale.multiply(new THREE.Vector3(1.35, 1, 1.35)); forno.add(c); }
-  forno.position.set(1.2, 0, -6.2); forno.rotation.y = 0.4; sombra(forno); scene.add(forno); CIRC.push({ x: 1.2, z: -6.2, r: 1.0 });
+  const pf = P('forno', 1.2, -6.2, 0.4); forno.position.set(pf.x, 0, pf.z); forno.rotation.y = pf.r; sombra(forno); scene.add(forno); CIRC.push({ x: pf.x, z: pf.z, r: 1.0 });
   // brasa e chamas acesas
   for (const n of ['Forno_Brasa', 'Forno_Chamas', 'Forno_ChamaBoca']) if (F[n]) { const c = F[n].clone(); c.position.sub(base); forno.add(c); }
   forno.updateWorldMatrix(true, true);
@@ -387,14 +396,14 @@ const gLagar = await baixar('../lagar/lagar.glb');
   const L = nos(gLagar), base = L.Lagar_Rocha.position.clone();
   const lagar = new THREE.Group();
   for (const o of Object.values(L)) { const c = o.clone(); c.position.sub(base); lagar.add(c); }
-  lagar.position.set(-22.0, 0, 11.5); lagar.rotation.y = 0.7; sombra(lagar); scene.add(lagar);
+  const pl = P('lagar', -22.0, 11.5, 0.7); lagar.position.set(pl.x, 0, pl.z); lagar.rotation.y = pl.r; sombra(lagar); scene.add(lagar);
   lagar.updateWorldMatrix(true, true); caixaDe(lagar, 0.35);
   const mundo = (n) => L[n].position.clone().sub(base).applyMatrix4(lagar.matrixWorld);
   globalThis.LAGAR = { tanque: mundo('Lagar_Uvas_6'), cesto: mundo('Lagar_CestoUvas'), jarro: mundo('Lagar_Jarro'), r: lagar.rotation.y };
 }
 
 // ---------- lavoura: terra arada à frente-direita ----------
-const LAV = { x0: 4.4, x1: 15.6, z0: 7.4, z1: 13.4 };
+const LAV = POS.lavoura || { x0: 4.4, x1: 15.6, z0: 7.4, z1: 13.4 };
 {
   const t = tex('tex/arada.webp'); t.center.set(0.5, 0.5); t.rotation = Math.PI / 2; t.repeat.set(0.9, 1.6);
   const m = new THREE.Mesh(new THREE.PlaneGeometry(LAV.x1 - LAV.x0, LAV.z1 - LAV.z0), new THREE.MeshStandardMaterial({ map: t, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2 }));
@@ -406,16 +415,15 @@ const AT = nos(gTripo), AP = nos(gPar), T = nos(gTam), C = nos(gCip), FR = nos(g
 for (const o of [...Object.values(AT), ...Object.values(AP), ...Object.values(T), ...Object.values(FR), ...Object.values(R), ...Object.values(OB), ...Object.values(C)]) o.position.set(0, 0, 0);
 
 // objetos junto às casas
-por(OB.Jarro_Alto, -5.6, -6.6, 0, 1.3, { circ: 0.3 }); por(OB.Pote_Escuro, -5.0, -6.2, 0, 1.3, { circ: 0.3 });
-por(OB.Cesto_Alca, 9.0, -7.0, 0.4, 1, { circ: 0.3 }); por(OB.Lenha, -1.3, -5.6, 0.3, 1, { circ: 0.3 });
-por(OB.Saco, 12.6, -5.6, 0, 1.1, { circ: 0.3 }); por(OB.Banquinho, 8.2, -7.0, 1.0, 1, { circ: 0.3 });
+for (const [id, no, x, z, r, k] of [['jarro_alto', 'Jarro_Alto', -5.6, -6.6, 0, 1.3], ['pote_escuro', 'Pote_Escuro', -5.0, -6.2, 0, 1.3], ['cesto_alca', 'Cesto_Alca', 9.0, -7.0, 0.4, 1],
+  ['lenha', 'Lenha', -1.3, -5.6, 0.3, 1], ['saco', 'Saco', 12.6, -5.6, 0, 1.1], ['banquinho', 'Banquinho', 8.2, -7.0, 1.0, 1]]) { const p = P(id, x, z, r, k); por(OB[no], p.x, p.z, p.r, p.k, { circ: 0.3 }); }
 
 // túmulo de Lázaro: gruta na rocha, fora da vila, à direita; entrada (com a pedra) virada para a vila e a câmera
 const TUM = {}, ROLA = 1;   // lado para onde a pedra rola (ao longo da face)
 {
   // rochedo de 16 m com a porta da gruta (0,9 x 1,7 m) na face +x; a pedra redonda (2 m) é um modelo à parte
   const [gRocha, gPedra] = await Promise.all([baixar('../casa-porta/tumulo_rocha.glb?v=3'), baixar('../casa-porta/tumulo_pedra.glb')]);
-  const tum = gRocha.scene; tum.position.set(-18, 0, -11.5); tum.rotation.y = -0.38; sombra(tum); scene.add(tum); FADE.push(tum);
+  const tum = gRocha.scene, ptu = P('tumulo', -18, -11.5, -0.38); tum.position.set(ptu.x, 0, ptu.z); tum.rotation.y = ptu.r; sombra(tum); scene.add(tum); FADE.push(tum);
   tum.updateMatrixWorld(true);
   TUM.rocha = mapaAltura(tum.getObjectByName('Tumulo_Rocha'));
   const boca = tum.getObjectByName('Tumulo_Boca');
@@ -426,13 +434,14 @@ const TUM = {}, ROLA = 1;   // lado para onde a pedra rola (ao longo da face)
   Object.assign(TUM, { tum, pedra, p0: pedra.position.clone(), q0: pedra.quaternion.clone(), k: 0, alvo: 0, raio: rP });
   TUM.circ = { x: 0, z: 0, r: TUM.raio * 0.9 }; CIRC.push(TUM.circ);
   { const R2 = nos(gRoch), F2 = new THREE.Vector3(1, 0, 0).applyQuaternion(tum.quaternion).setY(0).normalize(), L2 = new THREE.Vector3(-F2.z, 0, F2.x), P0 = pedra.getWorldPosition(new THREE.Vector3()).setY(0);
-    for (const [no, df, dl, k, r] of [['Rocha6', 0.2, -2.5, 1.25, 0.4], ['Rocha9', -0.2, -3.7, 1.1, 1.3], ['Rocha3', 0.3, 2.7, 1.15, 2.2]]) {
+    for (const [i, no, df, dl, k0, r0] of [[1, 'Rocha6', 0.2, -2.5, 1.25, 0.4], [2, 'Rocha9', -0.2, -3.7, 1.1, 1.3], [3, 'Rocha3', 0.3, 2.7, 1.15, 2.2]]) {
       const m = R2[no]; if (!m) continue; const n = m.clone(); n.position.set(0, 0, 0);
-      const p = P0.clone().addScaledVector(F2, df).addScaledVector(L2, dl); n.position.set(p.x, 0.45, p.z); n.rotation.y = r; n.scale.setScalar(k); sombra(n); scene.add(n);
+      const q = P0.clone().addScaledVector(F2, df).addScaledVector(L2, dl), pr = P('rocha_tumulo_' + i, q.x, q.z, r0, k0), p = { x: pr.x, z: pr.z }, k = pr.k;
+      n.position.set(p.x, 0.45, p.z); n.rotation.y = pr.r; n.scale.setScalar(k); sombra(n); scene.add(n);
       CIRC.push({ x: p.x, z: p.z, r: 0.6 * k }); } }
   TUM.frente = new THREE.Vector3(1, 0, 0).applyQuaternion(tum.quaternion).setY(0).normalize();   // a porta olha para +x do modelo
   TUM.lugar = pedra.getWorldPosition(new THREE.Vector3()).setY(0);
-  { const L = TUM.lugar, F = TUM.frente; caminho([[-10, 2.2], [-7.4, -2.4], [L.x + F.x * 3.6 + 0.4, L.z + F.z * 3.6 + 1.2], [L.x + F.x * 1.5, L.z + F.z * 1.5]], 0.85); }
+  if (!POS.caminhos) { const L = TUM.lugar, F = TUM.frente; caminho([[-10, 2.2], [-7.4, -2.4], [L.x + F.x * 3.6 + 0.4, L.z + F.z * 3.6 + 1.2], [L.x + F.x * 1.5, L.z + F.z * 1.5]], 0.85); }
   // ciprestes atrás e pedras soltas, como num lugar de sepulturas
 
 }
@@ -468,12 +477,12 @@ const [nMarta, nLazaro, nPastor, nAldeao, nLenco, nRobusto, nBotoes, nMagro, nMo
 // forno: uma mulher sova a massa na mesa, um rapaz atiça o fogo
 const FO = globalThis.FORNO, LG = globalThis.LAGAR;
 const padeira = ator(nBotoes, 1.6, FO.NPC_Amassar.p.x, FO.NPC_Amassar.p.z, FO.NPC_Amassar.r, 'Parado');
-const foguista = ator(nMoco, 1.66, 2.8, -4.4, Math.atan2(1.8, -1.2), 'Parado');
+const pfo = P('npc_foguista', 2.8, -4.4, Math.atan2(1.8, -1.2)), foguista = ator(nMoco, 1.66, pfo.x, pfo.z, pfo.r, 'Parado');
 foguista.A.Parado && (foguista.A.Parado.timeScale = 0.8);
 // lagar: um homem pisa as uvas dentro do tanque; outro traz o cesto
 const pisador = ator(nMagro, 1.66, LG.tanque.x, LG.tanque.z, LG.r, 'Parado');
 pisador.o.position.y = LG.tanque.y - 0.05;
-const ajudante = ator(nAldeao, 1.7, 19.6, -3.6, Math.atan2(17.8 - 19.6, -3.0 + 3.6), 'Conversando');   // freguês na barraca da direita
+const paj = P('npc_fregues', 19.6, -3.6, Math.atan2(17.8 - 19.6, -3.0 + 3.6)), ajudante = ator(nAldeao, 1.7, paj.x, paj.z, paj.r, 'Conversando');   // freguês na barraca da direita
 for (const n of [foguista, ajudante]) CIRC.push({ x: n.o.position.x, z: n.o.position.z, r: 0.35 });
 // ---------- animação sob medida: IK de dois ossos (braço e perna) por cima do clipe parado ----------
 const _q1 = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), _q3 = new THREE.Quaternion();
@@ -670,17 +679,18 @@ function pisadorPasso(dt, t) {
   maos(st, cint.clone().addScaledVector(lado, 0.2).addScaledVector(f, 0.02), cint.clone().addScaledVector(lado, -0.2).addScaledVector(f, 0.02), dt, 1, 20);
 }
 // Marta na frente da porta da casa dela (a do meio); Lázaro perto do próprio sepulcro, fora do caminho da pedra
-const marta = (() => { const c = CASAS[1], p = c.mundo(c.px + 0.5, c.pz + 1.4); const n = ator(nMarta, 1.62, p.x, p.z, c.g.rotation.y, 'Parado'); n.r0 = c.g.rotation.y; return n; })();
-const lazaro = (() => { const lat = new THREE.Vector3(-TUM.frente.z, 0, TUM.frente.x), p = TUM.lugar.clone().addScaledVector(TUM.frente, 3.2).addScaledVector(lat, -2.4);
-  const n = ator(nLazaro, 1.72, p.x, p.z, Math.atan2(TUM.frente.x, TUM.frente.z), 'Parado'); n.r0 = n.o.rotation.y; return n; })();
+const marta = (() => { const c = CASAS[1], q = c.mundo(c.px + 0.5, c.pz + 1.4), p = P('npc_marta', q.x, q.z, c.g.rotation.y); const n = ator(nMarta, 1.62, p.x, p.z, p.r, 'Parado'); n.r0 = p.r; return n; })();
+const lazaro = (() => { const lat = new THREE.Vector3(-TUM.frente.z, 0, TUM.frente.x), q = TUM.lugar.clone().addScaledVector(TUM.frente, 3.2).addScaledVector(lat, -2.4);
+  const p = P('npc_lazaro', q.x, q.z, Math.atan2(TUM.frente.x, TUM.frente.z)); const n = ator(nLazaro, 1.72, p.x, p.z, p.r, 'Parado'); n.r0 = n.o.rotation.y; return n; })();
 const gCleo = await baixar('../cleopas/cleopas.glb');
-const cleopas = (() => { const c = CASAS[0], p = c.mundo(c.px + 0.2, c.pz + 3.4), q = c.mundo(c.px, c.pz); const n = ator(gCleo, 1.72, p.x, p.z, Math.atan2(q.x - p.x, q.z - p.z), 'Parado'); n.r0 = n.o.rotation.y; return n; })();
+const cleopas = (() => { const c = CASAS[0], p0 = c.mundo(c.px + 0.2, c.pz + 3.4), q = c.mundo(c.px, c.pz), p = P('npc_cleopas', p0.x, p0.z, Math.atan2(q.x - p0.x, q.z - p0.z)); const n = ator(gCleo, 1.72, p.x, p.z, p.r, 'Parado'); n.r0 = n.o.rotation.y; return n; })();
 for (const n of [marta, lazaro, cleopas]) { n.o.position.y = chaoTerra(n.o.position.x, n.o.position.z); CIRC.push({ x: n.o.position.x, z: n.o.position.z, r: 0.38 }); }
 const NOMES = new Map([[marta, 'Marta'], [lazaro, 'Lázaro'], [cleopas, 'Cléopas']]);
-const lenco = ator(nLenco, 1.6, B5.x + 0.25, B5.z + 1.5, Math.PI + 0.15, 'Parado');
-const vendedor = ator(nRobusto, 1.72, B5.x - 0.15, B5.z - 0.35, 0.15, 'Conversando');
+const ple = P('npc_freguesa', B5.x + 0.25, B5.z + 1.5, Math.PI + 0.15), pve = P('npc_vendedor', B5.x - 0.15, B5.z - 0.35, 0.15);
+const lenco = ator(nLenco, 1.6, ple.x, ple.z, ple.r, 'Parado');
+const vendedor = ator(nRobusto, 1.72, pve.x, pve.z, pve.r, 'Conversando');
 corpo(lenco); corpo(vendedor);
-CIRC.push({ x: B5.x + 0.25, z: B5.z + 1.5, r: 0.35 });
+CIRC.push({ x: ple.x, z: ple.z, r: 0.35 });
 // o vendedor fala, pega um produto no balcão e entrega; a freguesa estende a mão e recebe
 const PROD = new THREE.Mesh(new THREE.SphereGeometry(0.08, 7, 5), new THREE.MeshStandardMaterial({ color: 0xa63d2a, roughness: 1, flatShading: true }));
 PROD.castShadow = true; PROD.visible = false; scene.add(PROD);
@@ -707,10 +717,10 @@ function barracaPasso(dt, t) {
   maos(lenco, pos(lenco.os.bE[2]), aL || pos(lenco.os.bD[2]), dt, aL ? 1 : 0, 5);
 }
 const andante = ator(nRobusto, 1.74, 0, 0, 0, 'Andar');
-CIRC.push({ x: B5.x - 0.15, z: B5.z - 0.35, r: 0.3 });
+CIRC.push({ x: pve.x, z: pve.z, r: 0.3 });
 
 // ---------- poço: água no fundo, sarilho de madeira com roldana; uma mulher puxa o balde e enche o cântaro ----------
-const POCO = { c: new THREE.Vector3(-4.6, 0, 4.6) };
+const ppo = P('poco', -4.6, 4.6), POCO = { c: new THREE.Vector3(ppo.x, 0, ppo.z) };
 {
   const k = 0.8, n = nos(gOfi).Poco.clone(); n.position.set(0, 0, 0); n.scale.setScalar(k); n.updateMatrixWorld(true);
   const v = new THREE.Vector3(), bx = new THREE.Box3(); let topo = 0;
@@ -1183,13 +1193,13 @@ function acionar() {
 // placa
 {
   const mad = new THREE.MeshStandardMaterial({ color: 0x6b4a2c, roughness: 1, flatShading: true });
-  const poste = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 1.9, 6), mad); poste.position.set(-28.5, 0.95, 5.6);
+  const pp = P('placa', -28.5, 5.6, 0.5), poste = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 1.9, 6), mad); poste.position.set(pp.x, 0.95, pp.z);
   const c = document.createElement('canvas'); c.width = 256; c.height = 64; const g = c.getContext('2d');
   g.fillStyle = '#8a6a44'; g.fillRect(0, 0, 256, 64); g.fillStyle = '#f6ecd6'; g.font = 'bold 30px serif'; g.textAlign = 'center'; g.fillText('← Betfagé', 128, 43);
   const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace;
   const placa = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.36, 0.06), [mad, mad, mad, mad, new THREE.MeshStandardMaterial({ map: tx, roughness: 1 }), mad]);
-  placa.position.set(-28.5, 1.6, 5.62); placa.rotation.y = 0.5;
-  sombra(poste); sombra(placa); scene.add(poste, placa); CIRC.push({ x: -28.5, z: 5.6, r: 0.2 });
+  placa.position.set(pp.x, 1.6, pp.z + 0.02); placa.rotation.y = pp.r;
+  sombra(poste); sombra(placa); scene.add(poste, placa); CIRC.push({ x: pp.x, z: pp.z, r: 0.2 });
 }
 
 // ---------- transparência do que tampa o jogador ----------

@@ -3,6 +3,8 @@
 # Os objetos com lógica no jogo (casas com porta, forno, lagar, poço, aprisco, túmulo, barracas, parreira) entram na
 # coleção "Referencia_jogo" só para ver o mapa inteiro aqui; quem os põe no jogo é a página (mesmas posições).
 # Rodar: no Blender aberto (MCP) ou  blender -b -P betania_blender.py -- --export [--render]
+# ATENÇÃO: rodar este script de novo REFAZ o .blend do zero (árvores voltam ao sorteio; as posições do jogo vêm do betania_posicoes.json).
+# Para ajustar à mão: abra o betania.blend, mexa e rode o texto EXPORTAR_PARA_O_JOGO. Com --terreno, refaz só o chão no .blend atual.
 import bpy, bmesh, math, json, os, random, sys
 from mathutils import Vector
 from mathutils.kdtree import KDTree
@@ -17,26 +19,28 @@ def sm(e0, e1, x):
     k = (x - e0) / (e1 - e0); k = 0 if k < 0 else 1 if k > 1 else k
     return k * k * (3 - 2 * k)
 
-# ---------------- o que o jogo já tem (mesmas posições da página) ----------------
-CASAS = [(-3, -10.5, 0.1), (6.2, -11, -0.05)]
+# ---------------- posições do jogo: betania_posicoes.json (escrito pelo exportar_betania.py a partir do .blend) ----------------
+SO_TERRENO = '--terreno' in ARGS or globals().get('SO_TERRENO', False)     # refaz só terreno/caminhos/muretas no .blend aberto
+if SO_TERRENO:
+    _lib = {'__name__': 'lib'}; exec(open(OUT + '\\exportar_betania.py', encoding='utf-8').read(), _lib); POS = _lib['le_tudo']()
+else:
+    POS = json.load(open(OUT + '\\betania_posicoes.json', encoding='utf-8'))
+PT = POS['pontos']
+def pt(i, n=3): p = PT[i]; return (p['x'], p['z'], p.get('r', 0.0), p.get('k', 1.0))[:n]
+CASAS = [pt('casa_discipulo'), pt('casa_marta')]
 CASAS_NOVAS = [('Casa_Sobrado', 17.0, -12.0, -0.25), ('Casa_Alcapao', 25.0, -2.5, -0.55), ('Casa_Varal', -26.5, 18.0, 0.35 - math.pi / 2)]
-BARRACAS = [('Barraca5', 10.2, -3.4, 0.15), ('Barraca2', 17.8, -3.0, -0.2)]     # feirinha ao sul da estrada, longe das portas
-APRISCO = (-13.6, 8.4); FORNO = (1.2, -6.2); LAGAR = (-22.0, 11.5); POCO = (-4.6, 4.6)
-LAV = (4.4, 15.6, 7.4, 13.4)
-TUMULO = (-18.0, -11.5, -0.38)
-PEDRA_TUM = (-13.54, -8.43); FRENTE_TUM = (0.929, 0.371)
-PLACA = (-28.5, 5.6)
-PATIOS = [(1.6, -6.1, 3.0), (-22.0, 11.5, 3.4), (10.2, -3.4, 2.6), (17.8, -3.0, 2.6), (1.4, -2.8, 4.4), (-2.8, -6.2, 2.6), (-4.6, 4.6, 2.2), (-13.6, 8.4, 3.6)]
-# caminhos (iguais aos da página) + o do túmulo
-L, F = PEDRA_TUM, FRENTE_TUM
-CAMINHOS = [
-    ([(-60, 3), (-30, 3.2), (-20, 2.8), (-10, 2.2), (-2, 0.8), (6, 0.4), (12, 1.0), (16, 1.6)], 1.5),
-    ([(-2, 0.8), (-2.5, -3.5), (-2.7, -6.6)], 1.0),
-    ([(6, 0.4), (6.1, -3.5), (6.3, -7.2)], 1.0),
-    ([(12, 1.0), (14.2, -2.2), (14.6, -5.8)], 0.9),
-    ([(-10, 2.2), (-7.6, 6.4), (-8.2, 10.6)], 0.9),
-    ([(-10, 2.2), (-7.4, -2.4), (L[0] + F[0] * 3.6 + 0.4, L[1] + F[1] * 3.6 + 1.2), (L[0] + F[0] * 1.5, L[1] + F[1] * 1.5)], 0.85),
-]
+BARRACAS = [('Barraca5',) + pt('barraca_esq'), ('Barraca2',) + pt('barraca_dir')]
+APRISCO = pt('aprisco', 2); FORNO = pt('forno', 2); LAGAR = pt('lagar', 2); POCO = pt('poco', 2)
+_lv = POS['lavoura']; LAV = (_lv['x0'], _lv['x1'], _lv['z0'], _lv['z1'])
+TUMULO = pt('tumulo')
+# boca do túmulo: mesmo lugar relativo ao rochedo (medido no modelo)
+_c, _s = math.cos(TUMULO[2]), math.sin(TUMULO[2]); _lx, _lz = 5.2805, 1.1967
+PEDRA_TUM = (TUMULO[0] + _lx * _c + _lz * _s, TUMULO[1] - _lx * _s + _lz * _c); FRENTE_TUM = (_c, -_s)
+PLACA = pt('placa', 2)
+_cd = CASAS[0]
+PATIOS = [(FORNO[0] + 0.4, FORNO[1] + 0.1, 3.0), (LAGAR[0], LAGAR[1], 3.4)] + [(x, z, 2.6) for _, x, z, _ in BARRACAS] + [
+          (1.4, -2.8, 4.4), (_cd[0] + 0.2, _cd[1] + 4.3, 2.6), (POCO[0], POCO[1], 2.2), (APRISCO[0], APRISCO[1], 3.6)]
+CAMINHOS = [([tuple(p) for p in c['pts']], c['larg']) for c in POS['caminhos']]
 AREA = (-30, 30, -21, 23)          # onde o jogador anda (o chão aqui é plano, y = 0)
 
 # curvas dos caminhos amostradas (catmull-rom, como na página)
@@ -96,10 +100,19 @@ def limpa_cena():
     for blk in (bpy.data.meshes, bpy.data.materials, bpy.data.images, bpy.data.cameras, bpy.data.lights, bpy.data.curves):
         for b in list(blk):
             if b.users == 0: blk.remove(b)
-limpa_cena()
+if SO_TERRENO:
+    _ce = bpy.data.collections.get('Cenario_exportado')
+    for o in (list(_ce.all_objects) if _ce else []): bpy.data.objects.remove(o, do_unlink=True)
+    for blk in (bpy.data.meshes, bpy.data.materials):
+        for b in list(blk):
+            if b.users == 0: blk.remove(b)
+else:
+    limpa_cena()
 sc = bpy.context.scene
 def colecao(nome):
-    c = bpy.data.collections.new(nome); sc.collection.children.link(c); return c
+    c = bpy.data.collections.get(nome)
+    if c is None: c = bpy.data.collections.new(nome); sc.collection.children.link(c)
+    return c
 col_exp = colecao('Cenario_exportado')       # terreno, caminhos, muretas
 col_veg = colecao('Vegetacao_e_pedras')      # vai para o layout (o jogo põe e instancia)
 col_ref = colecao('Referencia_jogo')         # objetos com lógica: só para ver aqui (o jogo põe sozinho)
@@ -181,12 +194,16 @@ def importa(arq):
     for o in [o for o in bpy.data.objects if o not in antes]:
         for c in list(o.users_collection): c.objects.unlink(o)
         col_proto.objects.link(o)
-        if o.parent is None: o.location = (0, 0, 0); PROTO[(arq, o.name.split('.')[0])] = o
-for arq in ['casa-porta\\muretas.glb', 'casa-porta\\rochas.glb', 'casa-porta\\arvores_tripo.glb', 'casa-porta\\arvores_frondosas.glb',
-            'casa-porta\\arvores_par.glb', 'diorama-ciprestes\\ciprestes.glb', 'casa-porta\\tamareiras.glb', 'casa-porta\\casa_porta.glb',
-            'casa-porta\\barracas.glb', 'casa-porta\\parreiras_tripo.glb', 'casa-porta\\pastoril.glb', 'casa-porta\\oficios.glb',
-            'casa-porta\\tumulo_rocha.glb', 'casa-porta\\tumulo_pedra.glb', 'forno-pao\\forno.glb', 'lagar\\lagar.glb', 'casas\\casas_betfage.glb', 'casa-porta\\insula.glb', 'parreiras\\parreiras_v2.glb', 'cesto-uvas\\cesto_uvas.glb', 'flores\\flores.glb', 'flores\\plantas_betfage.glb']:
-    importa(arq)
+        if o.parent is None: o['arq'] = arq; o['loc0'] = list(o.location); o.location = (0, 0, 0); PROTO[(arq, o.name.split('.')[0])] = o
+if SO_TERRENO:
+    for o in col_proto.objects:
+        if 'arq' in o and o.parent is None: PROTO[(o['arq'], o.name.split('.')[0])] = o
+else:
+    for arq in ['casa-porta\\muretas.glb', 'casa-porta\\rochas.glb', 'casa-porta\\arvores_tripo.glb', 'casa-porta\\arvores_frondosas.glb',
+                'casa-porta\\arvores_par.glb', 'diorama-ciprestes\\ciprestes.glb', 'casa-porta\\tamareiras.glb', 'casa-porta\\casa_porta.glb',
+                'casa-porta\\barracas.glb', 'casa-porta\\parreiras_tripo.glb', 'casa-porta\\pastoril.glb', 'casa-porta\\oficios.glb',
+                'casa-porta\\tumulo_rocha.glb', 'casa-porta\\tumulo_pedra.glb', 'forno-pao\\forno.glb', 'lagar\\lagar.glb', 'casas\\casas_betfage.glb', 'casa-porta\\insula.glb', 'parreiras\\parreiras_v2.glb', 'cesto-uvas\\cesto_uvas.glb', 'flores\\flores.glb', 'flores\\plantas_betfage.glb', 'casa-porta\\objetos_casa.glb']:
+        importa(arq)
 col_proto.hide_render = True; col_proto.hide_viewport = True
 
 def copia(o, col):
@@ -194,7 +211,8 @@ def copia(o, col):
     for c in o.children: cc = copia(c, col); cc.parent = n
     return n
 LAYOUT = []; LONGE = False
-def poe(arq, no, x, z, r=0.0, k=1.0, y=None, afunda=0.05, col=None, jogo=True):
+def poe(arq, no, x, z, r=0.0, k=1.0, y=None, afunda=0.05, col=None, jogo=True, jid=None, ox=0.0, oz=0.0, sem_giro=False, escala=False):
+    if SO_TERRENO: return None
     o = PROTO.get((arq, no))
     if o is None: print('FALTA', arq, no); return None
     if y is None: y = max([altura(x, z)] + [altura(x + 0.35 * math.cos(a_), z + 0.35 * math.sin(a_)) for a_ in (0, 1.57, 3.14, 4.71)])   # assenta no ponto mais alto (encosta)
@@ -202,22 +220,98 @@ def poe(arq, no, x, z, r=0.0, k=1.0, y=None, afunda=0.05, col=None, jogo=True):
     n.location = (x, -z, y - afunda); n.rotation_mode = 'XYZ'
     rx, ry, rz = o.rotation_euler; n.rotation_euler = (rx, ry, rz + r)
     n.scale = (o.scale[0] * k, o.scale[1] * k, o.scale[2] * k)
+    if jogo: n['glb'] = arq.replace('\\', '/'); n['no'] = no; n['f'] = LONGE; n['afunda'] = afunda; n['r0'] = rz; n['k0'] = o.scale[0]; n['ordem'] = len(LAYOUT); n['x0'], n['z0'], n['y0'] = x, z, y - afunda
+    if jid:
+        n['jogo'] = jid; n['r0'] = rz; n['ox'] = ox; n['oz'] = oz; n.name = 'JOGO_' + jid
+        if sem_giro: n['sem_giro'] = 1
+        if escala: n['k0'] = o.scale[0]
     if jogo: LAYOUT.append({'glb': arq.replace('\\', '/'), 'no': no, 'p': [round(x, 3), round(y - afunda, 3), round(z, 3)], 'r': round(r, 3), 'k': round(k, 3), **({'f': 1} if LONGE else {})})
     return n
 
-# referência dos objetos do jogo (não exportados)
-for x, z, r in CASAS:
-    for no in ('Casa2', 'Casa2_Porta'):
-        if ('casa-porta\\casa_porta.glb', no) in PROTO: poe('casa-porta\\casa_porta.glb', no, x, z, r, 1.0, y=0, afunda=0, col=col_ref, jogo=False)
-for no_, x, z, r in CASAS_NOVAS: poe('casas\\casas_betfage.glb', no_, x, z, r, 1.0, y=0, afunda=0.02)
-for no, x, z, r in BARRACAS: poe('casa-porta\\barracas.glb', no, x, z, r, 1.0, y=0, afunda=0, col=col_ref, jogo=False)
-ap = poe('casa-porta\\pastoril.glb', 'Muro_Curvo', APRISCO[0], APRISCO[1], 0.0, 2.2, y=0, afunda=0, col=col_ref, jogo=False)
-if ap: ap.scale.z *= 1.3 / 2.2
-poe('casa-porta\\oficios.glb', 'Poco', POCO[0] + 0.2, POCO[1], 0, 0.8, y=0, afunda=0, col=col_ref, jogo=False)
-tum = poe('casa-porta\\tumulo_rocha.glb', 'Tumulo_Rocha', TUMULO[0], TUMULO[1], TUMULO[2], 1.0, y=0, afunda=0, col=col_ref, jogo=False)
-for nome, (x, z) in [('Forno_Corpo', FORNO), ('Lagar_Rocha', LAGAR)]:
-    arq = 'forno-pao\\forno.glb' if nome.startswith('Forno') else 'lagar\\lagar.glb'
-    poe(arq, nome, x, z, 0.4 if nome.startswith('Forno') else 0.7, 1.0, y=0, afunda=0, col=col_ref, jogo=False)
+# objetos do jogo: a posição de cada um vai para betania_posicoes.json (mexa à vontade no Blender e exporte)
+from mathutils import Matrix
+import re
+col_cam = colecao('Jogo_caminhos')
+def grupo(arq, raiz, x, z, r, jid, filtro=lambda n: True, escala={}):
+    # monta o modelo inteiro (todas as peças do arquivo) na mesma disposição da página; só a peça raiz se seleciona e move
+    pecas = [(n, o) for (a, n), o in PROTO.items() if a == arq and filtro(n)]
+    base = Vector(PROTO[(arq, raiz)]['loc0']) if raiz else Vector((0, 0, 0))
+    M0 = Matrix.Translation((x, -z, 0)) @ Matrix.Rotation(r, 4, 'Z') @ Matrix.Translation(-base)
+    def mat(o, n):
+        s = Vector(o.scale); e = escala.get(n)
+        if e: s = Vector((s.x * e[0], s.y * e[1], s.z * e[2]))
+        return M0 @ Matrix.LocRotScale(Vector(o['loc0']), o.rotation_euler, s)
+    if raiz:
+        o = PROTO[(arq, raiz)]; chefe = copia(o, col_ref); Mc = mat(o, raiz); chefe.matrix_basis = Mc
+        chefe['r0'] = chefe.rotation_euler.z - r
+    else:
+        chefe = bpy.data.objects.new('JOGO_' + jid, None); col_ref.objects.link(chefe); chefe.empty_display_size = 2.5; chefe.empty_display_type = 'ARROWS'
+        chefe.location = (x, -z, 0); chefe.rotation_euler = (0, 0, r); chefe['r0'] = 0.0; Mc = chefe.matrix_basis.copy()
+    chefe['jogo'] = jid; chefe.name = 'JOGO_' + jid
+    for n, o in pecas:
+        if n == raiz: continue
+        c = copia(o, col_ref); c.parent = chefe; c.matrix_parent_inverse.identity(); c.matrix_basis = Mc.inverted() @ mat(o, n); c.hide_select = True
+    return chefe
+def filho(o, pai):
+    # prende sem mudar o lugar (o.matrix_basis já é a posição no mundo: os dois ainda não têm pai)
+    o.parent = pai; o.matrix_parent_inverse = pai.matrix_basis.inverted()
+def mat_cor(nome, cor):
+    m = bpy.data.materials.get(nome) or bpy.data.materials.new(nome); m.diffuse_color = cor + (1,)
+    m.use_nodes = True; bs = next(n for n in m.node_tree.nodes if n.type == 'BSDF_PRINCIPLED'); bs.inputs['Base Color'].default_value = cor + (1,)
+    return m
+def boneco(jid, nome, cor, alt=1.7):
+    # marcador de personagem: cilindro com um "nariz" que mostra para onde ele olha (frente = -Y local)
+    bm = bmesh.new()
+    bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=0.22, radius2=0.18, depth=alt, matrix=Matrix.Translation((0, 0, alt / 2)))
+    bmesh.ops.create_cone(bm, cap_ends=True, segments=4, radius1=0.09, radius2=0.0, depth=0.35, matrix=Matrix.Translation((0, -0.32, alt * 0.85)) @ Matrix.Rotation(math.radians(90), 4, 'X'))
+    me = bpy.data.meshes.new('NPC_' + nome); bm.to_mesh(me); bm.free(); me.materials.append(mat_cor('Marcador_' + nome, cor))
+    p = PT[jid]; o = bpy.data.objects.new('NPC_' + nome, me); col_ref.objects.link(o)
+    o.location = (p['x'], -p['z'], 0); o.rotation_euler = (0, 0, p['r']); o['jogo'] = jid; o['r0'] = 0.0; o.show_name = True; o.color = cor + (1,)
+    return o
+def objetos_do_jogo():
+    for no_, x, z, r in CASAS_NOVAS: poe('casas\\casas_betfage.glb', no_, x, z, r, 1.0, y=0, afunda=0.02)     # casas sem porta: vão no layout
+    for jid, (x, z, r) in zip(('casa_discipulo', 'casa_marta'), CASAS):
+        c = poe('casa-porta\\casa_porta.glb', 'Casa2', x, z, r, 1.0, y=0, afunda=0, col=col_ref, jogo=False, jid=jid)
+        p = poe('casa-porta\\casa_porta.glb', 'Casa2_Porta', x, z, r, 1.0, y=0, afunda=0, col=col_ref, jogo=False)
+        if p: filho(p, c); p.hide_select = True
+    for (no, x, z, r), jid in zip(BARRACAS, ('barraca_esq', 'barraca_dir')):
+        poe('casa-porta\\barracas.glb', no, x, z, r, 1.0, y=0, afunda=0, col=col_ref, jogo=False, jid=jid)
+    ap = poe('casa-porta\\pastoril.glb', 'Muro_Curvo', APRISCO[0], APRISCO[1], 0.0, 2.2, y=0, afunda=0, col=col_ref, jogo=False, jid='aprisco', sem_giro=True)
+    ap.scale.z *= 1.3 / 2.2
+    poe('casa-porta\\oficios.glb', 'Poco', POCO[0] + 0.2, POCO[1], 0, 0.8, y=0, afunda=0, col=col_ref, jogo=False, jid='poco', ox=-0.2, sem_giro=True)
+    tum = grupo('casa-porta\\tumulo_rocha.glb', None, TUMULO[0], TUMULO[1], TUMULO[2], 'tumulo')
+    for i, no in enumerate(('Rocha6', 'Rocha9', 'Rocha3')):
+        jid = 'rocha_tumulo_%d' % (i + 1); x, z, r, k = pt(jid, 4)
+        o = poe('casa-porta\\rochas.glb', no, x, z, r, k, y=0.45, afunda=0, col=col_ref, jogo=False, jid=jid, escala=True)
+        filho(o, tum)
+    fx, fz, fr = pt('forno')
+    grupo('forno-pao\\forno.glb', 'Forno_Corpo', fx, fz, fr, 'forno', filtro=lambda n: n.startswith('Forno_') and not re.search('Massa_[23]|Pao_', n), escala={'Forno_Mesa': (1.35, 1.35, 1)})
+    lx, lz, lr = pt('lagar')
+    grupo('lagar\\lagar.glb', 'Lagar_Rocha', lx, lz, lr, 'lagar')
+    for jid, no in [('jarro_alto', 'Jarro_Alto'), ('pote_escuro', 'Pote_Escuro'), ('cesto_alca', 'Cesto_Alca'), ('lenha', 'Lenha'), ('saco', 'Saco'), ('banquinho', 'Banquinho')]:
+        x, z, r, k = pt(jid, 4); poe('casa-porta\\objetos_casa.glb', no, x, z, r, k, y=0, afunda=0, col=col_ref, jogo=False, jid=jid, escala=True)
+    # placa para Betfagé (a página desenha a placa; aqui só a forma)
+    bm = bmesh.new()
+    bmesh.ops.create_cube(bm, size=1, matrix=Matrix.Translation((0, 0, 0.95)) @ Matrix.Diagonal((0.15, 0.15, 1.9, 1)))
+    bmesh.ops.create_cube(bm, size=1, matrix=Matrix.Translation((0, 0.02, 1.6)) @ Matrix.Diagonal((1.4, 0.06, 0.36, 1)))
+    me = bpy.data.meshes.new('Placa'); bm.to_mesh(me); bm.free(); me.materials.append(mat_cor('Placa', (0.42, 0.29, 0.17)))
+    x, z, r = pt('placa'); o = bpy.data.objects.new('JOGO_placa', me); col_ref.objects.link(o)
+    o.location = (x, -z, 0); o.rotation_euler = (0, 0, r); o['jogo'] = 'placa'; o['r0'] = 0.0
+    for jid, nome, cor in [('npc_marta', 'Marta', (0.75, 0.25, 0.3)), ('npc_lazaro', 'Lazaro', (0.3, 0.45, 0.8)), ('npc_cleopas', 'Cleopas', (0.85, 0.6, 0.2)),
+                           ('npc_freguesa', 'Freguesa', (0.6, 0.4, 0.7)), ('npc_vendedor', 'Vendedor', (0.5, 0.35, 0.25)), ('npc_fregues', 'Fregues', (0.4, 0.6, 0.4)),
+                           ('npc_foguista', 'Foguista', (0.85, 0.35, 0.1))]:
+        boneco(jid, nome, cor)
+    # lavoura (terra arada): mova e estique em X/Y, sem girar
+    x0, x1, z0, z1 = LAV
+    me = bpy.data.meshes.new('Lavoura'); me.from_pydata([(x0, -z0, 0.06), (x1, -z0, 0.06), (x1, -z1, 0.06), (x0, -z1, 0.06)], [], [(0, 3, 2, 1)])
+    me.materials.append(mat_cor('Lavoura', (0.45, 0.3, 0.18))); o = bpy.data.objects.new('JOGO_lavoura', me); col_ref.objects.link(o); o['lavoura'] = 1
+    # caminhos: curvas editáveis (selecione, Tab, mova os pontos)
+    for i, (pts, larg) in enumerate(CAMINHOS):
+        cu = bpy.data.curves.new('Caminho_%d' % (i + 1), 'CURVE'); cu.dimensions = '3D'; sp = cu.splines.new('POLY'); sp.points.add(len(pts) - 1)
+        for p_, (x, z) in zip(sp.points, pts): p_.co = (x, -z, altura(x, z) + 0.2, 1)
+        cu.bevel_depth = 0.08; o = bpy.data.objects.new('Caminho_%d' % (i + 1), cu); col_cam.objects.link(o); o['larg'] = larg; o.show_in_front = True
+if not SO_TERRENO:
+    objetos_do_jogo()
 
 # ---------------- zonas livres (nada de árvore, pedra ou muro em cima) ----------------
 ZONAS = [(LAGAR[0], LAGAR[1] + 1.5, 5.0)] + [(x, z, 4.6) for x, z, r in CASAS] + [(x, z, 5.2 if 'Sobrado' in n_ else 3.6) for n_, x, z, r in CASAS_NOVAS] + [(x, z, 2.6) for _, x, z, _ in BARRACAS] + [
@@ -284,7 +378,7 @@ VINHA = []
 # meia-lua atrás do lagar (do lado oposto à câmera): a frente fica livre para ver o lagar
 for no_, ang in [('Parreira1_Pergola', 150), ('Parreira2_Poste', 192), ('Parreira2_Poste', 225), ('Parreira2_Poste', 258), ('Parreira3_PergolaCurta', 300)]:
     a_ = math.radians(ang); x_, z_ = LAGAR[0] + math.cos(a_) * 3.4, LAGAR[1] + math.sin(a_) * 3.4
-    poe('parreiras\parreiras_v2.glb', no_, x_, z_, -a_ if 'Pergola' in no_ else random.random() * 6.28, 1.0, afunda=0.05); REG.append((x_, z_, 1.0)); VINHA.append((x_, z_))
+    poe('parreiras\\parreiras_v2.glb', no_, x_, z_, -a_ if 'Pergola' in no_ else random.random() * 6.28, 1.0, afunda=0.05); REG.append((x_, z_, 1.0)); VINHA.append((x_, z_))
 for dx, dz, r_ in [(2.0, 1.4, 0.3), (-2.1, 1.0, 1.2), (1.4, -2.0, 2.0)]:
     poe('cesto-uvas\\cesto_uvas.glb', 'CestoUvas', LAGAR[0] + dx, LAGAR[1] + dz, r_, 1.0, afunda=0.0); REG.append((LAGAR[0] + dx, LAGAR[1] + dz, 0.5))
 # ---------------- flores e moitas espinhosas (instanciadas no jogo) ----------------
@@ -362,29 +456,26 @@ for dx, dz, k in [(-3.5, 6.0, 0.9)]:
     if cabe(x, z, 0.5, 0.7): poe(*random.choice(PEDRAS), x, z, random.random() * 6, k, afunda=0.15); REG.append((x, z, 0.6 * k))
 
 # ---------------- câmera do jogo e luz (para ver aqui) ----------------
-camb = bpy.data.objects.new('Camera_jogo', bpy.data.cameras.new('Camera_jogo')); sc.collection.objects.link(camb); sc.camera = camb
-camb.data.lens_unit = 'FOV'; camb.data.angle = math.radians(24 * 1.6); camb.data.clip_end = 600
-dirc = Vector((1, 1.15, 1)).normalized(); d3 = Vector((dirc.x, -dirc.z, dirc.y))
-alvo = Vector((0, -2, 0)); camb.location = alvo + d3 * 62; camb.rotation_euler = (-d3).to_track_quat('-Z', 'Y').to_euler()
-sol = bpy.data.objects.new('Sol', bpy.data.lights.new('Sol', 'SUN')); sc.collection.objects.link(sol)
-sol.data.energy = 3.0; sol.data.color = (1.0, 0.93, 0.82); sol.rotation_euler = (math.radians(48), 0, math.radians(-140))
-sc.world = bpy.data.worlds.new('Ceu'); sc.world.use_nodes = True
-bg = next(n for n in sc.world.node_tree.nodes if n.type == 'BACKGROUND'); bg.inputs['Color'].default_value = (0.78, 0.84, 0.86, 1); bg.inputs['Strength'].default_value = 0.8
-for eng in ('BLENDER_EEVEE', 'BLENDER_EEVEE_NEXT'):
-    try: sc.render.engine = eng; break
-    except TypeError: pass
-sc.render.resolution_x, sc.render.resolution_y = 1600, 1000
+if not SO_TERRENO:
+    camb = bpy.data.objects.new('Camera_jogo', bpy.data.cameras.new('Camera_jogo')); sc.collection.objects.link(camb); sc.camera = camb
+    camb.data.lens_unit = 'FOV'; camb.data.angle = math.radians(24 * 1.6); camb.data.clip_end = 600
+    dirc = Vector((1, 1.15, 1)).normalized(); d3 = Vector((dirc.x, -dirc.z, dirc.y))
+    alvo = Vector((0, -2, 0)); camb.location = alvo + d3 * 62; camb.rotation_euler = (-d3).to_track_quat('-Z', 'Y').to_euler()
+    sol = bpy.data.objects.new('Sol', bpy.data.lights.new('Sol', 'SUN')); sc.collection.objects.link(sol)
+    sol.data.energy = 3.0; sol.data.color = (1.0, 0.93, 0.82); sol.rotation_euler = (math.radians(48), 0, math.radians(-140))
+    sc.world = bpy.data.worlds.new('Ceu'); sc.world.use_nodes = True
+    bg = next(n for n in sc.world.node_tree.nodes if n.type == 'BACKGROUND'); bg.inputs['Color'].default_value = (0.78, 0.84, 0.86, 1); bg.inputs['Strength'].default_value = 0.8
+    for eng in ('BLENDER_EEVEE', 'BLENDER_EEVEE_NEXT'):
+        try: sc.render.engine = eng; break
+        except TypeError: pass
+    sc.render.resolution_x, sc.render.resolution_y = 1600, 1000
 
 if RENDER:
     sc.render.filepath = OUT + '\\betania_previa.png'; bpy.ops.render.render(write_still=True)
+# textos dentro do .blend para rodar pelo Blender (aba Scripting > Run Script)
+for nome, src in [('EXPORTAR_PARA_O_JOGO', "# exporta o que está na cena para o jogo e salva o .blend\nRODAR_EXPORTACAO = True\nexec(open(r'%s\\exportar_betania.py', encoding='utf-8').read())\n" % OUT),
+                  ('REFAZER_TERRENO', "# refaz terreno, caminhos e muretas seguindo as posições atuais (casas, túmulo, caminhos...) e exporta\nSO_TERRENO = True\nEXPORTAR = True\nexec(open(r'%s\\betania_blender.py', encoding='utf-8').read())\n" % OUT)]:
+    tx = bpy.data.texts.get(nome) or bpy.data.texts.new(nome); tx.clear(); tx.write(src)
 if EXPORT:
-    bpy.ops.object.select_all(action='DESELECT')
-    for o in col_exp.all_objects: o.select_set(True)
-    bpy.context.view_layer.objects.active = terr
-    saida = OUT + '\\betania_cenario.glb'
-    bpy.ops.export_scene.gltf(filepath=saida, use_selection=True, export_format='GLB', export_normals=False, export_vertex_color='MATERIAL',
-                              export_image_format='WEBP', export_image_quality=80, export_meshopt_compression_enable=True)
-    json.dump({'objetos': LAYOUT}, open(OUT + '\\betania_layout.json', 'w'), separators=(',', ':'))
-    bpy.ops.wm.save_as_mainfile(filepath=OUT + '\\betania.blend')
-    print('EXPORT', os.path.getsize(saida), len(LAYOUT))
+    _lib = {'__name__': 'lib'}; exec(open(OUT + '\\exportar_betania.py', encoding='utf-8').read(), _lib); _lib['exporta']()
 print('FIM', len(col_exp.all_objects), len(col_veg.all_objects), len(col_ref.all_objects))
