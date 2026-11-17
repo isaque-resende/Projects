@@ -47,6 +47,20 @@ Os obstáculos fixos da Betânia são desenhados no `betania.blend`, na coleçã
 a pedra do túmulo (que rola) e o muro do aprisco (que depende da porteira). Em Betfagé, os obstáculos já vêm
 do layout do Blender (`obst`).
 
+## Betfagé no Blender
+
+`fase-betfage/betfage.blend` é agora o original de Betfagé, como o `betania.blend` é o da Betânia. Mexa nele e rode
+o texto **EXPORTAR_PARA_O_JOGO** (aba Scripting > Run Script): ele grava `betfage_cenario.glb` e
+`betfage_layout.json` e salva o `.blend`.
+
+- Árvores, pedras, casas e objetos (coleção `Cenario_objetos`) e as moitas e malvas podem ser movidos, girados,
+  escalados, duplicados ou apagados. Quem você arrastar volta a assentar no chão ao exportar.
+- Colisão: coleção `Colisao`, igual à da Betânia (círculos presos ao dono; objeto novo ganha o círculo padrão).
+- Referências do jogo (coleção `Referencia_jogo`): `Campo_Trigal` (o retângulo do trigal: mova ou escale),
+  `JOGO_figseca`, `JOGO_pasto`, `JOGO_cocho`, `JOGO_manjedoura`. A ínsula é `Insula_Jogo` e a carroça é `Carroca_Jogo`.
+- Terreno, estrada e muros (coleção `Exportar`) ficam travados contra clique. Para mudar o relevo, é melhor pedir:
+  o `betfage_blender.py` gera a fase do zero (e **apaga** o que foi mexido à mão no `.blend`).
+
 ## Regras para mexer
 
 - Os módulos de uma fase são montados em ordem fixa (cada um importa o anterior). A ordem de criação dos

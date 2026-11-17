@@ -2,7 +2,7 @@
 # Coordenadas da fase em (a, b): a = rumo ao canto direito, b = rumo ao canto esquerdo; (0,0) = canto da frente.
 # Mundo three.js: x = S/2 - b*S, z = S/2 - a*S, y = altura.  Blender: (x, -z, y).
 import bpy, bmesh, mathutils, math, json, os, random, sys
-from mathutils import Vector
+from mathutils import Vector, Matrix
 from mathutils.kdtree import KDTree
 
 ROOT = r"M:\Claude\github\Projects-animais\assets-vila"
@@ -224,12 +224,18 @@ def poe(arq, no, x, z, r=0.0, k=1.0, y=None, afunda=0.05, exporta=False, jogo=Tr
     rx, ry, rz = o.rotation_euler; n.rotation_euler = (rx, ry, rz + r)
     kk = k if isinstance(k, tuple) else (k, k, k)
     n.scale = (o.scale[0] * kk[0], o.scale[1] * kk[2], o.scale[2] * kk[1])
-    if jogo and not exporta: LAYOUT.append({'glb': arq.replace('\\', '/'), 'no': no, 'p': [round(x, 3), round(y - afunda, 3), round(z, 3)], 'r': round(r, 3), 'k': round(k, 3), **({'f': 1} if LONGE else {})})
+    if jogo and not exporta:
+        LAYOUT.append({'glb': arq.replace('\\', '/'), 'no': no, 'p': [round(x, 3), round(y - afunda, 3), round(z, 3)], 'r': round(r, 3), 'k': round(k, 3), **({'f': 1} if LONGE else {})})
+        # marcas para o exportador (exportar_betfage.py) ler o objeto de volta do .blend
+        n['glb'] = arq.replace('\\', '/'); n['no'] = no; n['r0'] = rz; n['k0'] = o.scale[0]; n['afunda'] = afunda
+        n['ordem'] = len(LAYOUT) - 1; n['x0'], n['z0'] = x, z
+        if LONGE: n['f'] = 1
     return n
 
 for arq in ['casa-porta\\muros_kit.glb', 'casa-porta\\insula.glb', 'diorama-ciprestes\\ciprestes.glb', 'casa-porta\\casa_porta.glb',
             'casa-porta\\rochas.glb', 'colheita-trigo\\colheita.glb', 'casa-porta\\pastoril.glb', 'casa-porta\\oficios.glb', 'casa-porta\\objetos_casa.glb',
-            'casa-porta\\arvores_tripo.glb', 'trigal\\trigo.glb', 'casas\\casas_betfage.glb', 'casa-porta\\arvores_frondosas.glb', 'casa-porta\\arvores_par.glb', 'casa-porta\\muretas.glb', 'casa-porta\\tamareiras.glb']:
+            'casa-porta\\arvores_tripo.glb', 'trigal\\trigo.glb', 'casas\\casas_betfage.glb', 'casa-porta\\arvores_frondosas.glb', 'casa-porta\\arvores_par.glb', 'casa-porta\\muretas.glb', 'casa-porta\\tamareiras.glb',
+            'flores\\plantas_betfage.glb']:
     importa(arq)
 col_proto.hide_render = True; col_proto.hide_viewport = True
 
@@ -373,7 +379,8 @@ def idx_ab(a, b):
 px_, pz_ = apx, apz
 
 # casas: geminadas, em degraus
-poe('casa-porta\insula.glb', 'Insula', ix, iz, INSULA_R, 1.0, y=HINS, afunda=0, jogo=False)
+_ins = poe('casa-porta\insula.glb', 'Insula', ix, iz, INSULA_R, 1.0, y=HINS, afunda=0, jogo=False)
+_ins.name = 'Insula_Jogo'; _ins['r0'] = PROTO[('casa-porta\\insula.glb', 'Insula')].rotation_euler.z
 INSULA_LAY = {'p': [round(ix, 3), HINS, round(iz, 3)], 'r': INSULA_R}
 
 def plano(x, z, r=0.5):
@@ -518,7 +525,8 @@ if RENDER:
             poe(*TRIGO, xx + random.random() * 0.3, zz + random.random() * 0.3, random.random() * 6, 1.0, y=HCAMPO, afunda=0.03, jogo=False); zz += 0.55
         xx += 0.55
 # carroça, feixes em pé, prensa, cocho
-poe('colheita-trigo\\colheita.glb', 'Carroca', crx, crz, -math.pi / 2, 1.0, y=HCARRO, afunda=0.02, jogo=False)
+_car = poe('colheita-trigo\\colheita.glb', 'Carroca', crx, crz, -math.pi / 2, 1.0, y=HCARRO, afunda=0.02, jogo=False)
+_car.name = 'Carroca_Jogo'; _car['afunda'] = 0.02           # no jogo a carroça é outra (a do kit), posta neste lugar
 for a, b in [(0.86, 0.02), (0.88, 0.0), (0.85, -0.01), (0.89, 0.04), (0.87, 0.05)]:
     x, z = xz(a, b); poe('colheita-trigo\\colheita.glb', 'Feixe_EmPe', x, z, random.random() * 6, 1.0); OBST.append((round(x, 2), round(z, 2), 0.3))
 cox, coz = jmx, jmz
@@ -564,9 +572,18 @@ for i in range(300):
 # ---------------- moitas espinhosas e malvas (instanciadas no jogo), sempre de frente para a câmera ----------------
 PLANTAS = []
 FRENTE = math.pi / 4          # no three.js, girar pi/4 põe a frente do modelo (+z) virada para a câmera
+def poe_planta(e, ordem):
+    # a planta também vira objeto no Blender (marcado "planta"), para poder ser movida e exportada de volta
+    nome, x, y, z, r, k = e
+    o = PROTO.get(('flores\\plantas_betfage.glb', nome))
+    if o is None: print('FALTA planta', nome); return
+    n = copia(o, col_prev); n.location = (x, -z, y); n.rotation_mode = 'XYZ'
+    rx, ry, rz = o.rotation_euler; n.rotation_euler = (rx, ry, rz + r); n.scale = tuple(s * k for s in o.scale)
+    n['planta'] = nome; n['r0'] = rz; n['k0'] = o.scale[0]; n['afunda'] = 0.04; n['ordem'] = ordem; n['x0'], n['z0'] = x, z
 def planta(nome, x, z, k, r_obst=0.0):
     if not livre(x, z, 0.6) or na_zona(x, z, 0.4) or any(math.hypot(x - p[1], z - p[3]) < 1.1 for p in PLANTAS): return False
     PLANTAS.append([nome, round(x, 2), round(altura(x, z) - 0.04, 3), round(z, 2), round(FRENTE + (random.random() - 0.5) * 0.6, 3), round(k, 2)])
+    poe_planta(PLANTAS[-1], len(PLANTAS) - 1)
     if r_obst: OBST.append((round(x, 2), round(z, 2), r_obst))
     return True
 random.seed(11)
@@ -623,37 +640,105 @@ for eng in ('BLENDER_EEVEE', 'BLENDER_EEVEE_NEXT'):
     try: sc.render.engine = eng; break
     except TypeError: pass
 
+# ---------------- trigal no plano, ao pé do morro (antes ficava na encosta) ----------------
+# O campo vai para onde havia um bosque à direita da carroça. O chão ali é nivelado (um patamar com borda suave),
+# o bosque que ocupava o lugar sai, e a encosta onde o campo ficava volta a ser grama.
+if '--sem-mudanca' not in sys.argv:
+    NOVO = (12.5, 21.9, -23.4, -18.2)                       # x0, x1, z0, z1
+    ncx, ncz, nhx, nhz = (NOVO[0] + NOVO[1]) / 2, (NOVO[2] + NOVO[3]) / 2, (NOVO[1] - NOVO[0]) / 2, (NOVO[3] - NOVO[2]) / 2
+    amostras = [altura(NOVO[0] + (NOVO[1] - NOVO[0]) * i / 8, NOVO[2] + (NOVO[3] - NOVO[2]) * k / 5) for i in range(9) for k in range(6)]
+    HN = round(sum(amostras) / len(amostras), 2)
+    FALHA = 2.6                                              # largura da borda que liga o patamar ao terreno em volta
+    PADS.append(('r', ncx, ncz, nhx + 0.6, nhz + 0.6, FALHA, HN))
+    def na_area(x, z, m): return NOVO[0] - m < x < NOVO[1] + m and NOVO[2] - m < z < NOVO[3] + m
+    def no_velho(x, z, m=0.3): return CAMPO[0] - m < x < CAMPO[1] + m and CAMPO[2] - m < z < CAMPO[3] + m
+    # 1. terreno e estrada: refaz a altura dos vértices perto do patamar
+    for o in (terr, estr):
+        for v in o.data.vertices:
+            x, z = v.co.x, -v.co.y
+            if na_area(x, z, 0.6 + FALHA + 0.2): v.co.z = altura(x, z) + (0.04 if o is estr else 0.0)
+        o.data.update()
+    # 2. cores do chão: o campo novo ganha a cor de terra do trigal; o velho e a borda do patamar voltam à regra da grama
+    rng = random.Random(99); cad = terr.data.color_attributes['Col']
+    for p in terr.data.polygons:
+        c = p.center; x, z = c.x, -c.y
+        if not (no_velho(x, z) or na_area(x, z, 0.6 + FALHA + 0.3)): continue
+        n = p.normal; d, _ = dist_estrada(x, z)
+        if d < MEIA + 0.4: continue
+        if na_area(x, z, 0.3): col = COR['campo']
+        elif abs(n.z) < 0.5: col = COR['barranco']
+        elif abs(n.z) < 0.75: col = COR['grama2']
+        else:
+            r = ruido(x, z); j = rng.random() * 0.05
+            base = COR['grama'] if r < 0.55 else COR['grama2'] if r < 0.75 else COR['seca']
+            col = tuple(min(1, v * (0.97 + j)) for v in base[:3]) + (1,)
+        for li in p.loop_indices: cad.data[li].color_srgb = col
+    # 3. o bosque e as plantas que ocupavam o lugar saem; quem está na borda do patamar volta a assentar no chão
+    def tira(o):
+        for c in list(o.children_recursive): bpy.data.objects.remove(c)
+        bpy.data.objects.remove(o)
+    saem = 0
+    for o in list(col_prev.objects) + list(col_exp.objects):
+        if o.name not in bpy.data.objects or o.parent is not None: continue
+        if o.name.startswith(('Betfage_', 'Poco_Agua')) or o.name in ('Insula_Jogo', 'Carroca_Jogo'): continue
+        x, z = o.location.x, -o.location.y
+        if na_area(x, z, 2.2 if 'glb' in o else 1.2): tira(o); saem += 1; continue
+        if na_area(x, z, 0.6 + FALHA) and ('glb' in o or 'planta' in o): o.location.z = altura(x, z) - o.get('afunda', 0.05)
+    OBST[:] = [c for c in OBST if not na_area(c[0], c[1], 1.6)]
+    PLANTAS[:] = [e for e in PLANTAS if not na_area(e[1], e[3], 1.2)]
+    CAMPO = (NOVO[0], NOVO[1], NOVO[2], NOVO[3]); HCAMPO = HN
+    print('TRIGAL novo', CAMPO, 'altura', HN, 'tirados', saem)
+
+# ---------------- para o .blend: referências, colisão e o botão de exportar ----------------
+def ponto(nome, x, z, y, rz=0.0, tipo='PLAIN_AXES', tam=0.6):
+    e = bpy.data.objects.new(nome, None); col_ref.objects.link(e)
+    e.empty_display_type = tipo; e.empty_display_size = tam; e.location = (x, -z, y); e.rotation_euler = (0, 0, rz)
+    return e
+col_ref = bpy.data.collections.new('Referencia_jogo'); sc.collection.children.link(col_ref)
+ponto('JOGO_figseca', fsx, fsz, altura(fsx, fsz), tipo='SINGLE_ARROW', tam=2.0)
+ponto('JOGO_pasto', PASTO_C[0], PASTO_C[1], HAPR)
+ponto('JOGO_cocho', cox, coz, HJUM, tipo='CIRCLE', tam=1.0)
+ponto('JOGO_manjedoura', mjx, mjz, HAPR, rz=gcr + math.pi / 2, tipo='ARROWS')
+# o trigal: um retângulo (só desenho) do tamanho do campo
+bmq = bmesh.new()
+for x, z in [(CAMPO[0], CAMPO[2]), (CAMPO[1], CAMPO[2]), (CAMPO[1], CAMPO[3]), (CAMPO[0], CAMPO[3])]: bmq.verts.new((x, -z, HCAMPO + 0.3))
+bmq.faces.new(bmq.verts[:]); meq = bpy.data.meshes.new('Campo_Trigal'); bmq.to_mesh(meq); bmq.free()
+cpo = bpy.data.objects.new('Campo_Trigal', meq); col_ref.objects.link(cpo); cpo.display_type = 'WIRE'; cpo.hide_render = True; cpo['y_ref'] = HCAMPO
+# medidas que só mudam regerando a fase
+fx = bpy.data.texts.new('betfage_fixos')
+fx.write(json.dumps({'S': S, 'estrada': [[round(p.x, 2), round(p.y, 2)] for p in AMOS[::3]], 'meia': MEIA, 'eira_r': EIRA_R}))
+# círculos de colisão, cada um preso ao objeto dono quando há um (árvore, pedra, planta, muro...)
+col_col = bpy.data.collections.new('Colisao'); sc.collection.children.link(col_col)
+donos = [o for o in list(col_prev.objects) + list(col_exp.objects) if o.parent is None and ('glb' in o or 'planta' in o or o.name.startswith(('Mureta', 'Muro_', 'Poco_Agua')))]
+for o in donos: o['col_feita'] = o.name
+bpy.context.view_layer.update()
+def caixa_xz(o):
+    bb = [o.matrix_world @ Vector(c) for c in o.bound_box]; return min(v.x for v in bb), max(v.x for v in bb), min(-v.y for v in bb), max(-v.y for v in bb)
+CX = {o.name: caixa_xz(o) for o in donos}
+for i, (x, z, r) in enumerate(OBST):
+    exato = [o for o in donos if abs(o.location.x - x) < 0.03 and abs(-o.location.y - z) < 0.03]
+    if exato: dono = exato[0]
+    else:
+        dentro = [o for o in donos if CX[o.name][0] - 0.3 < x < CX[o.name][1] + 0.3 and CX[o.name][2] - 0.3 < z < CX[o.name][3] + 0.3]
+        dono = min(dentro, key=lambda o: math.hypot(o.location.x - x, -o.location.y - z)) if dentro else None
+    e = bpy.data.objects.new('COL_%03d' % i + ('_' + dono.name if dono else ''), None); col_col.objects.link(e)
+    e.empty_display_type = 'CIRCLE'; e.empty_display_size = 1.0; e['colisao'] = 'circ'; e.hide_render = True; e.show_in_front = True
+    e.matrix_world = Matrix.Translation((x, -z, altura(x, z) + 0.2)) @ Matrix.Rotation(math.pi / 2, 4, 'X') @ Matrix.Diagonal((r, r, r, 1))
+    if dono is not None:
+        e['dono'] = 1; e.parent = dono; e.matrix_parent_inverse = dono.matrix_world.inverted()
+# o botão de exportar (aba Scripting > EXPORTAR_PARA_O_JOGO > Run Script)
+bt = bpy.data.texts.new('EXPORTAR_PARA_O_JOGO')
+bt.write("# exporta o que está na cena para o jogo e salva o .blend\nRODAR_EXPORTACAO = True\nexec(open(r'" + OUT + "\\exportar_betfage.py', encoding='utf-8').read())\n")
+col_prev.name = 'Cenario_objetos'; col_exp.name = 'Exportar'
+
 if RENDER:
     sc.render.filepath = SCR + '\\betfage_render.png'; bpy.ops.render.render(write_still=True)
 
+if '--blend' in sys.argv or EXPORT:
+    bpy.ops.wm.save_as_mainfile(filepath=OUT + '\\betfage.blend')
 if EXPORT:
-    bpy.ops.object.select_all(action='DESELECT')
-    for o in col_exp.all_objects: o.select_set(True)
-    bpy.context.view_layer.objects.active = terr
-    # chão leve: o jogo junta os vértices do chão e da estrada e tira a média das cores (suaviza). Fazendo a mesma
-    # média aqui (cor por vértice em vez de por canto), o .glb sai com um vértice por ponto: bem menor, mesmo chão.
-    import numpy as np
-    for o in col_exp.all_objects:
-        if o.type != 'MESH' or not o.name.startswith(('Betfage_Terreno', 'Betfage_Estrada')): continue
-        me = o.data; ca = me.color_attributes.get('Col')
-        if ca is None or ca.domain != 'CORNER': continue
-        nl, nv = len(me.loops), len(me.vertices)
-        cor = np.empty(nl * 4, 'f4'); ca.data.foreach_get('color', cor)
-        vi = np.empty(nl, 'i4'); me.loops.foreach_get('vertex_index', vi)
-        soma = np.zeros((nv, 4)); np.add.at(soma, vi, cor.reshape(-1, 4))
-        media = soma / np.maximum(np.bincount(vi, minlength=nv), 1)[:, None]
-        me.color_attributes.remove(ca)
-        nova = me.color_attributes.new('Col', 'FLOAT_COLOR', 'POINT'); nova.data.foreach_set('color', media.astype('f4').ravel())
-        me.color_attributes.active_color_name = 'Col'; me.color_attributes.render_color_index = me.color_attributes.active_color_index
-    saida = OUT + '\\betfage_cenario.glb'
-    bpy.ops.export_scene.gltf(filepath=saida, use_selection=True, export_format='GLB', export_normals=False, export_vertex_color='MATERIAL',
-                              export_image_format='WEBP', export_image_quality=80, export_meshopt_compression_enable=True)
-    a0, a1, b0, b1 = CAMPO_AB
-    lay = {'S': S, 'estrada': [[round(p.x, 2), round(p.y, 2)] for p in AMOS[::3]], 'meia': MEIA, 'insula': INSULA_LAY,
-           'campo': {'x0': CAMPO[0], 'x1': CAMPO[1], 'z0': CAMPO[2], 'z1': CAMPO[3], 'y': HCAMPO},
-           'eira': {'x': ex, 'z': ez, 'r': EIRA_R, 'y': HEIRA}, 'carro': {'x': crx, 'z': crz, 'y': HCARRO},
-           'figseca': [fsx, fsz], 'pasto': [round(PASTO_C[0], 3), round(PASTO_C[1], 3)], 'manjedoura': [round(mjx, 3), round(HAPR, 3), round(mjz, 3), round(gcr + math.pi / 2, 3)], 'cocho': [cox, coz], 'objetos': LAYOUT, 'obst': OBST, 'plantas': PLANTAS, 'casa': {'p': [round(csx, 3), round(HCASA - 0.02, 3), round(csz, 3)], 'r': CASA_R, 'k': CASA_K}}
-    json.dump(lay, open(OUT + '\\betfage_layout.json', 'w'), separators=(',', ':'))
-    print('EXPORT', os.path.getsize(saida), len(LAYOUT), len(OBST), 'PLANTAS', len(PLANTAS))
+    g = {'__name__': 'exportar_betfage'}
+    exec(open(OUT + '\\exportar_betfage.py', encoding='utf-8').read(), g)
+    g['exporta'](salvar=True)
 print('MUROS', len([o for o in col_exp.objects if o.name.startswith('Muro')]))
 print('FIM', len(col_exp.all_objects), len(col_prev.all_objects))
