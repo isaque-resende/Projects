@@ -2,8 +2,9 @@
 // Lê e escreve no estado E da fase: E.alvoToque, E.distAlvo, E.fora, E.jogVy, E.jogNoChao.
 
 //   dom: o canvas do jogo · E: o estado da fase · zoom(): devolve [mínimo, máximo] da distância da câmera
+//   toqueCurtoAciona: um toque curto no direcional vale como apertar o botão de ação
 // Depois de criar, a fase liga as ações: ctl.aoAcionar = () => ... e ctl.aoToque = (evento) => ...
-export function criaControles({ dom, E, zoom }) {
+export function criaControles({ dom, E, zoom, toqueCurtoAciona = true }) {
   const ctl = { aoAcionar: () => {}, aoToque: () => {} };
   const limita = (d) => { const [a, b] = zoom(); return Math.min(b, Math.max(a, d)); };
   const acionar = () => ctl.aoAcionar();
@@ -42,7 +43,7 @@ export function criaControles({ dom, E, zoom }) {
     base.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); JOY.on = true; JOY.id = e.pointerId; JOY.t0 = performance.now(); JOY.max = 0; base.setPointerCapture(e.pointerId); E.alvoToque = null; move(e); JOY.max = 0; });
     base.addEventListener('pointermove', (e) => { if (JOY.on && e.pointerId === JOY.id) move(e); });
     // toque curto no círculo, sem arrastar = apertar o botão do direcional (abre a porta, rola a pedra, entra, sai)
-    const fim = (e) => { if (e.pointerId !== JOY.id) return; const curto = performance.now() - JOY.t0 < 350 && (JOY.max || 0) < 0.45; JOY.on = false; JOY.x = JOY.y = 0; pino.style.left = '35px'; pino.style.top = '35px'; if (curto) acionar(); };
+    const fim = (e) => { if (e.pointerId !== JOY.id) return; const curto = performance.now() - JOY.t0 < 350 && (JOY.max || 0) < 0.45; JOY.on = false; JOY.x = JOY.y = 0; pino.style.left = '35px'; pino.style.top = '35px'; if (curto && toqueCurtoAciona) acionar(); };
     JOY.pino = pino; JOY.base = base;
     base.addEventListener('pointerup', fim); base.addEventListener('pointercancel', fim);
   }
