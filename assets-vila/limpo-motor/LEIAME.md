@@ -60,6 +60,19 @@ o texto **EXPORTAR_PARA_O_JOGO** (aba Scripting > Run Script): ele grava `betfag
   `JOGO_figseca`, `JOGO_pasto`, `JOGO_cocho`, `JOGO_manjedoura`. A ínsula é `Insula_Jogo` e a carroça é `Carroca_Jogo`.
 - Terreno, estrada e muros (coleção `Exportar`) ficam travados contra clique. Para mudar o relevo, é melhor pedir:
   o `betfage_blender.py` gera a fase do zero (e **apaga** o que foi mexido à mão no `.blend`).
+- Desde 17/11 o `.blend` também tem o que o `ajuste_muros_caminhos.py` fez uma vez por cima dele: muros de arrimo
+  nas bordas dos patamares, estrada da aldeia sem inclinação de lado, caminhos de terra (`Betfage_Estrada_Caminhos`),
+  escada de pedra até a casa de cima e rampa da carroça. O gerador não sabe disso: regerar a fase perde tudo.
+- `JOGO_rota_carroca` (em `Referencia_jogo`): a linha que a carroça segue do planalto até o ramal da eira.
+  Pode mover os vértices (a ordem conta: o primeiro é onde ela fica parada, o último é onde descarrega).
+  Os caminhos (para o jogador poder andar fora do quadrado) ficam no texto `betfage_fixos`.
+
+## A carroça (cópia limpa, `limpo-betfage/js/ceifa.js`)
+
+Cheia (8 feixes), o carregador puxa o boi pela `rota_carro` do layout, para no fim, leva os feixes de dois em dois
+até as pilhas da eira, vira a carroça no lugar (o boi dá a volta) e volta; no planalto vira de novo e recomeça.
+A caixa de colisão da carroça e o círculo do boi andam com eles. Os feixes entregues engordam o monte da eira.
+A fase original (`fase-betfage/index.html`) usa o cenário novo, mas a carroça dela continua parada.
 
 ## Regras para mexer
 
