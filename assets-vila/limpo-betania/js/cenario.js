@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { baixar } from '../../limpo-motor/base.js';
 import { carregaKit, instanciaLonge, poePertos } from '../../limpo-motor/layout.js';
 import { suaviza } from '../../limpo-motor/terreno.js';
-import { VER, texChao, scene, CIRC } from './estado.js';
+import { VER, texChao, scene } from './estado.js';
 import './modelos.js';     // só para manter a ordem de montagem
 
 const [gCen, LAYB] = await Promise.all([baixar('../fase-betania/betania_cenario.glb?v=' + VER), fetch('../fase-betania/betania_layout.json?v=' + VER).then((r) => r.json())]);
@@ -58,8 +58,6 @@ const CASAS_NOVAS = [], BEBEDOURO = [];
   poePertos(scene, LAYB.objetos, KB, (o, n) => {
     if (/^Casa_/.test(o.no)) { CASAS_NOVAS.push(n); return; }
     if (o.no === 'Cocho') BEBEDOURO.push(n);
-    const alto = /Arvore|Cipreste|Tamareira/.test(o.no);
-    CIRC.push({ x: o.p[0], z: o.p[2], r: alto ? 0.45 : 0.35 * o.k + 0.15 });
   });
 }
 

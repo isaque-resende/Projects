@@ -28,17 +28,21 @@ const E = {
 };
 
 // ---------- obstáculos, personagens e interface (do motor comum) ----------
-const { CAIXAS, CIRC, EXTRAS, bate, caixaDe, fundo } = criaColisao();
+const { CAIXAS, CIRC, EXTRAS, bate, fundo } = criaColisao();
+// obstáculos fixos: as formas da coleção "Colisao" do betania.blend (círculos e caixas presos a cada objeto).
+// Pessoas, a pedra que rola e o muro do aprisco com porteira são criados no código, cada um no seu módulo.
+if (POS.colisao) {
+  for (const [x, z, r] of POS.colisao.circ) CIRC.push({ x, z, r });
+  for (const [x0, x1, z0, z1] of POS.colisao.caixas) CAIXAS.push({ x0, x1, z0, z1 });
+} else console.warn('betania_posicoes.json sem colisão: rode EXPORTAR_PARA_O_JOGO no Blender');
 const { MIX, ator, corpo, posesBase, anda } = criaAtores({ scene, rnd });
 const { botao, fade, textoBotao, fala, DIAL, dialogo } = criaUI(E);
 
-// põe um modelo na cena; caixa ou circ criam o obstáculo dele
-function por(modelo, x, z, r = 0, k = 1, { caixa = false, circ = 0, y = 0 } = {}) {
+// põe um modelo na cena
+function por(modelo, x, z, r = 0, k = 1, { y = 0 } = {}) {
   const n = modelo.clone(); n.position.set(x, y, z); n.rotation.y = r; n.scale.setScalar(k);
   sombra(n); scene.add(n);
-  if (caixa) caixaDe(n, typeof caixa === 'number' ? caixa : 0.15);
-  if (circ) CIRC.push({ x, z, r: circ * k });
   return n;
 }
 
-export { VER, texChao, scene, CIRC, P, por, EXTRAS, caixaDe, POS, tex, ator, corpo, anda, rnd, E, renderer, botao, fade, hemi, sun, textoBotao, dialogo, fala, DIAL, MIX, bate, fundo, posesBase, CAIXAS };
+export { VER, texChao, scene, CIRC, P, por, EXTRAS, POS, tex, ator, corpo, anda, rnd, E, renderer, botao, fade, hemi, sun, textoBotao, dialogo, fala, DIAL, MIX, bate, fundo, posesBase, CAIXAS };

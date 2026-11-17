@@ -21,6 +21,23 @@ as texturas continuam vindo das pastas originais, então o que for exportado do 
 **`limpo-betania/js/`** e **`limpo-betfage/js/`** têm um módulo por assunto. Cada arquivo começa com uma
 linha dizendo o que ele contém. `estado.js` é a base da fase e `main.js` é o laço do jogo.
 
+## Colisão (Betânia)
+
+Os obstáculos fixos da Betânia são desenhados no `betania.blend`, na coleção **Colisao**:
+
+- **Círculo** (empty "Círculo"): o tamanho dele no mundo é o raio do obstáculo.
+- **Caixa** (empty "Cubo"): no jogo vira uma caixa alinhada aos eixos, do tamanho que o cubo ocupa.
+- Cada forma fica presa (parent) ao objeto dono: mover, girar ou escalar o dono leva a colisão junto. Apagar o
+  dono apaga a forma na próxima exportação.
+- Árvore, pedra ou planta nova (de perto) ganha sozinha o círculo padrão ao exportar. Se você apagar esse
+  círculo, ele não volta.
+- Para mudar um obstáculo, escale ou mova a forma. Para tirar, apague a forma. Para pôr um novo, duplique uma
+  forma e prenda ao dono (Ctrl+P).
+
+`EXPORTAR_PARA_O_JOGO` grava as formas em `betania_posicoes.json` (`colisao`). Continuam no código: as pessoas,
+a pedra do túmulo (que rola) e o muro do aprisco (que depende da porteira). Em Betfagé, os obstáculos já vêm
+do layout do Blender (`obst`).
+
 ## Regras para mexer
 
 - Os módulos de uma fase são montados em ordem fixa (cada um importa o anterior). A ordem de criação dos

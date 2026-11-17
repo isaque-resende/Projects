@@ -3,6 +3,7 @@
 # Ou sem abrir:  blender -b betania.blend -P exportar_betania.py
 # Mundo three.js: (x, y, z) = Blender (x, z, -y).
 import bpy, json, math, os, time
+from mathutils import Vector
 
 OUT = r"M:\Claude\github\Projects-animais\assets-vila\fase-betania"
 R3 = lambda v: round(v, 3)
@@ -72,6 +73,56 @@ def le_tudo():
     return {'versao': int(time.time()), 'pontos': dict(sorted(pontos.items())), 'caminhos': [c for _, c in caminhos], 'lavoura': lav}
 
 
+# ---------- colisão: as formas da coleção "Colisao" ----------
+# Círculo = empty "Círculo" (o raio é o tamanho dele no mundo); caixa = empty "Cubo" (vira caixa alinhada aos eixos).
+# Cada forma fica presa (parent) ao objeto dono e anda junto com ele. Pessoas, a pedra que rola e o muro do
+# aprisco com porteira continuam no código do jogo.
+ALTOS = ('Arvore', 'Cipreste', 'Tamareira')
+
+
+def colecao_colisao():
+    col = bpy.data.collections.get('Colisao')
+    if col is None:
+        col = bpy.data.collections.new('Colisao'); bpy.context.scene.collection.children.link(col)
+    return col
+
+
+def colisao_novas():
+    # árvore, pedra ou planta de perto que ainda não tem colisão ganha o círculo padrão
+    # (se você apagar o círculo depois, ele não volta: o objeto guarda o próprio nome em col_feita;
+    #  uma cópia com Shift+D tem outro nome, então ganha o círculo dela)
+    from mathutils import Matrix
+    col = colecao_colisao(); n = 0
+    for o in bpy.data.objects:
+        if 'glb' not in o or o.parent is not None or o.get('f') or o.get('col_feita') == o.name or o['no'].startswith('Casa_'): continue
+        k = round(o.scale.x / o.get('k0', 1.0), 3)
+        r = 0.45 if any(a in o['no'] for a in ALTOS) else 0.35 * k + 0.15
+        e = bpy.data.objects.new('COL_' + o.name, None); col.objects.link(e)
+        e.empty_display_type = 'CIRCLE'; e.empty_display_size = 1.0; e['colisao'] = 'circ'; e['dono'] = 1
+        e.hide_render = True; e.show_in_front = True
+        e.matrix_world = Matrix.Translation(o.matrix_world.translation + Vector((0, 0, 0.2))) @ Matrix.Rotation(math.pi / 2, 4, 'X') @ Matrix.Diagonal((r, r, r, 1))
+        e.parent = o; e.matrix_parent_inverse = o.matrix_world.inverted()
+        o['col_feita'] = o.name; n += 1
+    return n
+
+
+def colisao():
+    bpy.context.view_layer.update()
+    C, B = [], []
+    for o in list(colecao_colisao().objects):
+        if 'colisao' not in o: continue
+        if o.get('dono') and o.parent is None:          # o dono foi apagado: a forma vai junto
+            bpy.data.objects.remove(o); continue
+        m, s = o.matrix_world, o.empty_display_size
+        if o['colisao'] == 'circ':
+            C.append([R3(m.translation.x), R3(-m.translation.y), round(m.col[0].xyz.length * s, 4)])
+        else:
+            cs = [m @ Vector((a * s, b * s, c * s)) for a in (-1, 1) for b in (-1, 1) for c in (-1, 1)]
+            xs, ys = [p.x for p in cs], [p.y for p in cs]
+            B.append([round(min(xs), 4), round(max(xs), 4), round(-max(ys), 4), round(-min(ys), 4)])
+    return {'circ': sorted(C), 'caixas': sorted(B)}
+
+
 def layout():
     L = []
     for o in sorted([o for o in bpy.data.objects if 'glb' in o and o.parent is None], key=lambda o: o.get('ordem', 0)):
@@ -94,7 +145,9 @@ def trava_chao():
 def exporta(salvar=True):
     trava_chao()
     n = ajusta_alturas()
+    nc = colisao_novas()
     POS = le_tudo()
+    POS['colisao'] = colisao()
     col = bpy.data.collections.get('Cenario_exportado')
     for o in bpy.context.view_layer.objects: o.select_set(False)
     trav = [o for o in col.all_objects if o.hide_select]
@@ -112,7 +165,7 @@ def exporta(salvar=True):
     if salvar:
         if bpy.data.filepath: bpy.ops.wm.save_mainfile()
         else: bpy.ops.wm.save_as_mainfile(filepath=OUT + '\\betania.blend')
-    msg = 'EXPORTADO %s: %d objetos, %d posicoes, %d caminhos' % (time.strftime('%H:%M:%S'), len(L), len(POS['pontos']), len(POS['caminhos']))
+    msg = 'EXPORTADO %s: %d objetos, %d posicoes, %d caminhos, %d colisoes' % (time.strftime('%H:%M:%S'), len(L), len(POS['pontos']), len(POS['caminhos']), len(POS['colisao']['circ']) + len(POS['colisao']['caixas']))
     print(msg); aviso(msg + ' - recarregue o jogo (Ctrl+F5)')
 
 

@@ -26,8 +26,7 @@ const TUM = {}, ROLA = 1;   // lado para onde a pedra rola (ao longo da face)
       const m = R2[no]; if (!m) continue; const n = m.clone(); n.position.set(0, 0, 0);
       const q = P0.clone().addScaledVector(F2, df).addScaledVector(L2, dl), pr = P('rocha_tumulo_' + i, q.x, q.z, r0, k0), p = { x: pr.x, z: pr.z }, k = pr.k;
       n.position.set(p.x, 0.45, p.z); n.rotation.y = pr.r; n.scale.setScalar(k); sombra(n); scene.add(n);
-      n.traverse((mm) => { if (mm.isMesh) { mm.material = mm.material.clone(); mm.material.color.multiply(TOM_ROCHA); } });   // tom do rochedo
-      CIRC.push({ x: p.x, z: p.z, r: 0.6 * k }); } }
+      n.traverse((mm) => { if (mm.isMesh) { mm.material = mm.material.clone(); mm.material.color.multiply(TOM_ROCHA); } }); } }   // tom do rochedo
   TUM.frente = new THREE.Vector3(1, 0, 0).applyQuaternion(tum.quaternion).setY(0).normalize();   // a porta olha para +x do modelo
   TUM.lugar = pedra.getWorldPosition(new THREE.Vector3()).setY(0);
   // (sobra do tempo em que o rochedo ficava transparente na frente do jogador: o material continua preparado para isso)

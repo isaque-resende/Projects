@@ -1,7 +1,7 @@
 // Betânia: as ovelhas no aprisco.
 import * as THREE from 'three';
 import { nos, sombra } from '../../limpo-motor/base.js';
-import { scene, CIRC, rnd, ator } from './estado.js';
+import { scene, rnd, ator } from './estado.js';
 import { gPast, gOve } from './modelos.js';
 import { APRISCO } from './vila.js';
 import './lavoura.js';     // só para manter a ordem de montagem
@@ -10,7 +10,7 @@ const ovelhas = [];
 const APR2 = { x: (APRISCO.x0 + APRISCO.x1) / 2, z: (APRISCO.z0 + APRISCO.z1) / 2 };
 { // comedouro (manjedoura com feno) encostado no fundo, longe da porteira
   const mj = nos(gPast).Manjedoura.clone(); mj.position.set(APR2.x - 1.25, 0, APR2.z - 1.25); mj.rotation.y = Math.PI / 4; mj.scale.setScalar(0.85); sombra(mj); scene.add(mj);
-  CIRC.push({ x: APR2.x - 1.25, z: APR2.z - 1.25, r: 0.75 }); APR2.mj = { x: APR2.x - 1.25, z: APR2.z - 1.25 };
+  APR2.mj = { x: APR2.x - 1.25, z: APR2.z - 1.25 };
 }
 const lugarOvelha = () => { for (let k = 0; k < 60; k++) { const a = rnd() * 6.28, r = 0.5 + rnd() * 1.4, x = APR2.x + Math.cos(a) * r, z = APR2.z + Math.sin(a) * r;
   if (Math.hypot(x - APR2.mj.x, z - APR2.mj.z) < 1.2) continue; if (ovelhas.some((b) => Math.hypot(b.o.position.x - x, b.o.position.z - z) < 1.5)) continue; return [x, z]; } return [APR2.x, APR2.z]; };

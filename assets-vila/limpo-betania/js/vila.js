@@ -1,7 +1,7 @@
 // Betânia: o que fica no largo e em volta. Barracas, aprisco com porteira, forno, lagar, lavoura, objetos e a placa.
 import * as THREE from 'three';
 import { nos, sombra } from '../../limpo-motor/base.js';
-import { P, por, EXTRAS, scene, CIRC, caixaDe, POS, tex } from './estado.js';
+import { P, por, EXTRAS, scene, CIRC, POS, tex } from './estado.js';
 import { gBarr, gObj, gPast, gForno, gLagar } from './modelos.js';
 import './casas.js';     // só para manter a ordem de montagem
 
@@ -11,8 +11,8 @@ const APRISCO = {}, FORNO = {}, LAGAR = {};      // medidas que os personagens u
 
 // ---------- barracas ----------
 const B5 = P('barraca_esq', 10.2, -3.4, 0.15), B2 = P('barraca_dir', 17.8, -3.0, -0.2);
-por(BA.Barraca5, B5.x, B5.z, B5.r, 1, { caixa: 0.25 });
-por(BA.Barraca2, B2.x, B2.z, B2.r, 1, { caixa: 0.25 });
+por(BA.Barraca5, B5.x, B5.z, B5.r, 1);
+por(BA.Barraca2, B2.x, B2.z, B2.r, 1);
 
 // ---------- aprisco ----------
 // aprisco: muro circular de pedra com porteira (a porteira abre quando o jogador chega perto)
@@ -65,7 +65,7 @@ function porteiraPasso(dt) {
   const base = F.Forno_Corpo.position.clone();
   const forno = new THREE.Group();
   for (const [n, o] of Object.entries(F)) if (n.startsWith('Forno_') && !/Chama|Brasa|Massa_[23]|Pao_/.test(n)) { const c = o.clone(); c.position.sub(base); if (n === 'Forno_Mesa') c.scale.multiply(new THREE.Vector3(1.35, 1, 1.35)); forno.add(c); }
-  const pf = P('forno', 1.2, -6.2, 0.4); forno.position.set(pf.x, 0, pf.z); forno.rotation.y = pf.r; sombra(forno); scene.add(forno); CIRC.push({ x: pf.x, z: pf.z, r: 1.0 });
+  const pf = P('forno', 1.2, -6.2, 0.4); forno.position.set(pf.x, 0, pf.z); forno.rotation.y = pf.r; sombra(forno); scene.add(forno);
   // brasa e chamas acesas
   for (const n of ['Forno_Brasa', 'Forno_Chamas', 'Forno_ChamaBoca']) if (F[n]) { const c = F[n].clone(); c.position.sub(base); forno.add(c); }
   forno.updateWorldMatrix(true, true);
@@ -85,7 +85,7 @@ function porteiraPasso(dt) {
   const lagar = new THREE.Group();
   for (const o of Object.values(L)) { const c = o.clone(); c.position.sub(base); lagar.add(c); }
   const pl = P('lagar', -22.0, 11.5, 0.7); lagar.position.set(pl.x, 0, pl.z); lagar.rotation.y = pl.r; sombra(lagar); scene.add(lagar);
-  lagar.updateWorldMatrix(true, true); caixaDe(lagar, 0.35);
+  lagar.updateWorldMatrix(true, true);
   const mundo = (n) => L[n].position.clone().sub(base).applyMatrix4(lagar.matrixWorld);
   Object.assign(LAGAR, { tanque: mundo('Lagar_Uvas_6'), cesto: mundo('Lagar_CestoUvas'), jarro: mundo('Lagar_Jarro'), r: lagar.rotation.y });
 }
@@ -100,7 +100,7 @@ const LAV = POS.lavoura || { x0: 4.4, x1: 15.6, z0: 7.4, z1: 13.4 };
 
 // objetos junto às casas
 for (const [id, no, x, z, r, k] of [['jarro_alto', 'Jarro_Alto', -5.6, -6.6, 0, 1.3], ['pote_escuro', 'Pote_Escuro', -5.0, -6.2, 0, 1.3], ['cesto_alca', 'Cesto_Alca', 9.0, -7.0, 0.4, 1],
-  ['lenha', 'Lenha', -1.3, -5.6, 0.3, 1], ['saco', 'Saco', 12.6, -5.6, 0, 1.1], ['banquinho', 'Banquinho', 8.2, -7.0, 1.0, 1]]) { const p = P(id, x, z, r, k); por(OB[no], p.x, p.z, p.r, p.k, { circ: 0.3 }); }
+  ['lenha', 'Lenha', -1.3, -5.6, 0.3, 1], ['saco', 'Saco', 12.6, -5.6, 0, 1.1], ['banquinho', 'Banquinho', 8.2, -7.0, 1.0, 1]]) { const p = P(id, x, z, r, k); por(OB[no], p.x, p.z, p.r, p.k); }
 
 // placa (só se existir no Blender; apagada lá, some do jogo)
 if (!POS.pontos || POS.pontos.placa) {

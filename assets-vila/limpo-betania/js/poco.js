@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { CIMA, frente, pos, lerpAng, inclina, maos } from '../../limpo-motor/atores.js';
 import { nos, sombra } from '../../limpo-motor/base.js';
-import { P, scene, CIRC, corpo, ator, anda } from './estado.js';
+import { P, scene, corpo, ator, anda } from './estado.js';
 import { gOfi, nLenco } from './modelos.js';
 import { CASAS } from './casas.js';
 import { OB } from './vila.js';
@@ -18,7 +18,6 @@ const ppo = P('poco', -4.6, 4.6), POCO = { c: new THREE.Vector3(ppo.x, 0, ppo.z)
   const cc = bx.getCenter(new THREE.Vector3());
   n.position.set(POCO.c.x - cc.x, 0, POCO.c.z - cc.z); sombra(n); scene.add(n);
   POCO.borda = topo; POCO.raio = (bx.max.x - bx.min.x) / 2;
-  CIRC.push({ x: POCO.c.x, z: POCO.c.z, r: POCO.raio + 0.1 });
   // água escura lá embaixo, com um brilho que mexe
   const agua = new THREE.Mesh(new THREE.CircleGeometry(POCO.raio * 0.74, 20), new THREE.MeshStandardMaterial({ color: 0x2f5f78, roughness: 0.15, metalness: 0.1 }));
   agua.rotation.x = -Math.PI / 2; agua.position.set(POCO.c.x, POCO.borda - 0.32, POCO.c.z); scene.add(agua); POCO.agua = agua;
@@ -28,7 +27,6 @@ const ppo = P('poco', -4.6, 4.6), POCO = { c: new THREE.Vector3(ppo.x, 0, ppo.z)
   for (const sg of [-1, 1]) {
     const pst = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.075, H, 6), mad);
     pst.position.copy(POCO.c).addScaledVector(lat, sg * (POCO.raio + 0.12)).setY(H / 2); sombra(pst); scene.add(pst);
-    CIRC.push({ x: pst.position.x, z: pst.position.z, r: 0.12 });
   }
   const trav = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2 * (POCO.raio + 0.12) + 0.25, 6), mad);
   trav.rotation.x = Math.PI / 2; trav.position.copy(POCO.c).setY(H - 0.05); sombra(trav); scene.add(trav);
