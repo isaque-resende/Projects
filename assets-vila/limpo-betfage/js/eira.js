@@ -5,7 +5,7 @@ import { LAY, V3, scene, CIRC, sm, rnd } from './estado.js';
 import { nRobusto, nBotoes } from './modelos.js';
 import { FORNO } from './cenario.js';
 import { corpo, ator, cil, barra, solta } from './gente.js';
-import './ceifa.js';     // só para manter a ordem de montagem
+import { CARRO } from './ceifa.js';     // os feixes que a carroça traz engordam o monte
 
 const EI = LAY.eira, EIRA_Y = (() => { if (!FORNO.eira) return EI.y; FORNO.eira.updateMatrixWorld(true); const rc = new THREE.Raycaster(V3(EI.x + 0.6, EI.y + 5, EI.z + 0.6), V3(0, -1, 0)); const h = rc.intersectObject(FORNO.eira, true)[0]; return h ? h.point.y - 0.03 : EI.y; })();
 const MONTE = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xe2c27e, roughness: 1, flatShading: true }));
@@ -31,7 +31,10 @@ function garfoPasso(st, F, dt, t, off) {
   st.inc += ((fase < 0.4 ? 0.5 : 0.1) - st.inc) * Math.min(1, dt * 5); inclina(st, st.inc);
   maos(st, H.clone().addScaledVector(d, 0.45), H.clone(), dt, 1, 18);
 }
-function debulhadorPasso(dt, t) { garfoPasso(debulhador, FORC2, dt, t, 2.3); }
+function debulhadorPasso(dt, t) {
+  garfoPasso(debulhador, FORC2, dt, t, 2.3);
+  const k = 1 + Math.min(0.45, CARRO.entregues * 0.012); MONTE.scale.set(k, 0.28 * k, 0.85 * k);
+}
 function joeiradeiraPasso(dt, t) {
   const st = joeiradeira, f = frente(st), lado = pos(st.os.bE[0]).sub(pos(st.os.bD[0])).setY(0).normalize();
   const fase = ((t + 0.9) % 2.8) / 2.8;

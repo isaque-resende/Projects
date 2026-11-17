@@ -8,7 +8,8 @@
 #   - objetos com a propriedade "glb": árvores, pedras, casas, objetos (layout; "f" = de longe, instanciado)
 #   - objetos com a propriedade "planta": moitas e malvas (instanciadas no jogo)
 #   - coleção "Colisao": círculos de colisão, presos ao objeto dono
-#   - objetos de referência: "Campo_Trigal" (o retângulo do trigal), "Insula_Jogo", a carroça e os pontos JOGO_*
+#   - objetos de referência: "Campo_Trigal" (o retângulo do trigal), "Insula_Jogo", a carroça e os pontos JOGO_*;
+#     "JOGO_rota_carroca": a linha que a carroça segue do planalto até a eira (pode mover os vértices; a ordem conta)
 #   - o texto "betfage_fixos": estrada e medidas que só mudam regerando a fase
 import bpy, json, math, os, time
 from mathutils import Vector, Matrix
@@ -160,6 +161,11 @@ def layout():
     for chave in ('figseca', 'pasto', 'cocho'):
         o = ref('JOGO_' + chave); lay[chave] = [o.location.x, -o.location.y] if chave != 'pasto' else [R3(o.location.x), R3(-o.location.y)]
     mj = ref('JOGO_manjedoura'); lay['manjedoura'] = [R3(mj.location.x), R3(mj.location.z), R3(-mj.location.y), R3(mj.rotation_euler.z)]
+    # caminhos de terra (o jogador anda por eles) e a rota da carroça (vértices do objeto JOGO_rota_carroca, em ordem)
+    lay['caminhos'] = F.get('caminhos', [])
+    rc = bpy.data.objects.get('JOGO_rota_carroca')
+    if rc is not None and rc.type == 'MESH':
+        lay['rota_carro'] = [[R3((rc.matrix_world @ v.co).x), R3(-(rc.matrix_world @ v.co).y)] for v in rc.data.vertices]
     lay['objetos'] = L
     lay['obst'] = colisao()
     lay['plantas'] = plantas()

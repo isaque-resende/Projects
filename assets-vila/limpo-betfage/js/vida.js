@@ -4,14 +4,14 @@ import { frente, lerpAng } from '../../limpo-motor/atores.js';
 import { rnd, V3, fala } from './estado.js';
 import { terreno, ROTA } from './cenario.js';
 import { barra, chao } from './gente.js';
-import { boiCarro } from './ceifa.js';
+import { boiCarro, CARRO } from './ceifa.js';
 import { jumenta, CORDA_J, ESTACA, JUM, jumentinho, ovelhas, andante, tMax, tMin, conv1, conv2 } from './aldeia.js';
 import { jog } from './jogador.js';
 import './caminho.js';     // só para manter a ordem de montagem
 
 let tRota = 0.2, sentido = 1, pausa = 0;
 function aldeiaPasso(dt, t) {
-  if (rnd() < dt * 0.08) boiCarro.toca(boiCarro.atual === 'Comer' ? 'Parado' : 'Comer');
+  if (!CARRO.anda && rnd() < dt * 0.08) boiCarro.toca(boiCarro.atual === 'Comer' ? 'Parado' : 'Comer');
   if (rnd() < dt * 0.06) jumenta.toca(jumenta.atual === 'Comer' ? 'Parado' : 'Comer');
   { const c = jumenta.o.position.clone().add(V3(0, 0.9, 0)).addScaledVector(frente(jumenta), 0.5); barra(CORDA_J, ESTACA.clone().add(V3(0, 0.95, 0)), c); }
   if (!JUM.visto && jog.o.position.distanceTo(jumenta.o.position) < 3.2) { JUM.visto = true; fala('Uma jumenta amarrada, e um jumentinho com ela, em que ninguém ainda montou.'); setTimeout(() => fala(''), 5000); }

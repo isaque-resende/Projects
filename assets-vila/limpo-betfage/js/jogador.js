@@ -12,7 +12,10 @@ const INICIO = (() => { const i = Math.round(tMin * AMOS.length) + 2; const p = 
 const jog = ator(gJog, 1.7, INICIO.x, INICIO.z, Math.PI + Math.PI / 4, 'Parado');
 // caminho entre a carroça e o trigal (o campo fica fora do quadrado do diorama, ao pé do morro)
 const passagemTrigal = (x, z) => { const c = LAY.campo, k = LAY.carro; return x > Math.min(k.x, c.x0) - 1.5 && x < c.x0 + 4 && z > c.z1 - 1 && z < k.z + 1.5; };
-const naArea = (x, z) => { const [a, b] = AB(x, z); return (a > -0.06 && a < 1.06 && b > -0.06 && b < 1.06) || naEstrada(x, z, 0.4) || noCampo(x, z, 1.2) || passagemTrigal(x, z) || Math.hypot(x - LAY.figseca[0], z - LAY.figseca[1]) < 3.2; };   // o trigal passa da borda do diorama: dá para andar por dentro dele
+// caminhos de terra do Blender (até as casas, a escada, a rampa da carroça): andáveis mesmo fora do quadrado
+const dSeg = (x, z, a, b) => { const dx = b[0] - a[0], dz = b[1] - a[1], L2 = dx * dx + dz * dz || 1e-9, u = Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / L2)); return Math.hypot(x - a[0] - dx * u, z - a[1] - dz * u); };
+const naCaminho = (x, z) => (LAY.caminhos || []).some(([m, pp]) => pp.some((p, i) => i > 0 && dSeg(x, z, pp[i - 1], p) < m + 0.6));
+const naArea = (x, z) => { const [a, b] = AB(x, z); return (a > -0.06 && a < 1.06 && b > -0.06 && b < 1.06) || naEstrada(x, z, 0.4) || noCampo(x, z, 1.2) || passagemTrigal(x, z) || naCaminho(x, z) || Math.hypot(x - LAY.figseca[0], z - LAY.figseca[1]) < 3.2; };   // o trigal passa da borda do diorama: dá para andar por dentro dele
 
 // ---------- câmera: o mesmo ângulo do diorama (30°, de quina); afastada mostra tudo, perto segue o jogador ----------
 const camera = new THREE.PerspectiveCamera(22, innerWidth / innerHeight, 0.5, 400);

@@ -18,7 +18,7 @@ const sm = (a, b, x) => { let k = (x - a) / (b - a); k = k < 0 ? 0 : k > 1 ? 1 :
 const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
 
 // ---------- layout exportado do Blender (betfage_layout.json) ----------
-const LAY = await (await fetch('../fase-betfage/betfage_layout.json?v=23')).json();
+const LAY = await (await fetch('../fase-betfage/betfage_layout.json?v=24')).json();
 const S = LAY.S;
 // coordenadas do diorama: a = rumo ao canto direito, b = rumo ao canto esquerdo (0,0 = canto da frente)
 const AB = (x, z) => [(S / 2 - z) / S, (S / 2 - x) / S];
