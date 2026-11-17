@@ -37,7 +37,6 @@ const E = {
 // ---------- obstáculos e interface (do motor comum) ----------
 const { CAIXAS, CIRC, bate, caixaDe } = criaColisao();
 CIRC.push(...LAY.obst.map(([x, z, r]) => ({ x, z, r })));
-const FADE = [];        // objetos altos que ficam transparentes quando tampam o jogador
 const { botao, fade, fala } = criaUI(E);
 
-export { LAY, scene, texChao, rnd, V3, FADE, sm, caixaDe, CIRC, AB, XZ, S, E, renderer, bate, fala, botao, fade, sun, CAIXAS };
+export { LAY, scene, texChao, rnd, V3, sm, caixaDe, CIRC, AB, XZ, S, E, renderer, bate, fala, botao, fade, sun, CAIXAS };

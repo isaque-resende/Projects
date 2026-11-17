@@ -2,7 +2,7 @@
 // caminho até o ponto tocado: A* numa grade de 35 cm, desviando de muros, árvores, objetos, paredes e barrancos altos
 import { bate, V3 } from './estado.js';
 import { terreno } from './cenario.js';
-import { paredeEm, alturaEm } from './insula.js';
+import { paredeEm, alturaEm, presoEm } from './insula.js';
 import { naArea } from './jogador.js';
 
 function caminho(de, ate) {
@@ -10,7 +10,7 @@ function caminho(de, ate) {
   const x0 = Math.min(de.x, ate.x) - M, z0 = Math.min(de.z, ate.z) - M;
   const W = Math.min(260, Math.ceil((Math.abs(de.x - ate.x) + 2 * M) / P)), D = Math.min(260, Math.ceil((Math.abs(de.z - ate.z) + 2 * M) / P));
   const idx = (i, k) => i * D + k, cx = (i) => x0 + i * P, cz = (k) => z0 + k * P;
-  const livreC = (x, z, y) => naArea(x, z) && !bate(x, z, 0.28) && !paredeEm(x, z, y);
+  const livreC = (x, z, y) => naArea(x, z) && !bate(x, z, 0.28) && !paredeEm(x, z, y) && !presoEm(x, z, alturaEm(x, z, y));
   const si = Math.round((de.x - x0) / P), sk = Math.round((de.z - z0) / P);
   let gi = Math.round((ate.x - x0) / P), gk = Math.round((ate.z - z0) / P);
   // se o destino cai dentro de algo, usa a célula livre mais perto

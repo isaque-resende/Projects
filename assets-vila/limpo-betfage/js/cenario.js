@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { instanciaLonge, poePertos } from '../../limpo-motor/layout.js';
 import { suaviza, mapaAltura } from '../../limpo-motor/terreno.js';
-import { scene, texChao, LAY, rnd, V3, FADE } from './estado.js';
+import { scene, texChao, LAY, rnd, V3 } from './estado.js';
 import { gCen, KIT } from './modelos.js';
 
 const matTerra = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, flatShading: true });
@@ -65,17 +65,15 @@ const distEstrada = (x, z) => { let m = 1e9; for (const p of AMOS) { const d = M
 const naEstrada = (x, z, m = 0) => distEstrada(x, z) < LAY.meia + m;
 
 // ---------- objetos do layout (árvores, pedras, eira, feixes, cestos...) ----------
-const ALTOS = /Oliveira|Cipreste|Arvore|Figueira/;
 const CONSTR = [];       // construções com pisos e paredes (a ínsula e a casa avulsa)
 const FORNO = {};        // forno de barro (tabun): fogo dentro, fumaça pela boca de cima; pães na mesa ao lado
 instanciaLonge(scene, LAY.objetos, KIT);
 poePertos(scene, LAY.objetos, KIT, (o, n) => {
-  if (/^Casa(2|_Sobrado|_Alcapao|_Varal)$/.test(o.no)) { FADE.push(n); n.userData.casa = true; CONSTR.push(n); }
+  if (/^Casa(2|_Sobrado|_Alcapao|_Varal)$/.test(o.no)) { n.userData.casa = true; CONSTR.push(n); }
   if (o.no === 'Cocho') { if (Math.hypot(o.p[0] - LAY.manjedoura[0], o.p[2] - LAY.manjedoura[2]) < 1) FORNO.manj = n; else FORNO.bebe = n; }
   if (o.no === 'Peneira_Graos') FORNO.eira = n;
   if (o.no === 'Forno_Barro') FORNO.o = n, FORNO.r = o.r;
   if (o.no === 'Bancada') FORNO.mesa = n;
-  if (ALTOS.test(o.no)) FADE.push(n);
 });
 
 export { CONSTR, terreno, FORNO, AMOS, naEstrada, ROTA, TERRENO };

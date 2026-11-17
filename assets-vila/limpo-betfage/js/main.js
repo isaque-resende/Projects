@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { botao, E, fade, fala, bate, AB, sm, scene, sun, renderer, CIRC, CAIXAS } from './estado.js';
 import './modelos.js';
 import { TERRENO, CONSTR, terreno } from './cenario.js';
-import { INS, paredeEm, alturaEm } from './insula.js';
+import { INS, paredeEm, alturaEm, presoEm } from './insula.js';
 import { UT } from './trigal.js';
 import './plantas.js';
 import { fornoPasso } from './forno.js';
@@ -15,7 +15,8 @@ import { ctl, camera, jog, fw, DIR, rt, mv, tecla, JOY, naArea, toqueTela, DMAX,
 import { caminho } from './caminho.js';
 import { aldeiaPasso } from './vida.js';
 import { acionar, pergunta, perguntaBetania } from './saidas.js';
-import { atualizaFade } from './visao.js';
+import './visao.js';
+import { criaMarcador } from '../../limpo-motor/marcador.js';
 
 ctl.aoAcionar = acionar;
 botao.onclick = () => acionar();
@@ -30,6 +31,7 @@ ctl.aoToque = (e) => {
 setTimeout(() => { fade.style.opacity = 0; setTimeout(() => { fade.textContent = ''; fala('Betfagé, a aldeia dos figos verdes, no caminho de Jerusalém.'); }, 900); setTimeout(() => fala('Suba a estrada até o alto do monte.'), 5200); setTimeout(() => fala(''), 9000); }, 1200);
 
 // ---------- laço ----------
+const marca = criaMarcador(scene);       // a seta sobre a cabeça do jogador
 const relogio = new THREE.Clock();
 const laco = (forca) => {
   const dt = forca || Math.min(relogio.getDelta(), 0.05), t = relogio.elapsedTime;
@@ -58,7 +60,7 @@ const laco = (forca) => {
     const rente = p.y - terreno(p.x, p.z) < 0.4;
     const livreJ = (x, z) => naArea(x, z) && (!rente || !bate(x, z, 0.25)) &&
       !paredeEm(x, z, p.y) && !paredeEm(x + mv.x * 0.25, z + mv.z * 0.25, p.y) &&
-      terreno(x, z) <= p.y + 0.55 &&
+      terreno(x, z) <= p.y + 0.55 && (!presoEm(x, z, alturaEm(x, z, p.y)) || presoEm(p.x, p.z, p.y)) &&
       !moveis.some(([m, r]) => { const d = Math.hypot(m.o.position.x - x, m.o.position.z - z); return d < r && d < Math.hypot(m.o.position.x - p.x, m.o.position.z - p.z); });
     const x0 = p.x, z0 = p.z;
     if (livreJ(nx, nz)) { p.x = nx; p.z = nz; }
@@ -96,7 +98,7 @@ const laco = (forca) => {
   camera.position.copy(foco).addScaledVector(DIR, E.dist); camera.lookAt(foco);
   scene.fog.near = E.dist + 6; scene.fog.far = E.dist + 40;
   sun.position.set(foco.x - 10, foco.y + 26, foco.z + 14); sun.target.position.copy(foco);
-  atualizaFade();
+  marca.passo(pj, t, E.dist, !E.fora);
   renderer.render(scene, camera);
 };
 renderer.setAnimationLoop(() => laco());

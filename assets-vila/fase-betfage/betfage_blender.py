@@ -630,6 +630,21 @@ if EXPORT:
     bpy.ops.object.select_all(action='DESELECT')
     for o in col_exp.all_objects: o.select_set(True)
     bpy.context.view_layer.objects.active = terr
+    # chão leve: o jogo junta os vértices do chão e da estrada e tira a média das cores (suaviza). Fazendo a mesma
+    # média aqui (cor por vértice em vez de por canto), o .glb sai com um vértice por ponto: bem menor, mesmo chão.
+    import numpy as np
+    for o in col_exp.all_objects:
+        if o.type != 'MESH' or not o.name.startswith(('Betfage_Terreno', 'Betfage_Estrada')): continue
+        me = o.data; ca = me.color_attributes.get('Col')
+        if ca is None or ca.domain != 'CORNER': continue
+        nl, nv = len(me.loops), len(me.vertices)
+        cor = np.empty(nl * 4, 'f4'); ca.data.foreach_get('color', cor)
+        vi = np.empty(nl, 'i4'); me.loops.foreach_get('vertex_index', vi)
+        soma = np.zeros((nv, 4)); np.add.at(soma, vi, cor.reshape(-1, 4))
+        media = soma / np.maximum(np.bincount(vi, minlength=nv), 1)[:, None]
+        me.color_attributes.remove(ca)
+        nova = me.color_attributes.new('Col', 'FLOAT_COLOR', 'POINT'); nova.data.foreach_set('color', media.astype('f4').ravel())
+        me.color_attributes.active_color_name = 'Col'; me.color_attributes.render_color_index = me.color_attributes.active_color_index
     saida = OUT + '\\betfage_cenario.glb'
     bpy.ops.export_scene.gltf(filepath=saida, use_selection=True, export_format='GLB', export_normals=False, export_vertex_color='MATERIAL',
                               export_image_format='WEBP', export_image_quality=80, export_meshopt_compression_enable=True)

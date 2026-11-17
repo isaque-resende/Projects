@@ -17,6 +17,15 @@ as texturas continuam vindo das pastas originais, então o que for exportado do 
 | `atores.js` | personagens e animais, e a animação sob medida de braços e pernas |
 | `controles.js` | teclado, toque, pinça, direcional e botão de pular |
 | `ui.js` | botão de ação, tela preta, legenda e caixa de diálogo |
+| `marcador.js` | a seta sobre a cabeça do jogador, visível através de casas e árvores (nada fica transparente) |
+
+**Chão leve:** o jogo junta os vértices repetidos do chão e tira a média das cores (`suaviza`). Os exportadores
+(`exportar_betania.py`, `betfage_blender.py`) já gravam o chão assim, um vértice por ponto. O arquivo fica cerca de
+4 vezes menor e o chão na tela é o mesmo. No Blender, a pintura do chão continua por canto; a troca é só na
+hora de exportar.
+
+**Ínsula de Betfagé:** ao carregar, o jogo percorre a ínsula e as casas numa grade de 10 cm e marca os bolsões
+(vãos dentro das paredes grossas do modelo de onde não se sai andando). O jogador não pisa neles (`presoEm`).
 
 **`limpo-betania/js/`** e **`limpo-betfage/js/`** têm um módulo por assunto. Cada arquivo começa com uma
 linha dizendo o que ele contém. `estado.js` é a base da fase e `main.js` é o laço do jogo.

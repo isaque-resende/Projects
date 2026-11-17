@@ -2,12 +2,12 @@
 // a ínsula: casas geminadas em L em volta de um pátio, com escada externa; dá para subir nos terraços
 import * as THREE from 'three';
 import { sombra } from '../../limpo-motor/base.js';
-import { LAY, scene, FADE, V3 } from './estado.js';
+import { LAY, scene, V3 } from './estado.js';
 import { gInsula } from './modelos.js';
 import { CONSTR, terreno } from './cenario.js';
 
 const INS = { g: gInsula.scene };
-INS.g.position.set(...LAY.insula.p); INS.g.rotation.y = LAY.insula.r; sombra(INS.g); scene.add(INS.g); FADE.push(INS.g);
+INS.g.position.set(...LAY.insula.p); INS.g.rotation.y = LAY.insula.r; sombra(INS.g); scene.add(INS.g);
 INS.g.updateMatrixWorld(true);
 // pisos: cada célula guarda as alturas de todas as faces viradas para cima (chão, degraus, terraços);
 // paredes: o trecho de altura ocupado por faces de pé. Assim o beiral não vira chão e a parede barra a passagem.
@@ -58,4 +58,56 @@ INS.caixa = new THREE.Box3().setFromObject(INS.g);
 const terrenoPe = (x, z, r = 0.16) => Math.max(terreno(x, z), terreno(x + r, z), terreno(x - r, z), terreno(x, z + r), terreno(x, z - r));
 const alturaEm = (x, z, y = 1e9) => Math.max(terrenoPe(x, z), pisoEm(x, z, y));
 
-export { INS, paredeEm, alturaEm };
+// ---------- bolsões: pontos de onde não se sai andando ----------
+// O modelo tem vãos dentro das paredes grossas e entre as peças. Quem cai num deles fica preso (só sai pulando no
+// ponto certo). Ao carregar, anda-se pela construção numa grade de 10 cm: primeiro tudo o que se alcança vindo de
+// fora (andando ou pulando), depois o que consegue voltar para fora só andando. O resto vira lugar proibido.
+function mapaSaida(caixa, P = 0.1, M = 1) {
+  const X0 = caixa.min.x - M, Z0 = caixa.min.z - M, y0 = caixa.min.y;
+  const W = Math.ceil((caixa.max.x - caixa.min.x + 2 * M) / P), D = Math.ceil((caixa.max.z - caixa.min.z + 2 * M) / P);
+  const id = (i, k, y) => (i * D + k) * 1000 + Math.round((y - y0) * 10 + 100);
+  const passos = (i, k, y, pulo) => {
+    const out = [];
+    for (const [di, dk] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const ni = i + di, nk = k + dk; if (ni < 0 || nk < 0 || ni >= W || nk >= D) continue;
+      const nx = X0 + ni * P, nz = Z0 + nk * P;
+      for (const [sobe, yp] of pulo ? [[0.55, y], [1, y + 0.97]] : [[0.55, y]]) {
+        if (paredeEm(nx, nz, yp) || paredeEm(nx + di * 0.25, nz + dk * 0.25, yp)) continue;
+        const ny = alturaEm(nx, nz, y + sobe - 0.55); if (ny <= y + sobe) out.push([ni, nk, ny]);
+      }
+    }
+    return out;
+  };
+  // 1. o que se alcança vindo de fora
+  const est = new Map(), anda = new Map(), fila = [[0, 0, alturaEm(X0, Z0)]];
+  est.set(id(...fila[0]), fila[0]);
+  for (let h = 0; h < fila.length; h++) {
+    const s = fila[h], a = id(...s);
+    anda.set(a, passos(...s, false).map((t) => id(...t)));
+    for (const t of passos(...s, true)) { const kk = id(...t); if (!est.has(kk)) { est.set(kk, t); fila.push(t); } }
+  }
+  // 2. o que volta para fora só andando (caminho ao contrário, a partir da borda da grade)
+  const volta = new Map(); for (const [a, l] of anda) for (const b of l) { if (!volta.has(b)) volta.set(b, []); volta.get(b).push(a); }
+  const sai = new Set(), f2 = [];
+  for (const [kk, [i, k]] of est) if (i < 3 || k < 3 || i > W - 4 || k > D - 4) { sai.add(kk); f2.push(kk); }
+  for (let h = 0; h < f2.length; h++) for (const a of volta.get(f2[h]) || []) if (!sai.has(a)) { sai.add(a); f2.push(a); }
+  // 3. por célula, as alturas boas e as ruins
+  const cel = new Map();
+  for (const [kk, [i, k, y]] of est) { const c = i * D + k; if (!cel.has(c)) cel.set(c, []); cel.get(c).push([y, sai.has(kk)]); }
+  const ruim = (i, k, y) => {
+    if (i < 0 || k < 0 || i >= W || k >= D) return false;
+    const l = cel.get(i * D + k); if (!l) return false;
+    let r = false; for (const [h, ok] of l) if (Math.abs(h - y) < 0.2) { if (ok) return false; r = true; }
+    return r;
+  };
+  // olha as 4 células em volta do ponto: na dúvida, perto de um bolsão também não se pisa
+  return (x, z, y) => {
+    const i = Math.floor((x - X0) / P), k = Math.floor((z - Z0) / P);
+    return ruim(i, k, y) || ruim(i + 1, k, y) || ruim(i, k + 1, y) || ruim(i + 1, k + 1, y);
+  };
+}
+const SAIDAS = [mapaSaida(INS.caixa), ...CONSTR.map((c) => mapaSaida(new THREE.Box3().setFromObject(c)))];
+// true se o ponto (na altura y onde se pisa) é um bolsão de onde não se sai andando
+const presoEm = (x, z, y) => SAIDAS.some((f) => f(x, z, y));
+
+export { INS, paredeEm, alturaEm, presoEm };

@@ -123,6 +123,38 @@ def colisao():
     return {'circ': sorted(C), 'caixas': sorted(B)}
 
 
+# ---------- chão leve ----------
+# O jogo junta os vértices repetidos do chão e dos caminhos e tira a média das cores (função suaviza). Fazendo a
+# mesma média aqui, o .glb sai com um vértice por ponto em vez de um por canto de triângulo: fica bem menor e o
+# jogo mostra o mesmo chão. A troca é numa cópia temporária da malha; a sua pintura (por canto) não muda.
+LEVES = ('Betania_Terreno', 'Betania_Caminhos')
+
+
+def chao_leve(objs):
+    import numpy as np
+    trocas = []
+    for o in objs:
+        me0 = o.data
+        ca = me0.color_attributes.get(me0.color_attributes.active_color_name or '')
+        if ca is None or ca.domain != 'CORNER': continue
+        me, nome = me0.copy(), ca.name
+        n, nv = len(me.loops), len(me.vertices)
+        cor = np.empty(n * 4, 'f4'); me.color_attributes[nome].data.foreach_get('color', cor)
+        vi = np.empty(n, 'i4'); me.loops.foreach_get('vertex_index', vi)
+        soma = np.zeros((nv, 4)); np.add.at(soma, vi, cor.reshape(-1, 4))
+        media = soma / np.maximum(np.bincount(vi, minlength=nv), 1)[:, None]
+        me.color_attributes.remove(me.color_attributes[nome])
+        nova = me.color_attributes.new(nome, 'FLOAT_COLOR', 'POINT'); nova.data.foreach_set('color', media.astype('f4').ravel())
+        me.color_attributes.active_color_name = nome; me.color_attributes.render_color_index = me.color_attributes.active_color_index
+        o.data = me; trocas.append((o, me0, me))
+    return trocas
+
+
+def desfaz_chao_leve(trocas):
+    for o, me0, me in trocas:
+        o.data = me0; bpy.data.meshes.remove(me)
+
+
 def layout():
     L = []
     for o in sorted([o for o in bpy.data.objects if 'glb' in o and o.parent is None], key=lambda o: o.get('ordem', 0)):
@@ -155,8 +187,12 @@ def exporta(salvar=True):
     for o in col.all_objects: o.select_set(True)
     bpy.context.view_layer.objects.active = terreno()
     saida = OUT + '\\betania_cenario.glb'
-    bpy.ops.export_scene.gltf(filepath=saida, use_selection=True, export_format='GLB', export_normals=False, export_vertex_color='MATERIAL',
-                              export_image_format='WEBP', export_image_quality=80, export_meshopt_compression_enable=True)
+    leves = chao_leve([o for o in col.all_objects if o.type == 'MESH' and o.name.startswith(LEVES)])
+    try:
+        bpy.ops.export_scene.gltf(filepath=saida, use_selection=True, export_format='GLB', export_normals=False, export_vertex_color='MATERIAL',
+                                  export_image_format='WEBP', export_image_quality=80, export_meshopt_compression_enable=True)
+    finally:
+        desfaz_chao_leve(leves)
     for o in col.all_objects: o.select_set(False)
     for o in trav: o.hide_select = True
     L = layout()

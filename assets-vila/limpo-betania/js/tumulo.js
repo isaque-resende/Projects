@@ -29,8 +29,6 @@ const TUM = {}, ROLA = 1;   // lado para onde a pedra rola (ao longo da face)
       n.traverse((mm) => { if (mm.isMesh) { mm.material = mm.material.clone(); mm.material.color.multiply(TOM_ROCHA); } }); } }   // tom do rochedo
   TUM.frente = new THREE.Vector3(1, 0, 0).applyQuaternion(tum.quaternion).setY(0).normalize();   // a porta olha para +x do modelo
   TUM.lugar = pedra.getWorldPosition(new THREE.Vector3()).setY(0);
-  // (sobra do tempo em que o rochedo ficava transparente na frente do jogador: o material continua preparado para isso)
-  tum.traverse((m) => { if (m.isMesh) { m.material = m.material.clone(); m.material.transparent = true; m.userData.op = 1; } });
 }
 // a pedra do túmulo rola de lado, girando sobre si mesma
 function pedraPasso(dt) {

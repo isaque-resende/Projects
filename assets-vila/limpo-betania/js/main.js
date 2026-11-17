@@ -17,6 +17,7 @@ import { passantePasso, olharPasso } from './passantes.js';
 import { CASAI, tumbaPasso, casaPasso } from './interiores.js';
 import { acionar, perguntaBetfage } from './acoes.js';
 import { introPasso } from './intro.js';
+import { criaMarcador } from '../../limpo-motor/marcador.js';
 
 ctl.aoAcionar = acionar;
 // no celular o toque age já no pointerdown (o texto do botão é reescrito a cada quadro e o 'click' se perdia)
@@ -33,10 +34,12 @@ ctl.aoToque = (e) => {
 };
 
 // ---------- laço ----------
+const marca = criaMarcador(scene);       // a seta sobre a cabeça do jogador
 const relogio = new THREE.Clock();
 const laco = (forca) => {
   const dt = forca || Math.min(relogio.getDelta(), 0.05), t = relogio.elapsedTime;
   for (const m of MIX) m.update(dt);
+  marca.passo(jog.o.position, t, E.dist, false);      // escondida na abertura, no túmulo e entrando em casa
   if (introPasso(dt)) { renderer.render(scene, camera); return; }
   if (tumbaPasso(dt)) { renderer.render(scene, camera); return; }
   if (E.CASA_ANIM) { casaPasso(dt); portasPasso(dt);
@@ -122,6 +125,7 @@ const laco = (forca) => {
   scene.fog.near = E.dist + 14; scene.fog.far = E.dist + 70;   // a neblina acompanha o zoom: o fundo da vila nunca some
   sun.position.set(foco.x + 14, 22, foco.z + 9); sun.target.position.copy(foco);
 
+  marca.passo(jog.o.position, t, E.dist, !E.fora);
   renderer.render(scene, camera);
 };
 renderer.setAnimationLoop(() => laco());
