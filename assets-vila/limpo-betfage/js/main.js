@@ -31,7 +31,7 @@ ctl.aoToque = (e) => {
 setTimeout(() => { fade.style.opacity = 0; setTimeout(() => { fade.textContent = ''; fala('Betfagé, a aldeia dos figos verdes, no caminho de Jerusalém.'); }, 900); setTimeout(() => fala('Suba a estrada até o alto do monte.'), 5200); setTimeout(() => fala(''), 9000); }, 1200);
 
 // ---------- laço ----------
-const marca = criaMarcador(scene);       // a seta sobre a cabeça do jogador
+const marca = criaMarcador(scene, camera, jog.o);   // a seta sobre a cabeça, quando algo esconde o jogador
 const relogio = new THREE.Clock();
 const laco = (forca) => {
   const dt = forca || Math.min(relogio.getDelta(), 0.05), t = relogio.elapsedTime;
@@ -105,4 +105,4 @@ renderer.setAnimationLoop(() => laco());
 addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
 
 // para os testes automáticos: abrir com ?teste e usar TESTE no console
-if (new URLSearchParams(location.search).has('teste')) globalThis.TESTE = { E, jog, laco, tecla, bate, alturaEm, chaoTerra: terreno, scene, camera, CIRC, CAIXAS, renderer };
+if (new URLSearchParams(location.search).has('teste')) globalThis.TESTE = { E, jog, laco, marca, tecla, bate, alturaEm, chaoTerra: terreno, scene, camera, CIRC, CAIXAS, renderer };

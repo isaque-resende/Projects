@@ -34,16 +34,17 @@ ctl.aoToque = (e) => {
 };
 
 // ---------- laço ----------
-const marca = criaMarcador(scene);       // a seta sobre a cabeça do jogador
+const marca = criaMarcador(scene, camera, jog.o);   // a seta sobre a cabeça, quando algo esconde o jogador
 const relogio = new THREE.Clock();
 const laco = (forca) => {
   const dt = forca || Math.min(relogio.getDelta(), 0.05), t = relogio.elapsedTime;
   for (const m of MIX) m.update(dt);
-  marca.passo(jog.o.position, t, E.dist, false);      // escondida na abertura, no túmulo e entrando em casa
-  if (introPasso(dt)) { renderer.render(scene, camera); return; }
-  if (tumbaPasso(dt)) { renderer.render(scene, camera); return; }
+  // na abertura, no túmulo e entrando em casa a seta fica escondida
+  const semSeta = () => { marca.passo(jog.o.position, t, E.dist, false); renderer.render(scene, camera); };
+  if (introPasso(dt)) { semSeta(); return; }
+  if (tumbaPasso(dt)) { semSeta(); return; }
   if (E.CASA_ANIM) { casaPasso(dt); portasPasso(dt);
-    camera.position.copy(foco).addScaledVector(DIR, E.dist); camera.lookAt(foco); renderer.render(scene, camera); return; }
+    camera.position.copy(foco).addScaledVector(DIR, E.dist); camera.lookAt(foco); semSeta(); return; }
 
   // jogador
   fw.copy(DIR).negate().setY(0).normalize(); rt.set(-fw.z, 0, fw.x);
@@ -132,4 +133,4 @@ renderer.setAnimationLoop(() => laco());
 addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
 
 // para os testes automáticos: abrir com ?teste e usar TESTE no console
-if (new URLSearchParams(location.search).has('teste')) globalThis.TESTE = { E, jog, laco, tecla, bate, alturaEm, chaoTerra, scene, camera, CIRC, CAIXAS, renderer };
+if (new URLSearchParams(location.search).has('teste')) globalThis.TESTE = { E, jog, laco, marca, tecla, bate, alturaEm, chaoTerra, scene, camera, CIRC, CAIXAS, renderer };
