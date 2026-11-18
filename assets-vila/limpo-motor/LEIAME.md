@@ -1,8 +1,9 @@
-# Jogo passado a limpo
+# O jogo (Betânia e Betfagé)
 
-Cópia das fases de Betânia e Betfagé com o código organizado em módulos. O jogo é o mesmo do original
-(`fase-betania`, `fase-betfage`): mesma cena, mesma colisão, mesmos movimentos. O cenário, as posições e
-as texturas continuam vindo das pastas originais, então o que for exportado do Blender vale para os dois.
+Desde 18/11 a versão em módulos é a oficial: `fase-betania/` e `fase-betfage/` abrem o jogo novo (`index.html` + `js/`).
+As páginas antigas, de um arquivo só, ficaram como backup em `fase-betania/antigo.html` e `fase-betfage/antigo.html`
+(a troca de fase entre elas continua funcionando, de antigo para antigo). Elas não recebem mais correções.
+Os endereços `limpo-betania/` e `limpo-betfage/` só redirecionam para as pastas oficiais.
 
 ## Onde está cada coisa
 
@@ -27,7 +28,7 @@ hora de exportar.
 **Ínsula de Betfagé:** ao carregar, o jogo percorre a ínsula e as casas numa grade de 10 cm e marca os bolsões
 (vãos dentro das paredes grossas do modelo de onde não se sai andando). O jogador não pisa neles (`presoEm`).
 
-**`limpo-betania/js/`** e **`limpo-betfage/js/`** têm um módulo por assunto. Cada arquivo começa com uma
+**`fase-betania/js/`** e **`fase-betfage/js/`** têm um módulo por assunto. Cada arquivo começa com uma
 linha dizendo o que ele contém. `estado.js` é a base da fase e `main.js` é o laço do jogo.
 
 ## Colisão (Betânia)
@@ -77,16 +78,16 @@ o texto **EXPORTAR_PARA_O_JOGO** (aba Scripting > Run Script): ele grava `betfag
   Pode mover os vértices (a ordem conta: o primeiro é onde ela fica parada, o último é onde descarrega).
   Os caminhos (para o jogador poder andar fora do quadrado) ficam no texto `betfage_fixos`.
 
-## A carroça (cópia limpa, `limpo-betfage/js/ceifa.js`)
+## A carroça (`fase-betfage/js/ceifa.js`)
 
 Cheia (8 feixes), o carregador puxa o boi pela `rota_carro` do layout, para no fim, leva os feixes de dois em dois
 até as pilhas da eira, vira a carroça no lugar (o boi dá a volta) e volta; no planalto vira de novo e recomeça.
 O boi segue a rota e a carroça vem atrás como reboque, com a ponta dos varais na canga do boi. O modelo da carroça vem
 girado no kit; um grupo o endireita, com a origem no meio do eixo. Nas pontas da viagem, a carroça gira sobre o eixo e o
 boi, preso aos varais, dá a volta por fora. Os círculos de colisão da carroça e do boi andam com eles. Os feixes entregues engordam o monte da eira.
-A fase original (`fase-betfage/index.html`) usa o cenário novo, mas a carroça dela continua parada.
+O backup (`fase-betfage/antigo.html`) usa o cenário novo, mas a carroça dela continua parada.
 
-## A eira (cópia limpa, `limpo-betfage/js/eira.js`)
+## A eira (`fase-betfage/js/eira.js`)
 
 O robusto e a mulher de botões malham o trigo com o clipe **Malhar**, animado no Blender pelo `personagens/malhar.py`
 (sai `robusto_malhar.glb` e `mulher_botoes_malhar.glb`: só o esqueleto, o forcado e o clipe, cerca de 90 KB cada).

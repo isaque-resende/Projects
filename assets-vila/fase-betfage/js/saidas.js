@@ -16,7 +16,7 @@ const PERG2 = PERG.cloneNode(false); PERG2.innerHTML = '<div style="margin-botto
 const bS2 = btSim.cloneNode(true), bN2 = btNao.cloneNode(true); PERG2.append(bS2, bN2); document.body.appendChild(PERG2);
 function perguntaBetania() { E.fora = true; E.alvoToque = null; botao.style.display = 'none'; jog.toca('Parado'); PERG2.style.display = 'block'; }
 bN2.onclick = () => { PERG2.style.display = 'none'; const p = AMOS[Math.round(tMin * AMOS.length) + 6]; jog.o.position.set(p.x, terreno(p.x, p.z), p.z); E.fora = false; };
-bS2.onclick = () => { PERG2.style.display = 'none'; fade.textContent = 'De volta a Betânia…'; fade.style.opacity = 1; setTimeout(() => { location.href = '../limpo-betania/?de=betfage'; }, 1200); };
+bS2.onclick = () => { PERG2.style.display = 'none'; fade.textContent = 'De volta a Betânia…'; fade.style.opacity = 1; setTimeout(() => { location.href = '../fase-betania/?de=betfage'; }, 1200); };
 function pergunta() { E.fora = true; E.alvoToque = null; botao.style.display = 'none'; jog.toca('Parado'); PERG.style.display = 'block'; }
 btNao.onclick = () => { PERG.style.display = 'none'; const p = AMOS[Math.round(tMax * AMOS.length) - 6]; jog.o.position.set(p.x, terreno(p.x, p.z), p.z); E.fora = false; };
 btSim.onclick = () => {

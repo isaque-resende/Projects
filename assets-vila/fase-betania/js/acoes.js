@@ -11,7 +11,7 @@ function perguntaBetfage() {
 function irBetfage() {
   if (E.fora) return; E.fora = true; E.alvoToque = null; botao.style.display = 'none';
   fade.style.transition = 'opacity .9s'; fade.textContent = 'A caminho de Betfagé…'; fade.style.opacity = 1;
-  setTimeout(() => { location.href = '../limpo-betfage/?de=betania'; }, 1300);
+  setTimeout(() => { location.href = '../fase-betfage/?de=betania'; }, 1300);
 }
 function acionar() {
   if (botao.style.display !== 'block' || E.fora) return;
