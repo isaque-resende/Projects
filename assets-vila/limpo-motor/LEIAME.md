@@ -3,7 +3,8 @@
 Desde 18/11 a versão em módulos é a oficial: `fase-betania/` e `fase-betfage/` abrem o jogo novo (`index.html` + `js/`).
 As páginas antigas, de um arquivo só, ficaram como backup em `fase-betania/antigo.html` e `fase-betfage/antigo.html`
 (a troca de fase entre elas continua funcionando, de antigo para antigo). Elas não recebem mais correções.
-Os endereços `limpo-betania/` e `limpo-betfage/` só redirecionam para as pastas oficiais.
+Os endereços `limpo-betania/` e `limpo-betfage/` só redirecionam para as pastas oficiais, e também
+`fase-betfage/prado.html` (o teste do chão suave, que virou o visual oficial; a página antiga está no histórico do git).
 
 ## Onde está cada coisa
 
@@ -59,8 +60,10 @@ o texto **EXPORTAR_PARA_O_JOGO** (aba Scripting > Run Script): ele grava `betfag
 - Colisão: coleção `Colisao`, igual à da Betânia (círculos presos ao dono; objeto novo ganha o círculo padrão).
 - Referências do jogo (coleção `Referencia_jogo`): `Campo_Trigal` (o retângulo do trigal: mova ou escale),
   `JOGO_figseca`, `JOGO_pasto`, `JOGO_cocho`, `JOGO_manjedoura`. A ínsula é `Insula_Jogo` e a carroça é `Carroca_Jogo`.
-- Terreno, estrada e muros (coleção `Exportar`) ficam travados contra clique. Para mudar o relevo, é melhor pedir:
-  o `betfage_blender.py` gera a fase do zero (e **apaga** o que foi mexido à mão no `.blend`).
+- Terreno, estrada e muros (coleção `Exportar`) ficam travados contra clique. Para mudar o relevo, é melhor pedir.
+- O `betfage_blender.py` (o gerador que criou a fase do zero) está **travado** desde 18/11: rodado, ele só avisa e para.
+  Com `--regerar-tudo` ele monta a fase numa cópia, `betfage_regerado.blend`, nunca no `betfage.blend`, e não exporta
+  para o jogo. Os `ajuste*.py` continuam usando as funções do começo dele.
 - Desde 17/11 o `.blend` também tem o que o `ajuste_muros_caminhos.py` fez uma vez por cima dele: muros de arrimo
   nas bordas dos patamares, estrada da aldeia sem inclinação de lado, caminhos de terra (`Betfage_Estrada_Caminhos`),
   escada de pedra até a casa de cima e rampa da carroça. O gerador não sabe disso: regerar a fase perde tudo.

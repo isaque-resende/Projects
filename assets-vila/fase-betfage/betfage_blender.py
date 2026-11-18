@@ -1,3 +1,9 @@
+# ATENÇÃO (18/11): o original de Betfagé agora é o betfage.blend, mexido à mão. Este gerador ficou só como
+# referência e como biblioteca (os ajuste*.py usam as funções do começo dele, até a linha "cena").
+# Rodado direto, ele recria a fase do zero e perderia esse trabalho, por isso está travado:
+#   - sem --regerar-tudo ele para antes de mexer em qualquer coisa;
+#   - com --regerar-tudo ele monta a fase, mas grava em betfage_regerado.blend (nunca no betfage.blend)
+#     e não exporta para o jogo.
 # Betfagé: modela a fase (terreno com socalcos, estrada, muros) e posiciona os assets como no diorama de referência.
 # Coordenadas da fase em (a, b): a = rumo ao canto direito, b = rumo ao canto esquerdo; (0,0) = canto da frente.
 # Mundo three.js: x = S/2 - b*S, z = S/2 - a*S, y = altura.  Blender: (x, -z, y).
@@ -114,6 +120,12 @@ def altura(x, z):
     return h
 
 # ---------------- cena ----------------
+if '--regerar-tudo' not in sys.argv:
+    raise SystemExit("betfage_blender.py está travado: ele recria Betfagé do zero e apagaria o que foi feito à mão no "
+                     "betfage.blend. Para mexer na fase, abra o betfage.blend e rode EXPORTAR_PARA_O_JOGO. "
+                     "Para regerar mesmo assim (numa cópia), rode com --regerar-tudo.")
+if EXPORT:
+    raise SystemExit("betfage_blender.py: --export foi desligado. Exporte pelo betfage.blend (EXPORTAR_PARA_O_JOGO).")
 bpy.ops.wm.read_factory_settings(use_empty=True)
 sc = bpy.context.scene
 col_exp = bpy.data.collections.new('Exportar'); sc.collection.children.link(col_exp)
@@ -735,7 +747,7 @@ if RENDER:
     sc.render.filepath = SCR + '\\betfage_render.png'; bpy.ops.render.render(write_still=True)
 
 if '--blend' in sys.argv or EXPORT:
-    bpy.ops.wm.save_as_mainfile(filepath=OUT + '\\betfage.blend')
+    bpy.ops.wm.save_as_mainfile(filepath=OUT + '\\betfage_regerado.blend')   # nunca sobrescreve o original
 if EXPORT:
     g = {'__name__': 'exportar_betfage'}
     exec(open(OUT + '\\exportar_betfage.py', encoding='utf-8').read(), g)
