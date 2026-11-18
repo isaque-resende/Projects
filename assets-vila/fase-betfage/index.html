@@ -936,6 +936,8 @@ function atualizaFade() {
 }
 
 setTimeout(() => { fade.style.opacity = 0; setTimeout(() => { fade.textContent = ''; fala('Betfagé, a aldeia dos figos verdes, no caminho de Jerusalém.'); }, 900); setTimeout(() => fala('Suba a estrada até o alto do monte.'), 5200); setTimeout(() => fala(''), 9000); }, 1200);
+// abre com a aldeia inteira e depois fecha 25% para a distância de jogo
+let abrindo = false; setTimeout(() => { distAlvo = Math.min(distAlvo, distTudo() * 0.75); abrindo = true; }, 3600);
 
 // a ínsula puxa para o creme acinzentado das pedras dos muros (o modelo veio muito avermelhado)
 for (const alvo of [INS.g, ...CONSTR]) alvo.traverse((m) => {
@@ -1039,7 +1041,8 @@ const laco = (forca) => {
 
   // câmera: afastada, o diorama inteiro; aproximando, segue o jogador
   distAlvo = Math.min(distAlvo, DMAX());
-  dist += (distAlvo - dist) * Math.min(1, dt * 6);
+  dist += (distAlvo - dist) * Math.min(1, dt * (abrindo ? 0.9 : 6));
+  if (abrindo && Math.abs(distAlvo - dist) < 0.3) abrindo = false;
   const k = sm(DMIN, DMAX() * 0.92, dist);
   const alvoF = pj.clone().lerp(CENTRO, k);
   foco.lerp(alvoF, Math.min(1, dt * 3));

@@ -11,7 +11,7 @@ import { MIX, partPasso } from './gente.js';
 import { ceifeiro, atadeira, carregador, ceifeiroPasso, atadeiraPasso, carregadorPasso } from './ceifa.js';
 import { debulhadorPasso, joeiradeiraPasso } from './eira.js';
 import { andante, ovelhas } from './aldeia.js';
-import { ctl, camera, jog, fw, DIR, rt, mv, tecla, JOY, naArea, toqueTela, DMAX, DMIN, CENTRO, foco } from './jogador.js';
+import { ctl, camera, jog, fw, DIR, rt, mv, tecla, JOY, naArea, toqueTela, DMAX, DMIN, DJOGO, CENTRO, foco } from './jogador.js';
 import { caminho } from './caminho.js';
 import { aldeiaPasso } from './vida.js';
 import { acionar, pergunta, perguntaBetania } from './saidas.js';
@@ -29,6 +29,8 @@ ctl.aoToque = (e) => {
 
 // legendas da chegada
 setTimeout(() => { fade.style.opacity = 0; setTimeout(() => { fade.textContent = ''; fala('Betfagé, a aldeia dos figos verdes, no caminho de Jerusalém.'); }, 900); setTimeout(() => fala('Suba a estrada até o alto do monte.'), 5200); setTimeout(() => fala(''), 9000); }, 1200);
+// abre com a aldeia inteira e, passada a primeira legenda, a câmera fecha devagar para a distância de jogo
+setTimeout(() => { E.distAlvo = Math.min(E.distAlvo, DJOGO()); E.abrindo = true; }, 3600);
 
 // ---------- laço ----------
 const marca = criaMarcador(scene, camera, jog.o);   // a seta sobre a cabeça, quando algo esconde o jogador
@@ -92,7 +94,8 @@ const laco = (forca) => {
 
   // câmera: afastada, o diorama inteiro; aproximando, segue o jogador
   E.distAlvo = Math.min(E.distAlvo, DMAX());
-  E.dist += (E.distAlvo - E.dist) * Math.min(1, dt * 6);
+  E.dist += (E.distAlvo - E.dist) * Math.min(1, dt * (E.abrindo ? 0.9 : 6));
+  if (E.abrindo && Math.abs(E.distAlvo - E.dist) < 0.3) E.abrindo = false;
   const k = sm(DMIN, DMAX() * 0.92, E.dist);
   const alvoF = pj.clone().lerp(CENTRO, k);
   foco.lerp(alvoF, Math.min(1, dt * 3));

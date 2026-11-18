@@ -25,6 +25,7 @@ const distTudo = () => { const largura = S * 1.5, alt = S * 1.18; const f = Math
 E.dist = distTudo(); E.distAlvo = E.dist;
 const DMIN = 14;
 const DMAX = () => distTudo() * 1.08;
+const DJOGO = () => distTudo() * 0.75;     // depois da abertura, a câmera fecha 25% e o jogo segue assim (a pinça ainda abre e fecha)
 const foco = CENTRO.clone();
 
 // ---------- controles (do motor comum); as ações são ligadas em main.js ----------
@@ -33,4 +34,4 @@ const { tecla, JOY, toqueTela } = ctl;
 // direções na tela (frente e direita da câmera) e o passo pedido
 const fw = new THREE.Vector3(), rt = new THREE.Vector3(), mv = new THREE.Vector3();
 
-export { naArea, jog, camera, ctl, fw, DIR, rt, mv, tecla, JOY, toqueTela, DMAX, DMIN, CENTRO, foco };
+export { naArea, jog, camera, ctl, fw, DIR, rt, mv, tecla, JOY, toqueTela, DMAX, DMIN, DJOGO, CENTRO, foco };

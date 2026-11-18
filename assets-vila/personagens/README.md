@@ -39,3 +39,4 @@ Origem nos pés, de frente para +Z no three.js.
 
 O viewer (`index.html`) troca entre os quinze e toca as cinco animações.
 - **Correção (13/11):** barbudo, robusto, magro, carregador, mercador e mulher de botões foram remontados. O punho e a ponta da mão agora são medidos na malha, os dedos seguem a mão e a perna abaixo da barra segue só coxa, panturrilha e pé. A saia encostada na mão não herda mais o peso do braço, e o avental e o vestido de baixo têm os mesmos pesos, para não se atravessarem. O rosto virou uma ilha única e maior na textura (antes ficava picado em vários pedaços e borrava no celular).
+- **Clipes extras (18/11):** `robusto_malhar.glb` e `mulher_botoes_malhar.glb` têm só o esqueleto, o forcado (osso `garfo`) e o clipe `Malhar` da eira de Betfagé. Saem do `malhar.py` (Blender em segundo plano: `blender -b --factory-startup -P malhar.py -- robusto.glb robusto_malhar.glb previas a`).

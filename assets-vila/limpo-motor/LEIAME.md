@@ -86,6 +86,20 @@ girado no kit; um grupo o endireita, com a origem no meio do eixo. Nas pontas da
 boi, preso aos varais, dá a volta por fora. Os círculos de colisão da carroça e do boi andam com eles. Os feixes entregues engordam o monte da eira.
 A fase original (`fase-betfage/index.html`) usa o cenário novo, mas a carroça dela continua parada.
 
+## A eira (cópia limpa, `limpo-betfage/js/eira.js`)
+
+O robusto e a mulher de botões malham o trigo com o clipe **Malhar**, animado no Blender pelo `personagens/malhar.py`
+(sai `robusto_malhar.glb` e `mulher_botoes_malhar.glb`: só o esqueleto, o forcado e o clipe, cerca de 90 KB cada).
+O forcado é um osso a mais (`garfo`), os braços seguem o cabo por IK com polo (cotovelos para baixo e para trás), as mãos
+fecham no cabo e as pernas dobram com os pés plantados; depois tudo é assado em quadros. No jogo só se pendura o forcado
+no esqueleto e toca o clipe; a palha voa da ponta dos dentes no alto do arremesso. Para mudar o movimento, edite as
+`POSES` do `malhar.py` e rode de novo (as prévias saem numa pasta, de três ângulos).
+
+## Câmera de Betfagé
+
+Abre com a aldeia inteira e, depois da primeira legenda, fecha devagar 25% (`DJOGO` em `jogador.js`). A pinça e a roda
+continuam abrindo e fechando.
+
 ## Regras para mexer
 
 - Os módulos de uma fase são montados em ordem fixa (cada um importa o anterior). A ordem de criação dos
