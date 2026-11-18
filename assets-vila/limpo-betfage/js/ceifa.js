@@ -97,7 +97,7 @@ caixaCarro();
 const LADO_C = CO0.NPC_Carregar.clone().sub(CO0.Carroca);
 const boiCarro = ator(gBoi, 1.45, 0, 0, 0, 'Parado');
 const PONTA = 2.7;                 // do meio da carroça até o boi
-const C_BOI = { x: 0, z: 0, r: 0.9 }; CIRC.push(C_BOI);
+const C_BOI = { x: 0, z: 0, r: 0.72 }; CIRC.push(C_BOI);      // menor que o boi: parado no alto da rampa, deixa passar entre ele e o muro
 // ---------- a rota ----------
 const ROTA_C = (LAY.rota_carro || []).map(([x, z]) => V3(x, 0, z));
 const RL = [0]; for (let i = 1; i < ROTA_C.length; i++) RL.push(RL[i - 1] + ROTA_C[i].distanceTo(ROTA_C[i - 1]));
@@ -250,7 +250,7 @@ function carregadorPasso(dt) {
       VIAGEM.s = Math.max(0, VIAGEM.s - V_CARRO * dt);
       const th = angRota(VIAGEM.s, -1); poeCarro(naRota(VIAGEM.s), carroca.rotation.y + Math.atan2(Math.sin(th - carroca.rotation.y), Math.cos(th - carroca.rotation.y)) * Math.min(1, dt * 3), th);
       boiCarro.toca('Andar'); puxa(1.2);
-      if (VIAGEM.s <= 0) { CA.e = 'vira'; VIAGEM.giro = 0; VIAGEM.th0 = carroca.rotation.y; VIAGEM.sent = 1; poeCarro(V3(CARRO.x, 0, CARRO.z), carroca.rotation.y, null); }
+      if (VIAGEM.s <= 0) { CA.e = 'vira'; VIAGEM.giro = 0; VIAGEM.th0 = carroca.rotation.y; VIAGEM.sent = -1; poeCarro(V3(CARRO.x, 0, CARRO.z), carroca.rotation.y, null); }
       break;
     }
   }

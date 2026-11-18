@@ -35,6 +35,6 @@ for (let i = 0; i < 3; i++) {
 const andante = ator(nMoco, 1.68, 0, 0, 0, 'Andar');
 // trecho da estrada por onde o andante sobe e desce (dentro do diorama)
 const tMin = (() => { for (let i = 0; i < AMOS.length; i++) { const [a, b] = AB(AMOS[i].x, AMOS[i].z); if (a + b > 0.1) return i / AMOS.length; } return 0.1; })();
-const tMax = (() => { for (let i = AMOS.length - 1; i >= 0; i--) { const [a, b] = AB(AMOS[i].x, AMOS[i].z); if (a + b < 1.9) return i / AMOS.length; } return 0.9; })();
+const tMax = (() => { for (let i = AMOS.length - 1; i >= 0; i--) { const [a, b] = AB(AMOS[i].x, AMOS[i].z); if (a + b < 2.54) return i / AMOS.length; } return 0.9; })();
 
 export { tMin, jumenta, CORDA_J, ESTACA, JUM, jumentinho, ovelhas, andante, tMax, conv1, conv2 };

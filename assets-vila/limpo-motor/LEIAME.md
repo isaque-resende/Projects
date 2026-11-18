@@ -63,6 +63,16 @@ o texto **EXPORTAR_PARA_O_JOGO** (aba Scripting > Run Script): ele grava `betfag
 - Desde 17/11 o `.blend` também tem o que o `ajuste_muros_caminhos.py` fez uma vez por cima dele: muros de arrimo
   nas bordas dos patamares, estrada da aldeia sem inclinação de lado, caminhos de terra (`Betfage_Estrada_Caminhos`),
   escada de pedra até a casa de cima e rampa da carroça. O gerador não sabe disso: regerar a fase perde tudo.
+- Desde 18/11, o `ajuste2_trigal_figueiras.py` (também aplicado uma vez) mudou o seguinte:
+  - o trigal (`Campo_Trigal`) saiu do pé do morro e foi para o planalto, onde ficava a carroça;
+  - a carroça foi para o alto da rampa;
+  - há uma escada de pedra da casa de cima até o trigal;
+  - o muro do pátio da ínsula tem um vão, com rampa vinda da estrada;
+  - o aprisco desceu um pouco e o forno foi para perto do sobrado;
+  - os ciprestes da subida foram trocados por figueiras: duas de um lado e uma do outro, e mais acima duas e duas;
+    uma destas é a seca (`JOGO_figseca`).
+
+  A pergunta "ir ao Monte das Oliveiras" agora só aparece depois dessas figueiras.
 - `JOGO_rota_carroca` (em `Referencia_jogo`): a linha que a carroça segue do planalto até o ramal da eira.
   Pode mover os vértices (a ordem conta: o primeiro é onde ela fica parada, o último é onde descarrega).
   Os caminhos (para o jogador poder andar fora do quadrado) ficam no texto `betfage_fixos`.

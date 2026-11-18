@@ -20,8 +20,8 @@ const naArea = (x, z) => { const [a, b] = AB(x, z); return (a > -0.06 && a < 1.0
 // ---------- câmera: o mesmo ângulo do diorama (30°, de quina); afastada mostra tudo, perto segue o jogador ----------
 const camera = new THREE.PerspectiveCamera(22, innerWidth / innerHeight, 0.5, 400);
 const DIR = V3(1, 0.8165, 1).normalize();
-const CENTRO = (() => { const [x, z] = XZ(0.5, 0.5); return V3(x, 5.0, z); })();   // um pouco mais para a frente: os primeiros itens não ficam colados na borda
-const distTudo = () => { const largura = S * 1.35, alt = S * 1.18; const f = Math.tan(THREE.MathUtils.degToRad(11)); return Math.max(alt / 2 / f, largura / 2 / f / camera.aspect); };
+const CENTRO = (() => { const [x, z] = XZ(0.5, 0.5); return V3(x + 1.1, 5.0, z - 1.1); })();   // um pouco para a direita da tela: cabem o forno (esquerda) e o trigal do planalto (direita)
+const distTudo = () => { const largura = S * 1.5, alt = S * 1.18; const f = Math.tan(THREE.MathUtils.degToRad(11)); return Math.max(alt / 2 / f, largura / 2 / f / camera.aspect); };
 E.dist = distTudo(); E.distAlvo = E.dist;
 const DMIN = 14;
 const DMAX = () => distTudo() * 1.08;

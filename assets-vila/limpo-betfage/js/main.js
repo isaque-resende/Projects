@@ -78,7 +78,7 @@ const laco = (forca) => {
   if (!E.jogNoChao) jog.toca(E.jogVy > 0 ? 'Pulo_Ar' : 'Pulo_Queda');
   else if (!andou) jog.toca('Parado');
   const [ja, jb] = AB(pj.x, pj.z);
-  E.saida = ja + jb > 1.86 ? 'alto' : ja + jb < 0.04 ? 'baixo' : null;
+  E.saida = ja + jb > 2.5 ? 'alto' : ja + jb < 0.04 ? 'baixo' : null;
   if (E.saida === 'alto' && !E.fora) pergunta();          // chegou ao alto: pergunta na hora
   if (E.saida === 'baixo' && !E.fora) perguntaBetania();
   if (E.saida === 'alto') botao.textContent = (toqueTela ? '' : 'E: ') + 'seguir para Jerusalém';
