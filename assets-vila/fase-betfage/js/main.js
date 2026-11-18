@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { botao, E, fade, fala, bate, AB, sm, scene, sun, renderer, CIRC, CAIXAS } from './estado.js';
 import './modelos.js';
-import { TERRENO, CONSTR, terreno } from './cenario.js';
+import { TERRENO, CONSTR, terreno, AMOS } from './cenario.js';
 import { INS, paredeEm, alturaEm, presoEm } from './insula.js';
 import { UT } from './trigal.js';
 import './plantas.js';
@@ -109,4 +109,4 @@ renderer.setAnimationLoop(() => laco());
 addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
 
 // para os testes automáticos: abrir com ?teste e usar TESTE no console
-if (new URLSearchParams(location.search).has('teste')) globalThis.TESTE = { E, jog, laco, marca, tecla, bate, alturaEm, chaoTerra: terreno, scene, camera, CIRC, CAIXAS, renderer };
+if (globalThis.MODO_TESTE) globalThis.TESTE = { MIX, E, jog, laco, marca, tecla, bate, alturaEm, chaoTerra: terreno, scene, camera, CIRC, CAIXAS, renderer, AMOS };

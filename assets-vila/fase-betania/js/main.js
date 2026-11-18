@@ -133,4 +133,4 @@ renderer.setAnimationLoop(() => laco());
 addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
 
 // para os testes automáticos: abrir com ?teste e usar TESTE no console
-if (new URLSearchParams(location.search).has('teste')) globalThis.TESTE = { E, jog, laco, marca, tecla, bate, alturaEm, chaoTerra, scene, camera, CIRC, CAIXAS, renderer };
+if (globalThis.MODO_TESTE) globalThis.TESTE = { MIX, E, jog, laco, marca, tecla, bate, alturaEm, chaoTerra, scene, camera, CIRC, CAIXAS, renderer };

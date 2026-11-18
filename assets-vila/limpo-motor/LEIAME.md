@@ -111,4 +111,20 @@ continuam abrindo e fechando.
 - O que muda durante o jogo e é usado por vários módulos fica no objeto `E`, em `estado.js`.
 - Correção que vale para as duas fases vai no motor; o que é só de uma fase vai na pasta dela.
 - Para testar pelo console, abra a fase com `?teste` no endereço: o objeto `TESTE` dá acesso ao jogador,
-  ao laço e à colisão.
+  ao laço, aos animadores (`MIX`) e à colisão, e `ERROS` guarda os erros da página.
+
+## O teste automático (`assets-vila/teste.html`)
+
+Abra `teste.html` (no site ou no servidor local) e espere uns 40 segundos a poucos minutos, com a aba visível. Ele:
+
+- abre Betfagé e confere se carrega sem erro nem arquivo faltando, se desenha a cena e se os personagens e
+  animais se mexem, e se os dois da eira malham com o forcado;
+- anda com o jogador para os quatro lados (WASD), conferindo se ele fica no chão e não entra em obstáculo;
+- vai ao pé da estrada, responde "Sim" para voltar a Betânia e confere a chegada (as mesmas verificações lá);
+- vai ao fim da estrada de Betânia, responde "Sim" e confere a chegada em Betfagé;
+- abre Betânia do começo (com a abertura), os dois `antigo.html` e os endereços que só redirecionam.
+
+No fim mostra "Tudo certo" ou a lista do que falhou, com o motivo (por exemplo, o arquivo que deu 404). A velocidade
+(quadros por segundo) é só informação. As fases ligam o modo de teste sozinhas quando abertas por ele
+(`limpo-motor/modo-teste.js`). Quando mudar algo grande, rode antes de publicar. Se acrescentar uma fase ou uma troca
+de fase, acrescente os passos dela no `teste.html`.

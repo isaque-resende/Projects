@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Teste das fases</title>
+<style>
+  :root { --fundo: #f6f1e4; --texto: #3b2b1a; --fraco: #8a7a63; --ok: #2f7a3a; --erro: #b3261e; --aviso: #a86a00; --linha: #e2d8c3; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 16px; background: var(--fundo); color: var(--texto); font: 15px/1.45 system-ui, sans-serif; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  p.sub { margin: 0 0 14px; color: var(--fraco); font-size: 13px; }
+  #placar { font-size: 17px; font-weight: 600; margin: 10px 0; }
+  button { padding: 9px 16px; border: 0; border-radius: 10px; background: var(--texto); color: var(--fundo); font-size: 15px; }
+  button:disabled { opacity: .45; }
+  ol { list-style: none; padding: 0; margin: 12px 0; max-width: 760px; }
+  li { padding: 7px 0; border-bottom: 1px solid var(--linha); display: grid; grid-template-columns: 26px 1fr; gap: 4px 6px; }
+  li .s { font-weight: 700; }
+  li.ok .s { color: var(--ok); } li.erro .s { color: var(--erro); } li.aviso .s { color: var(--aviso); } li.rodando .s { color: var(--fraco); }
+  li .d { grid-column: 2; color: var(--fraco); font-size: 13px; white-space: pre-wrap; word-break: break-word; }
+  li.grupo { border: 0; padding-top: 14px; font-weight: 700; grid-template-columns: 1fr; }
+  #quadro { width: min(100%, 480px); height: 270px; border: 1px solid var(--linha); border-radius: 8px; background: #000; display: block; }
+</style>
+</head>
+<body>
+<h1>Teste das fases</h1>
+<p class="sub">Abre Betfagé e Betânia sozinho, anda com o jogador, troca de fase e confere se nada quebrou. Leva uns 2 a 4 minutos. Deixe esta aba visível enquanto roda.</p>
+<button id="rodar">Rodar de novo</button>
+<div id="placar">Preparando…</div>
+<iframe id="quadro" title="fase em teste"></iframe>
+<ol id="lista"></ol>
+<script>
+window.TESTADOR = true;             // as fases veem isto e ligam o modo de teste (limpo-motor/modo-teste.js)
+const quadro = document.getElementById('quadro'), lista = document.getElementById('lista'), placar = document.getElementById('placar'), btRodar = document.getElementById('rodar');
+const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+let ITENS = [];
+
+function grupo(nome) { const li = document.createElement('li'); li.className = 'grupo'; li.textContent = nome; lista.appendChild(li); }
+function item(nome) {
+  const li = document.createElement('li'); li.className = 'rodando';
+  li.innerHTML = '<span class="s">…</span><span></span><span class="d"></span>'; li.children[1].textContent = nome; lista.appendChild(li);
+  const reg = { nome, estado: 'rodando', detalhe: '' }; ITENS.push(reg);
+  const marca = (estado, detalhe = '') => { reg.estado = estado; reg.detalhe = detalhe; li.className = estado; li.children[0].textContent = { ok: '✓', erro: '✗', aviso: '!' }[estado]; li.children[2].textContent = detalhe; };
+  return { ok: (d) => marca('ok', d), erro: (d) => marca('erro', d), aviso: (d) => marca('aviso', d) };
+}
+// roda um teste; se ele lançar erro, marca como falha e segue
+async function teste(nome, fn) { const it = item(nome); try { await fn(it); } catch (e) { it.erro(String(e && e.message || e)); } }
+
+const W = () => quadro.contentWindow, D = () => quadro.contentDocument;
+async function ate(cond, ms, passo = 200) { const t0 = performance.now(); while (performance.now() - t0 < ms) { try { const v = cond(); if (v) return v; } catch (e) { /* página ainda trocando */ } await espera(passo); } return null; }
+function abre(url) { quadro.src = 'about:blank'; return espera(100).then(() => { quadro.src = url; }); }
+// espera a fase ficar pronta (TESTE aparece) e devolve quanto tempo levou
+// (se a página já registrou erro e mesmo assim não ficou pronta em 15 s, desiste sem esperar os 2 minutos)
+async function esperaFase(ms = 120000) {
+  const t0 = performance.now(); let tErro = 0;
+  const T = await ate(() => {
+    if (W().TESTE) return W().TESTE;
+    if ((W().ERROS || []).some((e) => !e.startsWith('console:')) || arquivosFalhos().length) { tErro = tErro || performance.now(); if (performance.now() - tErro > 15000) return 'erro'; }
+    return null;
+  }, ms);
+  return T && T !== 'erro' ? (performance.now() - t0) / 1000 : null;
+}
+// arquivos que voltaram com erro (404 etc.), quando o navegador informa
+function arquivosFalhos() {
+  const r = W().performance.getEntriesByType('resource');
+  return [...new Set(r.filter((e) => e.responseStatus >= 400).map((e) => e.responseStatus + ' ' + decodeURI(e.name.replace(location.origin, ''))))];
+}
+const listaErros = () => [...new Set([...arquivosFalhos(), ...(W().ERROS || [])])].slice(0, 10).join('\n');
+const caminho = () => decodeURI(W().location.pathname.replace(/^.*assets-vila\//, '')) + W().location.search;
+const quadros = (n, dt = 1 / 30) => { const T = W().TESTE; for (let i = 0; i < n; i++) T.laco(dt); };
+
+// ---------- testes de uma fase aberta ----------
+async function testesDaFase(nome, opc = {}) {
+  let tempo = null;
+  await teste('carrega', async (it) => {
+    tempo = await esperaFase();
+    if (tempo == null) throw new Error('a fase não ficou pronta (está em ' + caminho() + ')\n' + listaErros());
+    it.ok(tempo.toFixed(1) + ' s até ficar jogável · ' + caminho());
+  });
+  if (tempo == null) return false;
+  await espera(1500);           // deixa terminar o que carrega por último
+  await teste('nenhum erro nem arquivo faltando', async (it) => {
+    const erros = [...new Set(W().ERROS || [])], falhos = arquivosFalhos();
+    if (erros.length || falhos.length) it.erro([...falhos, ...erros].slice(0, 12).join('\n'));
+    else it.ok(W().performance.getEntriesByType('resource').length + ' arquivos carregados');
+  });
+  await teste('desenha a cena', async (it) => {
+    const T = W().TESTE; quadros(2);
+    const tri = T.renderer.info.render.triangles, n = T.scene.children.length;
+    if (!tri || n < 20) it.erro('triângulos na tela: ' + tri + ' · objetos na cena: ' + n);
+    else it.ok(tri.toLocaleString('pt-BR') + ' triângulos na tela · ' + n + ' objetos na cena');
+  });
+  await teste('personagens e animais se mexem', async (it) => {
+    const T = W().TESTE, atores = [];
+    for (const mx of T.MIX) {
+      const raiz = mx.getRoot(), ossos = [];
+      raiz.traverse((o) => { if (o.isBone && ossos.length < 40) ossos.push(o); });
+      if (!raiz.visible || !ossos.length) continue;
+      const rodando = mx._actions.filter((a) => a.isRunning() && a.getEffectiveWeight() > 0).map((a) => a.getClip().name);
+      if (!rodando.length) continue;
+      atores.push({ raiz, ossos, rodando, antes: ossos.map((b) => b.quaternion.clone()) });
+    }
+    quadros(20);
+    const parados = atores.filter((a) => a.ossos.every((b, i) => b.quaternion.angleTo(a.antes[i]) < 1e-4));
+    if (!atores.length) it.erro('nenhum personagem com animação tocando');
+    else if (parados.length) it.erro(parados.length + ' de ' + atores.length + ' com animação tocando mas sem se mexer: ' + parados.map((a) => (a.raiz.name || '?') + ' (' + a.rodando.join(',') + ')').slice(0, 6).join('; '));
+    else it.ok(atores.length + ' personagens e animais animados');
+  });
+  if (opc.eira) await teste('eira: os dois malham com o forcado', async (it) => {
+    const T = W().TESTE, garfos = [];
+    T.scene.traverse((o) => { if (o.name === 'garfo' && o.parent && o.parent.isBone) garfos.push(o); });
+    if (garfos.length !== 2) throw new Error('esperava 2 forcados, achei ' + garfos.length);
+    const pos = () => garfos.map((g) => { g.updateWorldMatrix(true, false); return g.matrixWorld.elements.slice(12, 15); });
+    const a = pos(); quadros(15); const b = pos();
+    const mov = a.map((p, i) => Math.hypot(p[0] - b[i][0], p[1] - b[i][1], p[2] - b[i][2]));
+    const malhar = T.MIX.filter((mx) => mx._actions.some((x) => x.getClip().name === 'Malhar' && x.isRunning())).length;
+    if (malhar !== 2) it.erro('clipe Malhar tocando em ' + malhar + ' de 2');
+    else if (mov.some((m) => m < 0.05)) it.erro('forcado parado (andou ' + mov.map((m) => m.toFixed(2)).join(' e ') + ' m)');
+    else it.ok('forcados andaram ' + mov.map((m) => m.toFixed(2)).join(' e ') + ' m em meio segundo');
+  });
+  await teste('jogador anda, fica no chão e não atravessa obstáculos', async (it) => {
+    const T = W().TESTE, p = T.jog.o.position;
+    await ate(() => !T.E.fora, 15000);          // espera a abertura liberar o jogador
+    if (T.E.fora) throw new Error('o jogador continua travado (E.fora) depois da abertura');
+    if (T.bate(p.x, p.z, 0)) it.aviso('começa encostado num obstáculo');
+    const inicio = p.clone(), andou = {}, dentro = [], fora = [], saidas = [];
+    for (const k of ['KeyW', 'KeyD', 'KeyS', 'KeyA']) {
+      const de = p.clone(); T.tecla[k] = true;
+      for (let i = 0; i < 45; i++) {
+        T.laco(1 / 30);
+        if (T.bate(p.x, p.z, 0.05)) dentro.push(k + ' ' + p.x.toFixed(1) + ',' + p.z.toFixed(1));
+      }
+      T.tecla[k] = false; quadros(10);
+      if (T.E.fora) {          // chegou numa saída e a fase perguntou se quer ir embora: responde "Ainda não" e segue
+        if (await responde('Deseja', 'Ainda não', 1500)) saidas.push(k); else throw new Error('o jogador travou andando (' + k + ') sem pergunta aberta');
+        quadros(5);
+      }
+      andou[k] = Math.hypot(p.x - de.x, p.z - de.z);
+      const chao = T.alturaEm(p.x, p.z, p.y);
+      if (Math.abs(p.y - chao) > 0.3) fora.push(k + ': ' + (p.y - chao).toFixed(2) + ' m do chão');
+    }
+    const total = Object.values(andou).reduce((s, v) => s + v, 0);
+    const txt = Object.entries(andou).map(([k, v]) => k.slice(3) + ' ' + v.toFixed(1) + ' m').join(' · ');
+    if (total < 1) it.erro('quase não andou: ' + txt);
+    else if (dentro.length) it.erro('entrou em obstáculo: ' + dentro.slice(0, 4).join('; '));
+    else if (fora.length) it.erro('fora do chão: ' + fora.join('; '));
+    else it.ok(txt + ' (WASD, 1,5 s cada)' + (saidas.length ? ' · chegou na saída e respondeu "Ainda não" (' + saidas.join(', ') + ')' : ''));
+    T.jog.o.position.copy(inicio); T.E.fora = false;
+  });
+  await teste('velocidade (só informação)', async (it) => {
+    let n = 0, vivo = true; const w = W(); const f = () => { n++; if (vivo) w.requestAnimationFrame(f); }; w.requestAnimationFrame(f);
+    await espera(2000); vivo = false;
+    const fps = n / 2; (fps >= 20 ? it.ok : it.aviso)(fps.toFixed(0) + ' quadros por segundo neste aparelho' + (fps < 20 ? ' (lento; se esta aba ficou escondida, o navegador desacelera de propósito)' : ''));
+  });
+  return true;
+}
+
+// visível na tela (vale também para caixas com position: fixed)
+const visivel = (el) => el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';
+// aperta um botão como o jogador (algumas caixas respondem ao pointerdown, outras ao click)
+function aperta(b) { b.dispatchEvent(new (W().PointerEvent)('pointerdown', { bubbles: true, cancelable: true })); if (b.isConnected && visivel(b)) b.click(); }
+// procura o botão de uma pergunta aberta (pelo texto da pergunta) e aperta
+async function responde(texto, botao, ms = 5000) {
+  const btn = await ate(() => {
+    for (const c of D().querySelectorAll('div')) {
+      if (!c.textContent.includes(texto) || !visivel(c)) continue;
+      const b = [...c.querySelectorAll('button')].find((x) => x.textContent.trim() === botao && visivel(x)); if (b) return b;
+    }
+    return null;
+  }, ms);
+  if (!btn) return false; aperta(btn); return true;
+}
+const confirma = (texto) => responde(texto, 'Sim');
+
+async function rodar() {
+  btRodar.disabled = true; lista.innerHTML = ''; ITENS = []; window.RESULTADO = null;
+  const t0 = performance.now(); placar.textContent = 'Rodando…';
+
+  grupo('Betfagé (fase-betfage/)');
+  await abre('fase-betfage/');
+  const okBf = await testesDaFase('Betfagé', { eira: true });
+
+  grupo('Troca: Betfagé → Betânia');
+  let chegouBt = false;
+  if (okBf) await teste('o pé da estrada pergunta "voltar para Betânia" e o Sim leva até lá', async (it) => {
+    const T = W().TESTE;
+    for (let i = 0; i < T.AMOS.length && !T.E.fora; i += 2) { const q = T.AMOS[i]; T.jog.o.position.set(q.x, T.alturaEm(q.x, q.z, 50), q.z); quadros(2); }
+    if (!T.E.fora) throw new Error('andando pela estrada desde o pé, a pergunta não apareceu');
+    if (!await confirma('voltar para Betânia')) throw new Error('a pergunta apareceu sem o botão Sim visível');
+    const foi = await ate(() => /fase-betania\/(index\.html)?$/.test(W().location.pathname) && W().location.search.includes('de=betfage'), 8000);
+    if (!foi) throw new Error('não mudou de página (está em ' + caminho() + ')');
+    chegouBt = true; it.ok('foi para ' + caminho());
+  });
+  else item('troca de fase').aviso('pulado: Betfagé não carregou');
+
+  grupo('Betânia, chegando de Betfagé');
+  if (!chegouBt) await abre('fase-betania/?de=betfage');
+  const okBt = await testesDaFase('Betânia');
+  if (okBt) await teste('chega no fim da estrada, vindo de Betfagé', async (it) => {
+    const p = W().TESTE.jog.o.position;
+    (p.x < -25 ? it.ok : it.erro)('jogador em x ' + p.x.toFixed(1) + ', z ' + p.z.toFixed(1));
+  });
+
+  grupo('Troca: Betânia → Betfagé');
+  if (okBt) await teste('o fim da estrada pergunta "ir para Betfagé" e o Sim leva até lá', async (it) => {
+    const T = W().TESTE; T.E.fora = false; T.jog.o.position.x = -36; quadros(3);
+    if (!await confirma('Betfagé')) throw new Error('a pergunta não apareceu no fim da estrada');
+    const foi = await ate(() => /fase-betfage\/(index\.html)?$/.test(W().location.pathname) && W().location.search.includes('de=betania'), 8000);
+    if (!foi) throw new Error('não mudou de página (está em ' + caminho() + ')');
+    it.ok('foi para ' + caminho());
+    const tempo = await esperaFase();
+    if (tempo == null) throw new Error('Betfagé não ficou pronta depois da troca\n' + listaErros());
+    await espera(1000);
+    const erros = [...(W().ERROS || []), ...arquivosFalhos()];
+    if (erros.length) it.erro('foi, mas com erro ao chegar:\n' + erros.slice(0, 8).join('\n'));
+    else it.ok('foi para ' + caminho() + ' e carregou em ' + tempo.toFixed(1) + ' s');
+  });
+  else item('troca de fase').aviso('pulado: Betânia não carregou');
+
+  grupo('Betânia do começo (com a abertura)');
+  await abre('fase-betania/');
+  await teste('carrega sem erro', async (it) => {
+    const tempo = await esperaFase(); if (tempo == null) throw new Error('não ficou pronta\n' + listaErros());
+    await espera(1500); quadros(30);
+    const erros = [...new Set(W().ERROS || []), ...arquivosFalhos()];
+    if (erros.length) it.erro(erros.slice(0, 10).join('\n')); else it.ok(tempo.toFixed(1) + ' s');
+  });
+
+  grupo('Backups e endereços antigos');
+  for (const url of ['fase-betfage/antigo.html', 'fase-betania/antigo.html']) {
+    await teste(url + ' abre', async (it) => {
+      await abre(url); await espera(1500);
+      const tela = await ate(() => D().querySelector('canvas') && W().performance.getEntriesByType('resource').some((e) => /\.glb/.test(e.name)) && D().readyState === 'complete', 60000);
+      await espera(6000);
+      const falhos = arquivosFalhos();
+      if (!tela) it.erro('não desenhou a tela em 1 minuto'); else if (falhos.length) it.erro(falhos.slice(0, 8).join('\n')); else it.ok('abre, sem arquivo faltando');
+    });
+  }
+  for (const [url, destino] of [['limpo-betfage/', 'fase-betfage/'], ['limpo-betania/', 'fase-betania/'], ['fase-betfage/prado.html', 'fase-betfage/']]) {
+    await teste(url + ' leva para ' + destino, async (it) => {
+      await abre(url);
+      const ok = await ate(() => W().location.pathname.endsWith('/' + destino), 8000);
+      (ok ? it.ok : it.erro)('está em ' + caminho());
+    });
+  }
+  quadro.src = 'about:blank';
+
+  const falhas = ITENS.filter((i) => i.estado === 'erro').length, avisos = ITENS.filter((i) => i.estado === 'aviso').length;
+  const seg = ((performance.now() - t0) / 1000).toFixed(0);
+  placar.textContent = (falhas ? '✗ ' + falhas + ' falha' + (falhas > 1 ? 's' : '') : '✓ Tudo certo') + (avisos ? ' · ' + avisos + ' aviso' + (avisos > 1 ? 's' : '') : '') + ' · ' + ITENS.length + ' testes em ' + seg + ' s';
+  placar.style.color = falhas ? 'var(--erro)' : 'var(--ok)';
+  window.RESULTADO = { falhas, avisos, segundos: +seg, itens: ITENS };
+  btRodar.disabled = false;
+}
+btRodar.onclick = rodar;
+rodar();
+</script>
+</body>
+</html>
