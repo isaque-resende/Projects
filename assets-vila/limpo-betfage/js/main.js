@@ -58,7 +58,8 @@ const laco = (forca) => {
     const nx = p.x + mv.x * v, nz = p.z + mv.z * v;
     const moveis = [[andante, 0.55], [ceifeiro, 0.5], [atadeira, 0.5], [carregador, 0.5], ...ovelhas.map((o) => [o, 0.6])];
     const rente = p.y - terreno(p.x, p.z) < 0.4;
-    const livreJ = (x, z) => naArea(x, z) && (!rente || !bate(x, z, 0.25)) &&
+    const preso = rente && bate(p.x, p.z, 0.25);        // caiu (pulando) dentro de um obstáculo: deixa sair
+    const livreJ = (x, z) => naArea(x, z) && (!rente || preso || !bate(x, z, 0.25)) &&
       !paredeEm(x, z, p.y) && !paredeEm(x + mv.x * 0.25, z + mv.z * 0.25, p.y) &&
       terreno(x, z) <= p.y + 0.55 && (!presoEm(x, z, alturaEm(x, z, p.y)) || presoEm(p.x, p.z, p.y)) &&
       !moveis.some(([m, r]) => { const d = Math.hypot(m.o.position.x - x, m.o.position.z - z); return d < r && d < Math.hypot(m.o.position.x - p.x, m.o.position.z - p.z); });

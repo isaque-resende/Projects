@@ -18,7 +18,7 @@ const FORC = { cabo: cil(0.02), trav: cil(0.012), dentes: [cil(0.01), cil(0.01),
 function garfoPasso(st, F, dt, t, off) {
   const f = frente(st), lado = pos(st.os.bE[0]).sub(pos(st.os.bD[0])).setY(0).normalize();
   const fase = ((t + off) % 2.8) / 2.8;
-  const H = pos(st.os.pelvis).add(V3(0, 0.15, 0)).addScaledVector(f, 0.2).addScaledVector(lado, -0.12);
+  const H = pos(st.os.pelvis).add(V3(0, 0.38, 0)).addScaledVector(f, 0.28).addScaledVector(lado, -0.1);      // o cabo passa à frente da cintura: uma mão ali, a outra mais adiante
   const baixo = H.clone().addScaledVector(f, 1.3).setY(EIRA_Y + 0.2), alto = H.clone().addScaledVector(f, 0.9).add(V3(0, 1.45, 0));
   const k = fase < 0.35 ? 0 : fase < 0.55 ? sm(0.35, 0.55, fase) : 1 - sm(0.7, 1, fase);
   const ponta = baixo.clone().lerp(alto, k), d = ponta.clone().sub(H).normalize();
@@ -29,7 +29,7 @@ function garfoPasso(st, F, dt, t, off) {
   if (fase > 0.52 && fase < 0.6 && rnd() < 0.7) { const p = ponta.clone().addScaledVector(d, 0.15); solta(p, V3(0.6 + rnd() * 0.5, 0.6 + rnd() * 0.6, -0.6 - rnd() * 0.5), 'palha', 2.6); solta(p, V3((rnd() - 0.5) * 0.3, 0.3, (rnd() - 0.5) * 0.3), 'grao', 1.2); }
   st.toca('Parado');
   st.inc += ((fase < 0.4 ? 0.5 : 0.1) - st.inc) * Math.min(1, dt * 5); inclina(st, st.inc);
-  maos(st, H.clone().addScaledVector(d, 0.45), H.clone(), dt, 1, 18);
+  maos(st, H.clone().addScaledVector(d, 0.42), H.clone(), dt, 1, 18, 0.3, 0.5);
 }
 function debulhadorPasso(dt, t) {
   garfoPasso(debulhador, FORC2, dt, t, 2.3);
@@ -38,7 +38,7 @@ function debulhadorPasso(dt, t) {
 function joeiradeiraPasso(dt, t) {
   const st = joeiradeira, f = frente(st), lado = pos(st.os.bE[0]).sub(pos(st.os.bD[0])).setY(0).normalize();
   const fase = ((t + 0.9) % 2.8) / 2.8;
-  const H = pos(st.os.pelvis).add(V3(0, 0.15, 0)).addScaledVector(f, 0.2).addScaledVector(lado, -0.12);
+  const H = pos(st.os.pelvis).add(V3(0, 0.38, 0)).addScaledVector(f, 0.28).addScaledVector(lado, -0.1);      // o cabo passa à frente da cintura: uma mão ali, a outra mais adiante
   const baixo = H.clone().addScaledVector(f, 1.3).setY(EIRA_Y + 0.2), alto = H.clone().addScaledVector(f, 0.9).add(V3(0, 1.45, 0));
   const k = fase < 0.35 ? 0 : fase < 0.55 ? sm(0.35, 0.55, fase) : 1 - sm(0.7, 1, fase);
   const ponta = baixo.clone().lerp(alto, k), d = ponta.clone().sub(H).normalize();
@@ -49,7 +49,7 @@ function joeiradeiraPasso(dt, t) {
   if (fase > 0.52 && fase < 0.6 && rnd() < 0.7) { const p = ponta.clone().addScaledVector(d, 0.15); solta(p, V3(0.6 + rnd() * 0.5, 0.6 + rnd() * 0.6, -0.6 - rnd() * 0.5), 'palha', 2.6); solta(p, V3((rnd() - 0.5) * 0.3, 0.3, (rnd() - 0.5) * 0.3), 'grao', 1.2); }
   st.toca('Parado');
   st.inc += ((fase < 0.4 ? 0.5 : 0.1) - st.inc) * Math.min(1, dt * 5); inclina(st, st.inc);
-  maos(st, H.clone().addScaledVector(d, 0.45), H.clone(), dt, 1, 18);
+  maos(st, H.clone().addScaledVector(d, 0.42), H.clone(), dt, 1, 18, 0.3, 0.5);
 }
 
-export { debulhadorPasso, joeiradeiraPasso };
+export { debulhadorPasso, joeiradeiraPasso, debulhador, joeiradeira };

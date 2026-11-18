@@ -24,6 +24,42 @@ export function ik(a, b, c, alvo, polo, peso = 1) {
   b.getWorldPosition(_B); c.getWorldPosition(_C);
   alinha(b, _C.clone().sub(_B), _A.clone().addScaledVector(dir, d).sub(_B));
 }
+// Braço com cotovelo de verdade: o ik acima gira cada osso pelo menor caminho, e o antebraço acaba dobrando de lado
+// e torcendo a malha (braço "de fantasma"). Aqui cada osso recebe a orientação inteira: aponta para onde deve e o eixo
+// do cotovelo (medido na pose de repouso, onde dobrar leva a mão para a frente) fica perpendicular ao plano do braço.
+const _M1 = new THREE.Matrix4(), _M2 = new THREE.Matrix4(), _Qa = new THREE.Quaternion(), _Qb = new THREE.Quaternion(), _Qp = new THREE.Quaternion();
+function base(u, h, q) {
+  const x = u.clone().normalize(), y = h.clone().addScaledVector(x, -h.dot(x)).normalize(), z = new THREE.Vector3().crossVectors(x, y);
+  return q.setFromRotationMatrix(_M1.makeBasis(x, y, z));
+}
+export function eixoCotovelo(a, b, c, frente_) {
+  a.updateWorldMatrix(true, true);
+  const A = a.getWorldPosition(new THREE.Vector3()), B = b.getWorldPosition(new THREE.Vector3()), C = c.getWorldPosition(new THREE.Vector3());
+  const u1 = B.clone().sub(A).normalize(), h = new THREE.Vector3().crossVectors(u1, frente_).normalize();
+  const ia = a.getWorldQuaternion(new THREE.Quaternion()).invert(), ib = b.getWorldQuaternion(new THREE.Quaternion()).invert();
+  const la = B.clone().sub(A).applyQuaternion(ia), lb = C.clone().sub(B).applyQuaternion(ib);
+  return { qa: base(la, h.clone().applyQuaternion(ia), new THREE.Quaternion()).invert(), qb: base(lb, h.clone().applyQuaternion(ib), new THREE.Quaternion()).invert() };
+}
+export function ikBraco(a, b, c, alvo, polo, peso, E) {
+  if (!E) return ik(a, b, c, alvo, polo, peso);
+  a.getWorldPosition(_A); b.getWorldPosition(_B); c.getWorldPosition(_C);
+  const l1 = _A.distanceTo(_B), l2 = _B.distanceTo(_C);
+  const dir = _D.copy(alvo).sub(_A); let d = dir.length(); d = THREE.MathUtils.clamp(d, Math.abs(l1 - l2) + 1e-3, (l1 + l2) * 0.995); dir.normalize();
+  const pl = _P.copy(polo).sub(_A); pl.addScaledVector(dir, -pl.dot(dir));
+  if (pl.lengthSq() < 1e-8) pl.set(0, -1, 0).addScaledVector(dir, dir.y); pl.normalize();
+  const x = (l1 * l1 - l2 * l2 + d * d) / (2 * d), h = Math.sqrt(Math.max(0, l1 * l1 - x * x));
+  const cot = _E.copy(_A).addScaledVector(dir, x).addScaledVector(pl, h);
+  const mao = _T.copy(_A).addScaledVector(dir, d);
+  const n = new THREE.Vector3().crossVectors(pl, dir).normalize();
+  // osso de cima
+  base(cot.clone().sub(_A), n, _Qa).multiply(E.qa);
+  a.parent.getWorldQuaternion(_Qp).invert(); _Qa.premultiply(_Qp);
+  a.quaternion.slerp(_Qa, peso); a.updateMatrixWorld(true);
+  // antebraço
+  base(mao.clone().sub(cot), n, _Qb).multiply(E.qb);
+  a.getWorldQuaternion(_Qp).invert(); _Qb.premultiply(_Qp);
+  b.quaternion.slerp(_Qb, peso); b.updateMatrixWorld(true);
+}
 // para onde o personagem olha, e a posição de um osso no mundo
 export const frente = (st) => new THREE.Vector3(Math.sin(st.o.rotation.y), 0, Math.cos(st.o.rotation.y));
 export const pos = (o) => o.getWorldPosition(new THREE.Vector3());
@@ -45,8 +81,8 @@ export function maos(st, aE, aD, dt, peso = 1, rapidez = 10, abre = 0.4, baixa =
   st.mE.lerp(aE, Math.min(1, dt * rapidez)); st.mD.lerp(aD, Math.min(1, dt * rapidez));
   const f = frente(st), atras = f.clone().multiplyScalar(-0.5);
   const lado = pos(st.os.bE[0]).sub(pos(st.os.bD[0])).setY(0).normalize();
-  ik(...st.os.bE, st.mE, pos(st.os.bE[0]).add(atras).addScaledVector(lado, abre).add(new THREE.Vector3(0, -baixa, 0)), st.pesoB);
-  ik(...st.os.bD, st.mD, pos(st.os.bD[0]).add(atras).addScaledVector(lado, -abre).add(new THREE.Vector3(0, -baixa, 0)), st.pesoB);
+  ikBraco(...st.os.bE, st.mE, pos(st.os.bE[0]).add(atras).addScaledVector(lado, abre).add(new THREE.Vector3(0, -baixa, 0)), st.pesoB, st.cotE);
+  ikBraco(...st.os.bD, st.mD, pos(st.os.bD[0]).add(atras).addScaledVector(lado, -abre).add(new THREE.Vector3(0, -baixa, 0)), st.pesoB, st.cotD);
 }
 // pernas: pés nos alvos, joelho para a frente
 export function pernas(st, pE, pD) {
@@ -81,6 +117,7 @@ export function criaAtores({ scene, rnd, alturaChao = () => 0, assenta = null, c
       bE: [g('upperarm_l'), g('lowerarm_l'), g('hand_l')], bD: [g('upperarm_r'), g('lowerarm_r'), g('hand_r')],
       pE: [g('thigh_l'), g('calf_l'), g('foot_l')], pD: [g('thigh_r'), g('calf_r'), g('foot_r')] };
     st.mE = null; st.mD = null; st.inc = 0; st.desce = 0; st.pesoB = 0;
+    if (st.os.bE.every(Boolean) && st.os.bD.every(Boolean)) { const f = frente(st); st.cotE = eixoCotovelo(...st.os.bE, f); st.cotD = eixoCotovelo(...st.os.bD, f); }   // na pose de repouso, antes do clipe
     const animados = new Set(); for (const a of Object.values(st.A)) for (const tr of a.getClip().tracks) animados.add(tr.name.split('.')[0]);
     st.base = [];
     for (const k of ['sp', 'sp3', 'pelvis', 'cab']) { const b = st.os[k]; if (b && !animados.has(b.name)) st.base.push([b, b.quaternion.clone()]); }

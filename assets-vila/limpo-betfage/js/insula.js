@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { sombra } from '../../limpo-motor/base.js';
 import { LAY, scene, V3 } from './estado.js';
-import { gInsula } from './modelos.js';
+import { gInsula, gCen } from './modelos.js';
 import { CONSTR, terreno } from './cenario.js';
 
 const INS = { g: gInsula.scene };
@@ -42,6 +42,9 @@ function mapaCamadas(mesh, P = 0.2) {
 INS.cam = mapaCamadas(INS.g.getObjectByName('Insula'), 0.1);
 const CAMADAS = [INS.cam];
 for (const c of CONSTR) { c.updateMatrixWorld(true); c.traverse((m) => { if (m.isMesh) CAMADAS.push(mapaCamadas(m, 0.1)); }); }
+// as escadas de pedra do cenário: os degraus são piso e as laterais barram (antes o jogador entrava dentro delas)
+gCen.scene.updateMatrixWorld(true);
+gCen.scene.traverse((m) => { if (!m.isMesh) return; let o = m; while (o && !/^Mureta_Escada/.test(o.name)) o = o.parent; if (o) CAMADAS.push(mapaCamadas(m, 0.1)); });
 const pisoEm = (x, z, y) => { let b = -1e9; for (const c of CAMADAS) { const h = c.piso(x, z, y); if (h > b) b = h; } return b; };
 const paredeEm = (x, z, y) => CAMADAS.some((c) => c.parede(x, z, y));
 INS.alt = (x, z) => Math.max(0, INS.cam.alto(x, z));

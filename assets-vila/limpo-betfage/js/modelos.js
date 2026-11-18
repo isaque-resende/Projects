@@ -5,7 +5,7 @@ import { LAY } from './estado.js';
 
 const [gCen, gInsula, gTrigo, gColh, gBoi, gOve, gJum, gJog, gFigSeca, gPlantas,
   nAldeao, nFaixa, nCarreg, nRobusto, nBotoes, nMoco, nMagro, nRapaz, KIT] = await Promise.all([
-  baixar('../fase-betfage/betfage_cenario.glb?v=25'), baixar('../casa-porta/insula.glb'), baixar('../trigal/trigo.glb'), baixar('../colheita-trigo/colheita.glb'),
+  baixar('../fase-betfage/betfage_cenario.glb?v=26'), baixar('../casa-porta/insula.glb'), baixar('../trigal/trigo.glb'), baixar('../colheita-trigo/colheita.glb'),
   baixar('../animais/boi.glb'), baixar('../animais/ovelha.glb'), baixar('../animais/jumento.glb'), baixar('../vila-betania/discipulo_acoes.glb'),
   baixar('../figueiras/figueira_seca.glb'), baixar('../flores/plantas_betfage.glb?v=1'),
   baixar('../personagens/aldeao.glb'), baixar('../personagens/mulher_faixa.glb'), baixar('../personagens/carregador.glb'),

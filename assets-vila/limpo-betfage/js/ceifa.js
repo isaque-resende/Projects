@@ -87,18 +87,24 @@ function atadeiraPasso(dt) {
 // desce a rampa, passa entre o pátio da ínsula e o aprisco, segue a estrada e para no ramal da eira. Lá descarrega os
 // feixes junto das pilhas da eira, vira a carroça e volta.
 const CARRO = { x: LAY.carro.x, z: LAY.carro.z, r: 0, n: 0, max: 8, anda: false, entregues: 0 };
-const carroca = KIT['casa-porta/oficios.glb'].Carroca.clone(); sombra(carroca); /* a carroça do kit modelado (rodas de raios, varais) */ carroca.position.set(CARRO.x, LAY.carro.y - 0.02, CARRO.z); carroca.rotation.order = 'YXZ'; carroca.rotation.y = CARRO.r; scene.add(carroca);
-const carga = CO.Carroca_Carga.clone(); sombra(carga); carroca.add(carga); carga.visible = false; carga.rotation.y = Math.PI / 2; carga.position.set(0, 0.2, 0.35);
-carroca.updateMatrixWorld(true);
-const CX_C = { x0: 0, x1: 0, z0: 0, z1: 0 }; CAIXAS.push(CX_C);          // a caixa de colisão anda com a carroça
-const _bx = new THREE.Box3();
-function caixaCarro() { _bx.setFromObject(carroca); CX_C.x0 = _bx.min.x + 0.2; CX_C.x1 = _bx.max.x - 0.2; CX_C.z0 = _bx.min.z + 0.2; CX_C.z1 = _bx.max.z - 0.2; }
-caixaCarro();
-const LADO_C = CO0.NPC_Carregar.clone().sub(CO0.Carroca);
+// O modelo da carroça vem girado no kit (os varais apontam ~27° para o lado). Um grupo endireita:
+// origem do grupo = meio do eixo das rodas; +z = para onde apontam os varais. Medidas tiradas do modelo.
+const EIXO_M = V3(0.24, 0.58, -0.66);       // meio do eixo, no modelo (as rodas tocam o chão em y = 0)
+const GIRO_M = -0.47;                        // para onde os varais apontam, no modelo
+const VARAL = 2.37;                          // do eixo até a ponta dos varais
+const NUCA = 0.9;                            // da origem do boi até a canga, onde os varais se prendem
+const LIGA = VARAL - NUCA;                   // do eixo até a origem do boi (a canga fica NUCA à frente dele)
+const carroca = new THREE.Group(); carroca.rotation.order = 'YXZ'; scene.add(carroca);
+const modeloC = KIT['casa-porta/oficios.glb'].Carroca.clone(); sombra(modeloC); /* a carroça do kit modelado (rodas de raios, varais) */
+modeloC.rotation.y = -GIRO_M; { const e = EIXO_M.clone().applyAxisAngle(V3(0, 1, 0), -GIRO_M); modeloC.position.set(-e.x, -e.y, -e.z); }
+carroca.add(modeloC);
+const carga = CO.Carroca_Carga.clone(); sombra(carga); modeloC.add(carga); carga.visible = false; carga.rotation.y = Math.PI / 2; carga.position.set(0, 0.2, 0.35);
+// colisão da carroça: dois círculos no corpo (atrás do eixo); os varais ficam livres, o boi tem o círculo dele
+const C_C1 = { x: 0, z: 0, r: 0.85 }, C_C2 = { x: 0, z: 0, r: 0.8 }; CIRC.push(C_C1, C_C2);
+function caixaCarro() { const th = carroca.rotation.y, fx = Math.sin(th), fz = Math.cos(th); C_C1.x = EIXO.x + fx * 0.1; C_C1.z = EIXO.z + fz * 0.1; C_C2.x = EIXO.x - fx * 0.85; C_C2.z = EIXO.z - fz * 0.85; }
 const boiCarro = ator(gBoi, 1.45, 0, 0, 0, 'Parado');
-const PONTA = 2.7;                 // do meio da carroça até o boi
 const C_BOI = { x: 0, z: 0, r: 0.72 }; CIRC.push(C_BOI);      // menor que o boi: parado no alto da rampa, deixa passar entre ele e o muro
-// ---------- a rota ----------
+// ---------- a rota (o caminho que o boi segue; a carroça vem atrás, presa nele) ----------
 const ROTA_C = (LAY.rota_carro || []).map(([x, z]) => V3(x, 0, z));
 const RL = [0]; for (let i = 1; i < ROTA_C.length; i++) RL.push(RL[i - 1] + ROTA_C[i].distanceTo(ROTA_C[i - 1]));
 const LROTA = RL[RL.length - 1] || 0;
@@ -108,19 +114,35 @@ function naRota(s) {          // ponto da rota a s metros do começo (além das 
   const a = ROTA_C[i], b = ROTA_C[i + 1], k = (s - RL[i]) / Math.max(1e-6, RL[i + 1] - RL[i]);
   return a.clone().lerp(b, k);
 }
-const DY_C = (LAY.carro.y - 0.02) - terreno(CARRO.x, CARRO.z);       // o quanto a carroça afunda no chão
-// põe a carroça em (x, z) virada para o ângulo th, inclinada com o chão; o boi vai na frente
-function poeCarro(p, th, boiAnda) {
-  const f = V3(Math.sin(th), 0, Math.cos(th));
-  const hf = terreno(p.x + f.x * 1.3, p.z + f.z * 1.3), hr = terreno(p.x - f.x * 1.3, p.z - f.z * 1.3);
-  carroca.position.set(p.x, (hf + hr) / 2 + DY_C, p.z); carroca.rotation.y = th; carroca.rotation.x = -Math.atan2(hf - hr, 2.6);
-  boiCarro.o.position.set(p.x + f.x * PONTA, 0, p.z + f.z * PONTA); chao(boiCarro);
-  if (boiAnda !== null) boiCarro.o.rotation.y = boiAnda;
+const angRota = (s, sent) => { const a = naRota(s - sent * 0.6), b = naRota(s + sent * 0.6); return Math.atan2(b.x - a.x, b.z - a.z); };
+function sNaRota(p) { let m = 1e9, sm_ = 0; for (let s = -4; s <= LROTA + 4; s += 0.1) { const d = naRota(s).distanceTo(p); if (d < m) { m = d; sm_ = s; } } return sm_; }
+const EIXO = V3(CARRO.x, 0, CARRO.z);          // onde está o meio do eixo (anda com a carroça)
+// assenta a carroça com o eixo em EIXO, virada para th: rodas no chão, varais erguidos até a canga do boi
+function assentaCarro(th) {
+  const f = V3(Math.sin(th), 0, Math.cos(th)), hx = EIXO.x + f.x * VARAL, hz = EIXO.z + f.z * VARAL;
+  const ye = terreno(EIXO.x, EIXO.z) + 0.58 - 0.03, dy = terreno(hx, hz) + 0.8 - ye;
+  carroca.position.set(EIXO.x, ye, EIXO.z); carroca.rotation.y = th;
+  carroca.rotation.x = -Math.asin(THREE.MathUtils.clamp((dy + 0.11) / VARAL, -0.5, 0.5));
+  carroca.updateMatrixWorld(true);
   C_BOI.x = boiCarro.o.position.x; C_BOI.z = boiCarro.o.position.z; caixaCarro();
 }
-const angRota = (s, sent) => { const a = naRota(s), b = naRota(s + sent * PONTA); return Math.atan2(b.x - a.x, b.z - a.z); };
-poeCarro(V3(CARRO.x, 0, CARRO.z), CARRO.r, CARRO.r);
-const LUGAR_C = () => { const f = V3(Math.sin(carroca.rotation.y), 0, Math.cos(carroca.rotation.y)); return carroca.position.clone().addScaledVector(f, -2.6).setY(0); };   // atrás da carroça, do lado do trigal
+// carroça e boi juntos, alinhados (parados ou girando no lugar). rumoBoi: para onde o boi olha (null = como está)
+function poeCarro(th, rumoBoi) {
+  const f = V3(Math.sin(th), 0, Math.cos(th));
+  boiCarro.o.position.set(EIXO.x + f.x * LIGA, 0, EIXO.z + f.z * LIGA); chao(boiCarro);
+  if (rumoBoi !== null) boiCarro.o.rotation.y = rumoBoi;
+  assentaCarro(th);
+}
+// o boi anda até p olhando para th; a carroça vem atrás como reboque: o eixo vai na direção da canga
+function puxaCarro(p, th) {
+  boiCarro.o.position.set(p.x, 0, p.z); chao(boiCarro); boiCarro.o.rotation.y = th;
+  const hx = p.x + Math.sin(th) * NUCA, hz = p.z + Math.cos(th) * NUCA;
+  let dx = hx - EIXO.x, dz = hz - EIXO.z; const L = Math.hypot(dx, dz) || 1; dx /= L; dz /= L;
+  EIXO.set(hx - dx * VARAL, 0, hz - dz * VARAL);
+  assentaCarro(Math.atan2(dx, dz));
+}
+poeCarro(CARRO.r, CARRO.r);
+const LUGAR_C = () => { const f = V3(Math.sin(carroca.rotation.y), 0, Math.cos(carroca.rotation.y)); return EIXO.clone().addScaledVector(f, -2.0).setY(0); };   // atrás da carroça, do lado do trigal
 // pilha dos feixes que chegam na eira (junto das pilhas que já estão lá)
 const PILHAS = LAY.objetos.filter((o) => o.no === 'Feixe_Pilha');
 const PILHA = PILHAS.length ? V3(PILHAS.reduce((s, o) => s + o.p[0], 0) / PILHAS.length, 0, PILHAS.reduce((s, o) => s + o.p[2], 0) / PILHAS.length) : V3(LAY.eira.x + 2.5, 0, LAY.eira.z);
@@ -129,6 +151,7 @@ const NAS_COSTAS = [];           // os feixes que o carregador leva da carroça 
 const CORDA_B = cil(0.012);  CORDA_B.visible = false;
 const VIAGEM = { s: 0, th: 0, giro: 0, alvo: 0 };
 const V_CARRO = 0.75;
+const S_FIM = LROTA + 0.3, S_INI = -LIGA;      // onde o boi para: no fim do ramal da eira; e de volta, com o eixo no lugar de partida
 
 const CA = { e: 'espera', t: 0, alvo: null };
 function carregadorPasso(dt) {
@@ -136,7 +159,7 @@ function carregadorPasso(dt) {
   let aE = null, aD = null, inc = 0;
   const lado = pos(st.os.bE[0]).sub(pos(st.os.bD[0])).setY(0).normalize();
   const ombro = () => pos(st.os.sp3).add(V3(0, 0.3, 0)).addScaledVector(frente(st), 0.05);
-  const topo = carroca.localToWorld(V3(0, 1.2, 0));
+  const topo = carroca.localToWorld(V3(0, 0.65, 0.1));
   const cabecaBoi = () => boiCarro.o.position.clone().addScaledVector(frente(boiCarro), 1.0).add(V3(0, 1.0, 0));
   // ao lado da cabeça do boi, segurando a corda
   const guia = () => { const f = frente(boiCarro); return boiCarro.o.position.clone().addScaledVector(f, 0.7).add(V3(f.z * 0.85, 0, -f.x * 0.85)); };
@@ -182,14 +205,15 @@ function carregadorPasso(dt) {
     // ---------- a viagem até a eira ----------
     case 'pega_boi': {
       CARRO.anda = true; boiCarro.toca('Parado');
-      if (anda(st, guia(), dt, 1.0)) { CA.e = 'leva'; VIAGEM.s = 0; }
+      if (anda(st, guia(), dt, 1.0)) { CA.e = 'leva'; VIAGEM.s = sNaRota(boiCarro.o.position); VIAGEM.th = boiCarro.o.rotation.y; }
       break;
     }
-    case 'leva': {
-      VIAGEM.s = Math.min(LROTA, VIAGEM.s + V_CARRO * dt);
-      const th = angRota(VIAGEM.s, 1); poeCarro(naRota(VIAGEM.s), carroca.rotation.y + Math.atan2(Math.sin(th - carroca.rotation.y), Math.cos(th - carroca.rotation.y)) * Math.min(1, dt * 3), th);
+    case 'leva': {           // o boi segue a rota e puxa; a carroça vem presa na canga
+      VIAGEM.s = Math.min(S_FIM, VIAGEM.s + V_CARRO * dt);
+      VIAGEM.th += Math.atan2(Math.sin(angRota(VIAGEM.s, 1) - VIAGEM.th), Math.cos(angRota(VIAGEM.s, 1) - VIAGEM.th)) * Math.min(1, dt * 4);
+      puxaCarro(naRota(VIAGEM.s), VIAGEM.th);
       boiCarro.toca('Andar'); puxa(1.2);
-      if (VIAGEM.s >= LROTA) { boiCarro.toca('Parado'); CA.e = 'desc_vai'; CA.t = 0; }
+      if (VIAGEM.s >= S_FIM) { boiCarro.toca('Parado'); CA.e = 'desc_vai'; CA.t = 0; }
       break;
     }
     case 'desc_vai': {         // vai ao lado da carroça que dá para a pilha
@@ -231,26 +255,27 @@ function carregadorPasso(dt) {
         for (const fx of NAS_COSTAS) { ENTREGUES.push(fx); CARRO.entregues++; }
         NAS_COSTAS.length = 0;
         while (ENTREGUES.length > 14) scene.remove(ENTREGUES.shift());      // os mais antigos já foram para a eira
-        if (CARRO.n > 0) CA.e = 'desc_vai'; else { CA.e = 'vira'; VIAGEM.giro = 0; VIAGEM.th0 = carroca.rotation.y; VIAGEM.sent = -1; }
+        if (CARRO.n > 0) CA.e = 'desc_vai'; else { CA.e = 'vira'; VIAGEM.giro = 0; VIAGEM.th0 = carroca.rotation.y; VIAGEM.sent = -1; VIAGEM.fim = 'eira'; }
       }
       break;
     }
-    case 'vira': {           // vira a carroça no lugar: o boi dá a volta
-      const vel = Math.PI / 7; VIAGEM.giro = Math.min(Math.PI, VIAGEM.giro + vel * dt);
-      const th = VIAGEM.th0 + VIAGEM.sent * VIAGEM.giro;
-      poeCarro(carroca.position.clone(), th, th + VIAGEM.sent * Math.PI / 2);
+    case 'vira': {           // vira no lugar: a carroça gira no eixo e o boi, preso nos varais, dá a volta por fora
+      const vel = Math.PI / 8; VIAGEM.giro = Math.min(Math.PI, VIAGEM.giro + vel * dt);
+      const th = VIAGEM.th0 + VIAGEM.sent * VIAGEM.giro, fim = VIAGEM.giro >= Math.PI;
+      poeCarro(th, th + VIAGEM.sent * 0.45 * (1 - sm(0.8, 1, VIAGEM.giro / Math.PI)));
       boiCarro.toca('Andar'); puxa(1.1);
-      if (VIAGEM.giro >= Math.PI) {
-        if (VIAGEM.s > 0.1) CA.e = 'volta';
-        else { CA.e = 'espera'; CARRO.anda = false; boiCarro.toca('Parado'); CORDA_B.visible = false; poeCarro(carroca.position.clone(), CARRO.r, CARRO.r); }
+      if (fim) {
+        if (VIAGEM.fim === 'eira') { CA.e = 'volta'; VIAGEM.s = sNaRota(boiCarro.o.position); VIAGEM.th = th; }
+        else { CA.e = 'espera'; CARRO.anda = false; boiCarro.toca('Parado'); CORDA_B.visible = false; }
       }
       break;
     }
     case 'volta': {
-      VIAGEM.s = Math.max(0, VIAGEM.s - V_CARRO * dt);
-      const th = angRota(VIAGEM.s, -1); poeCarro(naRota(VIAGEM.s), carroca.rotation.y + Math.atan2(Math.sin(th - carroca.rotation.y), Math.cos(th - carroca.rotation.y)) * Math.min(1, dt * 3), th);
+      VIAGEM.s = Math.max(S_INI, VIAGEM.s - V_CARRO * dt);
+      VIAGEM.th += Math.atan2(Math.sin(angRota(VIAGEM.s, -1) - VIAGEM.th), Math.cos(angRota(VIAGEM.s, -1) - VIAGEM.th)) * Math.min(1, dt * 4);
+      puxaCarro(naRota(VIAGEM.s), VIAGEM.th);
       boiCarro.toca('Andar'); puxa(1.2);
-      if (VIAGEM.s <= 0) { CA.e = 'vira'; VIAGEM.giro = 0; VIAGEM.th0 = carroca.rotation.y; VIAGEM.sent = -1; poeCarro(V3(CARRO.x, 0, CARRO.z), carroca.rotation.y, null); }
+      if (VIAGEM.s <= S_INI) { CA.e = 'vira'; VIAGEM.giro = 0; VIAGEM.th0 = carroca.rotation.y; VIAGEM.sent = -1; VIAGEM.fim = 'casa'; poeCarro(carroca.rotation.y, null); }
       break;
     }
   }

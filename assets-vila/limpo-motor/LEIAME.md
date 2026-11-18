@@ -14,7 +14,7 @@ as texturas continuam vindo das pastas originais, então o que for exportado do 
 | `terreno.js` | suaviza o chão e mede a altura de qualquer malha |
 | `colisao.js` | obstáculos (caixas e círculos) e a regra para o jogador não ficar preso |
 | `layout.js` | põe na cena as árvores, pedras e objetos do Blender |
-| `atores.js` | personagens e animais, e a animação sob medida de braços e pernas |
+| `atores.js` | personagens e animais, e a animação sob medida de braços e pernas. Os braços usam `ikBraco`: o cotovelo dobra só no eixo dele, medido na pose de repouso, e assim a malha não torce |
 | `controles.js` | teclado, toque, pinça, direcional e botão de pular |
 | `ui.js` | botão de ação, tela preta, legenda e caixa de diálogo |
 | `marcador.js` | a seta sobre a cabeça do jogador, só quando uma casa, árvore ou muro o esconde da câmera (nada fica transparente) |
@@ -81,7 +81,9 @@ o texto **EXPORTAR_PARA_O_JOGO** (aba Scripting > Run Script): ele grava `betfag
 
 Cheia (8 feixes), o carregador puxa o boi pela `rota_carro` do layout, para no fim, leva os feixes de dois em dois
 até as pilhas da eira, vira a carroça no lugar (o boi dá a volta) e volta; no planalto vira de novo e recomeça.
-A caixa de colisão da carroça e o círculo do boi andam com eles. Os feixes entregues engordam o monte da eira.
+O boi segue a rota e a carroça vem atrás como reboque, com a ponta dos varais na canga do boi. O modelo da carroça vem
+girado no kit; um grupo o endireita, com a origem no meio do eixo. Nas pontas da viagem, a carroça gira sobre o eixo e o
+boi, preso aos varais, dá a volta por fora. Os círculos de colisão da carroça e do boi andam com eles. Os feixes entregues engordam o monte da eira.
 A fase original (`fase-betfage/index.html`) usa o cenário novo, mas a carroça dela continua parada.
 
 ## Regras para mexer
