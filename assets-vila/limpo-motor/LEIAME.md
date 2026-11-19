@@ -153,9 +153,42 @@ A fase depois de Betfagé (o "Sim" no alto da estrada leva para cá; o pé da su
   fora, e o pátio.
 - **O mirante (`js/pregacao.js`):** um anel de luz no chão, como o dos jumentos. O botão "sentar diante do templo"
   chama `lembrar()`: é ali que entra o flashback da pregação, ainda por fazer.
-- **O fim da descida:** pergunta "seguir para o Getsêmani" e mostra "Getsêmani (próxima fase, em construção)".
+- **O fim da descida:** pergunta "seguir para o Getsêmani" e o Sim leva à fase do Getsêmani.
 - Para testar trechos: `?de=cume` começa já no alto, com Jerusalém à vista; `?de=getsemani`, no fim da estrada.
   Com `?teste&parado` a fase carrega sem ligar o laço de desenho (para rodar a lógica pelo console).
+
+## Getsêmani (`fase-getsemani/`)
+
+A fase depois do Monte das Oliveiras (o Sim no fim da descida leva para cá; a ponta leste da trilha volta para lá).
+É noite de lua cheia (a Páscoa caía na lua cheia): céu escuro, luz azulada da lua no sudeste e exposição mais baixa
+(`estado.js`). As cores pintadas são as mesmas das outras fases.
+
+- **O lugar** (Mt 26.36-46; Mc 14.32-42; Lc 22.39-46; Jo 18.1-2): a trilha desce do monte pelo leste e entra por um
+  portão na mureta que cerca o jardim de oliveiras antigas. Logo depois do portão fica a roda de pedras onde os oito
+  ficaram sentados. Ao norte, o morrote com a gruta e a prensa de azeite na boca (Gat-Shemanim, "prensa de azeite").
+  Mais adiante, debaixo de uma oliveira antiga, o lugar de Pedro, Tiago e João. Um tiro de pedra adiante deles
+  (Lc 22.41, 26 m), a **Rocha da Agonia**: uma laje de calcário à flor da terra, entre oliveiras antigas. O leste
+  (por onde se chega) e o oeste (o templo, no alto do outro lado do Cedrom) ficam abertos.
+- **No Blender:** `fase-getsemani/getsemani.blend` é o original. Mexa nele e rode **EXPORTAR_PARA_O_JOGO**: ele grava
+  `getsemani_cenario.glb` (terreno, trilha, mureta, `Rocha_Agonia`, `Gruta_Morro` e `Gruta_Boca`) e
+  `getsemani_layout.json`. Em `Referencia_jogo`: `JOGO_portao`, `JOGO_oito`, `JOGO_tres`, `JOGO_agonia` (onde se ajoelha,
+  a leste da rocha), `JOGO_rocha` (o alto da rocha), `Prensa_Jogo` e `Panorama_Jerusalem`. A rocha e o morrote são
+  malhas próprias (facetadas, só cor de vértice). Os círculos de colisão deles têm `fixo`, e o exportador não os junta
+  no pé do dono. O gerador `getsemani_blender.py` não sobrescreve o `.blend` sem `--regerar-tudo`.
+- **No jogo:** ao chegar perto de cada lugar, aparece uma legenda com o texto dos evangelhos (uma vez só). Junto à
+  rocha há um anel no chão e o botão "ajoelhar junto à rocha". O jogador se ajoelha de frente para ela: o clipe
+  `Ajoelhar` para no meio e só termina de levantar no fim. Vêm Lc 22.42, 43 e 44 ("o seu suor tornou-se como grandes
+  gotas de sangue"), e a câmera chega mais perto e mais baixa (`CAM.perto`). Depois de uns 33 s ele levanta e fica livre.
+- **Jerusalém:** as mesmas pinturas de `fase-oliveiras/tex/` (cidade e encosta), em arcos centrados na rocha, com a
+  esplanada ~5,5° acima dos olhos, escurecidas e azuladas no shader. Embaixo da encosta, uma faixa lisa da cor do pé
+  da pintura cobre o vão até o chão. As pinturas foram feitas vistas de cima: uma de Jerusalém vista de baixo, à
+  noite, ficaria melhor (falta pedir ao usuário).
+- **Para testar:** `?de=agonia` começa perto da rocha. O `teste.html` cobre:
+  - a troca Oliveiras → Getsêmani;
+  - os testes da fase;
+  - a rocha: distância dos três, botão, de joelhos, legenda e livre depois;
+  - a volta ao Monte das Oliveiras.
+- **Cache:** rode também `node assets-vila/limpo-motor/versiona.cjs assets-vila/fase-getsemani` antes de cada commit.
 
 ## Regras para mexer
 

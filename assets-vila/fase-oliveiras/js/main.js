@@ -24,10 +24,7 @@ ctl.aoToque = (e) => { ndc.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / i
 function recua(n) { const [i] = naRota(jog.o.position.x, jog.o.position.z); const p = AMOS[Math.max(4, Math.min(AMOS.length - 5, i + n))]; jog.o.position.set(p.x, terreno(p.x, p.z), p.z); }
 function perguntaBetfage() { dialogo('', 'Deseja voltar para Betfagé?', [['Ainda não', () => recua(6), '#a8957a'], ['Sim', () => sair('De volta a Betfagé…', '../fase-betfage/?de=oliveiras')]]); }
 function perguntaGetsemani() {
-  dialogo('', 'Deseja seguir para o Getsêmani?', [['Ainda não', () => recua(-6), '#a8957a'], ['Sim', () => {
-    E.fora = true; fade.style.opacity = 1; fade.textContent = 'Getsêmani';
-    setTimeout(() => { fade.textContent = 'Getsêmani (próxima fase, em construção)'; }, 2200);
-  }]]);
+  dialogo('', 'Deseja seguir para o Getsêmani?', [['Ainda não', () => recua(-6), '#a8957a'], ['Sim', () => sair('Descendo para o Getsêmani…', '../fase-getsemani/')]]);
 }
 function sair(texto, url) { E.fora = true; fade.textContent = texto; fade.style.opacity = 1; setTimeout(() => { location.href = url; }, 1200); }
 

@@ -218,7 +218,7 @@ async function rodar() {
   else item('troca de fase').aviso('pulado: Betânia não carregou');
 
   grupo('Troca: Betfagé → Monte das Oliveiras');
-  let chegouOl = false;
+  let chegouOl = false, chegouGs = false;
   await teste('o alto da estrada pergunta "ir ao Monte das Oliveiras" e o Sim leva até lá', async (it) => {
     if (!W().TESTE) { await abre('fase-betfage/'); if (await esperaFase() == null) throw new Error('Betfagé não carregou\n' + listaErros()); }
     const T = W().TESTE; T.E.fora = false;
@@ -278,12 +278,6 @@ async function rodar() {
       W().dispatchEvent(new (W().KeyboardEvent)('keydown', { code: 'KeyE' })); W().dispatchEvent(new (W().KeyboardEvent)('keyup', { code: 'KeyE' }));
       (T.E.pregacao && /templo/.test(txt) ? it.ok : it.erro)('botão "' + txt + '"' + (T.E.pregacao ? ', gatilho acionado' : ', gatilho NÃO acionado'));
     });
-    await teste('o fim da descida pergunta "seguir para o Getsêmani"', async (it) => {
-      const T = W().TESTE, q = T.AMOS[T.AMOS.length - 2]; T.E.fora = false; T.jog.o.position.set(q.x, T.chaoTerra(q.x, q.z), q.z); quadros(3);
-      if (!await confirma('Getsêmani')) throw new Error('a pergunta não apareceu no fim da estrada');
-      const ok = await ate(() => /Getsêmani/.test(D().getElementById('fade').textContent), 4000);
-      (ok ? it.ok : it.erro)('tela: "' + D().getElementById('fade').textContent + '"');
-    });
     await teste('o pé da subida pergunta "voltar para Betfagé" e o Sim leva até lá', async (it) => {
       await abre('fase-oliveiras/?de=betfage'); if (await esperaFase() == null) throw new Error('não recarregou\n' + listaErros());
       const T = W().TESTE, q = T.AMOS[2]; T.jog.o.position.set(q.x, T.chaoTerra(q.x, q.z), q.z); quadros(3);
@@ -297,7 +291,41 @@ async function rodar() {
       if (erros.length) it.erro('chegou com erro:\n' + erros.slice(0, 8).join('\n'));
       else (i > B.AMOS.length * 0.6 ? it.ok : it.erro)('chegou em Betfagé, no ponto ' + i + ' de ' + B.AMOS.length + ' da estrada (o alto é o fim)');
     });
+    await teste('o fim da descida pergunta "seguir para o Getsêmani" e o Sim leva até lá', async (it) => {
+      await abre('fase-oliveiras/?de=getsemani'); if (await esperaFase() == null) throw new Error('não recarregou\n' + listaErros());
+      const T = W().TESTE, q = T.AMOS[T.AMOS.length - 2]; T.E.fora = false; T.jog.o.position.set(q.x, T.chaoTerra(q.x, q.z), q.z); quadros(3);
+      if (!await confirma('Getsêmani')) throw new Error('a pergunta não apareceu no fim da estrada');
+      const foi = await ate(() => /fase-getsemani\/(index\.html)?$/.test(W().location.pathname), 8000);
+      if (!foi) throw new Error('não mudou de página (está em ' + caminho() + ')');
+      chegouGs = true; it.ok('foi para ' + caminho());
+    });
   } else item('Monte das Oliveiras').aviso('pulado: a fase não carregou');
+
+  grupo('Getsêmani (fase-getsemani/)');
+  if (!chegouGs) await abre('fase-getsemani/');
+  const okGs = await testesDaFase('Getsêmani');
+  if (okGs) {
+    await teste('a Rocha da Agonia: um tiro de pedra adiante dos três, e o jogador se ajoelha ali', async (it) => {
+      const T = W().TESTE, L = T.LAY, p = T.jog.o.position;
+      const rocha = T.scene.getObjectByName('Rocha_Agonia'); if (!rocha) throw new Error('a rocha não está na cena');
+      const tiro = Math.hypot(L.rocha[0] - L.tres[0], L.rocha[2] - L.tres[2]);
+      T.E.fora = false; T.jog.o.position.set(L.agonia[0] + 0.5, T.chaoTerra(L.agonia[0] + 0.5, L.agonia[2]), L.agonia[2]); quadros(3);
+      const txt = D().getElementById('acao').textContent;
+      W().dispatchEvent(new (W().KeyboardEvent)('keydown', { code: 'KeyE' })); W().dispatchEvent(new (W().KeyboardEvent)('keyup', { code: 'KeyE' }));
+      quadros(30 * 16); const fala = D().getElementById('fala').textContent, joelhos = T.E.fora;
+      quadros(30 * 18);
+      (tiro > 20 && tiro < 35 && /ajoelhar/.test(txt) && joelhos && /sangue/.test(fala) && T.E.orou && !T.E.fora ? it.ok : it.erro)('rocha a ' + tiro.toFixed(1) + ' m dos três; botão "' + txt + '"; de joelhos: ' + (joelhos ? 'sim' : 'NÃO') + '; legenda: "' + fala.slice(0, 60) + '…"; depois livre: ' + (T.E.orou && !T.E.fora ? 'sim' : 'NÃO'));
+    });
+    await teste('a ponta da trilha pergunta "voltar ao Monte das Oliveiras" e o Sim leva até lá', async (it) => {
+      const T = W().TESTE, q = T.AMOS[2]; T.E.fora = false; T.jog.o.position.set(q.x, T.chaoTerra(q.x, q.z), q.z); quadros(3);
+      if (!await confirma('Monte das Oliveiras')) throw new Error('a pergunta não apareceu na ponta da trilha');
+      const foi = await ate(() => /fase-oliveiras\/(index\.html)?$/.test(W().location.pathname) && W().location.search.includes('de=getsemani'), 8000);
+      if (!foi) throw new Error('não mudou de página (está em ' + caminho() + ')');
+      const tempo = await esperaFase(); if (tempo == null) throw new Error('o Monte das Oliveiras não ficou pronto\n' + listaErros());
+      await espera(1000); const erros = [...(W().ERROS || []), ...arquivosFalhos()];
+      if (erros.length) it.erro('chegou com erro:\n' + erros.slice(0, 8).join('\n')); else it.ok('foi para ' + caminho() + ' e carregou em ' + tempo.toFixed(1) + ' s');
+    });
+  } else item('Getsêmani').aviso('pulado: a fase não carregou');
 
   grupo('Betânia do começo (com a abertura)');
   await abre('fase-betania/');
