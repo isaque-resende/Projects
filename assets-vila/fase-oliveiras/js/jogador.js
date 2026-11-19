@@ -34,22 +34,29 @@ const ajustaLente = () => {
 const LENTE = { base: 45, atual: 0 };
 ajustaLente();
 // Zoom manual (pinça no celular, roda no computador) vale em toda a fase: E.dist / PADRAO é o fator de afastamento.
-const DMIN = 7, DMAX = 32, PADRAO = 14;
+const DMIN = 7, DMAX = 26, PADRAO = 14;
 const zoomK = () => E.dist / PADRAO;
 const DESCE = V3(1, 0.55, 0.16).normalize();          // da descida: atrás (leste), acima e um pouco de lado
 const CAM = { pos: V3(), olho: V3(), T: d0.clone() };
 // subida: a câmera vem de longe e alto e se aproxima até um meio-termo (atrás e acima do ombro), a ~70% do caminho
 const iPerto = iInicio + (iCume - iInicio) * 0.7;
+// braço da câmera: se o morro fica entre o jogador e o lugar da câmera (ou a câmera cairia dentro dele), ela chega
+// mais perto em vez de subir (antes subia até 60 m e via o mapa de cima, ou entrava no morro)
+function braco(pj, alvo) {
+  const h = V3(pj.x, pj.y + 1.4, pj.z), q = V3(); let t = 1;
+  for (let k = 1; k <= 30; k++) { q.lerpVectors(h, alvo, k / 30); if (terreno(q.x, q.z) + 1.2 > q.y) { t = Math.max(0.3, (k - 1) / 30); break; } }
+  const c = h.clone().lerp(alvo, t); c.y = Math.max(c.y, terreno(c.x, c.z) + 1.2);
+  return c;
+}
 function camSubida(i, dt, pj) {
   const k = sm(iInicio, iPerto, i), z = zoomK();
   CAM.T.lerp(dirEm(Math.min(i, iCume - 2), 10), Math.min(1, dt * 1.2)).normalize();
   const dist = (17 + (12 - 17) * k) * z, alt = (8 + (5 - 8) * k) * z;
   const alvo = pj.clone().addScaledVector(CAM.T, -dist); alvo.y = pj.y + alt;
-  alvo.y = Math.max(alvo.y, terreno(alvo.x, alvo.z) + 1.6);                      // nunca entra no morro
-  return [alvo, pj.clone().addScaledVector(CAM.T, 1.2 * k).add(V3(0, 1.2 + 0.3 * k, 0))];
+  return [braco(pj, alvo), pj.clone().addScaledVector(CAM.T, 1.2 * k).add(V3(0, 1.2 + 0.3 * k, 0))];
 }
 function camDescida(pj) {
-  const alvo = pj.clone().addScaledVector(DESCE, E.dist); alvo.y = Math.max(alvo.y, terreno(alvo.x, alvo.z) + 1.6);
+  const alvo = braco(pj, pj.clone().addScaledVector(DESCE, E.dist));
   // mira à frente do jogador (mais longe quanto maior o zoom): o olhar fica ~17° para baixo e a cidade cabe na tela
   // mesmo com o celular deitado; mais embaixo, o olhar sobe um pouco
   return [alvo, pj.clone().add(V3(-2.2 - 0.45 * E.dist, 1.2 + Math.min(1.2, Math.max(0, LAY.cume[1] - pj.y) * 0.07), 0))];

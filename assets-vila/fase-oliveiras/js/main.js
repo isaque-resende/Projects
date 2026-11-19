@@ -1,7 +1,7 @@
 // Monte das Oliveiras: liga os controles às ações e roda o laço do jogo. Aqui também ficam as legendas do cume
 // no cume e as duas saídas (de volta a Betfagé, no pé da subida; para o Getsêmani, no fim da descida).
 import * as THREE from 'three';
-import { E, LAY, DE, fade, fala, bate, scene, sun, renderer, CIRC, CAIXAS, dialogo, botao, textoBotao } from './estado.js';
+import { E, LAY, DE, fade, fala, bate, fundo, scene, sun, renderer, CIRC, CAIXAS, dialogo, botao, textoBotao } from './estado.js';
 import { terreno, AMOS, naRota, iCume, PAN } from './cenario.js';
 import { MIX } from './gente.js';
 import { prensaPasso, PRENSA } from './prensa.js';
@@ -69,8 +69,10 @@ const laco = (forca) => {
   if (mv.lengthSq() > 0) {
     mv.normalize(); const corre = tecla.ShiftLeft || tecla.ShiftRight || (JOY.on && Math.hypot(JOY.x, JOY.y) > 0.9) || (E.alvoToque && E.alvoToque.distanceTo(pj) > 6);
     const v = (corre ? 4.6 : 2.2) * dt, nx = pj.x + mv.x * v, nz = pj.z + mv.z * v;
-    const rente = pj.y - terreno(pj.x, pj.z) < 0.4, preso = rente && bate(pj.x, pj.z, 0.25);
-    const livre = (x, z) => naArea(x, z) && (!rente || preso || !bate(x, z, 0.25)) && terreno(x, z) <= pj.y + 0.55;
+    // obstáculos valem também no pulo (antes, pulando, dava para cair dentro da mureta ou da pedra); quem já está
+    // encostado só dá passos que não entram mais (fundo diminui): assim nunca fica preso nem atravessa
+    const f0 = fundo(pj.x, pj.z);
+    const livre = (x, z) => { if (!naArea(x, z) || terreno(x, z) > pj.y + 0.55) return false; const f = fundo(x, z); return f <= 0 || f < f0 - 1e-4; };
     const x0 = pj.x, z0 = pj.z;
     if (livre(nx, nz)) { pj.x = nx; pj.z = nz; } else if (livre(nx, pj.z)) pj.x = nx; else if (livre(pj.x, nz)) pj.z = nz; else E.alvoToque = null;
     andou = Math.hypot(pj.x - x0, pj.z - z0) > v * 0.3;

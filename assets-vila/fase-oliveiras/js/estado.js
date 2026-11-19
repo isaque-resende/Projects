@@ -32,10 +32,10 @@ const E = {
 };
 
 // ---------- obstáculos e interface (do motor comum) ----------
-const { CAIXAS, CIRC, bate } = criaColisao();
+const { CAIXAS, CIRC, bate, fundo } = criaColisao(0.25);
 CIRC.push(...LAY.obst.map(([x, z, r]) => ({ x, z, r })));
 // muretas: uma fileira de círculos ao longo de cada módulo
 for (const [x0, z0, x1, z1] of LAY.muros) { const L = Math.hypot(x1 - x0, z1 - z0); for (let s = 0; s <= L + 0.01; s += 0.6) CIRC.push({ x: x0 + (x1 - x0) * s / L, z: z0 + (z1 - z0) * s / L, r: 0.38 }); }
 const { botao, fade, fala, dialogo, textoBotao } = criaUI(E);
 
-export { LAY, DE, scene, texChao, rnd, V3, sm, CIRC, CAIXAS, E, renderer, bate, fala, botao, fade, sun, dialogo, textoBotao };
+export { LAY, DE, scene, texChao, rnd, V3, sm, CIRC, CAIXAS, E, renderer, bate, fundo, fala, botao, fade, sun, dialogo, textoBotao };
