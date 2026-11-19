@@ -6,10 +6,12 @@ import { gJog } from './modelos.js';
 import { AMOS, naEstrada } from './cenario.js';
 import { noCampo } from './trigal.js';
 import { ator } from './gente.js';
-import { tMin } from './aldeia.js';
+import { tMin, tMax } from './aldeia.js';
 
-const INICIO = (() => { const i = Math.round(tMin * AMOS.length) + 2; const p = AMOS[Math.min(AMOS.length - 1, i)]; return V3(p.x, 0, p.z); })();
-const jog = ator(gJog, 1.7, INICIO.x, INICIO.z, Math.PI + Math.PI / 4, 'Parado');
+// começa no pé da estrada; voltando do Monte das Oliveiras (?de=oliveiras), no alto, virado para a aldeia
+const DO_MONTE = new URLSearchParams(location.search).get('de') === 'oliveiras';
+const INICIO = (() => { const i = DO_MONTE ? Math.round(tMax * AMOS.length) - 8 : Math.round(tMin * AMOS.length) + 2; const p = AMOS[Math.max(0, Math.min(AMOS.length - 1, i))]; return V3(p.x, 0, p.z); })();
+const jog = ator(gJog, 1.7, INICIO.x, INICIO.z, DO_MONTE ? Math.PI / 4 : Math.PI + Math.PI / 4, 'Parado');
 // caminho entre a carroça e o trigal (o campo fica fora do quadrado do diorama, ao pé do morro)
 const passagemTrigal = (x, z) => { const c = LAY.campo, k = LAY.carro; return x > Math.min(k.x, c.x0) - 1.5 && x < c.x0 + 4 && z > c.z1 - 1 && z < k.z + 1.5; };
 // caminhos de terra do Blender (até as casas, a escada, a rampa da carroça): andáveis mesmo fora do quadrado

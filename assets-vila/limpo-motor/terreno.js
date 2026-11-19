@@ -63,3 +63,25 @@ export function mapaAltura(mesh, passo = 0.15, { suave = false, caixa = null } =
     return (g(i, k) * (1 - a) + g(i + 1, k) * a) * (1 - b) + (g(i, k + 1) * (1 - a) + g(i + 1, k + 1) * a) * b;
   };
 }
+
+// Textura pintada no chão (grama e terra), projetada de cima pelo mundo; a cor de vértice decide onde é grama e onde
+// é terra. TX = { grama, terra } (texturas do chão). soTerra: só terra (a estrada).
+export function texturizaChao(mesh, TX, soTerra = false) {
+  const m = mesh.material;
+  m.onBeforeCompile = (sh) => {
+    sh.uniforms.uGrama = { value: TX.grama }; sh.uniforms.uTerra = { value: TX.terra };
+    sh.vertexShader = 'varying vec3 vWP; varying vec3 vWN;\n' + sh.vertexShader.replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\n vWP = (modelMatrix * vec4(transformed, 1.0)).xyz; vWN = normalize(mat3(modelMatrix) * objectNormal);');
+    sh.fragmentShader = 'uniform sampler2D uGrama; uniform sampler2D uTerra; varying vec3 vWP; varying vec3 vWN;\n' + sh.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
+      vec3 vc = vColor.rgb;
+      vec3 tg = texture2D(uGrama, vWP.xz * 0.2).rgb;
+      vec3 tt = texture2D(uTerra, vWP.xz * 0.16 + 0.37).rgb;
+      float gr = ${soTerra ? '0.0' : 'smoothstep(-0.045, 0.0, vc.g - vc.r) * smoothstep(0.55, 0.8, vWN.y)'};
+      float seco = ${soTerra ? '0.0' : '1.0 - smoothstep(-0.01, 0.04, vc.g - vc.r)'};
+      tg = mix(tg, vec3(dot(tg, vec3(0.3, 0.59, 0.11))), 0.18) * vec3(0.9, 0.88, 0.8);              // grama menos neon
+      tg = mix(tg, tg * vec3(1.15, 1.0, 0.65), seco * 0.6);                                         // capim seco amarelado
+      float lt = dot(tt, vec3(0.3, 0.59, 0.11));
+      vec3 terra = mix(tt, vec3(lt) * vec3(1.18, 1.02, 0.78), 0.45) * 1.05;                         // terra bege, menos laranja
+      diffuseColor.rgb = mix(terra, tg, gr);`);
+  };
+  m.customProgramCacheKey = () => 'chao-tex-' + soTerra; m.needsUpdate = true;
+}

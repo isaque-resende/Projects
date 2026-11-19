@@ -23,7 +23,7 @@ btSim.onclick = () => {
   PERG.style.display = 'none';
   fade.style.transition = 'none'; fade.textContent = ''; fade.style.opacity = 1;       // corte seco
   setTimeout(() => { fade.style.transition = ''; fade.textContent = 'Monte das Oliveiras'; }, 700);
-  setTimeout(() => { fade.textContent = 'Monte das Oliveiras · Jerusalém (próxima fase, em construção)'; }, 2600);
+  setTimeout(() => { location.href = '../fase-oliveiras/?de=betfage'; }, 2000);
 };
 
 // o botão de ação

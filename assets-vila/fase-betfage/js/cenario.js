@@ -3,7 +3,7 @@
 // ---------- cenário do Blender: terreno, estrada, muros ----------
 import * as THREE from 'three';
 import { instanciaLonge, poePertos } from '../../limpo-motor/layout.js';
-import { suaviza, mapaAltura } from '../../limpo-motor/terreno.js';
+import { suaviza, mapaAltura, texturizaChao } from '../../limpo-motor/terreno.js';
 import { scene, texChao, LAY, rnd, V3 } from './estado.js';
 import { gCen, KIT } from './modelos.js';
 
@@ -22,27 +22,8 @@ amacia(TERRENO, true);
 gCen.scene.traverse((o) => { if (o.isMesh && o.name.startsWith('Betfage_Estrada')) amacia(o, false); });
 // texturas pintadas (grama e terra), projetadas de cima pelo mundo; a cor de vértice decide onde é grama e onde é terra
 const TX = { grama: texChao('../fase-betfage/tex/grama.webp?v=1'), terra: texChao('../fase-betfage/tex/terra.webp?v=1') };
-function texturiza(mesh, soTerra) {
-  const m = mesh.material;
-  m.onBeforeCompile = (sh) => {
-    sh.uniforms.uGrama = { value: TX.grama }; sh.uniforms.uTerra = { value: TX.terra };
-    sh.vertexShader = 'varying vec3 vWP; varying vec3 vWN;\n' + sh.vertexShader.replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\n vWP = (modelMatrix * vec4(transformed, 1.0)).xyz; vWN = normalize(mat3(modelMatrix) * objectNormal);');
-    sh.fragmentShader = 'uniform sampler2D uGrama; uniform sampler2D uTerra; varying vec3 vWP; varying vec3 vWN;\n' + sh.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
-      vec3 vc = vColor.rgb;
-      vec3 tg = texture2D(uGrama, vWP.xz * 0.2).rgb;
-      vec3 tt = texture2D(uTerra, vWP.xz * 0.16 + 0.37).rgb;
-      float gr = ${soTerra ? '0.0' : 'smoothstep(-0.045, 0.0, vc.g - vc.r) * smoothstep(0.55, 0.8, vWN.y)'};
-      float seco = ${soTerra ? '0.0' : '1.0 - smoothstep(-0.01, 0.04, vc.g - vc.r)'};
-      tg = mix(tg, vec3(dot(tg, vec3(0.3, 0.59, 0.11))), 0.18) * vec3(0.9, 0.88, 0.8);              // grama menos neon
-      tg = mix(tg, tg * vec3(1.15, 1.0, 0.65), seco * 0.6);                                         // capim seco amarelado
-      float lt = dot(tt, vec3(0.3, 0.59, 0.11));
-      vec3 terra = mix(tt, vec3(lt) * vec3(1.18, 1.02, 0.78), 0.45) * 1.05;                         // terra bege, menos laranja
-      diffuseColor.rgb = mix(terra, tg, gr);`);
-  };
-  m.customProgramCacheKey = () => 'chao-tex-' + soTerra; m.needsUpdate = true;
-}
-texturiza(TERRENO, false);
-gCen.scene.traverse((o) => { if (o.isMesh && o.name.startsWith('Betfage_Estrada')) texturiza(o, true); });
+texturizaChao(TERRENO, TX, false);
+gCen.scene.traverse((o) => { if (o.isMesh && o.name.startsWith('Betfage_Estrada')) texturizaChao(o, TX, true); });
 const terreno = mapaAltura(TERRENO, 0.3, { suave: true });      // altura do chão em qualquer ponto
 // matas mais fechadas ao longe: cada árvore distante ganha duas vizinhas
 {

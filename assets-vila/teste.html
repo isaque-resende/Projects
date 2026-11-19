@@ -217,6 +217,72 @@ async function rodar() {
   });
   else item('troca de fase').aviso('pulado: Betânia não carregou');
 
+  grupo('Troca: Betfagé → Monte das Oliveiras');
+  let chegouOl = false;
+  await teste('o alto da estrada pergunta "ir ao Monte das Oliveiras" e o Sim leva até lá', async (it) => {
+    if (!W().TESTE) { await abre('fase-betfage/'); if (await esperaFase() == null) throw new Error('Betfagé não carregou\n' + listaErros()); }
+    const T = W().TESTE; T.E.fora = false;
+    for (let i = T.AMOS.length - 1; i >= 0 && !T.E.fora; i -= 2) { const q = T.AMOS[i]; T.jog.o.position.set(q.x, T.alturaEm(q.x, q.z, 80), q.z); quadros(2); }
+    if (!await confirma('Monte das Oliveiras')) throw new Error('a pergunta não apareceu no alto da estrada');
+    const foi = await ate(() => /fase-oliveiras\/(index\.html)?$/.test(W().location.pathname) && W().location.search.includes('de=betfage'), 8000);
+    if (!foi) throw new Error('não mudou de página (está em ' + caminho() + ')');
+    chegouOl = true; it.ok('foi para ' + caminho());
+  });
+
+  grupo('Monte das Oliveiras');
+  if (!chegouOl) await abre('fase-oliveiras/?de=betfage');
+  const okOl = await testesDaFase('Monte das Oliveiras');
+  if (okOl) {
+    await teste('subida: a câmera chega perto da nuca', async (it) => {
+      const T = W().TESTE, p = T.jog.o.position, i0 = 8, alvo = Math.round(i0 + (T.iCume - i0) * 0.8);
+      const d = (i) => { const q = T.AMOS[i]; p.set(q.x, T.chaoTerra(q.x, q.z), q.z); quadros(60); return T.camera.position.distanceTo(p); };
+      const longe = d(i0), perto = d(alvo);
+      (longe > 9 && perto < 6.5 ? it.ok : it.erro)('distância da câmera: ' + longe.toFixed(1) + ' m no pé, ' + perto.toFixed(1) + ' m perto do cume');
+    });
+    await teste('cume: Jerusalém aparece no horizonte e o jogo segue na descida', async (it) => {
+      const T = W().TESTE, q = T.AMOS[T.iCume - 2]; T.jog.o.position.set(q.x, T.chaoTerra(q.x, q.z), q.z); quadros(3);
+      if (T.E.modo !== 'revela') throw new Error('ao chegar no cume não começou a revelação (modo ' + T.E.modo + ')');
+      quadros(330);
+      const op = T.PAN.mat.opacity;
+      if (!T.PAN.mat.map) it.erro('a imagem de Jerusalém não carregou');
+      else if (T.E.modo !== 'descida' || T.E.fora || op < 0.9) it.erro('modo ' + T.E.modo + ', jogador ' + (T.E.fora ? 'travado' : 'livre') + ', imagem ' + Math.round(op * 100) + '%');
+      else it.ok('revelação terminou, imagem visível (' + Math.round(op * 100) + '%), jogador livre para descer');
+    });
+    await teste('prensa de azeite: o prenseiro trabalha', async (it) => {
+      const T = W().TESTE, prensa = T.scene.children.find((o) => o.isGroup && o.children.some((c) => c.name === 'Prensa_Mo'));
+      if (!prensa) throw new Error('a prensa não está na cena');
+      const mo = prensa.children.find((c) => c.name === 'Prensa_Mo'), npc = T.MIX.map((m) => m.getRoot()).find((o) => o !== T.jog.o);
+      const r0 = mo.rotation.y, p0 = npc.position.clone(); quadros(90);
+      const giro = mo.rotation.y - r0, anda = npc.position.distanceTo(p0);
+      (giro > 0.3 || anda > 0.3 ? it.ok : it.erro)('a mó girou ' + giro.toFixed(2) + ' rad, o prenseiro andou ' + anda.toFixed(2) + ' m em 3 s');
+    });
+    await teste('mirante da pregação: o botão aparece e marca a passagem', async (it) => {
+      const T = W().TESTE, g = T.PREG; T.E.fora = false; T.jog.o.position.set(g.x + 1, T.chaoTerra(g.x + 1, g.z), g.z); quadros(3);
+      const txt = D().getElementById('acao').textContent;
+      W().dispatchEvent(new (W().KeyboardEvent)('keydown', { code: 'KeyE' })); W().dispatchEvent(new (W().KeyboardEvent)('keyup', { code: 'KeyE' }));
+      (T.E.pregacao && /templo/.test(txt) ? it.ok : it.erro)('botão "' + txt + '"' + (T.E.pregacao ? ', gatilho acionado' : ', gatilho NÃO acionado'));
+    });
+    await teste('o fim da descida pergunta "seguir para o Getsêmani"', async (it) => {
+      const T = W().TESTE, q = T.AMOS[T.AMOS.length - 2]; T.E.fora = false; T.jog.o.position.set(q.x, T.chaoTerra(q.x, q.z), q.z); quadros(3);
+      if (!await confirma('Getsêmani')) throw new Error('a pergunta não apareceu no fim da estrada');
+      const ok = await ate(() => /Getsêmani/.test(D().getElementById('fade').textContent), 4000);
+      (ok ? it.ok : it.erro)('tela: "' + D().getElementById('fade').textContent + '"');
+    });
+    await teste('o pé da subida pergunta "voltar para Betfagé" e o Sim leva até lá', async (it) => {
+      await abre('fase-oliveiras/?de=betfage'); if (await esperaFase() == null) throw new Error('não recarregou\n' + listaErros());
+      const T = W().TESTE, q = T.AMOS[2]; T.jog.o.position.set(q.x, T.chaoTerra(q.x, q.z), q.z); quadros(3);
+      if (!await confirma('Betfagé')) throw new Error('a pergunta não apareceu no pé da subida');
+      const foi = await ate(() => /fase-betfage\/(index\.html)?$/.test(W().location.pathname) && W().location.search.includes('de=oliveiras'), 8000);
+      if (!foi) throw new Error('não mudou de página (está em ' + caminho() + ')');
+      const tempo = await esperaFase(); if (tempo == null) throw new Error('Betfagé não ficou pronta\n' + listaErros());
+      await espera(1000);
+      const B = W().TESTE, pb = B.jog.o.position, [i] = [B.AMOS.reduce((m, a, k) => (a.distanceTo(pb.clone().setY(0)) < B.AMOS[m].distanceTo(pb.clone().setY(0)) ? k : m), 0)];
+      const erros = [...(W().ERROS || []), ...arquivosFalhos()];
+      if (erros.length) it.erro('chegou com erro:\n' + erros.slice(0, 8).join('\n'));
+      else (i > B.AMOS.length * 0.6 ? it.ok : it.erro)('chegou em Betfagé, no ponto ' + i + ' de ' + B.AMOS.length + ' da estrada (o alto é o fim)');
+    });
+  } else item('Monte das Oliveiras').aviso('pulado: a fase não carregou');
+
   grupo('Betânia do começo (com a abertura)');
   await abre('fase-betania/');
   await teste('carrega sem erro', async (it) => {

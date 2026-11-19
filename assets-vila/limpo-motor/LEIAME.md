@@ -104,6 +104,32 @@ no esqueleto e toca o clipe; a palha voa da ponta dos dentes no alto do arremess
 Abre com a aldeia inteira e, depois da primeira legenda, fecha devagar 25% (`DJOGO` em `jogador.js`). A pinça e a roda
 continuam abrindo e fechando.
 
+## Monte das Oliveiras (`fase-oliveiras/`)
+
+A fase depois de Betfagé (o "Sim" no alto da estrada leva para cá; o pé da subida volta para Betfagé, chegando no alto).
+
+- **No Blender:** `fase-oliveiras/oliveiras.blend` é o original. Mexa nele e rode **EXPORTAR_PARA_O_JOGO**: ele grava
+  `oliveiras_cenario.glb` (terreno, estrada, muretas) e `oliveiras_layout.json` e salva o `.blend`. Olivais, pedras,
+  moitas e os objetos do pátio podem ser movidos, duplicados ou apagados, como em Betfagé. Na coleção `Referencia_jogo`:
+  - `Prensa_Jogo`: o lugar da prensa de azeite (mova e gire o vazio; as peças vão junto). O chão nivelado do pátio
+    não acompanha: se mudar a prensa de lugar, é melhor pedir.
+  - `JOGO_pregacao`: o mirante (a laje de frente para o templo), onde fica o gatilho.
+  - `JOGO_cume`: onde Jerusalém aparece; `JOGO_vista`: para onde a câmera olha nessa hora.
+  - `Panorama_Jerusalem`: o arco no horizonte onde a imagem é pendurada.
+- **Gerador:** `oliveiras_blender.py` criou a fase do zero. Ele não sobrescreve o `.blend` sem `--regerar-tudo`.
+- **A subida:** a câmera começa alta e, conforme o jogador sobe, desce até ficar perto da nuca, olhando a estrada.
+- **O cume:** o jogador para, a câmera olha o horizonte e Jerusalém aparece (legendas "Jerusalém." e a do templo).
+  Depois a descida segue com a câmera atrás e um pouco acima, sempre olhando para o oeste, com a cidade no horizonte.
+- **A imagem:** `tex/originais/jerusalem_v1.png` é a do usuário. `tex/jerusalem.webp` é ela com o céu recortado, as
+  laterais esmaecidas e o vale continuado para baixo até a névoa (para a cidade não "flutuar" na descida).
+- **A prensa (`js/prensa.js`):** o prenseiro empurra a mó em volta da bacia (as azeitonas viram pasta), vai à viga e a
+  prensa desce (o azeite corre para o tanque), busca azeitonas no pote e recomeça. Os gestos (empurrar, pegar) são
+  clipes do discípulo, que tem o mesmo esqueleto dos personagens.
+- **O mirante (`js/pregacao.js`):** um anel de luz no chão, como o dos jumentos. O botão "sentar diante do templo"
+  chama `lembrar()`: é ali que entra o flashback da pregação, ainda por fazer.
+- **O fim da descida:** pergunta "seguir para o Getsêmani" e mostra "Getsêmani (próxima fase, em construção)".
+- Para testar trechos: `?de=cume` começa já no alto, com Jerusalém à vista; `?de=getsemani`, no fim da estrada.
+
 ## Regras para mexer
 
 - Os módulos de uma fase são montados em ordem fixa (cada um importa o anterior). A ordem de criação dos
