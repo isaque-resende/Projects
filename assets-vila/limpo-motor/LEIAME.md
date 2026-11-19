@@ -120,8 +120,10 @@ A fase depois de Betfagé (o "Sim" no alto da estrada leva para cá; o pé da su
   que tenha se soltado (houve 109 assim, alguns no meio da estrada, que travavam o jogador) e avisa quantos mexeu.
 - **Gerador:** `oliveiras_blender.py` criou a fase do zero. Ele não sobrescreve o `.blend` sem `--regerar-tudo`.
 - **A câmera:** sempre olhando para o jogador (ele fica no meio da tela para qualquer lado que ande). Na subida vem de
-  13 m e alta até um meio-termo atrás e acima do ombro (8 m); na descida fica a 10 m (a pinça muda de 6 a 16). No
-  celular em pé o ângulo abre para caber a mesma largura (`ajustaLente` em `js/jogador.js`).
+  ~19 m e alta até ~13 m atrás e acima do ombro; na descida fica a 14 m. O zoom manual (pinça / roda, de 7 a 32 m,
+  `E.dist`) vale nas duas: na subida multiplica a distância por `E.dist / 14`. No celular em pé o ângulo abre para
+  caber a mesma largura (`ajustaLente` em `js/jogador.js`). As oliveiras de perto (`ARVS`, em `js/cenario.js`) que
+  ficam entre a câmera e o jogador ficam quase transparentes (`abreVista`), em vez de a câmera chegar mais perto.
 - **O cume:** o jogador para, a câmera olha por cima dele e Jerusalém aparece (legendas "Jerusalém." e a do templo).
   Nessa hora a lente fecha (teleobjetiva): a cidade cresce na tela sem chegar mais perto.
   Depois a descida segue com a câmera atrás e um pouco acima, sempre olhando para o oeste, com a cidade no horizonte.

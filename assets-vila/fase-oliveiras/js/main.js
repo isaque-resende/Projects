@@ -43,7 +43,7 @@ function revela(dt) {
   REV.t += dt;
   if (REV.t > 1.0 && !REV.l1) { REV.l1 = 1; fala('Jerusalém.'); }
   if (REV.t > 4.6 && !REV.l2) { REV.l2 = 1; fala('Do outro lado do vale do Cedrom, o templo brilha ao sol.'); }
-  if (REV.t > 9.5) { fala(''); E.modo = 'descida'; E.fora = false; E.dist = Math.max(5, CAM.pos.distanceTo(jog.o.position)); E.distAlvo = 10; }
+  if (REV.t > 9.5) { fala(''); E.modo = 'descida'; E.fora = false; }
 }
 
 // ---------- laço ----------

@@ -241,12 +241,13 @@ async function rodar() {
       // andando de lado e para trás, ele continua na tela
       for (const k of ['KeyD', 'KeyS', 'KeyA']) { T.tecla[k] = true; quadros(30); T.tecla[k] = false; }
       const v3 = naTela();
-      (longe > 11 && perto > 6.5 && perto < 10 && v1 && v2 && v3 ? it.ok : it.erro)('distância da câmera: ' + longe.toFixed(1) + ' m no pé, ' + perto.toFixed(1) + ' m perto do cume; jogador na tela: ' + [v1, v2, v3].map((v) => (v ? 'sim' : 'NÃO')).join(', '));
+      (longe > 15 && perto > 9.5 && perto < 15 && v1 && v2 && v3 ? it.ok : it.erro)('distância da câmera: ' + longe.toFixed(1) + ' m no pé, ' + perto.toFixed(1) + ' m perto do cume; jogador na tela: ' + [v1, v2, v3].map((v) => (v ? 'sim' : 'NÃO')).join(', '));
     });
     await teste('cume: Jerusalém aparece no horizonte e o jogo segue na descida', async (it) => {
       const T = W().TESTE, q = T.AMOS[T.iCume - 2]; T.jog.o.position.set(q.x, T.chaoTerra(q.x, q.z), q.z); quadros(3);
       if (T.E.modo !== 'revela') throw new Error('ao chegar no cume não começou a revelação (modo ' + T.E.modo + ')');
       quadros(330);
+      for (let k = 0; k < 40 && !T.PAN.mat.map; k++) { await new Promise((r) => setTimeout(r, 250)); quadros(3); }     // a imagem pode chegar depois (rede lenta)
       const op = T.PAN.mat.opacity;
       if (!T.PAN.mat.map) it.erro('a imagem de Jerusalém não carregou');
       else if (T.E.modo !== 'descida' || T.E.fora || op < 0.9) it.erro('modo ' + T.E.modo + ', jogador ' + (T.E.fora ? 'travado' : 'livre') + ', imagem ' + Math.round(op * 100) + '%');

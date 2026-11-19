@@ -31,7 +31,13 @@ const iCume = naRota(LAY.cume[0], LAY.cume[2])[0];
 
 // ---------- oliveiras, pedras e objetos do layout ----------
 instanciaLonge(scene, LAY.objetos, KIT);
-poePertos(scene, LAY.objetos, KIT, () => {});
+// as oliveiras de perto ficam numa lista: a câmera apaga as que estiverem entre ela e o jogador (jogador.js)
+const ARVS = [];
+poePertos(scene, LAY.objetos, KIT, (o, n) => {
+  if (!o.no.startsWith('Oliveira')) return;
+  const b = new THREE.Box3().setFromObject(n), c = b.getCenter(new THREE.Vector3()), t = b.getSize(new THREE.Vector3());
+  ARVS.push({ n, c, r: Math.max(t.x, t.z) * 0.5, y0: b.min.y + t.y * 0.3, y1: b.max.y, op: 1, mats: null });
+});
 
 // ---------- moitas e malvas (instanciadas) ----------
 {
@@ -58,8 +64,9 @@ poePertos(scene, LAY.objetos, KIT, () => {});
 const PAN = { mat: new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, fog: false, depthWrite: false, side: THREE.DoubleSide }), sobe: 0 };
 // as laterais da pintura somem devagar nos morros do fundo (além do esmaecido que já vem na imagem)
 PAN.mat.onBeforeCompile = (sh) => {
-  sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>', '#include <map_fragment>\n  diffuseColor.a *= smoothstep(0.0, 0.3, vMapUv.x) * smoothstep(1.0, 0.7, vMapUv.x);');
+  sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>', '#include <map_fragment>\n#ifdef USE_MAP\n  diffuseColor.a *= smoothstep(0.0, 0.3, vMapUv.x) * smoothstep(1.0, 0.7, vMapUv.x);\n#else\n  diffuseColor.a = 0.0;\n#endif');
 };
+// a imagem chega depois: o shader é refeito com ela (antes disso o arco não aparece)
 {
   // tex/jerusalem.webp (1914 x 822): a pintura original, céu recortado, laterais esmaecidas, um véu de bruma
   const P = LAY.panorama, Y_OLHO = LAY.cume[1] + 1.6, LINHA = 0.392;     // LINHA: o alto da esplanada do templo na imagem (0 = embaixo, 1 = em cima)
@@ -125,4 +132,4 @@ function panoramaPasso(dt, alvo) {
   PAN.mesh.position.y = -10 * (1 - PAN.mat.opacity) ** 2;
 }
 
-export { terreno, AMOS, naRota, iCume, TERRENO, PAN, panoramaPasso };
+export { terreno, AMOS, naRota, iCume, TERRENO, PAN, panoramaPasso, ARVS };

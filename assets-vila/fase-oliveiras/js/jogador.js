@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { criaControles } from '../../limpo-motor/controles.js';
 import { V3, LAY, E, DE, renderer, sm } from './estado.js';
 import { gJog } from './modelos.js';
-import { AMOS, iCume, terreno } from './cenario.js';
+import { AMOS, iCume, terreno, ARVS } from './cenario.js';
 import { ator } from './gente.js';
 import './prensa.js';     // só para manter a ordem de montagem
 
@@ -34,15 +34,17 @@ const ajustaLente = () => {
 };
 const LENTE = { base: 45, atual: 0 };       // na revelação a lente fecha (teleobjetiva): a cidade cresce na tela sem chegar mais perto
 ajustaLente();
-const DMIN = 6, DMAX = 16;
-const DESCE = V3(1, 0.5, 0.16).normalize();          // da descida: atrás (leste), acima e um pouco de lado
+// Zoom manual (pinça no celular, roda no computador) vale em toda a fase: E.dist / PADRAO é o fator de afastamento.
+const DMIN = 7, DMAX = 32, PADRAO = 14;
+const zoomK = () => E.dist / PADRAO;
+const DESCE = V3(1, 0.55, 0.16).normalize();          // da descida: atrás (leste), acima e um pouco de lado
 const CAM = { pos: V3(), olho: V3(), T: d0.clone() };
 // subida: a câmera vem de longe e alto e se aproxima até um meio-termo (atrás e acima do ombro), a ~70% do caminho
 const iPerto = iInicio + (iCume - iInicio) * 0.7;
 function camSubida(i, dt, pj) {
-  const k = sm(iInicio, iPerto, i);
+  const k = sm(iInicio, iPerto, i), z = zoomK();
   CAM.T.lerp(dirEm(Math.min(i, iCume - 2), 10), Math.min(1, dt * 1.2)).normalize();
-  const dist = 13 + (8 - 13) * k, alt = 6.5 + (3.1 - 6.5) * k;
+  const dist = (17 + (12 - 17) * k) * z, alt = (8 + (5 - 8) * k) * z;
   const alvo = pj.clone().addScaledVector(CAM.T, -dist); alvo.y = pj.y + alt;
   alvo.y = Math.max(alvo.y, terreno(alvo.x, alvo.z) + 1.6);                      // nunca entra no morro
   return [alvo, pj.clone().addScaledVector(CAM.T, 1.2 * k).add(V3(0, 1.2 + 0.3 * k, 0))];
@@ -57,11 +59,32 @@ function camRevela(pj) {
   const atras = CAM.T.clone().negate();
   return [pj.clone().addScaledVector(atras, 6.5).add(V3(0, 2.7, 0)), V3(LAY.vista[0], LAY.cume[1] - 8, LAY.vista[2])];
 }
+// Oliveira na frente: a copa que fica entre a câmera e o jogador (ou em volta da câmera) fica quase transparente,
+// em vez de puxar a câmera para perto. Cada árvore ganha materiais próprios na primeira vez que precisa sumir.
+function tapa(a, h, c) {
+  const dx = c.x - h.x, dz = c.z - h.z, L2 = dx * dx + dz * dz || 1e-6;
+  const t = Math.max(0, Math.min(1, ((a.c.x - h.x) * dx + (a.c.z - h.z) * dz) / L2));
+  const px = h.x + dx * t - a.c.x, pz = h.z + dz * t - a.c.z, y = h.y + (c.y - h.y) * t;
+  return t > 0.08 && px * px + pz * pz < (a.r + 0.4) ** 2 && y > a.y0 - 0.3 && y < a.y1 + 0.3;
+}
+function abreVista(pj, dt) {
+  const h = V3(pj.x, pj.y + 1.1, pj.z), c = camera.position;
+  for (const a of ARVS) {
+    const alvo = tapa(a, h, c) ? 0.12 : 1;
+    if (Math.abs(alvo - a.op) < 0.005) continue;
+    if (!a.mats) { a.mats = []; a.n.traverse((m) => { if (m.isMesh) { m.material = m.material.clone(); a.mats.push(m.material); } }); }
+    a.op += (alvo - a.op) * Math.min(1, dt * 6); if (Math.abs(alvo - a.op) < 0.01) a.op = alvo;
+    const tr = a.op < 0.999;
+    for (const m of a.mats) { if (m.transparent !== tr) { m.transparent = tr; m.depthWrite = !tr; m.needsUpdate = true; } m.opacity = a.op; }
+    a.n.traverse((m) => { if (m.isMesh) m.castShadow = a.op > 0.5; });
+  }
+}
 function camPasso(i, dt, pj, primeira = false) {
   const [alvo, olho] = E.modo === 'subida' ? camSubida(i, dt, pj) : E.modo === 'revela' ? camRevela(pj) : camDescida(pj);
   const r = primeira ? 1 : Math.min(1, dt * (E.modo === 'revela' ? 0.9 : 2.5));
   CAM.pos.lerp(alvo, r); CAM.olho.lerp(olho, primeira ? 1 : Math.min(1, dt * (E.modo === 'revela' ? 0.9 : 5)));
   camera.position.copy(CAM.pos); camera.lookAt(CAM.olho);
+  abreVista(pj, primeira ? 1 : dt);
   const fovAlvo = E.modo === 'revela' ? LENTE.base * 0.6 : LENTE.base;
   if (Math.abs(fovAlvo - LENTE.atual) > 0.01) { LENTE.atual += (fovAlvo - LENTE.atual) * (primeira ? 1 : Math.min(1, dt * 0.8)); camera.fov = LENTE.atual; camera.updateProjectionMatrix(); }
 }
