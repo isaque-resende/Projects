@@ -181,3 +181,7 @@ No fim mostra "Tudo certo" ou a lista do que falhou, com o motivo (por exemplo, 
 (quadros por segundo) é só informação. As fases ligam o modo de teste sozinhas quando abertas por ele
 (`limpo-motor/modo-teste.js`). Quando mudar algo grande, rode antes de publicar. Se acrescentar uma fase ou uma troca
 de fase, acrescente os passos dela no `teste.html`.
+
+- **Cache no celular:** o GitHub Pages deixa os arquivos 10 min no cache. Antes de cada commit que mexe em `.js` da
+  fase, rodar `node assets-vila/limpo-motor/versiona.cjs assets-vila/fase-oliveiras`: ele põe no `index.html` um
+  importmap com o hash de cada módulo (da fase e do motor), e o navegador baixa só o que mudou.
