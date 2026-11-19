@@ -247,8 +247,8 @@ async function rodar() {
       const T = W().TESTE, p = T.jog.o.position, V = p.constructor;
       for (let k = 0; k < 40 && !T.PAN.mat.map; k++) { await new Promise((r) => setTimeout(r, 250)); quadros(3); }     // a imagem pode chegar depois (rede lenta)
       if (!T.PAN.mat.map) { it.erro('a imagem de Jerusalém não carregou'); return; }
-      // um ponto da esplanada do templo (meio do arco da cidade, 157 de 309 px acima do pé)
-      const g = T.PAN.mesh.geometry.attributes.position, m = Math.floor(g.count / 4) * 2, bx = g.getX(m), bz = g.getZ(m), alvo = new V(bx, g.getY(m) + (g.getY(m + 1) - g.getY(m)) * 157 / 309, bz);
+      // um ponto da esplanada do templo (meio do arco da cidade, 456 de 606 px acima do pé da imagem)
+      const g = T.PAN.mesh.geometry.attributes.position, m = Math.floor(g.count / 4) * 2, bx = g.getX(m), bz = g.getZ(m), alvo = new V(bx, g.getY(m) + (g.getY(m + 1) - g.getY(m)) * 456 / 606, bz);
       // a câmera vê o templo? (o chão do monte no meio do caminho tapa)
       const THREE = await W().eval("import('three')"), chao = T.scene.getObjectByName('Oliveiras_Terreno'), raio = new THREE.Raycaster();
       const ve = () => { const c = T.camera.position.clone(), d = alvo.clone().sub(c), L = d.length(); raio.set(c, d.normalize()); raio.far = L; return raio.intersectObject(chao, true).length === 0; };

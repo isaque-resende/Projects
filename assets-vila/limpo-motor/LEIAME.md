@@ -133,13 +133,16 @@ A fase depois de Betfagé (o "Sim" no alto da estrada leva para cá; o pé da su
   jogador anda, e isso dá a profundidade):** o vale do Cedrom em 3D (r 125 a 294 m); a encosta pintada do outro lado
   (r 300); a cidade (r 420, 40° de largura); e os montes (r 560). Os arcos são centrados
   no cume do arco `Panorama_Jerusalem`, e a altura de cada pintura sai do ângulo visto de lá: a esplanada do templo
-  2,5° abaixo da linha dos olhos, o pé dos muros escondido pela borda da encosta, os montes aparecendo por cima dos
-  telhados. Encosta e montes se repetem espelhados para os lados até cobrir o vale (~111°); os montes descem mais 12°
-  repetindo a última linha da imagem (`saia`), para tapar frestas entre a encosta e a cidade. Um véu leve de bruma
+  2,5° abaixo da linha dos olhos, a borda da encosta 0,35° acima do pé dos muros, os montes aparecendo por cima dos
+  telhados. A cidade vem inteira (os muros fazem a curva nas pontas) com o chão até embaixo, atrás da encosta: não
+  sobra fresta; só o chão das pontas esmaece (2,3°). Encosta (42° por cópia, andada meia largura para a árvore não
+  tapar o templo) e montes (56°) se repetem emendados, sem espelhar, até cobrir o vale (~111°). Um véu leve de bruma
   no shader (cidade 10%, encosta 5%). A câmera vai até 850 m.
-- **As imagens:** do usuário, em `tex/originais/panorama_{montes,cidade,encosta}_v1.png`. As `tex/panorama_*.webp`
+- **As imagens:** do usuário, em `tex/originais/panorama_{montes,cidade,encosta}_v2.png` (low poly, geradas do zero; as
+  v1 ficam guardadas). As `tex/panorama_*.webp`
   são elas sem o branco ligado às bordas (recorte por preenchimento a partir da borda, para não furar as paredes
-  claras) e cortadas na altura do desenho. A `tex/jerusalem.webp` (imagem única antiga) não é mais usada.
+  claras) e cortadas na altura do desenho; a ponta direita de montes e encosta é casada com a esquerda
+  em 40 px (`_sim/recorta2.html`, fora do repositório). A `tex/jerusalem.webp` (imagem única antiga) não é mais usada.
 - **A prensa (`js/prensa.js`):** o prenseiro empurra a mó em volta da bacia (as azeitonas viram pasta), vai à viga e a
   prensa desce (o azeite corre para o tanque), busca azeitonas no pote e recomeça. Na mó ele anda colado atrás do
   cabo, empurrando com o corpo (o andar dele mesmo); na viga e no pote usa o "Pegar" do discípulo. Os outros clipes
