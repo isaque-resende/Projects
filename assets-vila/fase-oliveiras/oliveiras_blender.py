@@ -375,8 +375,8 @@ def no_patio(lx, lz):
     c, s = math.cos(-pr), math.sin(-pr)          # o giro do Blender (em torno de Z, com z do jogo = -y) é o oposto no plano do jogo
     return px + lx * c - lz * s, pz + lx * s + lz * c        # (giro no plano, como no Blender: z do jogo = -y)
 for lx, lz, arq, no, k in [(3.6, -2.4, 'casa-porta\\objetos_casa.glb', 'Jarro_Alto', 1.0), (3.9, -1.7, 'casa-porta\\objetos_casa.glb', 'Jarra_Alca', 1.0),
-                           (3.2, -2.9, 'casa-porta\\objetos_casa.glb', 'Cesto_Oval', 1.0), (-3.6, -2.6, 'pote-azeitonas\\pote_azeitonas.glb', 'PoteAzeitonas', 1.0),
-                           (-3.9, -1.6, 'casa-porta\\objetos_casa.glb', 'Cesto_Raso', 1.0), (-3.2, -3.3, 'casa-porta\\objetos_casa.glb', 'Saco', 1.0)]:
+                           (3.2, -2.9, 'casa-porta\\objetos_casa.glb', 'Cesto_Oval', 1.0), (-4.6, -2.6, 'pote-azeitonas\\pote_azeitonas.glb', 'PoteAzeitonas', 1.0),
+                           (-4.9, -1.6, 'casa-porta\\objetos_casa.glb', 'Cesto_Raso', 1.0), (-4.2, -3.3, 'casa-porta\\objetos_casa.glb', 'Saco', 1.0)]:
     gx, gz = no_patio(lx, lz)
     n = poe(arq, no, gx, gz, random.uniform(0, 6.28), k, y=HPR, afunda=0.02)
     if n is not None: circulo('COL_' + n.name, gx, gz, 0.35, n)
@@ -397,7 +397,7 @@ empty_ref('JOGO_pregacao', gx + 0.6, gz + 0.4, y=HPG, r=math.pi / 2, tam=2.0)   
 cu = empty_ref('JOGO_cume', CUME_X, -0.3, y=HCU, r=math.pi / 2, tam=2.5)
 empty_ref('JOGO_vista', -150.0, 0.0, y=HCU + 2.0, tipo='SPHERE', tam=4.0)    # para onde a câmera olha na revelação (o templo)
 # panorâmica: um arco largo no horizonte a oeste. Aqui só marca o lugar; a imagem entra no jogo.
-PAN = {'cx': CUME_X, 'cz': -0.3, 'r': 300.0, 'a0': math.radians(152), 'a1': math.radians(208), 'y0': -40.0, 'y1': 70.0}
+PAN = {'cx': CUME_X, 'cz': -0.3, 'r': 420.0, 'a0': math.radians(160), 'a1': math.radians(200), 'y0': -60.0, 'y1': 60.0}     # longe e estreito: a cidade abaixo da linha dos olhos, do outro lado do vale
 bm = bmesh.new(); prev = None
 for i in range(33):
     a = PAN['a0'] + (PAN['a1'] - PAN['a0']) * i / 32

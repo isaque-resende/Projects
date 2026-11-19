@@ -233,11 +233,15 @@ async function rodar() {
   if (!chegouOl) await abre('fase-oliveiras/?de=betfage');
   const okOl = await testesDaFase('Monte das Oliveiras');
   if (okOl) {
-    await teste('subida: a câmera chega perto da nuca', async (it) => {
+    await teste('subida: a câmera se aproxima sem colar, e o jogador fica inteiro na tela', async (it) => {
       const T = W().TESTE, p = T.jog.o.position, i0 = 8, alvo = Math.round(i0 + (T.iCume - i0) * 0.8);
-      const d = (i) => { const q = T.AMOS[i]; p.set(q.x, T.chaoTerra(q.x, q.z), q.z); quadros(60); return T.camera.position.distanceTo(p); };
-      const longe = d(i0), perto = d(alvo);
-      (longe > 9 && perto < 6.5 ? it.ok : it.erro)('distância da câmera: ' + longe.toFixed(1) + ' m no pé, ' + perto.toFixed(1) + ' m perto do cume');
+      const naTela = () => { const V = p.constructor, c = T.camera; return [new V(p.x, p.y + 0.05, p.z), new V(p.x, p.y + 1.75, p.z)].every((v) => { v.project(c); return Math.abs(v.x) < 0.85 && Math.abs(v.y) < 0.9 && v.z < 1; }); };
+      const d = (i) => { const q = T.AMOS[i]; p.set(q.x, T.chaoTerra(q.x, q.z), q.z); quadros(60); return [T.camera.position.distanceTo(p), naTela()]; };
+      const [longe, v1] = d(i0), [perto, v2] = d(alvo);
+      // andando de lado e para trás, ele continua na tela
+      for (const k of ['KeyD', 'KeyS', 'KeyA']) { T.tecla[k] = true; quadros(30); T.tecla[k] = false; }
+      const v3 = naTela();
+      (longe > 11 && perto > 6.5 && perto < 10 && v1 && v2 && v3 ? it.ok : it.erro)('distância da câmera: ' + longe.toFixed(1) + ' m no pé, ' + perto.toFixed(1) + ' m perto do cume; jogador na tela: ' + [v1, v2, v3].map((v) => (v ? 'sim' : 'NÃO')).join(', '));
     });
     await teste('cume: Jerusalém aparece no horizonte e o jogo segue na descida', async (it) => {
       const T = W().TESTE, q = T.AMOS[T.iCume - 2]; T.jog.o.position.set(q.x, T.chaoTerra(q.x, q.z), q.z); quadros(3);
@@ -254,7 +258,12 @@ async function rodar() {
       const mo = prensa.children.find((c) => c.name === 'Prensa_Mo'), npc = T.MIX.map((m) => m.getRoot()).find((o) => o !== T.jog.o);
       const r0 = mo.rotation.y, p0 = npc.position.clone(); quadros(90);
       const giro = mo.rotation.y - r0, anda = npc.position.distanceTo(p0);
-      (giro > 0.3 || anda > 0.3 ? it.ok : it.erro)('a mó girou ' + giro.toFixed(2) + ' rad, o prenseiro andou ' + anda.toFixed(2) + ' m em 3 s');
+      if (!(giro > 0.3 || anda > 0.3)) { it.erro('a mó girou ' + giro.toFixed(2) + ' rad, o prenseiro andou ' + anda.toFixed(2) + ' m em 3 s'); return; }
+      // um ciclo inteiro (mó, viga, pote, de volta à mó) sem ficar preso: ele tem de pegar azeitonas e voltar a girar a mó
+      const pegar = npc.userData.mx._actions.find((a) => a._clip.name === 'Pegar');
+      let pegou = false, voltou = false, rMeio = 0;
+      for (let k = 0; k < 75 && !voltou; k++) { quadros(30); if (pegar && pegar.isRunning() && pegar.getEffectiveWeight() > 0.5) { pegou = true; rMeio = mo.rotation.y; } if (pegou && mo.rotation.y > rMeio + 0.3) voltou = true; }
+      (pegou && voltou ? it.ok : it.erro)('a mó girou ' + giro.toFixed(2) + ' rad em 3 s; ciclo completo: ' + (pegou ? 'pegou azeitonas' : 'NÃO chegou ao pote') + (pegou ? (voltou ? ' e voltou à mó' : ', mas NÃO voltou à mó') : ''));
     });
     await teste('mirante da pregação: o botão aparece e marca a passagem', async (it) => {
       const T = W().TESTE, g = T.PREG; T.E.fora = false; T.jog.o.position.set(g.x + 1, T.chaoTerra(g.x + 1, g.z), g.z); quadros(3);

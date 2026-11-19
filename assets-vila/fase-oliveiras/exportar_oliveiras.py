@@ -75,6 +75,9 @@ def colisao_novas():
     return n
 
 
+MOVIDOS = []
+
+
 def colisao():
     bpy.context.view_layer.update()
     C = []
@@ -83,6 +86,11 @@ def colisao():
         if o.get('dono') and o.parent is None:
             bpy.data.objects.remove(o); continue
         m = o.matrix_world
+        d = o.parent
+        if o.get('dono') and d is not None:      # o círculo fica sempre no pé do dono (se o dono mudou, ele acompanha)
+            w = d.matrix_world.translation
+            if math.hypot(m.translation.x - w.x, m.translation.y - w.y) > 0.05:
+                o.matrix_world = Matrix.Translation((w.x, w.y, w.z + 0.2)) @ m.to_3x3().to_4x4(); m = o.matrix_world; MOVIDOS.append(o.name)
         C.append([round(m.translation.x, 2), round(-m.translation.y, 2), round(m.col[0].xyz.length * o.empty_display_size, 3)])
     return C
 
@@ -185,7 +193,7 @@ def exporta(salvar=True):
     if salvar:
         if bpy.data.filepath: bpy.ops.wm.save_mainfile()
         else: bpy.ops.wm.save_as_mainfile(filepath=os.path.join(OUT, 'oliveiras.blend'))
-    msg = 'EXPORTADO %s: %d objetos, %d plantas, %d colisoes (%d reassentados, %d circulos novos)' % (time.strftime('%H:%M:%S'), len(lay['objetos']), len(lay['plantas']), len(lay['obst']), n, nc)
+    msg = 'EXPORTADO %s: %d objetos, %d plantas, %d colisoes (%d reassentados, %d circulos novos, %d circulos realinhados)' % (time.strftime('%H:%M:%S'), len(lay['objetos']), len(lay['plantas']), len(lay['obst']), n, nc, len(MOVIDOS))
     aviso(msg + ' - recarregue o jogo (Ctrl+F5)')
 
 

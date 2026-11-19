@@ -17,7 +17,7 @@ const sm = (a, b, x) => { let k = (x - a) / (b - a); k = k < 0 ? 0 : k > 1 ? 1 :
 const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
 
 // ---------- layout exportado do Blender (oliveiras_layout.json) ----------
-const LAY = await (await fetch('../fase-oliveiras/oliveiras_layout.json?v=2')).json();
+const LAY = await (await fetch('../fase-oliveiras/oliveiras_layout.json?v=3')).json();
 const DE = new URLSearchParams(location.search).get('de');      // de onde o jogador veio
 
 // ---------- estado do jogo ----------
@@ -25,7 +25,7 @@ const E = {
   fora: false,            // true = o jogador não comanda (pergunta na tela, revelação, transição)
   alvoToque: null, TRILHA: [],
   jogVy: 0, jogNoChao: true,
-  dist: 9, distAlvo: 9,   // distância da câmera na descida (a pinça muda)
+  dist: 10, distAlvo: 10,   // distância da câmera na descida (a pinça muda)
   modo: 'subida',         // 'subida' (a câmera chega perto da nuca), 'revela' (Jerusalém aparece), 'descida'
   saida: null,            // 'betfage' ou 'getsemani' nas pontas da estrada
   pregacao: false,        // o jogador já passou pelo mirante (o flashback vem depois)

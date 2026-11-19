@@ -5,7 +5,7 @@ import { E, LAY, DE, fade, fala, bate, scene, sun, renderer, CIRC, CAIXAS, dialo
 import { terreno, AMOS, naRota, iCume, PAN, panoramaPasso } from './cenario.js';
 import { MIX } from './gente.js';
 import { prensaPasso, PRENSA } from './prensa.js';
-import { jog, camera, ctl, tecla, JOY, toqueTela, fw, rt, mv, naArea, alturaEm, camPasso, CAM, dirEm } from './jogador.js';
+import { ajustaLente, jog, camera, ctl, tecla, JOY, toqueTela, fw, rt, mv, naArea, alturaEm, camPasso, CAM, dirEm } from './jogador.js';
 import { PREG, pregacaoPasso, lembrar } from './pregacao.js';
 import { criaMarcador } from '../../limpo-motor/marcador.js';
 
@@ -43,7 +43,7 @@ function revela(dt) {
   REV.t += dt;
   if (REV.t > 1.0 && !REV.l1) { REV.l1 = 1; fala('Jerusalém.'); }
   if (REV.t > 4.6 && !REV.l2) { REV.l2 = 1; fala('Do outro lado do vale do Cedrom, o templo brilha ao sol.'); }
-  if (REV.t > 9.5) { fala(''); E.modo = 'descida'; E.fora = false; E.dist = Math.max(5, CAM.pos.distanceTo(jog.o.position)); E.distAlvo = 9; }
+  if (REV.t > 9.5) { fala(''); E.modo = 'descida'; E.fora = false; E.dist = Math.max(5, CAM.pos.distanceTo(jog.o.position)); E.distAlvo = 10; }
 }
 
 // ---------- laço ----------
@@ -110,8 +110,8 @@ const laco = (forca) => {
   marca.passo(pj, t, CAM.pos.distanceTo(pj), !E.fora);
   renderer.render(scene, camera);
 };
-renderer.setAnimationLoop(() => laco());
-addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
+if (!(globalThis.MODO_TESTE && new URLSearchParams(location.search).has('parado'))) renderer.setAnimationLoop(() => laco());     // ?teste&parado: só a lógica, sem desenhar (testes)
+addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; ajustaLente(); });
 
 // para os testes automáticos: abrir com ?teste (ou pelo teste.html) e usar TESTE no console
 if (globalThis.MODO_TESTE) globalThis.TESTE = { MIX, E, jog, laco, marca, tecla, bate, alturaEm: (x, z) => terreno(x, z), chaoTerra: terreno, scene, camera, CIRC, CAIXAS, renderer, AMOS, iCume, PAN, PREG, lembrar };

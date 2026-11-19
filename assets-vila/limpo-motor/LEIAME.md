@@ -115,20 +115,35 @@ A fase depois de Betfagé (o "Sim" no alto da estrada leva para cá; o pé da su
     não acompanha: se mudar a prensa de lugar, é melhor pedir.
   - `JOGO_pregacao`: o mirante (a laje de frente para o templo), onde fica o gatilho.
   - `JOGO_cume`: onde Jerusalém aparece; `JOGO_vista`: para onde a câmera olha nessa hora.
-  - `Panorama_Jerusalem`: o arco no horizonte onde a imagem é pendurada.
+  - `Panorama_Jerusalem`: o arco no horizonte onde a imagem é pendurada (r = 420 m, de 160° a 200°: longe e estreito).
+- **Colisão:** cada objeto tem um círculo de colisão preso a ele. O exportador recoloca no pé do dono qualquer círculo
+  que tenha se soltado (houve 109 assim, alguns no meio da estrada, que travavam o jogador) e avisa quantos mexeu.
 - **Gerador:** `oliveiras_blender.py` criou a fase do zero. Ele não sobrescreve o `.blend` sem `--regerar-tudo`.
-- **A subida:** a câmera começa alta e, conforme o jogador sobe, desce até ficar perto da nuca, olhando a estrada.
-- **O cume:** o jogador para, a câmera olha o horizonte e Jerusalém aparece (legendas "Jerusalém." e a do templo).
+- **A câmera:** sempre olhando para o jogador (ele fica no meio da tela para qualquer lado que ande). Na subida vem de
+  13 m e alta até um meio-termo atrás e acima do ombro (8 m); na descida fica a 10 m (a pinça muda de 6 a 16). No
+  celular em pé o ângulo abre para caber a mesma largura (`ajustaLente` em `js/jogador.js`).
+- **O cume:** o jogador para, a câmera olha por cima dele e Jerusalém aparece (legendas "Jerusalém." e a do templo).
+  Nessa hora a lente fecha (teleobjetiva): a cidade cresce na tela sem chegar mais perto.
   Depois a descida segue com a câmera atrás e um pouco acima, sempre olhando para o oeste, com a cidade no horizonte.
+- **O horizonte, em três camadas (`js/cenario.js`):** o vale do Cedrom em 3D (desce do monte, tem fundo em bruma e
+  sobe do outro lado, cobrindo o pé da pintura); a pintura da cidade; e, atrás dela, uma faixa de morros em bruma,
+  mais larga, onde as laterais da pintura somem. Do cume a esplanada do templo fica 2,5° abaixo da linha dos olhos
+  (vista de cima do monte); descendo, ela sobe até a altura dos olhos. Vale e morros são gerados pelo jogo a partir
+  do arco `Panorama_Jerusalem`.
 - **A imagem:** `tex/originais/jerusalem_v1.png` é a do usuário. `tex/jerusalem.webp` é ela com o céu recortado, as
-  laterais esmaecidas e o vale continuado para baixo até a névoa (para a cidade não "flutuar" na descida).
+  laterais esmaecidas e um véu de bruma (mais forte no alto, nos morros do fundo).
 - **A prensa (`js/prensa.js`):** o prenseiro empurra a mó em volta da bacia (as azeitonas viram pasta), vai à viga e a
-  prensa desce (o azeite corre para o tanque), busca azeitonas no pote e recomeça. Os gestos (empurrar, pegar) são
-  clipes do discípulo, que tem o mesmo esqueleto dos personagens.
+  prensa desce (o azeite corre para o tanque), busca azeitonas no pote e recomeça. Na mó ele anda colado atrás do
+  cabo, empurrando com o corpo (o andar dele mesmo); na viga e no pote usa o "Pegar" do discípulo. Os outros clipes
+  de braço do discípulo não servem nele, porque os braços em repouso são diferentes. No kit, bacia, coluna e base da
+  prensa são uma pedra só e a volta da mó passaria pela coluna: o jogo separa a bacia e a afasta 1 m, com a mó, e
+  leva o pote de azeitonas para o pátio. Ele anda por caminhos fixos: um anel em volta da bacia, sempre pelo lado de
+  fora, e o pátio.
 - **O mirante (`js/pregacao.js`):** um anel de luz no chão, como o dos jumentos. O botão "sentar diante do templo"
   chama `lembrar()`: é ali que entra o flashback da pregação, ainda por fazer.
 - **O fim da descida:** pergunta "seguir para o Getsêmani" e mostra "Getsêmani (próxima fase, em construção)".
 - Para testar trechos: `?de=cume` começa já no alto, com Jerusalém à vista; `?de=getsemani`, no fim da estrada.
+  Com `?teste&parado` a fase carrega sem ligar o laço de desenho (para rodar a lógica pelo console).
 
 ## Regras para mexer
 
