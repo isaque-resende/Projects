@@ -37,26 +37,35 @@ ajustaLente();
 const DMIN = 7, DMAX = 26, PADRAO = 14;
 const zoomK = () => E.dist / PADRAO;
 const DESCE = V3(1, 0.55, 0.16).normalize();          // da descida: atrás (leste), acima e um pouco de lado
-const CAM = { pos: V3(), olho: V3(), T: d0.clone() };
+const CAM = { pos: V3(), olho: V3(), T: d0.clone(), braco: 1 };
 // subida: a câmera vem de longe e alto e se aproxima até um meio-termo (atrás e acima do ombro), a ~70% do caminho
 const iPerto = iInicio + (iCume - iInicio) * 0.7;
 // braço da câmera: se o morro fica entre o jogador e o lugar da câmera (ou a câmera cairia dentro dele), ela chega
 // mais perto em vez de subir (antes subia até 60 m e via o mapa de cima, ou entrava no morro)
-function braco(pj, alvo) {
-  const h = V3(pj.x, pj.y + 1.4, pj.z), q = V3(); let t = 1;
-  for (let k = 1; k <= 30; k++) { q.lerpVectors(h, alvo, k / 30); if (terreno(q.x, q.z) + 1.2 > q.y) { t = Math.max(0.3, (k - 1) / 30); break; } }
-  const c = h.clone().lerp(alvo, t); c.y = Math.max(c.y, terreno(c.x, c.z) + 1.2);
+// (o quanto o braço estica muda devagar: recolhe em ~0,2 s e volta em ~1 s, sem tremer nos calombos do chão)
+function braco(pj, alvo, dt) {
+  const h = V3(pj.x, pj.y + 1.4, pj.z), q = V3(); let t = 1, folga0 = 1e9;
+  for (let k = 1; k <= 40; k++) {
+    q.lerpVectors(h, alvo, k / 40); const folga = q.y - terreno(q.x, q.z) - 1.2;
+    if (folga < 0) { t = Math.max(0.3, (k - 1 + folga0 / Math.max(1e-3, folga0 - folga)) / 40); break; }
+    folga0 = folga;
+  }
+  CAM.braco += (t - CAM.braco) * Math.min(1, dt * (t < CAM.braco ? 6 : 1.2));
+  const c = h.clone().lerp(alvo, CAM.braco); c.y = Math.max(c.y, terreno(c.x, c.z) + 1.2);
   return c;
 }
 function camSubida(i, dt, pj) {
   const k = sm(iInicio, iPerto, i), z = zoomK();
-  CAM.T.lerp(dirEm(Math.min(i, iCume - 2), 10), Math.min(1, dt * 1.2)).normalize();
+  // a estrada da subida faz zigue-zague: a câmera segue o rumo geral (a corda de ~25 m à frente) e gira devagar,
+  // senão balança a cada curva e o direcional (que anda para onde a câmera olha) entra no balanço
+  const ia = Math.min(i, iCume - 2), ib = Math.min(iCume, ia + 50), rumo = AMOS[ib].clone().sub(AMOS[ia]).setY(0);
+  if (rumo.lengthSq() > 1) CAM.T.lerp(rumo.normalize(), Math.min(1, dt * 0.6)).normalize();
   const dist = (17 + (12 - 17) * k) * z, alt = (8 + (5 - 8) * k) * z;
   const alvo = pj.clone().addScaledVector(CAM.T, -dist); alvo.y = pj.y + alt;
-  return [braco(pj, alvo), pj.clone().addScaledVector(CAM.T, 1.2 * k).add(V3(0, 1.2 + 0.3 * k, 0))];
+  return [braco(pj, alvo, dt), pj.clone().addScaledVector(CAM.T, 1.2 * k).add(V3(0, 1.2 + 0.3 * k, 0))];
 }
-function camDescida(pj) {
-  const alvo = braco(pj, pj.clone().addScaledVector(DESCE, E.dist));
+function camDescida(pj, dt) {
+  const alvo = braco(pj, pj.clone().addScaledVector(DESCE, E.dist), dt);
   // mira à frente do jogador (mais longe quanto maior o zoom): o olhar fica ~17° para baixo e a cidade cabe na tela
   // mesmo com o celular deitado; mais embaixo, o olhar sobe um pouco
   return [alvo, pj.clone().add(V3(-2.2 - 0.45 * E.dist, 1.2 + Math.min(1.2, Math.max(0, LAY.cume[1] - pj.y) * 0.07), 0))];
@@ -82,7 +91,7 @@ function abreVista(pj, dt) {
   }
 }
 function camPasso(i, dt, pj, primeira = false) {
-  const [alvo, olho] = E.modo === 'subida' ? camSubida(i, dt, pj) : camDescida(pj);
+  const [alvo, olho] = E.modo === 'subida' ? camSubida(i, primeira ? 1 : dt, pj) : camDescida(pj, primeira ? 1 : dt);
   const r = primeira ? 1 : Math.min(1, dt * 2.5);
   CAM.pos.lerp(alvo, r); CAM.olho.lerp(olho, primeira ? 1 : Math.min(1, dt * 5));
   camera.position.copy(CAM.pos); camera.lookAt(CAM.olho);
