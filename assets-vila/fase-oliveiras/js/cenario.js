@@ -62,7 +62,7 @@ poePertos(scene, LAY.objetos, KIT, (o, n) => {
 // As pinturas (tex/panorama_*.webp, recortadas de tex/originais/) ficam em arcos centrados no cume. A altura de cada
 // uma sai do ângulo visto de quem está no cume: a esplanada do templo 2,5° abaixo da linha dos olhos, o pé dos muros
 // escondido atrás da borda da encosta e os montes aparecendo por cima dos telhados. A encosta e os montes se repetem
-// espelhados para os lados até cobrir o vale todo. A cidade aparece na revelação; o resto está sempre lá.
+// espelhados para os lados até cobrir o vale todo. Tudo está sempre lá: quem esconde a cidade é o próprio monte.
 // Nada disso usa a neblina do jogo: a bruma vem pintada (e um véu leve no shader, maior quanto mais longe).
 const P = LAY.panorama, Y_OLHO = LAY.cume[1] + 1.6, W_IMG = 1914;
 const A0 = P.a0 - 0.62, A1 = P.a1 + 0.62, MEIO = (P.a0 + P.a1) / 2;      // o vale cobre ~111°; a cidade, 40° no meio
@@ -107,7 +107,6 @@ const montes = camada({ arq: 'panorama_montes.webp', r: 560, larg: 56, hPx: 277,
 const cidade = camada({ arq: 'panorama_cidade.webp', r: P.r, larg: LARG_C, hPx: 309, eBase: E_PE_MURO, copias: [0], fade: (a) => sm(P.a0, P.a0 + 0.12, a) * sm(P.a1, P.a1 - 0.12, a), veu: 0.1, ordem: -2, nome: 'cidade' });
 const encosta = camada({ arq: 'panorama_encosta.webp', r: 300, larg: LARG_E, hPx: H_E, eBase: E_BASE_E, copias: [-1, 0, 1], fade: pontas, veu: 0.05, ordem: -1, nome: 'encosta' });
 const PAN = { mat: cidade.mat, mesh: cidade.mesh, montes, encosta };
-PAN.mat.opacity = 0; PAN.mesh.visible = false;
 {
   // o vale: um leque de triângulos facetados entre o pé do monte (r = 125) e a encosta pintada (r = 294);
   // a borda de lá fica um pouco acima do pé da pintura da encosta e esconde a linha onde ela termina
@@ -139,11 +138,5 @@ PAN.mat.opacity = 0; PAN.mesh.visible = false;
   const gv = new THREE.BufferGeometry(); gv.setAttribute('position', new THREE.Float32BufferAttribute(vp, 3)); gv.setAttribute('color', new THREE.Float32BufferAttribute(vc, 3));
   const vale = new THREE.Mesh(gv, new THREE.MeshBasicMaterial({ vertexColors: true, fog: false })); vale.name = 'Vale_Cedrom'; vale.frustumCulled = false; scene.add(vale);
 }
-// a cidade aparece (alvo 1) ou some (alvo 0) aos poucos; ao aparecer, sobe um pouco de trás da encosta
-function panoramaPasso(dt, alvo) {
-  PAN.mat.opacity += (alvo - PAN.mat.opacity) * Math.min(1, dt * 0.7);
-  PAN.mesh.visible = PAN.mat.opacity > 0.01;
-  PAN.mesh.position.y = -10 * (1 - PAN.mat.opacity) ** 2;
-}
 
-export { terreno, AMOS, naRota, iCume, TERRENO, PAN, panoramaPasso, ARVS };
+export { terreno, AMOS, naRota, iCume, TERRENO, PAN, ARVS };

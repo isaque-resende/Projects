@@ -1,7 +1,6 @@
 // Monte das Oliveiras: o jogador, a câmera e os controles.
-// A câmera tem três jeitos:
+// A câmera tem dois jeitos (a cidade, no horizonte, só aparece por cima do cume: ninguém a anima):
 //   subida  — começa alta e longe e, conforme o jogador sobe, desce para perto da nuca, olhando a estrada à frente;
-//   revela  — no cume o jogador para, a câmera olha o horizonte e Jerusalém aparece (main.js conduz);
 //   descida — por trás e um pouco acima, sempre olhando para o oeste: a cidade fica no horizonte enquanto se desce.
 import * as THREE from 'three';
 import { criaControles } from '../../limpo-motor/controles.js';
@@ -29,10 +28,10 @@ const alturaEm = (x, z) => terreno(x, z);
 const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.3, 850);     // os montes pintados ficam a 560 m do cume
 const ajustaLente = () => {
   const h = THREE.MathUtils.degToRad(58), v = 2 * Math.atan(Math.tan(h / 2) / camera.aspect);     // ~58° de largura
-  LENTE.base = Math.min(64, Math.max(45, THREE.MathUtils.radToDeg(v))); if (!LENTE.atual) LENTE.atual = LENTE.base;
+  LENTE.base = LENTE.atual = Math.min(64, Math.max(45, THREE.MathUtils.radToDeg(v)));
   camera.fov = LENTE.atual; camera.updateProjectionMatrix();
 };
-const LENTE = { base: 45, atual: 0 };       // na revelação a lente fecha (teleobjetiva): a cidade cresce na tela sem chegar mais perto
+const LENTE = { base: 45, atual: 0 };
 ajustaLente();
 // Zoom manual (pinça no celular, roda no computador) vale em toda a fase: E.dist / PADRAO é o fator de afastamento.
 const DMIN = 7, DMAX = 32, PADRAO = 14;
@@ -55,11 +54,6 @@ function camDescida(pj) {
   // mesmo com o celular deitado; mais embaixo, o olhar sobe um pouco
   return [alvo, pj.clone().add(V3(-2.2 - 0.45 * E.dist, 1.2 + Math.min(1.2, Math.max(0, LAY.cume[1] - pj.y) * 0.07), 0))];
 }
-// revelação: atrás e acima do jogador, olhando por cima dele o templo, lá embaixo do outro lado do vale
-function camRevela(pj) {
-  const atras = CAM.T.clone().negate();
-  return [pj.clone().addScaledVector(atras, 6.5).add(V3(0, 2.7, 0)), V3(LAY.vista[0], LAY.cume[1] - 8, LAY.vista[2])];
-}
 // Oliveira na frente: a copa que fica entre a câmera e o jogador (ou em volta da câmera) fica quase transparente,
 // em vez de puxar a câmera para perto. Cada árvore ganha materiais próprios na primeira vez que precisa sumir.
 function tapa(a, h, c) {
@@ -81,13 +75,11 @@ function abreVista(pj, dt) {
   }
 }
 function camPasso(i, dt, pj, primeira = false) {
-  const [alvo, olho] = E.modo === 'subida' ? camSubida(i, dt, pj) : E.modo === 'revela' ? camRevela(pj) : camDescida(pj);
-  const r = primeira ? 1 : Math.min(1, dt * (E.modo === 'revela' ? 0.9 : 2.5));
-  CAM.pos.lerp(alvo, r); CAM.olho.lerp(olho, primeira ? 1 : Math.min(1, dt * (E.modo === 'revela' ? 0.9 : 5)));
+  const [alvo, olho] = E.modo === 'subida' ? camSubida(i, dt, pj) : camDescida(pj);
+  const r = primeira ? 1 : Math.min(1, dt * 2.5);
+  CAM.pos.lerp(alvo, r); CAM.olho.lerp(olho, primeira ? 1 : Math.min(1, dt * 5));
   camera.position.copy(CAM.pos); camera.lookAt(CAM.olho);
   abreVista(pj, primeira ? 1 : dt);
-  const fovAlvo = E.modo === 'revela' ? LENTE.base * 0.6 : LENTE.base;
-  if (Math.abs(fovAlvo - LENTE.atual) > 0.01) { LENTE.atual += (fovAlvo - LENTE.atual) * (primeira ? 1 : Math.min(1, dt * 0.8)); camera.fov = LENTE.atual; camera.updateProjectionMatrix(); }
 }
 
 // ---------- controles (do motor comum); as ações são ligadas em main.js ----------

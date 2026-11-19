@@ -124,12 +124,14 @@ A fase depois de Betfagé (o "Sim" no alto da estrada leva para cá; o pé da su
   `E.dist`) vale nas duas: na subida multiplica a distância por `E.dist / 14`. No celular em pé o ângulo abre para
   caber a mesma largura (`ajustaLente` em `js/jogador.js`). As oliveiras de perto (`ARVS`, em `js/cenario.js`) que
   ficam entre a câmera e o jogador ficam quase transparentes (`abreVista`), em vez de a câmera chegar mais perto.
-- **O cume:** o jogador para, a câmera olha por cima dele e Jerusalém aparece (legendas "Jerusalém." e a do templo).
-  Nessa hora a lente fecha (teleobjetiva): a cidade cresce na tela sem chegar mais perto.
-  Depois a descida segue com a câmera atrás e um pouco acima, sempre olhando para o oeste, com a cidade no horizonte.
+- **O cume, sem "revelação" animada:** a cidade está sempre no lugar; quem a esconde é o próprio monte (o chão é
+  opaco e as pinturas respeitam a profundidade). Subindo, os telhados aparecem por cima da borda do morro mais ou
+  menos na metade do caminho e a cidade vai crescendo; voltando, ela afunda atrás do morro do mesmo jeito. Ao passar
+  pelo cume o jogador não para: só aparecem as legendas ("Jerusalém." e a do templo) e a câmera passa para a da
+  descida (atrás e um pouco acima, sempre olhando para o oeste). Não há troca de lente.
 - **O horizonte, em quatro camadas (`js/cenario.js`), cada uma numa distância (as de perto andam mais quando o
   jogador anda, e isso dá a profundidade):** o vale do Cedrom em 3D (r 125 a 294 m); a encosta pintada do outro lado
-  (r 300); a cidade (r 420, 40° de largura, a que aparece na revelação); e os montes (r 560). Os arcos são centrados
+  (r 300); a cidade (r 420, 40° de largura); e os montes (r 560). Os arcos são centrados
   no cume do arco `Panorama_Jerusalem`, e a altura de cada pintura sai do ângulo visto de lá: a esplanada do templo
   2,5° abaixo da linha dos olhos, o pé dos muros escondido pela borda da encosta, os montes aparecendo por cima dos
   telhados. Encosta e montes se repetem espelhados para os lados até cobrir o vale (~111°); os montes descem mais 12°

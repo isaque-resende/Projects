@@ -1,8 +1,8 @@
-// Monte das Oliveiras: liga os controles às ações e roda o laço do jogo. Aqui também ficam a revelação de Jerusalém
+// Monte das Oliveiras: liga os controles às ações e roda o laço do jogo. Aqui também ficam as legendas do cume
 // no cume e as duas saídas (de volta a Betfagé, no pé da subida; para o Getsêmani, no fim da descida).
 import * as THREE from 'three';
 import { E, LAY, DE, fade, fala, bate, scene, sun, renderer, CIRC, CAIXAS, dialogo, botao, textoBotao } from './estado.js';
-import { terreno, AMOS, naRota, iCume, PAN, panoramaPasso } from './cenario.js';
+import { terreno, AMOS, naRota, iCume, PAN } from './cenario.js';
 import { MIX } from './gente.js';
 import { prensaPasso, PRENSA } from './prensa.js';
 import { ajustaLente, jog, camera, ctl, tecla, JOY, toqueTela, fw, rt, mv, naArea, alturaEm, camPasso, CAM, dirEm } from './jogador.js';
@@ -37,13 +37,15 @@ setTimeout(() => {
   setTimeout(() => { fade.textContent = ''; if (E.modo === 'subida') { fala('A estrada sobe o Monte das Oliveiras.'); setTimeout(() => fala(''), 4500); } }, 900);
 }, 1200);
 
-// ---------- revelação: no cume, Jerusalém aparece no horizonte ----------
-const REV = { t: 0 };
+// ---------- no cume: só as legendas ----------
+// A cidade está sempre no lugar (cenario.js); quem a esconde é o próprio monte. Subindo, ela vai aparecendo por trás
+// do cume conforme a câmera sobe; voltando, some do mesmo jeito. Nada para nem anima: ao passar pelo cume, as legendas.
+const REV = { t: 0, ativo: false };
 function revela(dt) {
   REV.t += dt;
-  if (REV.t > 1.0 && !REV.l1) { REV.l1 = 1; fala('Jerusalém.'); }
-  if (REV.t > 4.6 && !REV.l2) { REV.l2 = 1; fala('Do outro lado do vale do Cedrom, o templo brilha ao sol.'); }
-  if (REV.t > 9.5) { fala(''); E.modo = 'descida'; E.fora = false; }
+  if (REV.t > 0.4 && !REV.l1) { REV.l1 = 1; fala('Jerusalém.'); }
+  if (REV.t > 4.0 && !REV.l2) { REV.l2 = 1; fala('Do outro lado do vale do Cedrom, o templo brilha ao sol.'); }
+  if (REV.t > 9.0) { fala(''); REV.ativo = false; }
 }
 
 // ---------- laço ----------
@@ -82,13 +84,12 @@ const laco = (forca) => {
   if (!E.jogNoChao) jog.toca(E.jogVy > 0 ? 'Pulo_Ar' : 'Pulo_Queda');
   else if (!andou) jog.toca('Parado');
 
-  // onde está na estrada: o cume dispara a revelação; as pontas, as saídas
+  // onde está na estrada: no cume, as legendas e a câmera da descida; as pontas, as saídas
   const [i] = naRota(pj.x, pj.z);
   if (E.modo === 'subida' && i >= iCume - 3) {
-    E.modo = 'revela'; E.fora = true; E.alvoToque = null; REV.t = 0;
-    const w = dirEm(iCume, 10); jog.o.rotation.y = Math.atan2(w.x, w.z); jog.toca('Parado');
+    E.modo = 'descida'; REV.ativo = true; REV.t = 0;
   }
-  if (E.modo === 'revela') revela(dt);
+  if (REV.ativo) revela(dt);
   E.saida = i <= 3 ? 'betfage' : i >= AMOS.length - 4 ? 'getsemani' : null;
   if (E.saida && !E.fora && !E.perguntou) { E.perguntou = true; E.saida === 'betfage' ? perguntaBetfage() : perguntaGetsemani(); }
   if (!E.saida) E.perguntou = false;
@@ -101,7 +102,6 @@ const laco = (forca) => {
   ctl.marcaPino(botao.style.display === 'block' ? (PREG.perto ? 'olhar' : 'ir') : '');
 
   prensaPasso(dt);
-  panoramaPasso(dt, E.modo === 'subida' || (E.modo === 'revela' && REV.t < 0.8) ? 0 : 1);
 
   // câmera e sol
   E.dist += (E.distAlvo - E.dist) * Math.min(1, dt * 4);
