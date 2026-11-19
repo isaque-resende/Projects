@@ -57,75 +57,89 @@ poePertos(scene, LAY.objetos, KIT, (o, n) => {
 }
 
 // ---------- Jerusalém no horizonte ----------
-// Duas camadas, para dar distância: o vale do Cedrom em 3D (desce do monte, tem fundo e sobe do outro lado) e,
-// atrás dele, a pintura da cidade num arco estreito e longe (r = 420 m). Do cume a esplanada do templo fica um
-// pouco abaixo da linha dos olhos, como do alto do monte; descendo, ela sobe até a altura dos olhos.
-// Os dois ignoram a neblina do jogo: a bruma de distância já vem pintada (na imagem e nas cores do vale).
-const PAN = { mat: new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, fog: false, depthWrite: false, side: THREE.DoubleSide }), sobe: 0 };
-// as laterais da pintura somem devagar nos morros do fundo (além do esmaecido que já vem na imagem)
-PAN.mat.onBeforeCompile = (sh) => {
-  sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>', '#include <map_fragment>\n#ifdef USE_MAP\n  diffuseColor.a *= smoothstep(0.0, 0.3, vMapUv.x) * smoothstep(1.0, 0.7, vMapUv.x);\n#else\n  diffuseColor.a = 0.0;\n#endif');
-};
-// a imagem chega depois: o shader é refeito com ela (antes disso o arco não aparece)
-{
-  // tex/jerusalem.webp (1914 x 822): a pintura original, céu recortado, laterais esmaecidas, um véu de bruma
-  const P = LAY.panorama, Y_OLHO = LAY.cume[1] + 1.6, LINHA = 0.392;     // LINHA: o alto da esplanada do templo na imagem (0 = embaixo, 1 = em cima)
-  const arco = P.r * (P.a1 - P.a0), alt = arco / (1914 / 822);
-  const y0 = Y_OLHO - P.r * Math.tan(THREE.MathUtils.degToRad(2.5)) - LINHA * alt;     // a esplanada 2,5° abaixo dos olhos de quem está no cume
-  const N = 48, pos = [], uv = [], idx = [];
-  for (let i = 0; i <= N; i++) {
-    const a = P.a0 + (P.a1 - P.a0) * i / N, x = P.cx + Math.cos(a) * P.r, z = P.cz + Math.sin(a) * P.r;
-    pos.push(x, y0, z, x, y0 + alt, z); uv.push(i / N, 0, i / N, 1);
-    if (i) { const b = (i - 1) * 2; idx.push(b, b + 2, b + 1, b + 1, b + 2, b + 3); }
+// Quatro camadas, cada uma numa distância, para dar profundidade (as de perto andam mais quando o jogador anda):
+//   o vale do Cedrom em 3D (r 125 a 294), a encosta pintada do outro lado (r 300), a cidade (r 420) e os montes (r 560).
+// As pinturas (tex/panorama_*.webp, recortadas de tex/originais/) ficam em arcos centrados no cume. A altura de cada
+// uma sai do ângulo visto de quem está no cume: a esplanada do templo 2,5° abaixo da linha dos olhos, o pé dos muros
+// escondido atrás da borda da encosta e os montes aparecendo por cima dos telhados. A encosta e os montes se repetem
+// espelhados para os lados até cobrir o vale todo. A cidade aparece na revelação; o resto está sempre lá.
+// Nada disso usa a neblina do jogo: a bruma vem pintada (e um véu leve no shader, maior quanto mais longe).
+const P = LAY.panorama, Y_OLHO = LAY.cume[1] + 1.6, W_IMG = 1914;
+const A0 = P.a0 - 0.62, A1 = P.a1 + 0.62, MEIO = (P.a0 + P.a1) / 2;      // o vale cobre ~111°; a cidade, 40° no meio
+const rad = THREE.MathUtils.degToRad;
+const yEm = (r, graus) => Y_OLHO + r * Math.tan(rad(graus));
+const BRUMA_C = new THREE.Color().setStyle('rgb(226,222,230)', THREE.SRGBColorSpace);
+function matCamada(veu, nome) {
+  const m = new THREE.MeshBasicMaterial({ transparent: true, fog: false, depthWrite: false, side: THREE.DoubleSide, vertexColors: true });
+  m.onBeforeCompile = (sh) => {
+    sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>', '#include <map_fragment>\n#ifdef USE_MAP\n  diffuseColor.rgb = mix(diffuseColor.rgb, vec3(' + [BRUMA_C.r, BRUMA_C.g, BRUMA_C.b].map((v) => v.toFixed(4)).join(', ') + '), ' + veu.toFixed(3) + ');\n#else\n  diffuseColor.a = 0.0;\n#endif');
+  };
+  m.customProgramCacheKey = () => 'pan-' + nome;
+  return m;
+}
+// um arco pintado: cópias de 'larg' graus a partir do centro (k = 0 é a original; ímpares vão espelhadas);
+// eBase = ângulo (graus) da linha de baixo da imagem; saia = graus a mais para baixo, repetindo a última linha (tapa frestas); a transparência das pontas vai na cor de vértice
+function camada({ arq, r, larg, hPx, eBase, copias, fade, veu, ordem, nome, saia = 0 }) {
+  const passo = rad(larg), comeco = MEIO - passo / 2, eTopo = eBase + hPx * larg / W_IMG;
+  const yb = yEm(r, eBase - saia), yt = yEm(r, eTopo), v0 = -saia / (eTopo - eBase), pos = [], uv = [], cor = [], idx = []; let v = 0;
+  for (const k of copias) {
+    const N = 24;
+    for (let i = 0; i <= N; i++) {
+      const t = i / N, a = comeco + passo * (k + t), x = P.cx + Math.cos(a) * r, z = P.cz + Math.sin(a) * r, al = fade(a);
+      const u = k % 2 ? 1 - t : t;
+      pos.push(x, yb, z, x, yt, z); uv.push(u, v0, u, 1); cor.push(1, 1, 1, al, 1, 1, 1, al);
+      if (i) { const b = v + (i - 1) * 2; idx.push(b, b + 2, b + 1, b + 1, b + 2, b + 3); }
+    }
+    v += (N + 1) * 2;
   }
-  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx);
-  PAN.mesh = new THREE.Mesh(g, PAN.mat); PAN.mesh.renderOrder = -1; PAN.mesh.frustumCulled = false; PAN.mesh.visible = false; scene.add(PAN.mesh);
-  new THREE.TextureLoader().load('../fase-oliveiras/tex/jerusalem.webp?v=3', (t) => { t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; PAN.mat.map = t; PAN.mat.needsUpdate = true; });
-
-  // o vale: um leque de triângulos facetados entre o pé do monte (r = 125) e o pé da pintura (r = P.r - 8)
-  const R0 = 125, R1 = P.r - 8, FUNDO = y0 - 28, LONGE = y0 + alt * 0.13;     // LONGE: a encosta do outro lado cobre a base da pintura
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(cor, 4)); g.setIndex(idx);
+  const mat = matCamada(veu, nome), mesh = new THREE.Mesh(g, mat); mesh.name = 'Panorama_' + nome; mesh.renderOrder = ordem; mesh.frustumCulled = false; scene.add(mesh);
+  new THREE.TextureLoader().load('../fase-oliveiras/tex/' + arq + '?v=1', (t) => { t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; mat.map = t; mat.needsUpdate = true; });
+  return { mesh, mat, yb, yt };
+}
+const pontas = (a) => sm(A0, A0 + 0.3, a) * sm(A1, A1 - 0.3, a);
+// a cidade: 40° (a0..a1); a esplanada fica 157 px acima do pé da imagem recortada (309 px de altura)
+const LARG_C = THREE.MathUtils.radToDeg(P.a1 - P.a0), E_ESPLANADA = -2.5, E_PE_MURO = E_ESPLANADA - 157 * LARG_C / W_IMG;
+// a encosta: 52° por cópia, 466 px; a borda de cima mais baixa (no meio) fica 49 px abaixo do alto da imagem e cobre o pé dos muros
+const LARG_E = 52, H_E = 466, E_TOPO_E = E_PE_MURO + 0.8 + 49 * LARG_E / W_IMG, E_BASE_E = E_TOPO_E - H_E * LARG_E / W_IMG;
+const montes = camada({ arq: 'panorama_montes.webp', r: 560, larg: 56, hPx: 277, eBase: 2.4 - 277 * 56 / W_IMG, copias: [-1, 0, 1], fade: pontas, veu: 0.0, ordem: -3, nome: 'montes', saia: 12 });
+const cidade = camada({ arq: 'panorama_cidade.webp', r: P.r, larg: LARG_C, hPx: 309, eBase: E_PE_MURO, copias: [0], fade: (a) => sm(P.a0, P.a0 + 0.12, a) * sm(P.a1, P.a1 - 0.12, a), veu: 0.1, ordem: -2, nome: 'cidade' });
+const encosta = camada({ arq: 'panorama_encosta.webp', r: 300, larg: LARG_E, hPx: H_E, eBase: E_BASE_E, copias: [-1, 0, 1], fade: pontas, veu: 0.05, ordem: -1, nome: 'encosta' });
+const PAN = { mat: cidade.mat, mesh: cidade.mesh, montes, encosta };
+PAN.mat.opacity = 0; PAN.mesh.visible = false;
+{
+  // o vale: um leque de triângulos facetados entre o pé do monte (r = 125) e a encosta pintada (r = 294);
+  // a borda de lá fica um pouco acima do pé da pintura da encosta e esconde a linha onde ela termina
+  const R0 = 125, R1 = 294, LONGE = yEm(R1, E_BASE_E + 0.6), FUNDO = LONGE - 16;
   const altV = (r, a) => {
-    const t1 = sm(R0, R0 + 120, r), t2 = sm(R1 - 140, R1, r);
+    const t1 = sm(R0, R0 + 100, r), t2 = sm(R1 - 100, R1, r);
     const base = -20 + (FUNDO + 20) * t1 + (LONGE - FUNDO) * t2;
-    return base + (6 * Math.sin(a * 9 + r * 0.031) + 4 * Math.cos(a * 17 - r * 0.047)) * Math.min(1, (r - R0) / 80);
+    return base + (5 * Math.sin(a * 9 + r * 0.031) + 3 * Math.cos(a * 17 - r * 0.047)) * Math.min(1, (r - R0) / 80) * (1 - 0.8 * t2);
   };
-  const cor = (hex) => new THREE.Color().setStyle(hex, THREE.SRGBColorSpace);
-  const NEV = cor('#e6e6d6'), OLIVAL = cor('#a3a37c'), BRUMA = cor('#d9d3d8'), ENCOSTA = cor('rgb(154,129,131)');
+  const cor = (s) => new THREE.Color().setStyle(s, THREE.SRGBColorSpace);
+  const NEV = cor('#e6e6d6'), OLIVAL = cor('#a3a37c'), BRUMA = cor('#d9d3d8'), PE_ENCOSTA = cor('rgb(167,132,122)').lerp(BRUMA_C, 0.05);   // a cor média do pé da pintura
   const corV = (r) => {
-    const c = NEV.clone().lerp(OLIVAL.clone().lerp(BRUMA, 0.35), sm(R0, R0 + 160, r));
-    return c.lerp(ENCOSTA, sm(R1 - 170, R1, r));
+    const c = NEV.clone().lerp(OLIVAL.clone().lerp(BRUMA, 0.35), sm(R0, R0 + 120, r));
+    return c.lerp(PE_ENCOSTA, sm(R1 - 120, R1 - 10, r));
   };
-  const RAIOS = [R0, 145, 170, 200, 235, 270, 305, 335, 360, 385, R1], A0 = P.a0 - 0.62, A1 = P.a1 + 0.62, NA = 44;
+  const RAIOS = [R0, 145, 168, 192, 215, 238, 258, 276, R1], NA = 44;
   const vp = [], vc = [], SOL = V3(-14, 26, 12).normalize(), p0 = V3(), p1 = V3(), p2 = V3(), nn = V3();
-  const ponto = (ri, ai) => { const r = RAIOS[ri] + (ri && ri < RAIOS.length - 1 ? 9 * Math.sin(ai * 2.3 + ri) : 0), a = A0 + (A1 - A0) * ai / NA; return [P.cx + Math.cos(a) * r, altV(r, a), P.cz + Math.sin(a) * r, r]; };
+  const ponto = (ri, ai) => { const r = RAIOS[ri] + (ri && ri < RAIOS.length - 1 ? 6 * Math.sin(ai * 2.3 + ri) : 0), a = A0 + (A1 - A0) * ai / NA; return [P.cx + Math.cos(a) * r, altV(r, a), P.cz + Math.sin(a) * r, r]; };
   const tri = (a, b, c) => {
     p0.set(a[0], a[1], a[2]); p1.set(b[0], b[1], b[2]); p2.set(c[0], c[1], c[2]);
     nn.subVectors(p1, p0).cross(V3().subVectors(p2, p0)).normalize(); if (nn.y < 0) { nn.negate(); [b, c] = [c, b]; p1.set(b[0], b[1], b[2]); p2.set(c[0], c[1], c[2]); }
-    const luz = 0.86 + 0.2 * Math.max(0, nn.dot(SOL)) - 0.08 * (1 - nn.y), k = corV((a[3] + b[3] + c[3]) / 3).multiplyScalar(luz);
+    const rm = (a[3] + b[3] + c[3]) / 3, luz = 0.86 + 0.2 * Math.max(0, nn.dot(SOL)) - 0.08 * (1 - nn.y), k = corV(rm).multiplyScalar(1 + (luz - 1) * (1 - sm(R1 - 60, R1, rm)));
     for (const q of [p0, p1, p2]) { vp.push(q.x, q.y, q.z); vc.push(k.r, k.g, k.b); }
   };
   for (let ri = 0; ri < RAIOS.length - 1; ri++) for (let ai = 0; ai < NA; ai++) {
     const a = ponto(ri, ai), b = ponto(ri, ai + 1), c = ponto(ri + 1, ai), d = ponto(ri + 1, ai + 1);
     if ((ri + ai) % 2) { tri(a, c, b); tri(b, c, d); } else { tri(a, c, d); tri(a, d, b); }
   }
-  // os morros do fundo: uma faixa de cumes em bruma, atrás da pintura e mais larga que ela; as bordas da imagem se misturam neles
-  {
-    const RM = P.r + 14, NM = 70, topo = (a) => y0 + alt * (0.5 + 0.05 * Math.sin(a * 23 + 1.3) + 0.035 * Math.sin(a * 51) + 0.02 * Math.cos(a * 97));
-    const C1 = cor('#cdc4cf'), C2 = cor('#ddd8dc'), mp = [], mc = [];
-    for (let i = 0; i < NM; i++) {
-      const aa = A0 + (A1 - A0) * i / NM, ab = A0 + (A1 - A0) * (i + 1) / NM;
-      const xa = P.cx + Math.cos(aa) * RM, za = P.cz + Math.sin(aa) * RM, xb = P.cx + Math.cos(ab) * RM, zb = P.cz + Math.sin(ab) * RM;
-      const ta = topo(aa), tb = topo(ab), k1 = (i % 2 ? C1 : C1.clone().lerp(C2, 0.25)), k2 = C2;
-      for (const [x, y, z, k] of [[xa, FUNDO, za, k1], [xb, FUNDO, zb, k1], [xa, ta, za, k2], [xb, FUNDO, zb, k1], [xb, tb, zb, k2], [xa, ta, za, k2]]) { mp.push(x, y, z); mc.push(k.r, k.g, k.b); }
-    }
-    const gm = new THREE.BufferGeometry(); gm.setAttribute('position', new THREE.Float32BufferAttribute(mp, 3)); gm.setAttribute('color', new THREE.Float32BufferAttribute(mc, 3));
-    const morros = new THREE.Mesh(gm, new THREE.MeshBasicMaterial({ vertexColors: true, fog: false, depthWrite: false, side: THREE.DoubleSide }));
-    morros.renderOrder = -2; morros.frustumCulled = false; scene.add(morros);
-  }
   const gv = new THREE.BufferGeometry(); gv.setAttribute('position', new THREE.Float32BufferAttribute(vp, 3)); gv.setAttribute('color', new THREE.Float32BufferAttribute(vc, 3));
   const vale = new THREE.Mesh(gv, new THREE.MeshBasicMaterial({ vertexColors: true, fog: false })); vale.name = 'Vale_Cedrom'; vale.frustumCulled = false; scene.add(vale);
 }
-// aparece (alvo 1) ou some (alvo 0) aos poucos; ao aparecer, sobe um pouco do vale
+// a cidade aparece (alvo 1) ou some (alvo 0) aos poucos; ao aparecer, sobe um pouco de trás da encosta
 function panoramaPasso(dt, alvo) {
   PAN.mat.opacity += (alvo - PAN.mat.opacity) * Math.min(1, dt * 0.7);
   PAN.mesh.visible = PAN.mat.opacity > 0.01;

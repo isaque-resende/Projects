@@ -26,7 +26,7 @@ const alturaEm = (x, z) => terreno(x, z);
 // ---------- câmera ----------
 // Sempre olhando para o jogador (ele fica no meio da tela, para qualquer lado que ande) e longe o bastante para
 // ver o caminho em volta. No celular em pé a tela é estreita: o ângulo abre para caber a mesma largura.
-const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.3, 560);
+const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.3, 850);     // os montes pintados ficam a 560 m do cume
 const ajustaLente = () => {
   const h = THREE.MathUtils.degToRad(58), v = 2 * Math.atan(Math.tan(h / 2) / camera.aspect);     // ~58° de largura
   LENTE.base = Math.min(64, Math.max(45, THREE.MathUtils.radToDeg(v))); if (!LENTE.atual) LENTE.atual = LENTE.base;
@@ -51,8 +51,9 @@ function camSubida(i, dt, pj) {
 }
 function camDescida(pj) {
   const alvo = pj.clone().addScaledVector(DESCE, E.dist); alvo.y = Math.max(alvo.y, terreno(alvo.x, alvo.z) + 1.6);
-  // mais embaixo, o olhar sobe um pouco: a cidade, do outro lado do vale, continua no alto da tela
-  return [alvo, pj.clone().add(V3(-2.2, 1.2 + Math.min(1.2, Math.max(0, LAY.cume[1] - pj.y) * 0.07), 0))];
+  // mira à frente do jogador (mais longe quanto maior o zoom): o olhar fica ~17° para baixo e a cidade cabe na tela
+  // mesmo com o celular deitado; mais embaixo, o olhar sobe um pouco
+  return [alvo, pj.clone().add(V3(-2.2 - 0.45 * E.dist, 1.2 + Math.min(1.2, Math.max(0, LAY.cume[1] - pj.y) * 0.07), 0))];
 }
 // revelação: atrás e acima do jogador, olhando por cima dele o templo, lá embaixo do outro lado do vale
 function camRevela(pj) {

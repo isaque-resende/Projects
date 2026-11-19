@@ -127,13 +127,17 @@ A fase depois de Betfagé (o "Sim" no alto da estrada leva para cá; o pé da su
 - **O cume:** o jogador para, a câmera olha por cima dele e Jerusalém aparece (legendas "Jerusalém." e a do templo).
   Nessa hora a lente fecha (teleobjetiva): a cidade cresce na tela sem chegar mais perto.
   Depois a descida segue com a câmera atrás e um pouco acima, sempre olhando para o oeste, com a cidade no horizonte.
-- **O horizonte, em três camadas (`js/cenario.js`):** o vale do Cedrom em 3D (desce do monte, tem fundo em bruma e
-  sobe do outro lado, cobrindo o pé da pintura); a pintura da cidade; e, atrás dela, uma faixa de morros em bruma,
-  mais larga, onde as laterais da pintura somem. Do cume a esplanada do templo fica 2,5° abaixo da linha dos olhos
-  (vista de cima do monte); descendo, ela sobe até a altura dos olhos. Vale e morros são gerados pelo jogo a partir
-  do arco `Panorama_Jerusalem`.
-- **A imagem:** `tex/originais/jerusalem_v1.png` é a do usuário. `tex/jerusalem.webp` é ela com o céu recortado, as
-  laterais esmaecidas e um véu de bruma (mais forte no alto, nos morros do fundo).
+- **O horizonte, em quatro camadas (`js/cenario.js`), cada uma numa distância (as de perto andam mais quando o
+  jogador anda, e isso dá a profundidade):** o vale do Cedrom em 3D (r 125 a 294 m); a encosta pintada do outro lado
+  (r 300); a cidade (r 420, 40° de largura, a que aparece na revelação); e os montes (r 560). Os arcos são centrados
+  no cume do arco `Panorama_Jerusalem`, e a altura de cada pintura sai do ângulo visto de lá: a esplanada do templo
+  2,5° abaixo da linha dos olhos, o pé dos muros escondido pela borda da encosta, os montes aparecendo por cima dos
+  telhados. Encosta e montes se repetem espelhados para os lados até cobrir o vale (~111°); os montes descem mais 12°
+  repetindo a última linha da imagem (`saia`), para tapar frestas entre a encosta e a cidade. Um véu leve de bruma
+  no shader (cidade 10%, encosta 5%). A câmera vai até 850 m.
+- **As imagens:** do usuário, em `tex/originais/panorama_{montes,cidade,encosta}_v1.png`. As `tex/panorama_*.webp`
+  são elas sem o branco ligado às bordas (recorte por preenchimento a partir da borda, para não furar as paredes
+  claras) e cortadas na altura do desenho. A `tex/jerusalem.webp` (imagem única antiga) não é mais usada.
 - **A prensa (`js/prensa.js`):** o prenseiro empurra a mó em volta da bacia (as azeitonas viram pasta), vai à viga e a
   prensa desce (o azeite corre para o tanque), busca azeitonas no pote e recomeça. Na mó ele anda colado atrás do
   cabo, empurrando com o corpo (o andar dele mesmo); na viga e no pote usa o "Pegar" do discípulo. Os outros clipes
