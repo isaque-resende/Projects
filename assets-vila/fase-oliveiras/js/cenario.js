@@ -96,7 +96,7 @@ function camada({ arq, r, larg, hPx, eBase, copias, fade, veu, ordem, nome, saia
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   g.setAttribute('color', new THREE.Float32BufferAttribute(cor, 4)); g.setIndex(idx);
   const mat = matCamada(veu, nome), mesh = new THREE.Mesh(g, mat); mesh.name = 'Panorama_' + nome; mesh.renderOrder = ordem; mesh.frustumCulled = false; scene.add(mesh);
-  new THREE.TextureLoader().load('../fase-oliveiras/tex/' + arq + '?v=2', (t) => { t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; mat.map = t; mat.needsUpdate = true; });
+  new THREE.TextureLoader().load('../fase-oliveiras/tex/' + arq + '?v=3', (t) => { t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; mat.map = t; mat.needsUpdate = true; });
   return { mesh, mat, yb, yt };
 }
 const pontas = (a) => sm(A0, A0 + 0.3, a) * sm(A1, A1 - 0.3, a);
@@ -108,8 +108,8 @@ const LARG_C = THREE.MathUtils.radToDeg(P.a1 - P.a0), PXC = LARG_C / W_IMG, E_ES
 const LARG_E = 42, H_E = 624, E_TOPO_E = E_PE_MURO + 0.35 + 28 * LARG_E / W_IMG, E_BASE_E = E_TOPO_E - H_E * LARG_E / W_IMG;
 // os montes: 56° por cópia, 443 px; a crista mais alta 2° acima dos olhos, aparecendo por cima dos telhados
 const montes = camada({ arq: 'panorama_montes.webp', r: 560, larg: 56, hPx: 443, eBase: 2.0 - 443 * 56 / 1913, copias: [-1, 0, 1], fade: pontas, veu: 0.0, ordem: -3, nome: 'montes', saia: 3 });
-// só o chão das pontas esmaece (os muros fazem a curva 2,7° antes da borda)
-const cidade = camada({ arq: 'panorama_cidade.webp', r: P.r, larg: LARG_C, hPx: 606, eBase: E_ESPLANADA - (606 - 150) * PXC, copias: [0], fade: (a) => sm(P.a0, P.a0 + 0.04, a) * sm(P.a1, P.a1 - 0.04, a), veu: 0.1, ordem: -2, nome: 'cidade' });
+// os morros dos lados foram tirados da imagem (a cidade termina nos muros); só o chão das pontas esmaece um pouco
+const cidade = camada({ arq: 'panorama_cidade.webp', r: P.r, larg: LARG_C, hPx: 606, eBase: E_ESPLANADA - (606 - 150) * PXC, copias: [0], fade: (a) => sm(P.a0, P.a0 + 0.015, a) * sm(P.a1, P.a1 - 0.015, a), veu: 0.1, ordem: -2, nome: 'cidade' });
 const encosta = camada({ arq: 'panorama_encosta.webp', r: 300, larg: LARG_E, hPx: H_E, eBase: E_BASE_E, copias: [-2, -1, 0, 1, 2], fade: pontas, veu: 0.05, ordem: -1, nome: 'encosta', desloc: 0.5 });
 const PAN = { mat: cidade.mat, mesh: cidade.mesh, montes, encosta };
 {
