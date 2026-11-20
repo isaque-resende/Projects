@@ -1,8 +1,10 @@
 // Getsêmani: o jogador, a câmera e os controles.
-// A câmera fica atrás (leste) e acima do jogador, olhando para o oeste: o jardim desce para o Cedrom e Jerusalém
-// fica no alto, do outro lado (a trilha segue até Betesda, ao norte do templo). Mesmo braço e mesma suavização do Monte das Oliveiras (nada treme no celular).
+// A câmera é a mesma de Betânia e Betfagé: de quina, de cima (~30°), lente fechada, seguindo o jogador; daqui ela
+// fica a leste-nordeste dele e olha para oeste-sudoeste: o templo e a trilha, que desce ao Cedrom e sobe até Betesda. Junto à rocha (de
+// joelhos) ela vem para trás dele, baixa, de frente para o templo. Por enquanto há a câmera livre (camlivre.js).
 import * as THREE from 'three';
 import { criaControles } from '../../limpo-motor/controles.js';
+import { criaCamLivre } from '../../limpo-motor/camlivre.js';
 import { V3, LAY, E, DE, renderer } from './estado.js';
 import { gJog } from './modelos.js';
 import { AMOS, terreno, ARVS } from './cenario.js';
@@ -20,17 +22,19 @@ const naArea = (x, z) => x > AX0 && x < AX1 && z > AZ0 && z < AZ1;
 const alturaEm = (x, z) => terreno(x, z);
 
 // ---------- câmera ----------
-const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.3, 900);
-const LENTE = { base: 45, atual: 0 };
+// lente fechada (como a do diorama): ~40° de largura; no celular em pé, o ângulo vertical abre até 58°
+const camera = new THREE.PerspectiveCamera(30, innerWidth / innerHeight, 0.5, 1200);
+const LENTE = { base: 30, atual: 0 };
 const ajustaLente = () => {
-  const h = THREE.MathUtils.degToRad(58), v = 2 * Math.atan(Math.tan(h / 2) / camera.aspect);
-  LENTE.base = LENTE.atual = Math.min(64, Math.max(45, THREE.MathUtils.radToDeg(v)));
+  const h = THREE.MathUtils.degToRad(40), v = 2 * Math.atan(Math.tan(h / 2) / camera.aspect);
+  LENTE.base = LENTE.atual = Math.min(58, Math.max(26, THREE.MathUtils.radToDeg(v)));
   camera.fov = LENTE.atual; camera.updateProjectionMatrix();
 };
 ajustaLente();
-const DMIN = 6, DMAX = 24;
-const ATRAS = V3(1, 0.6, 0.12).normalize();          // atrás (leste), acima e um pouco de lado
-const CAM = { pos: V3(), olho: V3(), braco: 1, off: V3(), offO: V3() };
+const DMIN = 10, DMAX = 110;
+const QUINA = V3(1, 0.8165, -0.45).normalize();       // a leste-nordeste e acima (30°), como em Betfagé: olha o templo (sudoeste) e a trilha (oeste)
+const ROCHA = V3(1, 0.32, 0.12).normalize();          // de joelhos: atrás (leste) e baixa, de frente para o templo
+const CAM = { pos: V3(), olho: V3(), braco: 1, off: V3(), offO: V3(), perto: 0 };
 const suave = (k, dt) => 1 - Math.exp(-k * dt);
 // braço: se o chão fica entre o jogador e a câmera, ela chega mais perto em vez de subir
 function braco(pj, alvo, dt) {
@@ -44,20 +48,20 @@ function braco(pj, alvo, dt) {
   const c = h.clone().lerp(alvo, CAM.braco); c.y = Math.max(c.y, terreno(c.x, c.z) + 1.2);
   return c;
 }
-// junto à rocha a câmera vem para mais perto e mais baixa (CAM.perto vai de 0 a 1, main.js conduz)
-CAM.perto = 0;
+const livre = criaCamLivre(E, () => [DMIN, DMAX]);
 function camAlvo(pj, dt) {
-  const d = E.dist * (1 - 0.35 * CAM.perto), dir = ATRAS.clone(); dir.y *= 1 - 0.45 * CAM.perto; dir.normalize();
+  const k = CAM.perto, dir = livre.aplica(QUINA.clone().lerp(ROCHA, k).normalize());
+  const d = E.dist * (1 - k) + 9 * k;
   const alvo = braco(pj, pj.clone().addScaledVector(dir, d), dt);
-  // mira à frente do jogador, um pouco acima: Jerusalém, no alto do outro lado, entra no quadro
-  return [alvo, pj.clone().add(V3(-1.8 - 0.35 * d, 1.3 + 0.8 * CAM.perto, 0))];
+  // olha para o jogador; de joelhos, um pouco para cima e para a frente (o templo do outro lado do vale)
+  return [alvo, pj.clone().add(V3(-6 * k, 1.1 + 1.6 * k, 0))];
 }
 // oliveira na frente: a copa entre a câmera e o jogador fica quase transparente
 function tapa(a, h, c) {
   const dx = c.x - h.x, dz = c.z - h.z, L2 = dx * dx + dz * dz || 1e-6;
   const t = Math.max(0, Math.min(1, ((a.c.x - h.x) * dx + (a.c.z - h.z) * dz) / L2));
   const px = h.x + dx * t - a.c.x, pz = h.z + dz * t - a.c.z, y = h.y + (c.y - h.y) * t;
-  return t > 0.08 && px * px + pz * pz < (a.r + 0.4) ** 2 && y > a.y0 - 0.3 && y < a.y1 + 0.3;
+  return t > 0.04 && px * px + pz * pz < (a.r + 0.4) ** 2 && y > a.y0 - 0.3 && y < a.y1 + 0.3;
 }
 function abreVista(pj, dt) {
   const h = V3(pj.x, pj.y + 1.1, pj.z), c = camera.position;
@@ -72,6 +76,7 @@ function abreVista(pj, dt) {
   }
 }
 function camPasso(dt, pj, primeira = false) {
+  livre.passo(dt);
   const [alvo, olho] = camAlvo(pj, primeira ? 1 : dt);
   CAM.off.lerp(alvo.sub(pj), primeira ? 1 : suave(2.5, dt)); CAM.offO.lerp(olho.sub(pj), primeira ? 1 : suave(5, dt));
   CAM.pos.copy(pj).add(CAM.off); CAM.pos.y = Math.max(CAM.pos.y, terreno(CAM.pos.x, CAM.pos.z) + 1.0);
@@ -85,4 +90,4 @@ const ctl = criaControles({ dom: renderer.domElement, E, zoom: () => [DMIN, DMAX
 const { tecla, JOY, toqueTela } = ctl;
 const fw = new THREE.Vector3(), rt = new THREE.Vector3(), mv = new THREE.Vector3();
 
-export { ajustaLente, jog, camera, ctl, tecla, JOY, toqueTela, fw, rt, mv, naArea, alturaEm, camPasso, CAM, dirEm, iInicio };
+export { ajustaLente, jog, camera, ctl, tecla, JOY, toqueTela, fw, rt, mv, naArea, alturaEm, camPasso, CAM, dirEm, iInicio, livre };

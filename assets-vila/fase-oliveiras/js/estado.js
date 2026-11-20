@@ -25,7 +25,7 @@ const E = {
   fora: false,            // true = o jogador não comanda (pergunta na tela, revelação, transição)
   alvoToque: null, TRILHA: [],
   jogVy: 0, jogNoChao: true,
-  dist: 14, distAlvo: 14,   // distância da câmera (pinça e roda mudam; vale na subida e na descida)
+  dist: 34, distAlvo: 34,   // distância da câmera (pinça, roda e os botões da câmera livre)
   modo: 'subida',         // 'subida' (a câmera chega perto da nuca), 'revela' (Jerusalém aparece), 'descida'
   saida: null,            // 'betfage' ou 'getsemani' nas pontas da estrada
   pregacao: false,        // o jogador já passou pelo mirante (o flashback vem depois)

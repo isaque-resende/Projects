@@ -18,7 +18,7 @@ const LUG = [
   { x: tx, z: tz, r: 4, txt: '“A minha alma está cheia de tristeza até à morte; ficai aqui e vigiai comigo.” (Mt 26.38)' },
   { x: rx, z: rz, r: 10, txt: 'E apartou-se deles cerca de um tiro de pedra; e, pondo-se de joelhos, orava. (Lc 22.41)' },
   { x: cx, z: cz, r: 6, txt: 'O ribeiro de Cedrom. Na quinta à noite Jesus o atravessou para ir ao jardim (Jo 18.1); horas depois, voltou por aqui, preso.' },
-  { x: -118, z: 44, r: 9, txt: 'À esquerda, o muro do templo. Lá dentro, de frente para o leste, o santuário.' },
+  { x: -97, z: -39, r: 8, txt: 'À esquerda, a quina do muro do templo. Lá dentro, de frente para o leste, o santuário.' },
   { x: bx + 4, z: bz, r: 7, txt: 'O Tanque de Betesda, com os seus cinco alpendres, junto à Porta das Ovelhas. (Jo 5.2)' },
 ];
 let falando = 0;

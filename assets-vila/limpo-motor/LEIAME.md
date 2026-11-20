@@ -230,10 +230,14 @@ de fase, acrescente os passos dela no `teste.html`.
 Uma maquete só para situar as fases: volumes facetados com cor de vértice, nos lugares certos. O modelo bonito (kit
 de peças, texturas pedidas por prompt, peças do Tripo) vai entrar no lugar dela, peça por peça, nas mesmas posições.
 
+- **O norte é -z.** No three.js, com x para leste e y para cima, o +z aponta para o SUL. (O primeiro rascunho tratou
+  +z como norte, e o mundo saiu espelhado: olhando para oeste, o templo, que fica ao sul, aparecia à direita.) No
+  Blender, (x, -z, y): lá o norte é +y, como num mapa.
 - **`relevo.py`:** o relevo (`h_mundo`) e os lugares, num sistema só: as coordenadas do Getsêmani (a rocha em
-  (-27, -8)). As distâncias reais, medidas a partir da Basílica da Agonia, estão reduzidas à metade na horizontal e a
-  ~0,4 na altura; a tabela está no começo do arquivo. O gerador do Getsêmani usa este mesmo relevo, então o chão dele
-  e o da maquete batem.
+  (-27, -8)). A cidade fica a ~0,3 da distância real e os prédios a ~0,3 do tamanho (fases compactas); o jardim e o vale
+  têm escala própria. A tabela está no começo do arquivo. A maquete é desenhada num "plano velho" e levada ao mundo por
+  `para_mundo` (espelha o norte e reduz a 0,6 em volta da rocha); por isso há `h_velho` (onde os prédios são
+  assentados) e `h_mundo` (o chão). O gerador do Getsêmani usa o mesmo `h_mundo`, então os chãos batem.
 - **A geografia** (pelo mapa "Jerusalém na época de Jesus" e pelas distâncias reais):
   - o Getsêmani fica em frente ao canto norte do muro leste do templo;
   - a Porta de Susã fica no muro leste, alinhada com o santuário, que fica a sudoeste do jardim e olha para o leste;
@@ -247,6 +251,18 @@ de peças, texturas pedidas por prompt, peças do Tripo) vai entrar no lugar del
   Getsêmani), `Vale_Miolo` (tapa o buraco) e `Leste_Chao` (o Monte das Oliveiras). Bem longe, o chão desce e some
   atrás do horizonte.
 - **No Monte das Oliveiras** a maquete entra deslocada (`oliveiras` em `jerusalem_lugares.json`), para o cume de lá
-  ficar onde fica o cume de verdade em relação ao templo (~450 m; a cidade uns 2,5° abaixo dos olhos). Os chãos dela
+  ficar onde fica o cume de verdade em relação ao templo (~230 m; a cidade uns 3° abaixo dos olhos). Os chãos dela
   perdem o pedaço que o terreno da fase cobre, e a borda vai até a altura do terreno de lá. Saíram as pinturas da cidade
   e da encosta e o leque do vale; ficaram só os montes do fundo, pintados. A bruma foi para 110-950 m.
+
+## Câmeras do Monte das Oliveiras e do Getsêmani
+
+- **Como em Betânia e Betfagé:** de quina, de cima (~30°), lente fechada (~40° de largura), seguindo o jogador.
+  - No Monte das Oliveiras ela fica a leste-sudeste, olhando para oeste.
+  - No Getsêmani fica a leste-nordeste, olhando o templo e a trilha, para o muro não tampar o fim da subida.
+- **No cume:** ela vai, devagar, para trás do jogador e mais baixa, de frente para a cidade. Passado o cume, volta ao normal.
+- **Junto à rocha** (de joelhos), no Getsêmani: a câmera também vem para trás dele, baixa, de frente para o templo.
+- **Câmera livre provisória** (`limpo-motor/camlivre.js`): botões no alto, à direita, para conferir pontos de vista.
+  - ⟲ ⟳ giram, ▲ ▼ mudam a altura do ângulo, + − aproximam e afastam, e ↺ volta ao padrão.
+  - No teclado: J/L giram, I/K mudam a altura.
+  - Sai quando o jogo estiver fechado.

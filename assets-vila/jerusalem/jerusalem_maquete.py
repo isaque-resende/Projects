@@ -7,6 +7,8 @@
 # Grava jerusalem.blend, jerusalem_maquete.glb e jerusalem_lugares.json nesta pasta.
 #
 # As posições e o relevo vêm de relevo.py (o "mundo" = as coordenadas do Getsêmani; ver lá a tabela de distâncias).
+# Os prédios são desenhados no "plano velho" e, no fim, levados para o mundo (para_mundo: espelha o norte e reduz a 0,6
+# em volta da rocha); os chãos já nascem no mundo.
 # Os chãos:
 #   Cidade_Chao  - a oeste do Cedrom, debaixo da cidade (um pouco mais baixo que o relevo: o Getsêmani cobre por cima);
 #   Vale_Chao    - o vale e as encostas em volta do Getsêmani, com um buraco onde fica o terreno detalhado dele;
@@ -18,7 +20,7 @@ from mathutils import Vector
 AQUI = os.path.dirname(os.path.abspath(__file__)) if '__file__' in globals() else r"M:\Claude\github\Projects-animais\assets-vila\jerusalem"
 exec(open(os.path.join(AQUI, 'relevo.py'), encoding='utf-8').read())
 rc = random.Random(71)
-NUCLEO_GS = (-176.0, 76.0, -62.0, 84.0)          # o terreno detalhado do Getsêmani (x0, x1, z0, z1)
+NUCLEO_GS = (-140.0, 76.0, -62.0, 40.0)          # o terreno detalhado do Getsêmani (x0, x1, z0, z1), no mundo
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 sc = bpy.context.scene
@@ -170,7 +172,7 @@ def cor_campo(x, z):
     r = 0.5 + 0.3 * math.sin(x * 0.043 + 1.3) * math.cos(z * 0.051 - 0.4) + 0.2 * math.sin(x * 0.011 - z * 0.017)
     base = hx('a3ad66') if r < 0.45 else hx('96a35c') if r < 0.62 else hx('c2bd7c')
     if abs(x - LEITO) < 4: base = hx('b5a985')
-    if x < -140: base = hx('bba77e') if r < 0.6 else hx('c2bd7c')
+    if x < -95: base = hx('bba77e') if r < 0.6 else hx('c2bd7c')
     return k(base, rc.uniform(0.95, 1.03))
 
 
@@ -180,13 +182,14 @@ def cor_cidade(x, z):
 
 gx0, gx1, gz0, gz1 = NUCLEO_GS
 h_vale = lambda x, z: h_mundo(x, z) - 0.06
-xs = grade(-170.0, 92.0, gx0, gx1, 4.0); zs = grade(-1100.0, 1100.0, gz0, gz1, 4.0)
+xs = grade(-112.0, 92.0, max(gx0, -112.0), gx1, 4.0); zs = grade(-1100.0, 1100.0, gz0, gz1, 4.0)
 dentro_gs = lambda a, b, c, d: a >= gx0 + 3 and b <= gx1 - 3 and c >= gz0 + 3 and d <= gz1 - 3
 chao('Vale_Chao', xs, zs, h_vale, cor_campo, dentro_gs)
 chao('Vale_Miolo', [x for x in xs if gx0 + 3 - 4.01 <= x <= gx1 - 3 + 4.01], [z for z in zs if gz0 + 3 - 4.01 <= z <= gz1 - 3 + 4.01], h_vale, cor_campo,
      lambda a, b, c, d: not dentro_gs(a, b, c, d))
 chao('Leste_Chao', grade(92.0, 1100.0, 92.0, 92.0, 5.0), zs, h_vale, cor_campo)
-chao('Cidade_Chao', grade(-1100.0, -150.0, -400.0, -150.0, 6.0), grade(-1100.0, 1100.0, -330.0, 200.0, 6.0), lambda x, z: h_mundo(x, z) - 0.15, cor_cidade)
+chao('Cidade_Chao', grade(-1100.0, -100.0, -260.0, -100.0, 5.0), grade(-1100.0, 1100.0, -150.0, 150.0, 5.0), lambda x, z: h_mundo(x, z) - 0.15, cor_cidade)
+CHAOS = {o.name for o in col_exp.objects}
 
 # ================= o monte do templo =================
 tm = M('Templo_Muros')
@@ -208,7 +211,7 @@ while x_ > TX0 + 2:
 caixa(tm, TX1 - 9, TX1 + 0.4, TY + 13, TY + 17, TZ0 - 0.4, TZ0 + 9, PAL['herod'], pedra='+x -z')
 caixa(tm, TX1 - 8, TX1 + 0.8, -4.0, TOPO + 6, TZ1 - 8, TZ1 + 0.8, PAL['herod'], pedra='+x +z')
 # a Porta de Susã (Porta Dourada): fechada, duas portas em arco de bronze, de frente para o santuário
-ys = pe_muro(SUSA_Z) - 1
+ys = pe_velho(SUSA_Z) - 1
 caixa(tm, TX1, TX1 + 2.0, ys, TY + 2, SUSA_Z - 7, SUSA_Z + 7, k(PAL['herod'], 1.05), pedra='+x')
 for zc in (SUSA_Z - 3.2, SUSA_Z + 3.2):
     yb = ys + 1.2
@@ -290,7 +293,7 @@ for xt in (-178.0, -255.0, -280.0):       # torres no muro norte
     ameias(mc, [(xt - 3.4, NZ + ESP + 2.6), (xt + 3.4, NZ + ESP + 2.6)], TOPO_M + 4, PAL['muro'])
 caixa(mc, TX1 - 7, TX1 + 1.5, -2.0, TOPO_M + 5, NZ - 4, NZ + ESP + 1.5, k(PAL['muro'], 1.02), pedra='+x +z')      # a torre do canto
 # a Porta das Ovelhas: abre para o norte (para Betesda); torres dos lados, túnel com abóbada e portas abertas
-HP = h_mundo(PX, NZ + ESP + 4) + 0.3          # a soleira
+HP = h_velho(PX, NZ + ESP + 4) + 0.3          # a soleira
 ABRE, MOLA = 1.9, 3.8
 for x0, x1 in [(G0, PX - 2.8), (PX + 2.8, G1)]:
     caixa(mc, x0, x1, 8.0, TOPO_M + 5, NZ - 1, NZ + ESP + 4, k(PAL['muro'], 1.03), pedra='+z +x -x', fiada=1.1, comp=(1.6, 3.0))
@@ -326,7 +329,7 @@ mc.quad([(PX - ABRE, HP + 0.02, NZ - 1), (PX + ABRE, HP + 0.02, NZ - 1), (PX + A
 z = TZ0
 while z > -340:
     z1 = max(-340.0, z - 30)
-    y0 = min(pe_muro(z), pe_muro(z1)) - 2
+    y0 = min(pe_velho(z), pe_velho(z1)) - 2
     caixa(mc, TX1 - 3, TX1 - 1, y0, y0 + 12, z1, z, PAL['muro'], lados='+x -x +y', pedra='+x', fiada=1.1, comp=(1.6, 3.0))
     caixa(mc, TX1 - 5, TX1 + 1.5, y0, y0 + 15, z1 - 3, z1 + 3, k(PAL['muro'], 1.02), pedra='+x +z -z')
     z = z1
@@ -346,9 +349,9 @@ def tanque(x0, x1, z0, z1, y_borda, fundo):
     tq.quad([(x0, y_borda - fundo * 0.6, z0), (x1, y_borda - fundo * 0.6, z0), (x1, y_borda - fundo * 0.6, z1), (x0, y_borda - fundo * 0.6, z1)], PAL['agua'], (0, 1, 0))
 
 
-tanque(-232.0, -168.0, 25.0, 36.0, h_mundo(-200, 30) + 0.3, 5.0)
+tanque(-232.0, -168.0, 25.0, 36.0, h_velho(-200, 30) + 0.3, 5.0)
 BX, BZ = BETESDA
-yb = max(h_mundo(BX + dx, BZ + dz) for dx in (-22, 0, 22) for dz in (-20, 0, 20)) + 0.4
+yb = max(h_velho(BX + dx, BZ + dz) for dx in (-22, 0, 22) for dz in (-20, 0, 20)) + 0.4
 tanque(BX - 20, BX + 20, BZ - 19, BZ - 2, yb, 6.0)       # os dois tanques, com o dique no meio
 tanque(BX - 20, BX + 20, BZ + 2, BZ + 19, yb, 6.0)
 # os cinco alpendres (Jo 5.2): os quatro lados e o do dique
@@ -380,7 +383,7 @@ def livre(x0, x1, z0, z1):
 def casa(x, z, lx, lz, alto):
     x0, x1, z0, z1 = x - lx / 2, x + lx / 2, z - lz / 2, z + lz / 2
     if not livre(x0, x1, z0, z1): return
-    y0 = min(h_mundo(x0, z0), h_mundo(x1, z1), h_mundo(x0, z1), h_mundo(x1, z0)) - 0.6
+    y0 = min(h_velho(x0, z0), h_velho(x1, z1), h_velho(x0, z1), h_velho(x1, z0)) - 0.6
     cor = rc.choice(CASAS); yt = y0 + 0.6 + alto
     caixa(cs, x0, x1, y0, yt, z0, z1, cor)
     if rc.random() < 0.3: caixa(cs, x0 + 0.6, x0 + lx * 0.5, yt, yt + 2.4, z0 + 0.6, z0 + lz * 0.5, k(cor, 0.97))
@@ -402,11 +405,26 @@ bairro(-300.0, -168.0, -340.0, -210.0, 12.0, (3.0, 5.5), 0.7)      # o Ofel e a 
 bairro(-480.0, -275.0, 48.0, 190.0, 14.0, (3.0, 5.0), 0.35)       # Bezeta (fora do muro, ainda pouco construída; o lado de Betesda fica aberto)
 cs.cria()
 
-# ================= os lugares (para as fases) =================
-L = {'mundo': 'coordenadas do Getsêmani (x leste, y altura, z norte)', 'oliveiras': OLIVEIRAS,
-     'santuario': [SX, BASE, SZ], 'fachada': [FR, BASE + 39, SZ], 'susa': [TX1 + 2, pe_muro(SUSA_Z), SUSA_Z],
-     'quina_ne': [TX1, TOPO, TZ1], 'porta_ovelhas': [PX, HP, NZ + ESP + 2.5], 'betesda': [BX, yb, BZ], 'antonia': [(AX0 + AX1) / 2, TOPO_A, (AZ0 + AZ1) / 2],
-     'nucleo_getsemani': list(NUCLEO_GS)}
+# ================= do plano velho para o mundo =================
+# cada vértice dos prédios: (x, z) -> para_mundo, y -> 0,6 y; o espelho troca o lado das faces, então elas viram
+import bmesh
+for o in list(col_exp.objects):
+    if o.name in CHAOS: continue
+    me = o.data
+    for v in me.vertices:
+        x, z = para_mundo(v.co.x, -v.co.y); v.co = (x, -z, K * v.co.z)
+    bm_ = bmesh.new(); bm_.from_mesh(me); bmesh.ops.reverse_faces(bm_, faces=bm_.faces[:]); bm_.to_mesh(me); bm_.free(); me.update()
+
+
+def P(x, y, z):
+    a, b = para_mundo(x, z); return [round(a, 2), round(K * y, 2), round(b, 2)]
+
+
+# ================= os lugares (para as fases), já no mundo =================
+L = {'mundo': 'coordenadas do Getsêmani (x leste, y altura, o norte é -z)', 'oliveiras': OLIVEIRAS,
+     'santuario': P(SX, BASE, SZ), 'fachada': P(FR, BASE + 39, SZ), 'susa': P(TX1 + 2, pe_velho(SUSA_Z), SUSA_Z),
+     'quina_ne': P(TX1, TOPO, TZ1), 'porta_ovelhas': P(PX, HP, NZ + ESP + 2.5), 'betesda': P(BX, yb, BZ), 'antonia': P((AX0 + AX1) / 2, TOPO_A, (AZ0 + AZ1) / 2),
+     'betesda_leste': P(BX + 27, yb, BZ), 'nucleo_getsemani': list(NUCLEO_GS)}
 json.dump(L, open(os.path.join(AQUI, 'jerusalem_lugares.json'), 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
 
 bpy.ops.wm.save_as_mainfile(filepath=os.path.join(AQUI, 'jerusalem.blend'))

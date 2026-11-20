@@ -25,7 +25,7 @@ const E = {
   fora: false,            // true = o jogador não comanda (pergunta, oração, transição)
   alvoToque: null,
   jogVy: 0, jogNoChao: true,
-  dist: 12, distAlvo: 12,   // distância da câmera (pinça e roda)
+  dist: 34, distAlvo: 34,   // distância da câmera (pinça, roda e os botões da câmera livre)
   saida: false,           // na ponta leste da trilha: voltar ao Monte das Oliveiras
   orou: false,            // já se ajoelhou junto à rocha
   betesda: false,         // no fim da trilha, de frente para Betesda

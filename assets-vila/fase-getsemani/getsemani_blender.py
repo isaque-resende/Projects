@@ -5,7 +5,7 @@
 #   blender -b --factory-startup -P getsemani_blender.py -- [--regerar-tudo]
 # Se getsemani.blend já existe, ele NÃO é sobrescrito sem --regerar-tudo.
 #
-# Coordenadas do jogo (three.js): x (leste), y (altura), z (norte). No Blender: (x, -z, y).
+# Coordenadas do jogo (three.js): x (leste), y (altura); o norte é -z. No Blender: (x, -z, y), o norte é +y.
 #
 # O lugar (Mt 26.36-46; Mc 14.32-42; Lc 22.39-46; Jo 18.1-2):
 #   - a trilha desce do Monte das Oliveiras pelo leste e entra no jardim por um portão na mureta;
@@ -42,8 +42,8 @@ def sm(e0, e1, x):
 # ---------------- traçado ----------------
 TRILHA = [(70, 2), (58, 0), (46, 2.5), (35, 1), (27, 1), (17, 2.5), (7, 0), (-3, -2.5), (-13, -4.5), (-19.5, -7.8),
           # passa ao sul da rocha, sai pelo vão da mureta oeste, desce ao Cedrom e sobe na diagonal até Betesda
-          (-24.5, -11.6), (-30, -11.6), (-35, -9.6), (-40, -8.8), (-46, -6.5), (-52, -2.5), (-57, 2), (-61.5, 6.5), (-65, 9.5),
-          (-71, 14.5), (-80, 22), (-90, 30), (-101, 38), (-113, 45), (-126, 51), (-138, 56), (-148, 59.5), (-156, 61.5)]
+          (-24.5, -11.6), (-30, -11.6), (-35, -9.6), (-40, -8.8), (-46, -11), (-52, -14), (-57, -17), (-61.5, -20), (-65, -22.5),
+          (-71, -26), (-80, -31), (-90, -36), (-100, -40.5), (-110, -44.5), (-119, -47.5), (-127, -50)]
 MEIA = 1.1
 PORTAO = (27.0, 1.0)                    # o vão na mureta leste
 OITO = (17.0, -5.5)                     # onde os oito ficaram
@@ -51,7 +51,7 @@ TRES = (-1.0, -6.0)                     # Pedro, Tiago e João
 AGONIA = (-27.0, -8.0)                  # a rocha (um tiro de pedra adiante dos três: ~26 m)
 GRUTA = (10.0, 15.5)                    # o centro do morrote da gruta (a boca abre para o sul, para a trilha)
 JARDIM = (-40.0, 27.0, -20.0, 21.0)     # x0, x1, z0, z1 da mureta em volta
-X0, X1, Z0, Z1, PASSO = -176.0, 76.0, -62.0, 84.0, 1.0      # o mesmo NUCLEO_GS da maquete (lá há um buraco do tamanho deste chão)
+X0, X1, Z0, Z1, PASSO = -140.0, 76.0, -62.0, 40.0, 1.0      # o mesmo NUCLEO_GS da maquete (lá há um buraco do tamanho deste chão)
 exec(open(os.path.join(ROOT, 'jerusalem', 'relevo.py'), encoding='utf-8').read())       # h_mundo, LEITO, BETESDA...
 
 pts = [Vector((x, z, 0)) for x, z in TRILHA]
@@ -146,12 +146,12 @@ def mat_vc(nome, dupla=False):
 
 def hexc(h): return tuple(int(h[i:i + 2], 16) / 255 for i in (0, 2, 4)) + (1.0,)
 COR = {'grama': hexc('a3ad66'), 'grama2': hexc('96a35c'), 'seca': hexc('c2bd7c'), 'barranco': hexc('c4a774'), 'areia': hexc('dcc596'),
-       'olival': hexc('a99c6c'), 'batido': hexc('d2bc90'), 'calcario': hexc('c9bd9e'), 'calc_lado': hexc('a39578'), 'leito': hexc('b5a985'), 'liquen': hexc('aea986'), 'gruta_topo': hexc('8f9a58'), 'gruta': hexc('1c1510')}
+       'olival': hexc('a99c6c'), 'batido': hexc('d2bc90'), 'calcario': hexc('c9bd9e'), 'calc_lado': hexc('a39578'), 'leito': hexc('b5a985'), 'capim': hexc('a7a964'), 'liquen': hexc('aea986'), 'gruta_topo': hexc('8f9a58'), 'gruta': hexc('1c1510')}
 
 # terreno
 # grade de 1 m no jardim e na descida até o leito; de 2 m na outra encosta e nas pontas (onde só se passa)
 GX = [float(x) for x in range(int(X0), -70, 2)] + [float(x) for x in range(-70, int(X1) + 1)]
-GZ = [float(z) for z in range(int(Z0), -30, 2)] + [float(z) for z in range(-30, 30)] + [float(z) for z in range(30, int(Z1) + 1, 2)]
+GZ = [float(z) for z in range(int(Z0), -30, 2)] + [float(z) for z in range(-30, 30)] + [float(z) for z in range(30, int(Z1) + 1, 2)]      # (o norte é -z)
 NX, NZ = len(GX) - 1, len(GZ) - 1
 bm = bmesh.new(); vs = []
 for i in range(NX + 1):
@@ -191,7 +191,7 @@ for p in me.polygons:
         # as encostas do vale: manchas de capim seco, terra e pedra que seguem um ruído (e não a inclinação, que no
         # vale só depende de x e desenharia faixas retas); ao pé do muro, o barranco seco e pedregoso
         r = ruido(x * 0.55 + 7, z * 0.55) + (0.25 if x < -86 else 0.0) + (0.08 if abs(n.z) < 0.75 else 0.0)
-        base = COR['grama2'] if r < 0.5 else COR['seca'] if r < 0.74 else COR['barranco'] if r < 0.95 else COR['calc_lado']
+        base = COR['grama2'] if r < 0.55 else COR['capim'] if r < 0.9 else COR['seca']      # tons próximos: sem manchas quadradas
         col = tuple(min(1, v * (0.95 + random.random() * 0.06)) for v in base[:3]) + (1,)
     elif abs(n.z) < 0.6: col = COR['barranco']
     elif abs(n.z) < 0.8: col = COR['grama2']
@@ -476,7 +476,7 @@ for _ in range(120):
     if n is not None and perto and k > 0.7: circulo('COL_' + n.name, px, pz, 0.3 * k + 0.1, n)
 # pedras no leito do Cedrom
 for _ in range(30):
-    px, pz = LEITO + random.uniform(-2.4, 2.4), random.uniform(-58, 58)
+    px, pz = LEITO + random.uniform(-2.4, 2.4), random.uniform(-60, 38)
     d, _i = dist_trilha(px, pz)
     if d < MEIA + 0.8: continue
     perto = d < 12
@@ -485,7 +485,7 @@ for _ in range(30):
     if n is not None and perto and k > 0.6: circulo('COL_' + n.name, px, pz, 0.3 * k + 0.1, n)
 # pedras e moitas nas encostas do vale (o lado da cidade é mais seco e pedregoso)
 for _ in range(60):
-    px, pz = random.uniform(-150, -42), random.uniform(-58, 80)
+    px, pz = random.uniform(-110, -42), random.uniform(-60, 38)
     d, _i = dist_trilha(px, pz)
     if d < MEIA + 1.0: continue
     perto = d < 10
@@ -493,7 +493,7 @@ for _ in range(60):
     n = poe('casa-porta/rochas.glb', random.choice(ROCHAS), px, pz, random.uniform(0, 6.28), k, afunda=0.2, longe=not perto)
     if n is not None and perto and k > 0.7: circulo('COL_' + n.name, px, pz, 0.3 * k + 0.1, n)
 for _ in range(60):
-    px, pz = random.uniform(-150, -42), random.uniform(-58, 80)
+    px, pz = random.uniform(-110, -42), random.uniform(-60, 38)
     d, _i = dist_trilha(px, pz)
     if d < MEIA + 0.6: continue
     nome = random.choice(['Moita_Espinhos_Pequena', 'Moita_Espinhos_Pequena', 'Malva_Rosa'])
@@ -544,12 +544,12 @@ empty_ref('JOGO_portao', PORTAO[0], PORTAO[1], tam=2.0)
 # o Cedrom: onde a trilha cruza o leito; a Porta das Ovelhas: a soleira, no alto da escada (a seta aponta para dentro)
 _ic = min(range(len(AMOS)), key=lambda i: abs(AMOS[i].x - LEITO))
 empty_ref('JOGO_cedrom', AMOS[_ic].x, AMOS[_ic].y, tam=2.0)
-# o fim da trilha: o planalto ao norte do templo, de frente para Betesda (a seta aponta o tanque)
+# o fim da trilha: o planalto ao norte do templo, a leste de Betesda e da Porta das Ovelhas (a seta aponta o oeste)
 empty_ref('JOGO_betesda', AMOS[-1].x, AMOS[-1].y, r=math.pi / 2, tam=2.0)
 
 
 fixos = {'estrada': [[round(p.x, 2), round(p.y, 2)] for p in AMOS[::3]] + [[round(AMOS[-1].x, 2), round(AMOS[-1].y, 2)]], 'meia': MEIA, 'muros': MUROS,
-         'area': [-160.0, X1 - 8, -26, 70], 'jardim': list(JARDIM)}
+         'area': [-134.0, X1 - 8, -58, 26], 'jardim': list(JARDIM)}
 t = bpy.data.texts.new('getsemani_fixos'); t.write(json.dumps(fixos))
 bt = bpy.data.texts.new('EXPORTAR_PARA_O_JOGO')
 bt.write("# exporta o que está na cena para o jogo e salva o .blend\nRODAR_EXPORTACAO = True\nexec(open(r'" + os.path.join(OUT, 'exportar_getsemani.py') + "', encoding='utf-8').read())\n")

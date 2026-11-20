@@ -233,17 +233,18 @@ async function rodar() {
   if (!chegouOl) await abre('fase-oliveiras/?de=betfage');
   const okOl = await testesDaFase('Monte das Oliveiras');
   if (okOl) {
-    await teste('subida: a câmera se aproxima sem colar, e o jogador fica inteiro na tela', async (it) => {
-      const T = W().TESTE, p = T.jog.o.position, i0 = 8, alvo = Math.round(i0 + (T.iCume - i0) * 0.8);
+    await teste('câmera: de quina (como em Betfagé) na subida; no cume vem para trás do jogador, de frente para a cidade; o jogador sempre na tela', async (it) => {
+      const T = W().TESTE, p = T.jog.o.position, i0 = 8, alvo = T.iCume;
       const naTela = () => { const V = p.constructor, c = T.camera; return [new V(p.x, p.y + 0.05, p.z), new V(p.x, p.y + 1.75, p.z)].every((v) => { v.project(c); return Math.abs(v.x) < 0.85 && Math.abs(v.y) < 0.9 && v.z < 1; }); };
       const d = (i) => { const q = T.AMOS[i]; p.set(q.x, T.chaoTerra(q.x, q.z), q.z); quadros(60); return [T.camera.position.distanceTo(p), naTela()]; };
-      const [longe, v1] = d(i0), [perto, v2] = d(alvo);
+      const [longe, v1] = d(i0); quadros(60); const [perto, v2] = d(alvo); quadros(90);
+      const olhar = new (p.constructor)(); T.camera.getWorldDirection(olhar); const oeste = olhar.x < -0.8;
       // andando de lado e para trás, ele continua na tela
       for (const k of ['KeyD', 'KeyS', 'KeyA']) { T.tecla[k] = true; quadros(30); T.tecla[k] = false; }
       const v3 = naTela();
-      (longe > 15 && perto > 9.5 && perto < 15 && v1 && v2 && v3 ? it.ok : it.erro)('distância da câmera: ' + longe.toFixed(1) + ' m no pé, ' + perto.toFixed(1) + ' m perto do cume; jogador na tela: ' + [v1, v2, v3].map((v) => (v ? 'sim' : 'NÃO')).join(', '));
+      (longe > 20 && perto < 17 && oeste && v1 && v2 && v3 ? it.ok : it.erro)('distância da câmera: ' + longe.toFixed(1) + ' m no pé, ' + perto.toFixed(1) + ' m no cume; no cume olha para oeste (a cidade): ' + (oeste ? 'sim' : 'NÃO') + '; jogador na tela: ' + [v1, v2, v3].map((v) => (v ? 'sim' : 'NÃO')).join(', '));
     });
-    await teste('cume: a cidade está sempre no lugar, o monte é que a esconde, e o jogador passa sem parar', async (it) => {
+    await teste('cume: a cidade (a maquete) está sempre no lugar, aparece do cume, e o jogador passa sem parar', async (it) => {
       const T = W().TESTE, p = T.jog.o.position, V = p.constructor;
       // Jerusalém é a maquete 3D (../jerusalem); o alvo é um ponto no alto da fachada do santuário
       if (!T.PAN.mesh || !T.PAN.mesh.getObjectByName('Santuario')) { it.erro('a maquete de Jerusalém não está na cena'); return; }
@@ -255,7 +256,7 @@ async function rodar() {
       const vPe = em(8), vMeio = em(Math.round(8 + (T.iCume - 8) * 0.5)), vCume = em(T.iCume - 2);
       const sempre = T.PAN.mesh.visible && T.PAN.mesh.parent === T.scene;
       const livre = T.E.modo === 'descida' && !T.E.fora;
-      (sempre && !vPe && vCume && livre ? it.ok : it.erro)('cidade sempre no lugar: ' + (sempre ? 'sim' : 'NÃO') + '; templo visível no pé: ' + (vPe ? 'SIM (devia estar atrás do monte)' : 'não') + ', no meio: ' + (vMeio ? 'sim' : 'não') + ', no cume: ' + (vCume ? 'sim' : 'NÃO') + '; no cume o jogador está ' + (livre ? 'livre' : 'TRAVADO (modo ' + T.E.modo + ')'));
+      (sempre && vCume && livre ? it.ok : it.erro)('cidade sempre no lugar: ' + (sempre ? 'sim' : 'NÃO') + '; templo visível no pé: ' + (vPe ? 'sim (a câmera de quina vê por cima do monte)' : 'não') + ', no meio: ' + (vMeio ? 'sim' : 'não') + ', no cume: ' + (vCume ? 'sim' : 'NÃO') + '; no cume o jogador está ' + (livre ? 'livre' : 'TRAVADO (modo ' + T.E.modo + ')'));
     });
     await teste('prensa de azeite: o prenseiro trabalha', async (it) => {
       const T = W().TESTE, prensa = T.scene.children.find((o) => o.isGroup && o.children.some((c) => c.name === 'Prensa_Mo'));
@@ -331,7 +332,7 @@ async function rodar() {
       const recuou = !T.E.betesda && !T.E.fora;
       const desceu = L.rocha[1] - yMin, subiu = L.betesda[1] - yMin;
       // a geografia: o fim fica a noroeste do jardim, ao norte da quina nordeste do templo (x = -161, z = 22)
-      const lugar = L.betesda[0] < -140 && L.betesda[2] > 30;
+      const lugar = L.betesda[0] < -110 && L.betesda[2] < -40;      // o norte é -z
       (perguntou && recuou && desceu > 8 && subiu > 25 && lugar ? it.ok : it.erro)('desceu ' + desceu.toFixed(1) + ' m até o leito e subiu ' + subiu.toFixed(1) + ' m; fim da trilha em (' + L.betesda[0].toFixed(0) + ', ' + L.betesda[2].toFixed(0) + '), ao norte do templo: ' + (lugar ? 'sim' : 'NÃO') + '; perguntou: ' + (perguntou ? 'sim' : 'NÃO') + '; "Ainda não" recuou: ' + (recuou ? 'sim' : 'NÃO'));
     });
     await teste('a ponta da trilha pergunta "voltar ao Monte das Oliveiras" e o Sim leva até lá', async (it) => {
