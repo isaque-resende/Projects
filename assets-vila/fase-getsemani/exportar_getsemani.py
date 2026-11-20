@@ -11,7 +11,7 @@
 #   - "Prensa_Jogo": a prensa na boca da gruta
 #   - "JOGO_portao", "JOGO_oito", "JOGO_tres": a entrada, onde os oito ficaram e onde ficaram Pedro, Tiago e João
 #   - "JOGO_agonia": onde se ajoelha, a leste da rocha (a seta aponta o templo); "JOGO_rocha": o alto da rocha
-#   - "Panorama_Jerusalem": o arco no horizonte onde a imagem de Jerusalém é pendurada
+#   - "JOGO_cedrom": onde a trilha cruza o leito; "JOGO_porta": a soleira da Porta das Ovelhas (Jerusalém é 3D, no .glb)
 #   - o texto "getsemani_fixos": trilha, mureta, a área andável e o retângulo do jardim
 import bpy, json, math, os, time
 from mathutils import Vector, Matrix
@@ -96,7 +96,7 @@ def colisao():
 
 
 # chão leve: um vértice por ponto, com a média das cores (o jogo faz a mesma média)
-LEVES = ('Getsemani_Terreno', 'Getsemani_Trilha')
+LEVES = ('Getsemani_Terreno', 'Getsemani_Trilha', 'Getsemani_Fundo', 'Cidade_Chao')
 
 
 def chao_leve(objs):
@@ -156,8 +156,7 @@ def layout():
     F = json.loads(bpy.data.texts['getsemani_fixos'].as_string())
     lay = {'estrada': F['estrada'], 'meia': F['meia'], 'muros': F['muros'], 'area': F['area'], 'jardim': F['jardim']}
     pr = ref('Prensa_Jogo'); lay['prensa'] = {'p': [R3(pr.location.x), R3(pr.location.z), R3(-pr.location.y)], 'r': R3(pr.rotation_euler.z)}
-    for n in ('portao', 'oito', 'tres', 'agonia', 'rocha'): lay[n] = ponto('JOGO_' + n)
-    pan = ref('Panorama_Jerusalem'); lay['panorama'] = {k: R3(pan[k]) for k in ('cx', 'cz', 'r', 'a0', 'a1', 'y0', 'y1')}
+    for n in ('portao', 'oito', 'tres', 'agonia', 'rocha', 'cedrom', 'porta'): lay[n] = ponto('JOGO_' + n)
     lay['objetos'] = objetos()
     lay['obst'] = colisao()
     lay['plantas'] = plantas()

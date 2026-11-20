@@ -16,6 +16,10 @@
 #     entre oliveiras antigas, de frente para o templo do outro lado do Cedrom. Ali Jesus orou de joelhos e
 #     o seu suor ficou como grandes gotas de sangue caindo no chão (Lc 22.44).
 #   - a oeste, a encosta cai para o vale do Cedrom; Jerusalém fica no alto, do outro lado.
+#
+# É a manhã do domingo da ressurreição: o discípulo passa pelo jardim, desce ao Cedrom e sobe até a PORTA DAS
+# OVELHAS (Ne 3.1; Jo 5.2), que dá no Tanque de Betesda. A cidade é de verdade, em 3D (getsemani_cidade.py):
+# o muro leste do templo, o santuário, a Fortaleza Antônia, o muro da cidade e a porta, com túnel e escada.
 import bpy, bmesh, math, json, os, random, sys
 from mathutils import Vector, Matrix
 from mathutils.kdtree import KDTree
@@ -35,7 +39,10 @@ def sm(e0, e1, x):
 
 
 # ---------------- traçado ----------------
-TRILHA = [(70, 2), (58, 0), (46, 2.5), (35, 1), (27, 1), (17, 2.5), (7, 0), (-3, -2.5), (-13, -4.5), (-19, -5.5)]
+TRILHA = [(70, 2), (58, 0), (46, 2.5), (35, 1), (27, 1), (17, 2.5), (7, 0), (-3, -2.5), (-13, -4.5), (-19.5, -7.8),
+          # passa ao sul da rocha, sai pelo vão da mureta oeste, desce ao Cedrom e sobe até a Porta das Ovelhas
+          (-24.5, -11.6), (-30, -11.6), (-35, -9.6), (-40, -8.8), (-46, -6.5), (-52, -2.5), (-57, 2), (-61.5, 6.5), (-65, 9.5),
+          (-71, 14.5), (-78, 21), (-84.5, 28), (-89.5, 35.5), (-92.3, 39.3), (-93.6, 40.0)]
 MEIA = 1.1
 PORTAO = (27.0, 1.0)                    # o vão na mureta leste
 OITO = (17.0, -5.5)                     # onde os oito ficaram
@@ -43,7 +50,9 @@ TRES = (-1.0, -6.0)                     # Pedro, Tiago e João
 AGONIA = (-27.0, -8.0)                  # a rocha (um tiro de pedra adiante dos três: ~26 m)
 GRUTA = (10.0, 15.5)                    # o centro do morrote da gruta (a boca abre para o sul, para a trilha)
 JARDIM = (-40.0, 27.0, -20.0, 21.0)     # x0, x1, z0, z1 da mureta em volta
-X0, X1, Z0, Z1, PASSO = -100.0, 76.0, -62.0, 62.0, 1.0
+X0, X1, Z0, Z1, PASSO = -104.0, 76.0, -62.0, 62.0, 1.0
+LEITO = -62.5                           # o leito do Cedrom (corre de norte a sul)
+PORTA_Z = 40.0                          # a Porta das Ovelhas, no muro (face leste em x = -100)
 
 pts = [Vector((x, z, 0)) for x, z in TRILHA]
 
@@ -72,7 +81,10 @@ def dist_trilha(x, z):
 # a encosta oeste do Monte das Oliveiras: sobe para o leste e um pouco para o norte; a oeste do jardim, cai para o Cedrom
 def h_base(x, z):
     h = 0.075 * x + 0.03 * z
-    t = max(0.0, -42.0 - x); h -= 0.5 * t * sm(0, 14, t)
+    if x < -40:            # o vale: desce até o leito do Cedrom e sobe até o pé do muro da cidade
+        fundo_, pe = -13.0 + 0.02 * z, 2.0 + 0.02 * z
+        h = h + (fundo_ - h) * sm(-40, -59.5, x) if x > LEITO else fundo_ + (pe - fundo_) * sm(LEITO - 3, -96, x)
+        h -= 0.9 * (1 - sm(0, 2.4, abs(x - LEITO)))        # o canal do ribeiro (seco nesta época)
     h += 0.22 * math.sin(x * 0.29 + 1.0) * math.cos(z * 0.31 - 0.6) + 0.08 * math.sin(x * 0.83 + z * 0.61)
     return h
 
@@ -106,6 +118,8 @@ def h_trilha_em(x, z): d, i = dist_trilha(x, z); return HR[i]
 HOI = h_trilha_em(*OITO) - 0.1; pad_circ(OITO[0], OITO[1], 3.0, 2.2, HOI)
 HTR = h_trilha_em(*TRES) - 0.1; pad_circ(TRES[0], TRES[1], 2.6, 2.0, HTR)
 HAG = h_trilha_em(-19.0, -5.5) - 0.35; pad_circ(AGONIA[0], AGONIA[1], 3.6, 3.0, HAG)
+HPORTA = 2.0 + 0.02 * PORTA_Z + 1.6     # a soleira da porta: a escada sobe 1,6 m da trilha
+pad_rect(-98.5, PORTA_Z, 1.6, 2.6, 4.6, HPORTA)
 
 
 def altura(x, z):
@@ -141,7 +155,7 @@ def mat_vc(nome, dupla=False):
 
 def hexc(h): return tuple(int(h[i:i + 2], 16) / 255 for i in (0, 2, 4)) + (1.0,)
 COR = {'grama': hexc('a3ad66'), 'grama2': hexc('96a35c'), 'seca': hexc('c2bd7c'), 'barranco': hexc('c4a774'), 'areia': hexc('dcc596'),
-       'olival': hexc('a99c6c'), 'batido': hexc('d2bc90'), 'calcario': hexc('c9bd9e'), 'calc_lado': hexc('a39578'), 'liquen': hexc('aea986'), 'gruta_topo': hexc('8f9a58'), 'gruta': hexc('1c1510')}
+       'olival': hexc('a99c6c'), 'batido': hexc('d2bc90'), 'calcario': hexc('c9bd9e'), 'calc_lado': hexc('a39578'), 'leito': hexc('b5a985'), 'liquen': hexc('aea986'), 'gruta_topo': hexc('8f9a58'), 'gruta': hexc('1c1510')}
 
 # terreno
 NX, NZ = int((X1 - X0) / PASSO), int((Z1 - Z0) / PASSO)
@@ -178,6 +192,13 @@ for p in me.polygons:
     d, _ = dist_trilha(x, z)
     if d < MEIA + 0.3: col = COR['areia']
     elif no_pad(x, z): col = COR['batido']
+    elif abs(x - LEITO) < 2.6 + 0.8 * math.sin(z * 0.37): col = tuple(min(1, v * (0.9 + random.random() * 0.12)) for v in COR['leito'][:3]) + (1,)
+    elif x < -40 and not dentro(x, z):
+        # as encostas do vale: manchas de capim seco, terra e pedra que seguem um ruído (e não a inclinação, que no
+        # vale só depende de x e desenharia faixas retas); ao pé do muro, o barranco seco e pedregoso
+        r = ruido(x * 0.55 + 7, z * 0.55) + (0.25 if x < -86 else 0.0) + (0.08 if abs(n.z) < 0.75 else 0.0)
+        base = COR['grama2'] if r < 0.5 else COR['seca'] if r < 0.74 else COR['barranco'] if r < 0.95 else COR['calc_lado']
+        col = tuple(min(1, v * (0.95 + random.random() * 0.06)) for v in base[:3]) + (1,)
     elif abs(n.z) < 0.6: col = COR['barranco']
     elif abs(n.z) < 0.8: col = COR['grama2']
     else:
@@ -412,7 +433,7 @@ def lado(xa, za, xb, zb, vao=None):
 
 jx0, jx1, jz0, jz1 = JARDIM
 lado(jx1, jz0, jx1, jz1, vao=(PORTAO[1] - 2.6, PORTAO[1] + 2.6))      # leste, com o portão
-lado(jx1, jz1, jx0, jz1); lado(jx0, jz1, jx0, jz0); lado(jx0, jz0, jx1, jz0)
+lado(jx1, jz1, jx0, jz1); lado(jx0, jz1, jx0, jz0, vao=(-8.8 - 2.6, -8.8 + 2.6)); lado(jx0, jz0, jx1, jz0)      # o oeste, com a saída para o Cedrom
 
 # ---------------- oliveiras ----------------
 oli = PROTO[('oliveiras\\oliveiras.glb', 'Oliveira1_Jovem')]; H_OLI = dims(oli)[2]
@@ -427,7 +448,7 @@ def oliveira(px, pz, nome, k, perto):
 
 
 # as antigas em volta da rocha, dos lados norte e sul: o leste (por onde se chega) e o oeste (o templo) ficam abertos
-for a, r_ in [(62, 6.2), (95, 6.8), (128, 6.0), (-62, 6.4), (-97, 6.6), (-130, 6.2)]:
+for a, r_ in [(62, 6.2), (95, 6.8), (128, 6.0), (-62, 7.2), (-97, 6.8), (-130, 7.2)]:
     px, pz = AGONIA[0] + math.cos(math.radians(a)) * r_, AGONIA[1] + math.sin(math.radians(a)) * r_
     oliveira(px, pz, random.choice(ANTIGAS[:2]), K_OLI * random.uniform(1.15, 1.35), True)
 # a dos três
@@ -440,11 +461,11 @@ while x < X1 - 3:
         d, _ = dist_trilha(px, pz)
         ok = d > MEIA + 2.6 and not na_zona(px, pz, 1.2) and not any(math.hypot(px - a, pz - b) < 4.2 for a, b in ARV)
         borda = min(abs(px - jx0), abs(px - jx1), abs(pz - jz0), abs(pz - jz1))
-        if ok and borda > 1.6 and px > X0 + 30:
+        if ok and borda > 1.6 and px > -58:
             if dentro(px, pz):
                 oliveira(px, pz, random.choice(ANTIGAS), K_OLI * random.uniform(0.95, 1.25), True)
             elif random.random() < 0.55:
-                perto = d < 14 and abs(pz) < 30 and px > -48
+                perto = d < 14 and -30 < pz < 48 and px > -62
                 oliveira(px, pz, random.choice(NOVAS), K_OLI * random.uniform(0.7, 1.05), perto)
         z += 5.4
     x += 5.4
@@ -459,6 +480,30 @@ for _ in range(120):
     k = random.uniform(0.45, 1.0) if perto else random.uniform(0.9, 1.7)
     n = poe('casa-porta\\rochas.glb', random.choice(ROCHAS), px, pz, random.uniform(0, 6.28), k, afunda=0.12, longe=not perto)
     if n is not None and perto and k > 0.7: circulo('COL_' + n.name, px, pz, 0.3 * k + 0.1, n)
+# pedras no leito do Cedrom
+for _ in range(30):
+    px, pz = LEITO + random.uniform(-2.4, 2.4), random.uniform(-58, 58)
+    d, _i = dist_trilha(px, pz)
+    if d < MEIA + 0.8: continue
+    perto = d < 12
+    k = random.uniform(0.35, 0.8)
+    n = poe('casa-porta/rochas.glb', random.choice(ROCHAS), px, pz, random.uniform(0, 6.28), k, afunda=0.15, longe=not perto)
+    if n is not None and perto and k > 0.6: circulo('COL_' + n.name, px, pz, 0.3 * k + 0.1, n)
+# pedras e moitas nas encostas do vale (o lado da cidade é mais seco e pedregoso)
+for _ in range(60):
+    px, pz = random.uniform(-95, -42), random.uniform(-58, 58)
+    d, _i = dist_trilha(px, pz)
+    if d < MEIA + 1.0 or (px > -97 and abs(pz - PORTA_Z) < 9 and px < -86): continue
+    perto = d < 10
+    k = random.uniform(0.5, 1.2) if perto else random.uniform(0.8, 1.9)
+    n = poe('casa-porta/rochas.glb', random.choice(ROCHAS), px, pz, random.uniform(0, 6.28), k, afunda=0.2, longe=not perto)
+    if n is not None and perto and k > 0.7: circulo('COL_' + n.name, px, pz, 0.3 * k + 0.1, n)
+for _ in range(60):
+    px, pz = random.uniform(-96, -42), random.uniform(-58, 58)
+    d, _i = dist_trilha(px, pz)
+    if d < MEIA + 0.6 or (px > -97 and abs(pz - PORTA_Z) < 8 and px < -88): continue
+    nome = random.choice(['Moita_Espinhos_Pequena', 'Moita_Espinhos_Pequena', 'Malva_Rosa'])
+    poe('flores\\plantas_betfage.glb', nome, px, pz, random.uniform(0, 6.28), random.uniform(0.7, 1.15), afunda=0.05, planta=True)
 for _ in range(200):
     px, pz = random.uniform(-60, 72), random.uniform(-30, 30)
     d, _i = dist_trilha(px, pz)
@@ -502,22 +547,19 @@ for s, f, arq, no in [(2.6, 0.8, 'casa-porta\\objetos_casa.glb', 'Jarro_Alto'), 
     n = poe(arq, no, gx, gz, random.uniform(0, 6.28), 1.0, afunda=0.02)
     if n is not None: circulo('COL_' + n.name, gx, gz, 0.35, n)
 empty_ref('JOGO_portao', PORTAO[0], PORTAO[1], tam=2.0)
+# o Cedrom: onde a trilha cruza o leito; a Porta das Ovelhas: a soleira, no alto da escada (a seta aponta para dentro)
+_ic = min(range(len(AMOS)), key=lambda i: abs(AMOS[i].x - LEITO))
+empty_ref('JOGO_cedrom', AMOS[_ic].x, AMOS[_ic].y, tam=2.0)
+empty_ref('JOGO_porta', -97.2, PORTA_Z, y=HPORTA, r=math.pi, tam=2.0)
+# as frentes das torres da porta (o jogador não entra nelas)
+for z_ in [32.5 + 0.6 * i for i in range(9)] + [42.5 + 0.6 * i for i in range(9)]:
+    circulo('COL_Torre_%.1f' % z_, -96.3, z_, 0.6)
 
-# panorâmica: Jerusalém no alto, do outro lado do Cedrom (a imagem entra no jogo; aqui só o lugar)
-PAN = {'cx': AGONIA[0], 'cz': AGONIA[1], 'r': 330.0, 'a0': math.radians(160), 'a1': math.radians(200), 'y0': -40.0, 'y1': 90.0}
-bm = bmesh.new(); prev = None
-for i in range(33):
-    a = PAN['a0'] + (PAN['a1'] - PAN['a0']) * i / 32
-    x, z = PAN['cx'] + math.cos(a) * PAN['r'], PAN['cz'] + math.sin(a) * PAN['r']
-    row = [bm.verts.new((x, -z, PAN['y0'])), bm.verts.new((x, -z, PAN['y1']))]
-    if prev: bm.faces.new((prev[0], row[0], row[1], prev[1]))
-    prev = row
-me = bpy.data.meshes.new('Panorama_Jerusalem'); bm.to_mesh(me); bm.free()
-pan = bpy.data.objects.new('Panorama_Jerusalem', me); col_ref.objects.link(pan); pan.display_type = 'WIRE'; pan.hide_render = True
-for k_, v_ in PAN.items(): pan[k_] = v_
+# Jerusalém, em 3D, do outro lado do Cedrom
+exec(open(os.path.join(OUT, 'getsemani_cidade.py'), encoding='utf-8').read())
 
 fixos = {'estrada': [[round(p.x, 2), round(p.y, 2)] for p in AMOS[::3]] + [[round(AMOS[-1].x, 2), round(AMOS[-1].y, 2)]], 'meia': MEIA, 'muros': MUROS,
-         'area': [jx0 - 4, X1 - 8, -26, 26], 'jardim': list(JARDIM)}
+         'area': [-97.0, X1 - 8, -26, 48], 'jardim': list(JARDIM)}
 t = bpy.data.texts.new('getsemani_fixos'); t.write(json.dumps(fixos))
 bt = bpy.data.texts.new('EXPORTAR_PARA_O_JOGO')
 bt.write("# exporta o que está na cena para o jogo e salva o .blend\nRODAR_EXPORTACAO = True\nexec(open(r'" + os.path.join(OUT, 'exportar_getsemani.py') + "', encoding='utf-8').read())\n")

@@ -316,6 +316,23 @@ async function rodar() {
       quadros(30 * 18);
       (tiro > 20 && tiro < 35 && /ajoelhar/.test(txt) && joelhos && /sangue/.test(fala) && T.E.orou && !T.E.fora ? it.ok : it.erro)('rocha a ' + tiro.toFixed(1) + ' m dos três; botão "' + txt + '"; de joelhos: ' + (joelhos ? 'sim' : 'NÃO') + '; legenda: "' + fala.slice(0, 60) + '…"; depois livre: ' + (T.E.orou && !T.E.fora ? 'sim' : 'NÃO'));
     });
+    await teste('da rocha, a trilha desce ao Cedrom e sobe até a Porta das Ovelhas, que pergunta se quer entrar', async (it) => {
+      const T = W().TESTE, L = T.LAY, p = T.jog.o.position, V = p.constructor, N = T.AMOS.length;
+      for (const n of ['Templo_Muros', 'Santuario', 'Fortaleza_Antonia', 'Muro_Cidade', 'Porta_Ovelhas']) if (!T.scene.getObjectByName(n)) throw new Error('falta ' + n + ' na cena');
+      T.E.fora = false; T.E.orou = false;
+      let i0 = T.AMOS.findIndex((a) => a.x < L.rocha[0] - 3); const a0 = T.AMOS[i0]; p.set(a0.x, T.chaoTerra(a0.x, a0.z), a0.z); quadros(3);
+      let yMin = 1e9;
+      for (let j = i0; j < N - 1; j = Math.min(N - 1, j + 6)) {
+        const a = T.AMOS[Math.min(N - 1, j + 6)]; T.E.alvoToque = new V(a.x, 0, a.z);
+        for (let k = 0; k < 240 && T.E.alvoToque; k++) { T.laco(1 / 30); yMin = Math.min(yMin, p.y); }
+        if (Math.hypot(p.x - a.x, p.z - a.z) > 1.5) throw new Error('travou na trilha perto de (' + p.x.toFixed(1) + ', ' + p.z.toFixed(1) + ')');
+      }
+      T.E.alvoToque = new V(L.porta[0] + 0.3, 0, L.porta[2]); quadros(30 * 4);
+      const perguntou = T.E.porta && await responde('Porta das Ovelhas', 'Ainda não'); quadros(10);
+      const recuou = p.x > L.porta[0] + 4;
+      const desceu = L.rocha[1] - yMin;
+      (perguntou && recuou && desceu > 6 ? it.ok : it.erro)('desceu ' + desceu.toFixed(1) + ' m até o leito; no alto da escada (y ' + (L.porta[1]).toFixed(1) + ') perguntou: ' + (perguntou ? 'sim' : 'NÃO') + '; "Ainda não" recuou: ' + (recuou ? 'sim' : 'NÃO'));
+    });
     await teste('a ponta da trilha pergunta "voltar ao Monte das Oliveiras" e o Sim leva até lá', async (it) => {
       const T = W().TESTE, q = T.AMOS[2]; T.E.fora = false; T.jog.o.position.set(q.x, T.chaoTerra(q.x, q.z), q.z); quadros(3);
       if (!await confirma('Monte das Oliveiras')) throw new Error('a pergunta não apareceu na ponta da trilha');

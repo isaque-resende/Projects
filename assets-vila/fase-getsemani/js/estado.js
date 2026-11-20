@@ -1,25 +1,24 @@
-// Getsêmani: a base da fase. Tela e luz (noite de lua cheia: era a Páscoa), o layout que vem do Blender,
+// Getsêmani: a base da fase. Tela e luz (a manhã do domingo, "ao nascer do sol": Mc 16.2), o layout que vem do Blender,
 // o estado do jogo e os obstáculos. Todos os outros módulos partem daqui.
 import * as THREE from 'three';
 import { criaBase } from '../../limpo-motor/base.js';
 import { criaColisao } from '../../limpo-motor/colisao.js';
 import { criaUI } from '../../limpo-motor/ui.js';
 
-// céu da noite: azul fundo em cima, mais claro perto do horizonte (a lua cheia clareia o céu)
+// céu do amanhecer: azul limpo em cima, creme e pêssego perto do horizonte (a mesma cor da bruma: o longe some nela)
 const CEU = (() => { const c = document.createElement('canvas'); c.width = 4; c.height = 256; const g = c.getContext('2d'); const gr = g.createLinearGradient(0, 0, 0, 256);
-  gr.addColorStop(0, '#0f1830'); gr.addColorStop(0.6, '#24304f'); gr.addColorStop(1, '#3d4866'); g.fillStyle = gr; g.fillRect(0, 0, 4, 256);
+  gr.addColorStop(0, '#a9c9e4'); gr.addColorStop(0.55, '#dfe4dc'); gr.addColorStop(1, '#ecdcc2'); g.fillStyle = gr; g.fillRect(0, 0, 4, 256);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();
 const { renderer, scene, sun, hemi, rnd, texChao } = criaBase({
-  fundo: CEU, neblina: [0x222b45, 26, 140], ceu: [0x7f93cc, 0x2a2620, 0.9], sol: [0xc8d6ff, 1.25], alcanceSombra: 100, semente: 41,
+  fundo: CEU, neblina: [0xecdcc2, 90, 460], ceu: [0xe4eeff, 0xc2a47e, 1.35], sol: [0xffe4bd, 2.8], alcanceSombra: 100, semente: 41,
 });
-renderer.toneMappingExposure = 0.62;      // noite: tudo mais escuro, sem mexer nas cores pintadas
 
 const sm = (a, b, x) => { let k = (x - a) / (b - a); k = k < 0 ? 0 : k > 1 ? 1 : k; return k * k * (3 - 2 * k); };
 const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
 
 // ---------- layout exportado do Blender (getsemani_layout.json) ----------
-const LAY = await (await fetch('../fase-getsemani/getsemani_layout.json?v=1')).json();
-const DE = new URLSearchParams(location.search).get('de');      // ?de=agonia começa perto da rocha (testes)
+const LAY = await (await fetch('../fase-getsemani/getsemani_layout.json?v=2')).json();
+const DE = new URLSearchParams(location.search).get('de');      // ?de=agonia começa perto da rocha; ?de=porta, perto da Porta das Ovelhas (testes)
 
 // ---------- estado do jogo ----------
 const E = {
@@ -29,6 +28,7 @@ const E = {
   dist: 12, distAlvo: 12,   // distância da câmera (pinça e roda)
   saida: false,           // na ponta leste da trilha: voltar ao Monte das Oliveiras
   orou: false,            // já se ajoelhou junto à rocha
+  porta: false,           // no alto da escada da Porta das Ovelhas
 };
 
 // ---------- obstáculos e interface (do motor comum) ----------

@@ -160,8 +160,9 @@ A fase depois de Betfagé (o "Sim" no alto da estrada leva para cá; o pé da su
 ## Getsêmani (`fase-getsemani/`)
 
 A fase depois do Monte das Oliveiras (o Sim no fim da descida leva para cá; a ponta leste da trilha volta para lá).
-É noite de lua cheia (a Páscoa caía na lua cheia): céu escuro, luz azulada da lua no sudeste e exposição mais baixa
-(`estado.js`). As cores pintadas são as mesmas das outras fases.
+É a manhã do domingo da ressurreição, "ao nascer do sol" (Mc 16.2): o sol baixo vem do leste, por trás do jogador, e
+bate de frente nos muros de Jerusalém; a bruma tem a cor do pé do céu, e o longe some nela (`estado.js`, `SOL_DIR` em
+`cenario.js`).
 
 - **O lugar** (Mt 26.36-46; Mc 14.32-42; Lc 22.39-46; Jo 18.1-2): a trilha desce do monte pelo leste e entra por um
   portão na mureta que cerca o jardim de oliveiras antigas. Logo depois do portão fica a roda de pedras onde os oito
@@ -169,24 +170,39 @@ A fase depois do Monte das Oliveiras (o Sim no fim da descida leva para cá; a p
   Mais adiante, debaixo de uma oliveira antiga, o lugar de Pedro, Tiago e João. Um tiro de pedra adiante deles
   (Lc 22.41, 26 m), a **Rocha da Agonia**: uma laje de calcário à flor da terra, entre oliveiras antigas. O leste
   (por onde se chega) e o oeste (o templo, no alto do outro lado do Cedrom) ficam abertos.
+- **O caminho para Jerusalém:** a trilha passa ao sul da rocha, sai por um vão na mureta oeste, desce ~12 m até o leito
+  seco do Cedrom (legenda de Jo 18.1) e sobe a outra encosta até a **Porta das Ovelhas** (Ne 3.1; Jo 5.2), no muro da
+  cidade ao norte do templo. Uma escada de 7 degraus leva à soleira; ali aparece "Entrar em Jerusalém pela Porta das
+  Ovelhas?". O Sim ainda só avisa que o Tanque de Betesda é a próxima parte (em construção) e devolve o jogador ao pé
+  da escada.
 - **No Blender:** `fase-getsemani/getsemani.blend` é o original. Mexa nele e rode **EXPORTAR_PARA_O_JOGO**: ele grava
-  `getsemani_cenario.glb` (terreno, trilha, mureta, `Rocha_Agonia`, `Gruta_Morro` e `Gruta_Boca`) e
+  `getsemani_cenario.glb` (terreno, trilha, mureta, `Rocha_Agonia`, `Gruta_Morro`, `Gruta_Boca` e a cidade) e
   `getsemani_layout.json`. Em `Referencia_jogo`: `JOGO_portao`, `JOGO_oito`, `JOGO_tres`, `JOGO_agonia` (onde se ajoelha,
-  a leste da rocha), `JOGO_rocha` (o alto da rocha), `Prensa_Jogo` e `Panorama_Jerusalem`. A rocha e o morrote são
+  a leste da rocha), `JOGO_rocha` (o alto da rocha), `JOGO_cedrom` (onde a trilha cruza o leito), `JOGO_porta` (a
+  soleira da Porta das Ovelhas) e `Prensa_Jogo`. A rocha e o morrote são
   malhas próprias (facetadas, só cor de vértice). Os círculos de colisão deles têm `fixo`, e o exportador não os junta
   no pé do dono. O gerador `getsemani_blender.py` não sobrescreve o `.blend` sem `--regerar-tudo`.
 - **No jogo:** ao chegar perto de cada lugar, aparece uma legenda com o texto dos evangelhos (uma vez só). Junto à
   rocha há um anel no chão e o botão "ajoelhar junto à rocha". O jogador se ajoelha de frente para ela: o clipe
   `Ajoelhar` para no meio e só termina de levantar no fim. Vêm Lc 22.42, 43 e 44 ("o seu suor tornou-se como grandes
   gotas de sangue"), e a câmera chega mais perto e mais baixa (`CAM.perto`). Depois de uns 33 s ele levanta e fica livre.
-- **Jerusalém:** as mesmas pinturas de `fase-oliveiras/tex/` (cidade e encosta), em arcos centrados na rocha, com a
-  esplanada ~5,5° acima dos olhos, escurecidas e azuladas no shader. Embaixo da encosta, uma faixa lisa da cor do pé
-  da pintura cobre o vão até o chão. As pinturas foram feitas vistas de cima: uma de Jerusalém vista de baixo, à
-  noite, ficaria melhor (falta pedir ao usuário).
-- **Para testar:** `?de=agonia` começa perto da rocha. O `teste.html` cobre:
+- **Jerusalém, em 3D** (`getsemani_cidade.py`, rodado pelo gerador): sem pintura. Tudo é malha facetada com cor de
+  vértice; cada bloco de cantaria é um quadrado com o seu tom e cada fiada termina numa linha de argamassa.
+  - O monte do templo: o muro leste (face em x = -100, com pilastras na parte de cima), o Pórtico de Salomão, o
+    Pórtico Real ao sul, o pináculo, a Porta de Susã (fechada, de bronze) de frente para o santuário.
+  - O santuário, de frente para o leste: o pórtico branco de 28 x 29 m com ouro, as meias-colunas, a entrada com a
+    cortina e a videira de ouro; o pátio interno levantado e a Porta de Nicanor.
+  - A Fortaleza Antônia, no canto noroeste do templo, com a torre do sudeste mais alta.
+  - O muro da cidade ao norte do templo, com torres e merlões, e a Porta das Ovelhas: túnel de verdade (abóbada,
+    lajes, portas de madeira abertas), arco de aduelas em relevo e a escada.
+  - As casas (Bezeta, a cidade alta e o Ofel), o chão da cidade e o chão de longe (`Getsemani_Fundo`), numa grade que
+    fica mais rala com a distância. O lugar do Tanque de Betesda (x -162..-112, z 46..80) ficou sem casas.
+  - Os muros não fazem sombra (o sol vem do leste e a sombra cairia lá dentro); só a porta faz.
+- **Para testar:** `?de=agonia` começa perto da rocha; `?de=porta`, ao pé da escada da porta. O `teste.html` cobre:
   - a troca Oliveiras → Getsêmani;
   - os testes da fase;
   - a rocha: distância dos três, botão, de joelhos, legenda e livre depois;
+  - o caminho da rocha até a Porta das Ovelhas (sem travar), a descida ao leito, a pergunta e o "Ainda não";
   - a volta ao Monte das Oliveiras.
 - **Cache:** rode também `node assets-vila/limpo-motor/versiona.cjs assets-vila/fase-getsemani` antes de cada commit.
 
