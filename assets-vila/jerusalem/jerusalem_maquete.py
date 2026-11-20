@@ -188,7 +188,7 @@ chao('Vale_Chao', xs, zs, h_vale, cor_campo, dentro_gs)
 chao('Vale_Miolo', [x for x in xs if gx0 + 3 - 4.01 <= x <= gx1 - 3 + 4.01], [z for z in zs if gz0 + 3 - 4.01 <= z <= gz1 - 3 + 4.01], h_vale, cor_campo,
      lambda a, b, c, d: not dentro_gs(a, b, c, d))
 chao('Leste_Chao', grade(92.0, 1100.0, 92.0, 92.0, 5.0), zs, h_vale, cor_campo)
-chao('Cidade_Chao', grade(-1100.0, -100.0, -270.0, -100.0, 4.0), grade(-1100.0, 1100.0, -95.0, 165.0, 4.0), lambda x, z: h_mundo(x, z) - 0.15, cor_cidade)
+chao('Cidade_Chao', grade(-1100.0, -100.0, -330.0, -100.0, 4.0), grade(-1100.0, 1100.0, -95.0, 165.0, 4.0), lambda x, z: h_mundo(x, z) - 0.15, cor_cidade)
 CHAOS = {o.name for o in col_exp.objects}
 
 # ================= o monte do templo =================
@@ -664,65 +664,70 @@ for i in range(5):                  # as gaiolas das pombas, empilhadas
     for j in range(rc.randint(1, 3)): caixa(me_, xg, xg + 0.5 * MH, TY + j * 0.45 * MV, TY + (j + 0.95) * 0.45 * MV, -152.0, -152.0 + 0.5 * MH, hx('c2a36c'), lados='+x -x +z -z +y')
 me_.cria()
 
-# ================= o Gólgota, o horto e o sepulcro (Jo 19.17-20, 19.41-42), em metros do jogo =================
-# Fora do segundo muro, junto à estrada que sai da Porta de Genat; o lugar que a tradição guarda (a Igreja do Santo
-# Sepulcro): uma pedreira velha, com um rochedo que ficou de pé e túmulos cavados na parede de pedra.
+# ================= o Gólgota, o horto e o sepulcro (Jo 19.17-20, 19.41-42) =================
+# Fora do segundo muro, a uns 90 m da Porta de Genat, junto à estrada que sai dela para Emaús; o lugar que a tradição
+# guarda (a Igreja do Santo Sepulcro): uma pedreira velha, com um rochedo que ficou de pé e, a oeste, a parede de
+# pedra onde se cavavam túmulos. É a mesma planta da fase do Gólgota (fase-golgota), em metros dela: LG(x, z) leva um
+# ponto da fase (x leste, z sul, a partir do rochedo) para o plano velho. Aqui é só a vista de longe.
+GOLG = (-660.0, 40.0)                  # o rochedo, no plano velho (~90 m da Porta de Genat, ~60 m do segundo muro)
+
+
+def LG(x, z): return GOLG[0] + x * MH, GOLG[1] - z * MH
+
+
 go = M('Golgota')
 ROCHA_C = hx('bdb19a')
-GOL = (-512.0, -62.0)                 # o rochedo: ~12 m de largura, ~4,5 m de altura
+GOL = LG(0, 0)
 gGo = h_velho(*GOL)
-penedo(go, GOL[0], GOL[1], 6.0 * MH, 2.8 * MH, gGo - 1.0, gGo + 4.3 * MV, ROCHA_C, n=11)
-for dx, dz, r in ((3.5, 2.5, 2.2), (-2.8, 3.5, 1.8), (1.5, -4.0, 2.0)):
-    penedo(go, GOL[0] + dx * MH, GOL[1] + dz * MH, r * MH, r * 0.45 * MH, gGo - 0.8, gGo + rc.uniform(1.6, 2.4) * MV, k(ROCHA_C, 0.95), n=7)
-yTop = gGo + 4.3 * MV
-for dx, dz in ((-0.8, -1.6), (0.3, 0.0), (-0.8, 1.6)):          # as três estacas, vazias: é domingo
-    x_, z_ = GOL[0] + dx * MH, GOL[1] + dz * MH; t = 0.13 * MH
-    caixa(go, x_ - t, x_ + t, yTop - 1.0, yTop + 3.4 * MV, z_ - t, z_ + t, hx('5e4632'), lados='+x -x +z -z +y')
-# a parede da pedreira, com o sepulcro novo cavado nela (a porta olha para o leste, para o horto)
-SEP = (-572.0, -62.0)
+penedo(go, GOL[0], GOL[1], 7.0 * MH, 3.0 * MH, gGo - 1.0, gGo + 5.0 * MV, ROCHA_C, n=11, ez=0.75)
+yTop = gGo + 5.0 * MV
+for dz, alto in ((-2.2, 3.6), (0.0, 4.4), (2.2, 3.6)):          # as três cruzes, vazias: é domingo
+    x_, z_ = LG(-0.4, dz); t = 0.12 * MH
+    caixa(go, x_ - t, x_ + t, yTop - 1.0, yTop + alto * MV, z_ - t, z_ + t, hx('5e4632'), lados='+x -x +z -z +y')
+    caixa(go, x_ - t, x_ + t, yTop + (alto - 1.0) * MV, yTop + (alto - 0.75) * MV, z_ - 0.9 * MH, z_ + 0.9 * MH, hx('5e4632'), lados='+x -x +z -z +y')
+# a parede da pedreira (uma fileira de rochedos, a oeste), com o sepulcro novo cavado nela, a porta para o leste
+CRISTA = [(-30.0, 34.0), (-33.0, 16.0), (-34.0, 0.0), (-35.0, -14.0), (-40.0, -30.0), (-48.0, -42.0)]
+for (xa, za), (xb, zb) in zip(CRISTA, CRISTA[1:]):
+    for f in (0.25, 0.75):
+        x_, z_ = LG(xa + (xb - xa) * f - 4.0, za + (zb - za) * f)
+        penedo(go, x_, z_, rc.uniform(5.0, 6.5) * MH, 2.2 * MH, h_velho(x_, z_) - 1.5, h_velho(x_, z_) + rc.uniform(5.0, 6.5) * MV, k(ROCHA_C, rc.uniform(0.9, 1.0)), n=8)
+SEP = LG(-33.5, -2.0)
 gS = h_velho(*SEP)
-caixa(go, -590.0, SEP[0], gS - 2.0, gS + 4.5 * MV, -89.0, -35.0, k(ROCHA_C, 0.93), lados='+x +z -z')
-for x_, z_, r, a in ((-584.0, -80.0, 3.5, 3.5), (-582.0, -46.0, 3.8, 4.0), (-588.0, -63.0, 3.0, 4.6), (-598.0, -86.0, 3.0, 3.0), (-598.0, -40.0, 3.2, 3.3)):
-    penedo(go, x_, z_, r * MH, r * 0.45 * MH, gS - 1.5, gS + (a + rc.uniform(-0.3, 0.4)) * MV, k(ROCHA_C, rc.uniform(0.9, 1.0)), n=8)
-dh, dv = 0.55 * MH, 1.5 * MV          # a entrada: 1,1 m de largura e 1,5 m de altura (era preciso abaixar-se, Jo 20.5)
-go.quad([(SEP[0] + 0.03, gS - 0.1, SEP[1] - dh), (SEP[0] + 0.03, gS - 0.1, SEP[1] + dh), (SEP[0] + 0.03, gS + dv, SEP[1] + dh), (SEP[0] + 0.03, gS + dv, SEP[1] - dh)], hx('1e1914'), (1, 0, 0))
-# a pedra que fechava a entrada (1 m de raio), rolada para o lado (Mc 16.4)
-Rh, Rv, N = 1.0 * MH, 1.0 * MV, 12
-cz, cy = SEP[1] + dh + Rh + 0.3 * MH, gS + Rv
-fr = [(SEP[0] + 0.15 + 0.35 * MH, cy + math.sin(2 * math.pi * i / N) * Rv, cz + math.cos(2 * math.pi * i / N) * Rh) for i in range(N)]
-tr = [(SEP[0] + 0.15, y, z) for _, y, z in fr]
-go.quad(fr, hx('9d9282'), (1, 0, 0))
-for i in range(N):
-    j = (i + 1) % N; a = 2 * math.pi * (i + 0.5) / N
-    go.quad([fr[i], fr[j], tr[j], tr[i]], hx('7f766a'), (0, math.sin(a), math.cos(a)))
-# o horto (~13 x 18 m): uma mureta baixa, o chão verde, oliveiras e figueiras; a entrada fica do lado do Gólgota
-HO = (-572.0, -532.0, -92.0, -32.0)
+dh, dv = 0.5 * MH, 1.5 * MV
+go.quad([(SEP[0] + 0.05, gS - 0.1, SEP[1] - dh), (SEP[0] + 0.05, gS - 0.1, SEP[1] + dh), (SEP[0] + 0.05, gS + dv, SEP[1] + dh), (SEP[0] + 0.05, gS + dv, SEP[1] - dh)], hx('1e1914'), (1, 0, 0))
+caixa(go, SEP[0] - 3.0 * MH, SEP[0], gS - 2.0, gS + 4.0 * MV, SEP[1] - 4.0 * MH, SEP[1] + 4.0 * MH, k(ROCHA_C, 0.93), lados='+x +z -z +y')
+# o horto: mureta baixa, chão verde e árvores; o portão fica no leste, do lado do Gólgota
+H0, H1 = LG(-32.0, 12.0), LG(-12.0, -14.0)
+HO = (H0[0], H1[0], H0[1], H1[1])
 canteiro(go, HO[0], HO[1], HO[2], HO[3], [hx('8f9a5c'), hx('9aa463'), hx('a7a46b')], sobe=0.45)
-for pts in ([(HO[1], -55.0), (HO[1], HO[3]), (HO[0], HO[3])], [(HO[0], HO[2]), (HO[1], HO[2]), (HO[1], -69.0)]):
+for pts in ([LG(-12.0, 3.0), LG(-12.0, -14.0), LG(-32.0, -14.0)], [LG(-32.0, 12.0), LG(-12.0, 12.0), LG(-12.0, 9.0)]):
     for (xa, za), (xb, zb) in zip(pts, pts[1:]):
         g = min(h_velho(xa, za), h_velho(xb, zb)); obox(go, xa, za, xb, zb, 0.4 * MH, g - 0.5, g + 1.1 * MV, hx('cdbf9f'))
-estrada(go, [(-533.0, -62.0), (SEP[0] - 0.5, -62.0)], 1.4 * MH, hx('c6b38c'), sobe=0.55)
+estrada(go, [LG(-12.5, 6.0), LG(-24.0, 2.0), LG(-31.5, -2.0)], 1.4 * MH, hx('c6b38c'), sobe=0.55)
 go.cria()
-ESTR += [([(-600.0, -62.0), (-498.0, -62.0)], 34.0)]
+ESTR += [([LG(-50.0, -2.0), LG(14.0, -2.0)], 30.0 * MH)]
 
 # ================= a estrada de Emaús e as árvores =================
 es = M('Estradas')
-EMAUS = [(GEN[0], -138.0), (GEN[0], -150.0), (-488.0, -100.0), (-487.0, -45.0), (-489.0, -18.0), (-505.0, 2.0), (-540.0, 20.0), (-580.0, 48.0), (-650.0, 80.0), (-760.0, 120.0), (-900.0, 150.0)]
+EMAUS = [(GEN[0], -162.0), (GEN[0], -150.0)] + [LG(x, z) for x, z in ((54.0, 56.0), (48.0, 46.0), (38.0, 36.0), (24.0, 20.0), (13.0, 5.0), (10.0, -10.0), (3.0, -24.0), (-12.0, -34.0), (-30.0, -40.0))] + [(-760.0, 210.0), (-900.0, 250.0)]
 estrada(es, EMAUS, 3.0 * MH, hx('c9b48a'), sobe=0.7, passo=4.0)
+estrada(es, [LG(11.0, 3.0), LG(6.0, 9.0), LG(-4.0, 9.0), LG(-12.0, 6.0)], 1.6 * MH, hx('c9b48a'), sobe=0.7, passo=4.0)
 ESTR += [(EMAUS, 6.0)]
 es.cria()
 av = M('Arvores')
 n_ = 0
-while n_ < 7:                       # no horto
-    x, z = rc.uniform(HO[0] + 5, HO[1] - 5), rc.uniform(HO[2] + 5, HO[3] - 5)
+while n_ < 8:                       # no horto
+    x, z = rc.uniform(HO[0] + 5, HO[1] - 5), rc.uniform(min(HO[2], HO[3]) + 5, max(HO[2], HO[3]) - 5)
     if abs(z - SEP[1]) < 2.5 * MH: continue
     arvore(av, x, z, r=rc.uniform(1.6, 2.0) * MH, alto=rc.uniform(3.8, 4.6) * MV); n_ += 1
 for zc in (-275.0, -250.0, -225.0):
     for xc in (-586.0, -570.0): arvore(av, xc, zc, r=1.3 * MH, alto=4.5 * MV, cipreste=rc.random() < 0.5)
 n_ = 0
-while n_ < 30:                      # pomares e hortas fora dos muros, a oeste e ao norte (a terra do Gólgota era assim)
-    x, z = rc.uniform(-640.0, -478.0), rc.uniform(-140.0, 110.0)
-    if dist_poli(x, z, EMAUS) < 4.0 * MH or (-605 < x < -490 and -100 < z < -24): continue
+G_X0, G_Z0 = LG(-60.0, 70.0); G_X1, G_Z1 = LG(62.0, -50.0)      # a área da fase do Gólgota: sem árvores da maquete
+for _ in range(4000):               # pomares e hortas fora dos muros, a oeste e ao norte (a terra do Gólgota era assim)
+    if n_ >= 30: break
+    x, z = rc.uniform(-900.0, -478.0), rc.uniform(-140.0, 260.0)
+    if dist_poli(x, z, EMAUS) < 4.0 * MH or (G_X0 < x < G_X1 and G_Z0 < z < G_Z1): continue
     arvore(av, x, z, r=rc.uniform(1.8, 2.4) * MH, alto=rc.uniform(4.0, 5.2) * MV); n_ += 1
 av.cria()
 
@@ -791,7 +796,7 @@ L = {'mundo': 'coordenadas do Getsêmani (x leste, y altura, o norte é -z)', 'o
      'santuario': P(SX, BASE, SZ), 'fachada': P(FR, BASE + 39, SZ), 'susa': P(TX1 + 2, pe_velho(SUSA_Z), SUSA_Z),
      'quina_ne': P(TX1, TOPO, TZ1), 'porta_ovelhas': P(PX, HP, NZ + ESP + 2.5), 'betesda': P(BX, yb, BZ), 'antonia': P((AX0 + AX1) / 2, TOPO_A, (AZ0 + AZ1) / 2),
      'betesda_leste': P(BX + 27, yb, BZ), 'nucleo_getsemani': list(NUCLEO_GS),
-     'golgota': P(GOL[0], yTop, GOL[1]), 'sepulcro': P(SEP[0] + 1, gS, SEP[1]), 'horto': P(-552.0, h_velho(-552.0, -62.0), -62.0),
+     'golgota': P(GOL[0], gGo, GOL[1]), 'sepulcro': P(SEP[0] + 1, gS, SEP[1]), 'horto': P(*LG(-22.0, 0.0)[:1], h_velho(*LG(-22.0, 0.0)), LG(-22.0, 0.0)[1]),
      'porta_genat': P(GEN[0], gG, GEN[1]), 'estrada_emaus': P(-650.0, h_velho(-650.0, 80.0), 80.0),
      'mercado': P(-240.0, TY, -175.0), 'estoa_real': P(-236.0, TY, -191.0), 'arco_robinson': P(-318.0, h_velho(-318.0, -190.0), -190.0),
      'escadaria_sul': P(-248.0, yP, -222.0), 'siloe': P((SIL[0] + SIL[1]) / 2, ySil, (SIL[2] + SIL[3]) / 2), 'palacio_herodes': P(-578.0, ybP, -245.0)}

@@ -291,3 +291,36 @@ de peças, texturas pedidas por prompt, peças do Tripo) vai entrar no lugar del
   - ⟲ ⟳ giram, ▲ ▼ mudam a altura do ângulo, + − aproximam e afastam, e ↺ volta ao padrão.
   - No teclado: J/L giram, I/K mudam a altura.
   - Sai quando o jogo estiver fechado.
+
+## Gólgota e o sepulcro (`fase-golgota/`)
+
+Uma fase só, na escala de Betfagé (~100 x 100 m andáveis), fora do segundo muro, a ~90 m da Porta de Genat.
+- **Onde fica:** a origem da fase é o ponto `golgota` do mundo da maquete (`jerusalem_lugares.json`), em escala 1:1, e o
+  jogo põe a maquete deslocada (`LAY.mundo`). O segundo muro passa a ~60 m, a leste, e a Porta de Genat fica a sudeste.
+  Os chãos da maquete perdem o pedaço que o terreno da fase cobre; o Gólgota dela (a vista de longe) sai.
+- **A estrada de Emaús** atravessa a fase de sudeste (a porta) a noroeste (Emaús), passando ao pé do Gólgota ("os que
+  passavam", Mt 27.39). Nas duas pontas, uma pergunta: voltar para a cidade, ou seguir para Emaús (as duas ainda em
+  construção).
+- **O Gólgota** (`Golgota_Rocha`) é um rochedo de calcário que ficou de pé numa pedreira velha, como o que a arqueologia
+  achou debaixo do Santo Sepulcro. A face da estrada (leste) foi cortada quase a prumo e gasta em cavidades que lembram
+  uma caveira (`Golgota_Cavidades`): as órbitas, o nariz e sombras da queixada, irregulares, de rocha gasta. No alto,
+  as três cruzes, vazias (`Cruzes`): a do meio é mais alta, com o letreiro em três línguas (Jo 19.19-20), e as dos
+  lados têm forma de T.
+- **A parede da pedreira**, a oeste, é uma crista de rocha (`h_crista` no gerador) com pedras grandes encostadas, cortes
+  da pedreira, blocos deixados e túmulos antigos fechados (`Pedreira`).
+- **O sepulcro** usa o rochedo do túmulo de Lázaro (`casa-porta/tumulo_rocha.glb`), encaixado na parede, com a porta
+  baixa para o leste e a pedra redonda já rolada para o lado (Mc 16.4). O tom foi puxado para o calcário daqui. Na
+  frente dele fica o horto (Jo 19.41), com mureta, oliveiras, figueiras e flores de abril. O sepulcro fica a ~35 m do
+  Gólgota.
+- **No sepulcro**, o anel na frente da porta dá o botão "abaixar-se e olhar dentro": o discípulo se abaixa (o clipe
+  Ajoelhar, parado no meio) e as legendas de Jo 20.5-7 e Mt 28.6 passam.
+- **Gerar:** `blender -b --factory-startup -P golgota_blender.py -- --regerar-tudo`. Exportar: `blender -b golgota.blend
+  -P exportar_golgota.py`. Para testar: `fase-golgota/` (`?de=emaus` começa na ponta noroeste, `?de=sepulcro` no horto).
+
+## O vale do Cedrom (no Getsêmani)
+
+O vale ficou mais seco e pedregoso, com o calcário em camadas aparecendo nas encostas. Também tem túmulos simples
+cavados nas duas encostas, alguns abertos e a maioria fechada por uma pedra quadrada. Ao sul do jardim, no pé do Monte
+das Oliveiras e de frente para o templo, estão os três monumentos que já existiam no tempo de Jesus: a coluna de
+Absalão, com o teto em cone, a fachada de colunas de Bene Hezir e o bloco de Zacarias, com a pirâmide (`Cedrom_Pedra`,
+no gerador do Getsêmani). O jardim continua no mesmo lugar.

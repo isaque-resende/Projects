@@ -1,0 +1,145 @@
+// Gólgota: liga os controles às ações e roda o laço do jogo. Aqui ficam os lugares (as legendas de cada um, com o
+// texto dos evangelhos), o sepulcro (abaixar-se na porta e olhar dentro, Jo 20.5-7) e as duas pontas da estrada: a
+// sudeste, a volta para a cidade (a Porta de Genat); a noroeste, a estrada de Emaús (a próxima parte do caminho).
+import * as THREE from 'three';
+import { E, LAY, fade, fala, bate, fundo, scene, sun, renderer, CIRC, CAIXAS, dialogo, botao, textoBotao } from './estado.js';
+import { terreno, AMOS, naRota, TUM, SOL_DIR } from './cenario.js';
+import { MIX } from './gente.js';
+import { ajustaLente, jog, camera, ctl, tecla, JOY, toqueTela, fw, rt, mv, naArea, alturaEm, camPasso, CAM } from './jogador.js';
+import { criaMarcador } from '../../limpo-motor/marcador.js';
+
+// ---------- os lugares: ao chegar perto de cada um, uma legenda (uma vez) ----------
+const [gx, , gz] = LAY.golgota, [px, , pz] = LAY.portao, [sx, , sz] = LAY.sepulcro, [ox, , oz] = LAY.olhar, [ex, , ez] = LAY.emaus;
+const LUG = [
+  { x: gx, z: gz, r: 9, txt: 'E, levando ele às costas a sua cruz, saiu para o lugar chamado Caveira, que em hebraico se chama Gólgota. (Jo 19.17)' },
+  { x: gx, z: gz, r: 4.5, txt: 'Ali o crucificaram, e com ele outros dois, um de cada lado, e Jesus no meio. (Jo 19.18)' },
+  { x: gx + 1, z: gz - 12, r: 4, txt: 'Muitos leram o título que estava sobre a cruz, porque o lugar onde Jesus foi crucificado era perto da cidade; e estava escrito em hebraico, grego e latim. (Jo 19.20)' },
+  { x: px, z: pz, r: 4, txt: 'No lugar onde fora crucificado havia um horto, e no horto um sepulcro novo, em que ainda ninguém havia sido posto. (Jo 19.41)' },
+  { x: sx + 3, z: sz, r: 6, txt: 'E, olhando, viram que a pedra já estava revolvida; e era ela muito grande. (Mc 16.4)' },
+  { x: ex, z: ez, r: 10, txt: 'Por esta estrada se vai a Emaús, uma aldeia a uns sessenta estádios de Jerusalém. (Lc 24.13)' },
+];
+let falando = 0;
+function legenda(txt, seg = 8) { fala(txt); const n = ++falando; setTimeout(() => { if (n === falando) fala(''); }, seg * 1000); }
+function lugares(pj) {
+  if (E.fora) return;
+  for (const L of LUG) {
+    if (L.visto) continue;
+    if (Math.hypot(pj.x - L.x, pj.z - L.z) < L.r) { L.visto = true; legenda(L.txt); break; }
+  }
+}
+
+// ---------- o sepulcro: um anel no chão, na frente da porta; o botão abaixa o jogador para olhar dentro ----------
+const anel = new THREE.Mesh(new THREE.RingGeometry(0.7, 0.95, 40), new THREE.MeshBasicMaterial({ color: 0xfff1c8, transparent: true, opacity: 0.35, depthWrite: false }));
+anel.rotation.x = -Math.PI / 2; anel.position.set(ox, terreno(ox, oz) + 0.06, oz); scene.add(anel);
+const OL = { perto: false, t: -1 };
+const abaixa = jog.A.Ajoelhar; if (abaixa) { abaixa.setLoop(THREE.LoopOnce); abaixa.clampWhenFinished = true; }
+const DENTRO = [
+  [0.8, 'E, abaixando-se, viu no chão os lençóis; todavia não entrou. (Jo 20.5)'],
+  [8.0, 'E o lenço que tinha estado sobre a sua cabeça não estava com os lençóis, mas enrolado num lugar à parte. (Jo 20.7)'],
+  [15.5, '“Não está aqui, porque já ressuscitou, como havia dito. Vinde, vede o lugar onde o Senhor jazia.” (Mt 28.6)'],
+];
+function olhar() {
+  E.fora = true; E.alvoToque = null; OL.t = 0; OL.i = 0; falando++;
+  jog.o.position.set(ox, terreno(ox, oz), oz);
+  jog.o.rotation.y = Math.atan2(sx - ox, sz - oz);       // de frente para a porta
+  jog.toca('Ajoelhar');
+}
+function olharPasso(dt) {
+  if (OL.t < 0) return;
+  OL.t += dt; CAM.perto += (1 - CAM.perto) * Math.min(1, dt * 0.8);
+  if (OL.i < DENTRO.length && OL.t > DENTRO[OL.i][0]) fala(DENTRO[OL.i++][1]);
+  // o clipe Ajoelhar desce, fica e levanta (5,2 s): para no meio, abaixado, e só no fim termina de levantar
+  if (abaixa && !OL.pausa && OL.t > 2.2) { abaixa.paused = true; OL.pausa = true; }
+  if (abaixa && OL.pausa && OL.t > 22.5) { abaixa.paused = false; OL.pausa = false; fala(''); }
+  if (OL.t > 25.3) { OL.t = -1; fala(''); E.fora = false; E.olhou = true; jog.toca('Parado'); }
+}
+
+// ---------- o botão de ação e as pontas da estrada ----------
+function acionar() {
+  if (E.fora) return;
+  if (OL.perto) { olhar(); return; }
+  if (E.emaus) { perguntaEmaus(); return; }
+  if (E.cidade) perguntaCidade();
+}
+ctl.aoAcionar = acionar; botao.onclick = () => acionar();
+function recua(i) { const p = AMOS[Math.max(0, Math.min(AMOS.length - 1, i))]; jog.o.position.set(p.x, terreno(p.x, p.z), p.z); E.alvoToque = null; }
+// as duas próximas partes (a cidade e a estrada de Emaús) ainda não existem: por enquanto, avisa e volta um pouco
+function emConstrucao(texto, i) {
+  E.fora = true; fade.textContent = texto; fade.style.opacity = 1;
+  setTimeout(() => { recua(i); fade.style.opacity = 0; setTimeout(() => { fade.textContent = ''; E.fora = false; }, 900); }, 2600);
+}
+function perguntaCidade() { dialogo('', 'Deseja voltar para a cidade, pela Porta de Genat?', [['Ainda não', () => recua(12), '#a8957a'], ['Sim', () => emConstrucao('A volta para a cidade é uma parte do caminho em construção.', 12)]]); }
+function perguntaEmaus() { dialogo('', 'Deseja seguir pela estrada de Emaús?', [['Ainda não', () => recua(AMOS.length - 14), '#a8957a'], ['Sim', () => emConstrucao('A estrada de Emaús é a próxima parte do caminho (em construção).', AMOS.length - 14)]]); }
+
+// ---------- chegada ----------
+setTimeout(() => {
+  fade.style.opacity = 0;
+  setTimeout(() => { fade.textContent = ''; legenda('Domingo, ao nascer do sol. Fora da porta da cidade, à beira da estrada, numa pedreira velha, fica o lugar chamado Caveira.', 8); }, 900);
+}, 1200);
+
+// ---------- laço ----------
+const marca = criaMarcador(scene, camera, jog.o);
+const relogio = new THREE.Clock();
+let primeira = true;
+const laco = (forca) => {
+  const dt = forca || Math.min(relogio.getDelta(), 0.05), t = relogio.elapsedTime;
+  for (const m of MIX) m.update(dt);
+  camera.getWorldDirection(fw); fw.setY(0).normalize(); rt.set(-fw.z, 0, fw.x);
+  mv.set(0, 0, 0);
+  if (!E.fora) {
+    if (tecla.KeyW || tecla.ArrowUp) mv.add(fw); if (tecla.KeyS || tecla.ArrowDown) mv.sub(fw);
+    if (tecla.KeyD || tecla.ArrowRight) mv.add(rt); if (tecla.KeyA || tecla.ArrowLeft) mv.sub(rt);
+    if (JOY.on && Math.hypot(JOY.x, JOY.y) > 0.15) mv.addScaledVector(fw, -JOY.y).addScaledVector(rt, JOY.x);
+    if (mv.lengthSq() > 0) E.alvoToque = null;
+    else if (E.alvoToque) { mv.subVectors(E.alvoToque, jog.o.position).setY(0); if (mv.length() < 0.15) { E.alvoToque = null; mv.set(0, 0, 0); } }
+  }
+  const pj = jog.o.position;
+  let andou = false;
+  if (mv.lengthSq() > 0) {
+    mv.normalize(); const corre = tecla.ShiftLeft || tecla.ShiftRight || (JOY.on && Math.hypot(JOY.x, JOY.y) > 0.9) || (E.alvoToque && E.alvoToque.distanceTo(pj) > 6);
+    const v = (corre ? 4.6 : 2.2) * dt, nx = pj.x + mv.x * v, nz = pj.z + mv.z * v;
+    const f0 = fundo(pj.x, pj.z);
+    const livre = (x, z) => { if (!naArea(x, z) || terreno(x, z) > pj.y + 0.55) return false; const f = fundo(x, z); return f <= 0 || f < f0 - 1e-4; };
+    const x0 = pj.x, z0 = pj.z;
+    if (livre(nx, nz)) { pj.x = nx; pj.z = nz; } else if (livre(nx, pj.z)) pj.x = nx; else if (livre(pj.x, nz)) pj.z = nz; else E.alvoToque = null;
+    andou = Math.hypot(pj.x - x0, pj.z - z0) > v * 0.3;
+    let d = Math.atan2(mv.x, mv.z) - jog.o.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d)); jog.o.rotation.y += d * Math.min(1, dt * 12);
+    if (andou) jog.toca(corre ? 'Correr' : 'Andar');
+  }
+  const chao = alturaEm(pj.x, pj.z);
+  if (E.jogNoChao && pj.y - chao > 0.55) E.jogNoChao = false;
+  if (E.jogNoChao) pj.y += (chao - pj.y) * Math.min(1, dt * 18);
+  else { E.jogVy -= 14 * dt; pj.y += E.jogVy * dt; if (pj.y <= chao) { pj.y = chao; E.jogVy = 0; E.jogNoChao = true; } }
+  if (OL.t < 0) {
+    if (!E.jogNoChao) jog.toca(E.jogVy > 0 ? 'Pulo_Ar' : 'Pulo_Queda');
+    else if (!andou) jog.toca('Parado');
+    CAM.perto += (0 - CAM.perto) * Math.min(1, dt * 0.8);
+  }
+
+  // lugares, sepulcro e as pontas da estrada
+  lugares(pj);
+  OL.perto = Math.hypot(pj.x - ox, pj.z - oz) < 1.8;
+  anel.material.opacity = (E.olhou ? 0.16 : 0.3) + 0.1 * Math.sin(t * 1.6);
+  olharPasso(dt);
+  const [i, d] = naRota(pj.x, pj.z);
+  E.cidade = i <= 3 && d < 4;
+  E.emaus = i >= AMOS.length - 5 && d < 4;
+  if ((E.cidade || E.emaus) && !E.fora && !E.perguntou) { E.perguntou = true; (E.cidade ? perguntaCidade : perguntaEmaus)(); }
+  if (!E.cidade && !E.emaus) E.perguntou = false;
+  const txt = OL.perto && !E.fora ? 'abaixar-se e olhar dentro' : E.emaus ? 'seguir para Emaús' : E.cidade ? 'voltar para a cidade' : '';
+  if (txt) textoBotao((toqueTela ? '' : 'E: ') + txt);
+  botao.style.display = txt && !E.fora ? 'block' : 'none';
+  ctl.marcaPino(botao.style.display === 'block' ? (OL.perto ? 'olhar' : 'ir') : '');
+
+  // câmera e sol
+  E.dist += (E.distAlvo - E.dist) * Math.min(1, dt * 4);
+  camPasso(dt, pj, primeira); primeira = false;
+  sun.position.copy(pj).addScaledVector(SOL_DIR, 40); sun.target.position.copy(pj);
+  marca.passo(pj, t, CAM.pos.distanceTo(pj), !E.fora);
+  renderer.render(scene, camera);
+};
+if (!(globalThis.MODO_TESTE && new URLSearchParams(location.search).has('parado'))) renderer.setAnimationLoop(() => laco());
+addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; ajustaLente(); });
+
+// para os testes automáticos: abrir com ?teste (ou pelo teste.html) e usar TESTE no console
+if (globalThis.MODO_TESTE) globalThis.TESTE = { MIX, E, jog, laco, marca, tecla, bate, alturaEm: (x, z) => terreno(x, z), chaoTerra: terreno, scene, camera, CIRC, CAIXAS, renderer, AMOS, OL, LAY, TUM, olhar, acionar };

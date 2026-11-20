@@ -353,6 +353,34 @@ async function rodar() {
     });
   } else item('Getsêmani').aviso('pulado: a fase não carregou');
 
+  grupo('Gólgota e o sepulcro (fase-golgota/)');
+  await abre('fase-golgota/');
+  const okGo = await testesDaFase('Gólgota');
+  if (okGo) {
+    await teste('o Gólgota (com as três cruzes) fica à beira da estrada, fora do muro; o sepulcro, no horto, a ~30 m; o jogador se abaixa e olha dentro', async (it) => {
+      const T = W().TESTE, L = T.LAY, p = T.jog.o.position;
+      for (const n of ['Golgota_Rocha', 'Golgota_Cavidades', 'Cruzes', 'Pedreira']) if (!T.scene.getObjectByName(n)) throw new Error('falta ' + n + ' na cena');
+      if (!T.scene.getObjectByName('Muralhas') || !T.scene.getObjectByName('Templo_Muros')) throw new Error('falta a maquete de Jerusalém');
+      const dSep = Math.hypot(L.sepulcro[0] - L.golgota[0], L.sepulcro[2] - L.golgota[2]);
+      const [, dEstr] = (() => { let m = 1e9; for (const a of T.AMOS) m = Math.min(m, Math.hypot(a.x - L.golgota[0], a.z - L.golgota[2])); return [0, m]; })();
+      T.E.fora = false; T.jog.o.position.set(L.olhar[0] + 0.4, T.chaoTerra(L.olhar[0] + 0.4, L.olhar[2]), L.olhar[2]); quadros(3);
+      const txt = D().getElementById('acao').textContent;
+      W().dispatchEvent(new (W().KeyboardEvent)('keydown', { code: 'KeyE' })); W().dispatchEvent(new (W().KeyboardEvent)('keyup', { code: 'KeyE' }));
+      quadros(30 * 10); const fala = D().getElementById('fala').textContent, abaixado = T.E.fora;
+      quadros(30 * 17);
+      (dSep > 25 && dSep < 45 && dEstr < 16 && /olhar dentro/.test(txt) && abaixado && /lençóis|lenço/.test(fala) && T.E.olhou && !T.E.fora ? it.ok : it.erro)('sepulcro a ' + dSep.toFixed(1) + ' m do Gólgota; o Gólgota a ' + dEstr.toFixed(1) + ' m da estrada; botão "' + txt + '"; abaixado: ' + (abaixado ? 'sim' : 'NÃO') + '; legenda: "' + fala.slice(0, 50) + '…"; depois livre: ' + (T.E.olhou && !T.E.fora ? 'sim' : 'NÃO'));
+    });
+    await teste('as pontas da estrada perguntam: "voltar para a cidade" (sudeste) e "seguir pela estrada de Emaús" (noroeste)', async (it) => {
+      const T = W().TESTE, N = T.AMOS.length, r = [];
+      for (const [i, txt] of [[1, 'cidade'], [N - 2, 'Emaús']]) {
+        T.E.fora = false; T.E.perguntou = false; const q = T.AMOS[i]; T.jog.o.position.set(q.x, T.chaoTerra(q.x, q.z), q.z); quadros(3);
+        r.push(txt + ': ' + ((await responde(txt, 'Ainda não', 3000)) ? 'sim' : 'NÃO')); quadros(5);
+      }
+      const ok = r.every((s) => s.endsWith('sim')) && !T.E.fora;
+      (ok ? it.ok : it.erro)(r.join('; ') + '; o "Ainda não" recua: ' + (!T.E.fora ? 'sim' : 'NÃO'));
+    });
+  } else item('Gólgota').aviso('pulado: a fase não carregou');
+
   grupo('Betânia do começo (com a abertura)');
   await abre('fase-betania/');
   await teste('carrega sem erro', async (it) => {

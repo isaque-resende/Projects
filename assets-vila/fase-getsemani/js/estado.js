@@ -17,7 +17,7 @@ const sm = (a, b, x) => { let k = (x - a) / (b - a); k = k < 0 ? 0 : k > 1 ? 1 :
 const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
 
 // ---------- layout exportado do Blender (getsemani_layout.json) ----------
-const LAY = await (await fetch('../fase-getsemani/getsemani_layout.json?v=4')).json();
+const LAY = await (await fetch('../fase-getsemani/getsemani_layout.json?v=5')).json();
 const DE = new URLSearchParams(location.search).get('de');      // ?de=agonia começa perto da rocha; ?de=betesda, no fim da subida (testes)
 
 // ---------- estado do jogo ----------

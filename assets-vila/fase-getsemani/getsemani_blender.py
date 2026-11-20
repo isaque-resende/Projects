@@ -191,7 +191,7 @@ for p in me.polygons:
         # as encostas do vale: manchas de capim seco, terra e pedra que seguem um ruído (e não a inclinação, que no
         # vale só depende de x e desenharia faixas retas); ao pé do muro, o barranco seco e pedregoso
         r = ruido(x * 0.55 + 7, z * 0.55) + (0.25 if x < -86 else 0.0) + (0.08 if abs(n.z) < 0.75 else 0.0)
-        base = COR['grama2'] if r < 0.55 else COR['capim'] if r < 0.9 else COR['seca']      # tons próximos: sem manchas quadradas
+        base = COR['grama2'] if r < 0.32 else COR['capim'] if r < 0.62 else COR['seca'] if r < 0.88 else COR['calcario']      # mais seco e pedregoso (a pedra aflora)
         col = tuple(min(1, v * (0.95 + random.random() * 0.06)) for v in base[:3]) + (1,)
     elif abs(n.z) < 0.6: col = COR['barranco']
     elif abs(n.z) < 0.8: col = COR['grama2']
@@ -315,6 +315,120 @@ def gruta():
 rocha = rocha_agonia()
 morro, BOCA, NF = gruta()
 
+# ---------------- o vale do Cedrom: os monumentos, os túmulos cavados e o calcário à mostra ----------------
+# As duas encostas do Cedrom eram cemitério (2Rs 23.6; Jr 31.40). Ao sul do jardim, no pé do Monte das Oliveiras e de
+# frente para o templo, já estavam lá no tempo de Jesus os túmulos de pedra que ainda se veem: a coluna de Absalão
+# (com o teto em cone), a fachada de colunas de Bene Hezir e o bloco de Zacarias (com a pirâmide), cortados na rocha.
+# Pelo resto das encostas, túmulos simples, fachadas pequenas com a boca fechada por uma pedra. E o calcário aparece em
+# camadas: no vale, a pedra está à flor da terra.
+class Formas:
+    def __init__(self): self.v, self.f, self.c = [], [], []
+
+    def caixa(self, cx, cz, y0, y1, lx, lz, cor, giro=0.0, var=0.05):
+        cs, sn = math.cos(giro), math.sin(giro)
+        def P(u, w, y): return (cx + u * cs - w * sn, -(cz + u * sn + w * cs), y)
+        b = len(self.v); hx_, hz_ = lx / 2, lz / 2
+        for y in (y0, y1):
+            for u, w in ((-hx_, -hz_), (hx_, -hz_), (hx_, hz_), (-hx_, hz_)): self.v.append(P(u, w, y))
+        for ids, sh in [((4, 5, 6, 7), 1.04), ((0, 1, 5, 4), 0.84), ((1, 2, 6, 5), 0.95), ((2, 3, 7, 6), 0.8), ((3, 0, 4, 7), 0.9)]:
+            self.f.append(tuple(b + i for i in ids)); self.c.append(tom(cor, sh * (1 + random.uniform(-var, var))))
+
+    def tronco(self, cx, cz, y0, y1, r0, r1, n, cor, var=0.04):
+        """cilindro, tronco de cone ou cone (r1 = 0), com n lados"""
+        b = len(self.v)
+        for y, r in ((y0, r0), (y1, max(r1, 0.001))):
+            for i in range(n):
+                a = 2 * math.pi * (i + 0.5) / n; self.v.append((cx + math.cos(a) * r, -(cz + math.sin(a) * r), y))
+        for i in range(n):
+            j = (i + 1) % n; self.f.append((b + i, b + j, b + n + j, b + n + i)); self.c.append(tom(cor, (0.86 + 0.14 * math.cos(2 * math.pi * (i + 0.5) / n - 0.4)) * (1 + random.uniform(-var, var))))
+        self.f.append(tuple(b + n + i for i in range(n))); self.c.append(tom(cor, 1.03))
+
+    def piramide(self, cx, cz, y0, y1, lado, cor):
+        b = len(self.v); h = lado / 2
+        for u, w in ((-h, -h), (h, -h), (h, h), (-h, h)): self.v.append((cx + u, -(cz + w), y0))
+        self.v.append((cx, -cz, y1))
+        for i, sh in zip(range(4), (0.84, 0.97, 0.8, 0.92)): self.f.append((b + i, b + (i + 1) % 4, b + 4)); self.c.append(tom(cor, sh))
+
+    def cria(self, nome):
+        C = self.c
+        return malha(nome, self.v, self.f, lambda p: C[p.index])
+
+
+MON = {'absalao': (-53.0, 22.0), 'hezir': (-50.0, 30.5), 'zacarias': (-51.5, 37.0)}
+fm = Formas(); PEDRA_M = COR['calcario']; SOMBRA_M = hexc('3a3128')
+
+
+def assento(x, z, lx, lz):
+    return min(altura(x + a, z + b) for a in (-lx / 2, lx / 2) for b in (-lz / 2, lz / 2)) - 0.15
+
+
+def bloco_colunas(cx, cz, y, L, alto):
+    """um bloco quadrado com meias-colunas nas quatro faces, arquitrave e a cornija egípcia"""
+    fm.caixa(cx, cz, y - 1.0, y + 0.45, L + 0.6, L + 0.6, PEDRA_M)                          # o degrau da base
+    fm.caixa(cx, cz, y + 0.45, y + alto, L, L, PEDRA_M)
+    for k in range(4):
+        s = -L / 2 + L * (k + 0.5) / 4
+        for px, pz in ((cx + L / 2 + 0.12, cz + s), (cx - L / 2 - 0.12, cz + s), (cx + s, cz + L / 2 + 0.12), (cx + s, cz - L / 2 - 0.12)):
+            fm.tronco(px, pz, y + 0.45, y + alto - 0.6, 0.22, 0.22, 6, tom(PEDRA_M, 1.05))
+    fm.caixa(cx, cz, y + alto - 0.6, y + alto - 0.2, L + 0.5, L + 0.5, tom(PEDRA_M, 1.06))     # a arquitrave
+    fm.caixa(cx, cz, y + alto - 0.2, y + alto + 0.25, L + 1.0, L + 1.0, tom(PEDRA_M, 1.0))     # a cornija
+
+
+# a coluna (o "pilar") de Absalão: o bloco, o ático, o tambor e o teto em cone côncavo, com a flor no alto
+ax_, az_ = MON['absalao']; ya = assento(ax_, az_, 6.4, 6.4)
+bloco_colunas(ax_, az_, ya, 5.2, 5.6)
+fm.caixa(ax_, az_, ya + 5.85, ya + 7.1, 4.0, 4.0, PEDRA_M)
+fm.tronco(ax_, az_, ya + 7.1, ya + 8.3, 1.75, 1.75, 14, PEDRA_M)
+fm.tronco(ax_, az_, ya + 8.3, ya + 8.55, 1.9, 1.9, 14, tom(PEDRA_M, 1.05))
+for (r0, r1, h0, h1) in ((1.75, 1.0, 8.55, 9.9), (1.0, 0.45, 9.9, 11.4), (0.45, 0.14, 11.4, 12.6)):
+    fm.tronco(ax_, az_, ya + h0, ya + h1, r0, r1, 14, PEDRA_M)
+fm.tronco(ax_, az_, ya + 12.6, ya + 13.2, 0.3, 0.0, 8, tom(PEDRA_M, 1.08))
+# Bene Hezir: uma fachada cortada no paredão, de frente para o vale (oeste), com duas colunas entre as pilastras
+hx_, hz_ = MON['hezir']; yh = assento(hx_ - 0.5, hz_, 2.0, 7.0)
+fm.caixa(hx_ + 0.6, hz_, yh - 0.8, yh + 6.0, 2.6, 7.6, tom(PEDRA_M, 0.97))                  # a rocha em volta
+fm.caixa(hx_ - 0.72, hz_, yh, yh + 3.9, 0.12, 4.4, SOMBRA_M, var=0.0)                         # o pórtico (escuro)
+for s in (-2.6, 2.6): fm.caixa(hx_ - 0.85, hz_ + s, yh, yh + 4.4, 0.5, 0.9, tom(PEDRA_M, 1.05))  # as pilastras
+for s in (-0.85, 0.85): fm.tronco(hx_ - 1.0, hz_ + s, yh, yh + 3.9, 0.3, 0.3, 8, tom(PEDRA_M, 1.07))   # as duas colunas
+fm.caixa(hx_ - 0.9, hz_, yh + 3.9, yh + 4.9, 0.7, 6.4, tom(PEDRA_M, 1.04))                   # a arquitrave dórica
+# Zacarias: um bloco inteiro de rocha (separado do paredão por um corredor), com colunas e a pirâmide em cima
+zx_, zz_ = MON['zacarias']; yz = assento(zx_, zz_, 6.0, 6.0)
+bloco_colunas(zx_, zz_, yz, 5.0, 5.2)
+fm.piramide(zx_, zz_, yz + 5.45, yz + 9.0, 5.4, tom(PEDRA_M, 1.02))
+fm.caixa(zx_ + 4.6, zz_, yz - 0.8, yz + 6.2, 2.0, 9.0, tom(PEDRA_M, 0.95))                   # o paredão de trás
+
+
+def perto_monumento(x, z, m=0.0): return any(math.hypot(x - a, z - b) < 6.5 + m for a, b in MON.values())
+
+
+# túmulos simples nas duas encostas: a face lisa cortada na pedra e a boca, quase sempre fechada por uma pedra quadrada
+rt_ = random.Random(29); n_t = 0
+for _ in range(400):
+    if n_t >= 22: break
+    leste = rt_.random() < 0.6
+    x = rt_.uniform(-58.0, -43.0) if leste else rt_.uniform(-96.0, -69.0)
+    z = rt_.uniform(-58.0, 36.0)
+    if dist_trilha(x, z)[0] < MEIA + 4.0 or perto_monumento(x, z, 2) or (leste and dentro(x, z, -4)): continue
+    s = -1 if leste else 1                                   # para onde a face olha: oeste (leste do vale) ou leste
+    y = altura(x + s * 0.8, z) - 0.25
+    if altura(x - s * 1.0, z) - y < 0.8: continue            # só onde a encosta é íngreme o bastante para um corte
+    x -= s * 0.9                                             # metido na encosta: só a face aparece
+    fm.caixa(x, z, y - 1.2, y + 2.1, 2.2, 2.4, tom(PEDRA_M, 0.98))
+    if rt_.random() < 0.75: fm.caixa(x + s * 1.13, z, y, y + 0.95, 0.12, 0.9, tom(COR['calc_lado'], 0.9))   # a pedra que fecha
+    else: fm.caixa(x + s * 1.12, z, y, y + 0.95, 0.04, 0.75, SOMBRA_M, var=0.0)                               # aberto
+    n_t += 1
+# o calcário em camadas: lajes baixas e compridas, deitadas na encosta
+for _ in range(400):
+    if n_t >= 22 + 40: break
+    leste = rt_.random() < 0.5
+    x = rt_.uniform(-60.0, -42.0) if leste else rt_.uniform(-104.0, -66.0)
+    z = rt_.uniform(-60.0, 38.0)
+    if dist_trilha(x, z)[0] < MEIA + 2.0 or perto_monumento(x, z, 1) or (leste and dentro(x, z, -3)): continue
+    y = altura(x, z); L = rt_.uniform(3.0, 7.0)
+    fm.caixa(x, z, y - 0.8, y + rt_.uniform(0.12, 0.35), rt_.uniform(0.8, 1.4), L, tom(COR['calc_lado'], rt_.uniform(0.95, 1.08)), giro=rt_.uniform(-0.25, 0.25))
+    n_t += 1
+cedrom = fm.cria('Cedrom_Pedra')
+CEDROM_PEDRAS = n_t
+
 # ---------------- peças dos kits ----------------
 PROTO = {}
 def importa(arq):
@@ -384,7 +498,7 @@ def empty_ref(nome, x, z, y=None, r=0.0, tipo='SINGLE_ARROW', tam=1.5):
 def perto_gruta(x, z, m=0.0): return math.hypot(x - GRUTA[0], z - GRUTA[1]) < 8.0 + m or math.hypot(x - BOCA[0] - NF.x * 2, z - BOCA[1] - NF.y * 2) < 3.5 + m
 ZONAS = [('c', OITO[0], OITO[1], 3.4), ('c', TRES[0], TRES[1], 2.4), ('c', AGONIA[0], AGONIA[1], 4.2), ('c', PORTAO[0], PORTAO[1], 3.0)]
 def na_zona(x, z, m=0.0):
-    if perto_gruta(x, z, m): return True
+    if perto_gruta(x, z, m) or perto_monumento(x, z, m): return True
     if x < AGONIA[0] and abs(z - AGONIA[1]) < 3 + 0.5 * (AGONIA[0] - x): return True       # da rocha, a vista do templo fica livre
     for zn in ZONAS:
         if math.hypot(x - zn[1], z - zn[2]) < zn[3] + m: return True
@@ -474,8 +588,8 @@ for _ in range(120):
     k = random.uniform(0.45, 1.0) if perto else random.uniform(0.9, 1.7)
     n = poe('casa-porta\\rochas.glb', random.choice(ROCHAS), px, pz, random.uniform(0, 6.28), k, afunda=0.12, longe=not perto)
     if n is not None and perto and k > 0.7: circulo('COL_' + n.name, px, pz, 0.3 * k + 0.1, n)
-# pedras no leito do Cedrom
-for _ in range(30):
+# pedras no leito do Cedrom (seco nesta época: cascalho e pedras roladas)
+for _ in range(55):
     px, pz = LEITO + random.uniform(-2.4, 2.4), random.uniform(-60, 38)
     d, _i = dist_trilha(px, pz)
     if d < MEIA + 0.8: continue
@@ -487,7 +601,7 @@ for _ in range(30):
 for _ in range(60):
     px, pz = random.uniform(-110, -42), random.uniform(-60, 38)
     d, _i = dist_trilha(px, pz)
-    if d < MEIA + 1.0: continue
+    if d < MEIA + 1.0 or perto_monumento(px, pz): continue
     perto = d < 10
     k = random.uniform(0.5, 1.2) if perto else random.uniform(0.8, 1.9)
     n = poe('casa-porta/rochas.glb', random.choice(ROCHAS), px, pz, random.uniform(0, 6.28), k, afunda=0.2, longe=not perto)
@@ -495,7 +609,7 @@ for _ in range(60):
 for _ in range(60):
     px, pz = random.uniform(-110, -42), random.uniform(-60, 38)
     d, _i = dist_trilha(px, pz)
-    if d < MEIA + 0.6: continue
+    if d < MEIA + 0.6 or perto_monumento(px, pz): continue
     nome = random.choice(['Moita_Espinhos_Pequena', 'Moita_Espinhos_Pequena', 'Malva_Rosa'])
     poe('flores\\plantas_betfage.glb', nome, px, pz, random.uniform(0, 6.28), random.uniform(0.7, 1.15), afunda=0.05, planta=True)
 for _ in range(200):
@@ -563,5 +677,5 @@ cam.clip_end = 900
 
 os.makedirs(OUT, exist_ok=True)
 bpy.ops.wm.save_as_mainfile(filepath=BLEND)
-print('FIM', len([o for o in bpy.data.objects if 'glb' in o]), 'objetos', len(MUROS), 'muros', len(ARV), 'oliveiras',
+print('FIM', len([o for o in bpy.data.objects if 'glb' in o]), 'objetos', CEDROM_PEDRAS, 'pedras do Cedrom', len(MUROS), 'muros', len(ARV), 'oliveiras',
       'rocha a %.1f m dos tres' % math.hypot(AGONIA[0] - TRES[0], AGONIA[1] - TRES[1]))
