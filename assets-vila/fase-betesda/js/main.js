@@ -1,6 +1,6 @@
 // Betesda: liga os controles às ações e roda o laço do jogo. Aqui ficam os lugares (as legendas de cada um, com o texto
 // do evangelho), as conversas (npcs.js) e as três saídas: a leste, a volta ao Getsêmani; ao sul, a Porta das Ovelhas, que
-// leva ao pátio do templo (a próxima fase); a oeste, a estrada ao longo do muro, até o Gólgota.
+// leva ao pátio do templo (fase-templo); a oeste, a estrada ao longo do muro, até o Gólgota.
 import * as THREE from 'three';
 import { E, LAY, fade, fala, bate, fundo, scene, sun, renderer, CIRC, CAIXAS, dialogo, botao, textoBotao, conversa } from './estado.js';
 import { terreno, AMOS, naRota, SOL_DIR, telhadosPasso } from './cenario.js';
@@ -60,7 +60,7 @@ function emConstrucao(texto, volta) {
 }
 function perguntaGetsemani() { dialogo('', 'Deseja voltar ao Getsêmani, descendo ao Cedrom?', [['Ainda não', () => recua(12), '#a8957a'], ['Sim', () => sair('De volta ao Getsêmani…', '../fase-getsemani/?de=betesda')]]); }
 function perguntaGolgota() { dialogo('', 'Deseja seguir pela estrada, ao longo do muro, até o Gólgota?', [['Ainda não', () => recua(AMOS.length - 14), '#a8957a'], ['Sim', () => sair('Para o Gólgota, fora da porta…', '../fase-golgota/')]]); }
-function perguntaTemplo() { dialogo('', 'Deseja entrar pela Porta das Ovelhas, para o pátio do templo?', [['Ainda não', () => recuaPorta(), '#a8957a'], ['Sim', () => emConstrucao('O pátio do templo é a próxima parte do caminho (em construção).', recuaPorta)]]); }
+function perguntaTemplo() { dialogo('', 'Deseja entrar pela Porta das Ovelhas, para o pátio do templo?', [['Ainda não', () => recuaPorta(), '#a8957a'], ['Sim', () => sair('Para o pátio do templo…', '../fase-templo/')]]); }
 
 // ---------- chegada ----------
 setTimeout(() => {

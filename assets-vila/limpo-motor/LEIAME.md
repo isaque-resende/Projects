@@ -349,3 +349,47 @@ no gerador do Getsêmani). O jardim continua no mesmo lugar.
   No Getsêmani, o "Sim" para Betesda já traz para cá.
 - **Gerar:** `blender -b --factory-startup -P betesda_blender.py -- --regerar-tudo`. Exportar: `blender -b betesda.blend
   -P exportar_betesda.py`. Para testar: `fase-betesda/` (`?de=golgota` começa a oeste, `?de=templo` na porta).
+
+## O templo (`fase-templo/`)
+
+- **Escala:** própria, de RPG. A esplanada tem ~90 x 120 m (a real tem ~300 x 480 m); a da maquete é de ~50 x 75 m.
+  A origem é o centro da esplanada, e o chão do Pátio dos Gentios fica em y = 0. A maquete entra só como a cidade em
+  volta: o templo, a Antônia, Betesda e o muro norte dela saem, e também o que cai em cima da esplanada daqui.
+- **A planta** (`templo_blender.py`):
+  - os pórticos de colunas, com a Estoa Real ao sul (quatro fileiras e a nave do meio mais alta) e o Pórtico de
+    Salomão a leste;
+  - a Fortaleza Antônia a noroeste, com a escada para o pórtico (At 21.35);
+  - o terraço com a balaustrada (o soreg) e a placa em grego;
+  - a Porta Formosa e o Pátio das Mulheres, com as quatro câmaras;
+  - os quinze degraus em semicírculo e a Porta de Nicanor;
+  - o Pátio de Israel, separado do Pátio dos Sacerdotes por uma mureta;
+  - o altar com a rampa ao sul, a pia de bronze, o lugar do sacrifício e o santuário (o pórtico, a cortina, a videira
+    de ouro, as pontas no alto).
+  Os pátios ficam em alturas diferentes: o terraço a 1 m, as mulheres a 2 m, Israel a 4,5 m e os sacerdotes a 5 m.
+- **Até onde o jogador vai:** até o Pátio de Israel, como um israelita. A mureta (o geder) e o Pátio dos Sacerdotes
+  inteiro são obstáculos.
+- **Muros e tetos que tapam a vista** (`oclusores` no layout) ficam quase transparentes. Cada lado da plataforma, cada
+  teto de pórtico e cada muro dos pátios é uma malha própria.
+- **O mercado**, junto à Estoa Real: as nove barracas (`casa-porta/barracas.glb`), as mesas dos cambistas, as gaiolas
+  com pombas e os currais com ovelhas e bois.
+- **A gente** (`js/npcs.js`):
+  - três sacerdotes: no alto do altar, na rampa e na pia;
+  - os levitas cantando nos lados dos degraus e o guarda da Porta Formosa;
+  - um homem orando no Pátio de Israel;
+  - os cambistas e os vendedores de pombas, de ovelhas e de bois, e uma vendedora numa barraca;
+  - um homem que traz um cordeiro nos braços e outro que puxa uma ovelha, da porta do norte até a Porta Formosa;
+  - um mestre ensinando no Pórtico de Salomão (Jo 10.23).
+- **A fumaça do altar** (sprites) sobe e vai para oeste com a brisa, e há uma luz de brasa em cima do altar.
+- **Conversas:**
+  - o cambista fala do meio siclo e da prata de Tiro, e das mesas viradas na segunda-feira (Mc 11.15-17);
+  - o vendedor de pombas, da oferta dos pobres (Lv 12.8; Lc 2.24);
+  - o homem do cordeiro, da oferta pacífica (Lv 7.11-15);
+  - o levita, dos cânticos dos degraus (Sl 122);
+  - o guarda, de até onde cada um pode ir;
+  - o homem que ora, do véu rasgado (Mt 27.51);
+  - o mestre da Lei, da guarda subornada (Mt 28.11-15).
+- **As saídas:** a porta do norte volta a Betesda (em Betesda, o "Sim" da Porta das Ovelhas já traz para cá). A porta
+  do oeste leva à cidade alta (em construção).
+- **Gerar:** `blender -b --factory-startup -P templo_blender.py -- --regerar-tudo`. Exportar: `blender -b templo.blend
+  -P exportar_templo.py`. Para testar: `fase-templo/` (`?de=cidade` começa na porta do oeste, `?de=israel` no Pátio de
+  Israel).

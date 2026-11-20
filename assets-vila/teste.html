@@ -388,6 +388,48 @@ async function rodar() {
     });
   } else item('Betesda').aviso('pulado: a fase não carregou');
 
+  grupo('O templo (fase-templo/)');
+  await abre('fase-templo/');
+  const okTe = await testesDaFase('Templo');
+  if (okTe) {
+    await teste('o templo: pórticos, mercado, balaustrada, Porta Formosa, os quinze degraus e o Pátio de Israel, até onde vai um israelita', async (it) => {
+      const T = W().TESTE, L = T.LAY, p = T.jog.o.position, falta = [];
+      for (const n of ['Templo_Colunas', 'Teto_Sul', 'Templo_Soreg', 'Muro_Leste', 'Muro_Nicanor', 'Templo_Altar', 'Templo_Santuario', 'Templo_Mercado', 'Fortaleza_Antonia_Templo']) if (!T.scene.getObjectByName(n)) falta.push(n);
+      let barracas = 0; T.scene.traverse((o) => { if (/^Barraca\d/.test(o.name)) barracas++; });
+      // a pé, de dentro do Pátio das Mulheres até o Pátio de Israel, subindo os degraus
+      T.E.fora = false; const V = p.constructor; p.set(L.formosa[0] - 4, T.chaoTerra(L.formosa[0] - 4, L.eixo), L.eixo); quadros(3);
+      T.E.alvoToque = new V(L.israel[0], 0, L.israel[2]); for (let k = 0; k < 300 && T.E.alvoToque; k++) T.laco(1 / 30);
+      const chegou = Math.hypot(p.x - L.israel[0], p.z - L.israel[2]) < 1.2, subiu = p.y > L.niveis.israel - 0.3;
+      // e não passa da mureta: o Pátio dos Sacerdotes é proibido
+      T.E.alvoToque = new V(L.x_geder - 4, 0, L.eixo); for (let k = 0; k < 120 && T.E.alvoToque; k++) T.laco(1 / 30);
+      const parou = p.x > L.x_geder;
+      const fumaca = T.scene.children.filter((o) => o.isSprite).length;
+      (!falta.length && barracas >= 9 && chegou && subiu && parou && fumaca > 10 ? it.ok : it.erro)((falta.length ? 'falta ' + falta.join(', ') + '; ' : '') + barracas + ' barracas; do Pátio das Mulheres ao de Israel pelos degraus: ' + (chegou && subiu ? 'sim (' + p.y.toFixed(1) + ' m)' : 'NÃO') + '; parou na mureta: ' + (parou ? 'sim' : 'NÃO') + '; fumaça do altar: ' + fumaca);
+    });
+    await teste('conversas no templo: o cambista, o levita, o mestre da Lei (Mt 28.11-15)', async (it) => {
+      const T = W().TESTE, p = T.jog.o.position, r = [];
+      for (const nome of ['Um cambista', 'Um levita', 'Um mestre da Lei']) {
+        const c = T.CONVERSAS.find((n) => n.nome === nome); if (!c) { r.push(nome + ': NÃO existe'); continue; }
+        T.E.fora = false; const q = c.o.position; p.set(q.x + 1.2, T.chaoTerra(q.x + 1.2, q.z), q.z); quadros(3);
+        T.acionar(); quadros(2);
+        const abriu = await responde(nome, 'Continuar', 2000);
+        for (let k = 0; k < 5; k++) { if (!(await responde('', 'Continuar', 500))) break; }
+        await responde('', 'Fechar', 1500); quadros(2);
+        r.push(nome + ': ' + (abriu && !T.E.fora ? 'sim' : 'NÃO'));
+      }
+      (r.every((s) => s.endsWith('sim')) ? it.ok : it.erro)(r.join('; '));
+    });
+    await teste('as saídas perguntam: a porta do norte (Betesda) e a do oeste (a cidade alta); o Sim do norte leva a Betesda', async (it) => {
+      const T = W().TESTE, L = T.LAY, r = [];
+      T.E.fora = false; T.E.perguntou = false; T.jog.o.position.set(L.oeste[0] - 2.2, 0, L.oeste[2]); quadros(3);
+      r.push('oeste: ' + ((await responde('cidade alta', 'Ainda não', 3000)) ? 'sim' : 'NÃO')); quadros(5);
+      T.E.fora = false; T.E.perguntou = false; T.jog.o.position.set(L.norte[0], 0, L.norte[2] - 1.6); quadros(3);
+      if (!await confirma('Betesda')) r.push('norte: NÃO');
+      else { const foi = await ate(() => /fase-betesda\/(index\.html)?$/.test(W().location.pathname), 8000); r.push('norte: ' + (foi ? 'sim, foi para ' + caminho() : 'NÃO mudou de página')); }
+      (r.every((s) => s.includes('sim')) ? it.ok : it.erro)(r.join('; '));
+    });
+  } else item('Templo').aviso('pulado: a fase não carregou');
+
   grupo('Gólgota e o sepulcro (fase-golgota/)');
   await abre('fase-golgota/');
   const okGo = await testesDaFase('Gólgota');
