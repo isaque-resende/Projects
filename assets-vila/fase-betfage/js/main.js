@@ -15,6 +15,7 @@ import { ctl, camera, jog, fw, DIR, rt, mv, tecla, JOY, naArea, toqueTela, DMAX,
 import { caminho } from './caminho.js';
 import { aldeiaPasso } from './vida.js';
 import { acionar, pergunta, perguntaBetania } from './saidas.js';
+import { INT } from './interacoes.js';
 import './visao.js';
 import { criaMarcador } from '../../limpo-motor/marcador.js';
 
@@ -86,7 +87,9 @@ const laco = (forca) => {
   if (E.saida === 'baixo' && !E.fora) perguntaBetania();
   if (E.saida === 'alto') botao.textContent = (toqueTela ? '' : 'E: ') + 'seguir para Jerusalém';
   else if (E.saida === 'baixo') botao.textContent = (toqueTela ? '' : 'E: ') + 'voltar para Betânia';
-  botao.style.display = E.saida && !E.fora ? 'block' : 'none';
+  E.int = E.saida || E.fora ? null : INT.perto(pj);           // quem (ou o que) está ao alcance: interacoes.js
+  if (E.int) { const s = (toqueTela ? '' : 'E: ') + E.int.verbo; if (botao.textContent !== s) botao.textContent = s; }
+  botao.style.display = (E.saida || E.int) && !E.fora ? 'block' : 'none';
 
   UT.uP.value[0].copy(pj); UT.uP.value[1].copy(ceifeiro.o.position); UT.uP.value[2].copy(atadeira.o.position); UT.uP.value[3].copy(carregador.o.position);
   fornoPasso(dt, t); ceifeiroPasso(dt, t); atadeiraPasso(dt); carregadorPasso(dt); debulhadorPasso(dt, t); joeiradeiraPasso(dt, t); partPasso(dt);
@@ -109,4 +112,4 @@ renderer.setAnimationLoop(() => laco());
 addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
 
 // para os testes automáticos: abrir com ?teste e usar TESTE no console
-if (globalThis.MODO_TESTE) globalThis.TESTE = { MIX, E, jog, laco, marca, tecla, bate, alturaEm, chaoTerra: terreno, scene, camera, CIRC, CAIXAS, renderer, AMOS };
+if (globalThis.MODO_TESTE) globalThis.TESTE = { MIX, E, jog, laco, marca, tecla, bate, alturaEm, chaoTerra: terreno, scene, camera, CIRC, CAIXAS, renderer, AMOS, INT };

@@ -3,6 +3,7 @@ import { E, botao, fade } from './estado.js';
 import { AMOS, terreno } from './cenario.js';
 import { tMin, tMax } from './aldeia.js';
 import { jog } from './jogador.js';
+import { INT } from './interacoes.js';
 import './vida.js';     // só para manter a ordem de montagem
 
 const PERG = document.createElement('div');
@@ -29,6 +30,7 @@ btSim.onclick = () => {
 // o botão de ação
 function acionar() {
   if (botao.style.display !== 'block' || E.fora) return;
+  if (E.int && !E.saida) { INT.usa(E.int, null, jog.o.position); return; }      // conversar / olhar (interacoes.js)
   if (E.saida === 'alto') { pergunta(); return; }
   if (E.saida === 'baixo') perguntaBetania();
 }

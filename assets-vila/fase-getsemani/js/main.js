@@ -8,6 +8,7 @@ import { terreno, AMOS, naRota, PRENSA, SOL_DIR } from './cenario.js';
 import { MIX } from './gente.js';
 import { ajustaLente, jog, camera, ctl, tecla, JOY, toqueTela, fw, rt, mv, naArea, alturaEm, camPasso, CAM } from './jogador.js';
 import { criaMarcador } from '../../limpo-motor/marcador.js';
+import { INT } from './interacoes.js';
 
 // ---------- os lugares: ao chegar perto de cada um, uma legenda (uma vez) ----------
 const [gx, , gz] = LAY.portao, [ox, , oz] = LAY.oito, [tx, , tz] = LAY.tres, [ax, , az] = LAY.agonia, [rx, ry, rz] = LAY.rocha;
@@ -63,6 +64,7 @@ function oracaoPasso(dt) {
 function acionar() {
   if (E.fora) return;
   if (AG.perto) { ajoelhar(); return; }
+  if (E.int) { INT.usa(E.int, null, jog.o.position); return; }      // conversar / olhar (interacoes.js)
   if (E.betesda) { perguntaBetesda(); return; }
   if (E.saida) perguntaVolta();
 }
@@ -139,10 +141,11 @@ const laco = (forca) => {
   E.betesda = !!E.ondeB;
   if (E.betesda && !E.fora && !E.perguntouB) { E.perguntouB = true; perguntaBetesda(); }
   if (!E.betesda && !naSaidaJardim(i - 6) && !naSaidaJardim(i + 6) && i < AMOS.length - 14) E.perguntouB = false;
-  const txt = AG.perto && !E.fora ? 'ajoelhar junto à rocha' : E.betesda ? 'seguir para Betesda' : E.saida ? 'voltar ao Monte das Oliveiras' : '';
+  E.int = E.fora || AG.perto ? null : INT.perto(pj);
+  const txt = AG.perto && !E.fora ? 'ajoelhar junto à rocha' : E.int ? E.int.verbo : E.betesda ? 'seguir para Betesda' : E.saida ? 'voltar ao Monte das Oliveiras' : '';
   if (txt) textoBotao((toqueTela ? '' : 'E: ') + txt);
   botao.style.display = txt && !E.fora ? 'block' : 'none';
-  ctl.marcaPino(botao.style.display === 'block' ? (AG.perto ? 'olhar' : 'ir') : '');
+  ctl.marcaPino(botao.style.display === 'block' ? (AG.perto || E.int ? 'olhar' : 'ir') : '');
 
   // câmera e sol
   E.dist += (E.distAlvo - E.dist) * Math.min(1, dt * 4);
@@ -155,4 +158,4 @@ if (!(globalThis.MODO_TESTE && new URLSearchParams(location.search).has('parado'
 addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; ajustaLente(); });
 
 // para os testes automáticos: abrir com ?teste (ou pelo teste.html) e usar TESTE no console
-if (globalThis.MODO_TESTE) globalThis.TESTE = { MIX, E, jog, laco, marca, tecla, bate, alturaEm: (x, z) => terreno(x, z), chaoTerra: terreno, scene, camera, CIRC, CAIXAS, renderer, AMOS, AG, LAY, ajoelhar, acionar, perguntaBetesda };
+if (globalThis.MODO_TESTE) globalThis.TESTE = { MIX, E, jog, laco, marca, tecla, bate, alturaEm: (x, z) => terreno(x, z), chaoTerra: terreno, scene, camera, CIRC, CAIXAS, renderer, AMOS, AG, LAY, ajoelhar, acionar, perguntaBetesda, INT };

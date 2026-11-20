@@ -171,6 +171,22 @@ async function responde(texto, botao, ms = 5000) {
   if (!btn) return false; aperta(btn); return true;
 }
 const confirma = (texto) => responde(texto, 'Sim');
+// interações (limpo-motor/interacoes.js): chega perto de cada item pelo nome, aperta E e vai até o fim da conversa
+async function testaInteracoes(it, nomes) {
+  const T = W().TESTE, p = T.jog.o.position, r = [];
+  r.push(T.INT.L.length + ' interações');
+  for (const nome of nomes) {
+    const item = T.INT.L.find((n) => n.nome === nome); if (!item) { r.push(nome + ': NÃO existe'); continue; }
+    T.E.fora = false; const q = item.o.position, d = Math.min(1.1, item.r - 0.4);
+    const lado = [[d, 0], [-d, 0], [0, d], [0, -d], [d * 0.7, d * 0.7], [-d * 0.7, -d * 0.7]].find(([dx, dz]) => !T.bate(q.x + dx, q.z + dz, 0.05)) || [d, 0];
+    p.set(q.x + lado[0], T.alturaEm(q.x + lado[0], q.z + lado[1], 50), q.z + lado[1]); quadros(3);
+    W().dispatchEvent(new (W().KeyboardEvent)('keydown', { code: 'KeyE' })); W().dispatchEvent(new (W().KeyboardEvent)('keyup', { code: 'KeyE' })); quadros(2);
+    let n = 0; while (n < 12 && (await responde('', 'Continuar', 700))) n++;
+    const fechou = await responde('', 'Fechar', 1200); quadros(2);
+    r.push(nome + ': ' + (fechou ? (n + 1) + ' falas' : 'NÃO abriu'));
+  }
+  (r.slice(1).every((x) => x.endsWith('falas')) ? it.ok : it.erro)(r.join('; '));
+}
 
 async function rodar() {
   btRodar.disabled = true; lista.innerHTML = ''; ITENS = []; window.RESULTADO = null;
@@ -179,6 +195,7 @@ async function rodar() {
   grupo('Betfagé (fase-betfage/)');
   await abre('fase-betfage/');
   const okBf = await testesDaFase('Betfagé', { eira: true });
+  if (okBf) await teste('interações em Betfagé: o dono da jumenta, a figueira seca, o ceifeiro (as primícias)', (it) => testaInteracoes(it, ['O dono da jumenta', 'a figueira seca', 'O ceifeiro']));
 
   grupo('Troca: Betfagé → Betânia');
   let chegouBt = false;
@@ -233,6 +250,7 @@ async function rodar() {
   if (!chegouOl) await abre('fase-oliveiras/?de=betfage');
   const okOl = await testesDaFase('Monte das Oliveiras');
   if (okOl) {
+    await teste('interações no Monte das Oliveiras: o homem da prensa e Jerusalém vista do alto (Lc 19.41)', (it) => testaInteracoes(it, ['O homem da prensa', 'Jerusalém']));
     await teste('câmera: de quina (como em Betfagé) na subida; no cume vem para trás do jogador, de frente para a cidade; o jogador sempre na tela', async (it) => {
       const T = W().TESTE, p = T.jog.o.position, i0 = 8, alvo = T.iCume;
       const naTela = () => { const V = p.constructor, c = T.camera; return [new V(p.x, p.y + 0.05, p.z), new V(p.x, p.y + 1.75, p.z)].every((v) => { v.project(c); return Math.abs(v.x) < 0.85 && Math.abs(v.y) < 0.9 && v.z < 1; }); };
@@ -305,6 +323,7 @@ async function rodar() {
   if (!chegouGs) await abre('fase-getsemani/');
   const okGs = await testesDaFase('Getsêmani');
   if (okGs) {
+    await teste('interações no Getsêmani: o guarda do olival (Jo 18.3-6), a oliveira dos três, o Cedrom', (it) => testaInteracoes(it, ['O guarda do olival', 'a oliveira dos três', 'o ribeiro de Cedrom']));
     await teste('a Rocha da Agonia: um tiro de pedra adiante dos três, e o jogador se ajoelha ali', async (it) => {
       const T = W().TESTE, L = T.LAY, p = T.jog.o.position;
       const rocha = T.scene.getObjectByName('Rocha_Agonia'); if (!rocha) throw new Error('a rocha não está na cena');
@@ -371,6 +390,7 @@ async function rodar() {
       await responde('', 'Fechar', 1500); quadros(3);
       (tel === 5 && deitados >= 10 && vazia === 1 && naAgua && /conversar/.test(txt) && falou && !T.E.fora ? it.ok : it.erro)(tel + ' alpendres; ' + deitados + ' enfermos nas esteiras e o lugar vazio do paralítico: ' + (vazia === 1 ? 'sim' : 'NÃO') + '; a água é obstáculo: ' + (naAgua ? 'sim' : 'NÃO') + '; botão "' + txt + '"; conversa: ' + (falou ? 'sim' : 'NÃO') + '; depois livre: ' + (!T.E.fora ? 'sim' : 'NÃO'));
     });
+    await teste('coisas para olhar em Betesda: a água do tanque (Jo 5.7), o lugar do paralítico, o curral (Jo 10.2-3)', (it) => testaInteracoes(it, ['a água do tanque', 'o lugar do paralítico', 'o curral']));
     await teste('as três saídas perguntam: o Getsêmani (leste), o Gólgota (oeste) e o templo (a Porta das Ovelhas)', async (it) => {
       const T = W().TESTE, L = T.LAY, N = T.AMOS.length, r = [];
       for (const [x, z, txt] of [[T.AMOS[1].x, T.AMOS[1].z, 'Getsêmani'], [T.AMOS[N - 2].x, T.AMOS[N - 2].z, 'Gólgota'], [L.porta[0], L.porta[2], 'templo']]) {
@@ -406,6 +426,7 @@ async function rodar() {
       const fumaca = T.scene.children.filter((o) => o.isSprite).length;
       (!falta.length && barracas >= 9 && chegou && subiu && parou && fumaca > 10 ? it.ok : it.erro)((falta.length ? 'falta ' + falta.join(', ') + '; ' : '') + barracas + ' barracas; do Pátio das Mulheres ao de Israel pelos degraus: ' + (chegou && subiu ? 'sim (' + p.y.toFixed(1) + ' m)' : 'NÃO') + '; parou na mureta: ' + (parou ? 'sim' : 'NÃO') + '; fumaça do altar: ' + fumaca);
     });
+    await teste('coisas para olhar no templo: o altar, o santuário, as arcas das ofertas (Mc 12.41-44), a placa', (it) => testaInteracoes(it, ['o altar', 'o santuário', 'o gazofilácio', 'a placa da balaustrada']));
     await teste('conversas no templo: o cambista, o levita, o mestre da Lei (Mt 28.11-15)', async (it) => {
       const T = W().TESTE, p = T.jog.o.position, r = [];
       for (const nome of ['Um cambista', 'Um levita', 'Um mestre da Lei']) {
@@ -440,6 +461,7 @@ async function rodar() {
       const ok = ['maria', 'pausa', 'dois'].every((f) => fases.has(f)) && C.fase === 'espera';
       (ok ? it.ok : it.erro)('a cena passou por: ' + [...fases].join(' → ') + '; terminou: ' + (C.fase === 'espera' ? 'sim (os dois saíram pela porta)' : 'NÃO (' + C.fase + ')'));
     });
+    await teste('coisas para olhar na cidade: o braseiro, o tribunal, a escada da sala de cima (Lc 22.12-20), o palácio', (it) => testaInteracoes(it, ['o braseiro', 'o tribunal', 'a escada da sala de cima', 'o palácio']));
     await teste('conversas na cidade: a mulher à porta do cenáculo e a serva junto ao braseiro (Jo 18.17-18)', async (it) => {
       const T = W().TESTE, p = T.jog.o.position, r = [];
       for (const nome of ['Uma mulher à porta', 'A serva da porta']) {
@@ -497,6 +519,7 @@ async function rodar() {
       }
       (cena && conv && !T.E.fora ? it.ok : it.erro)('a cena passou por: ' + [...fases].join(' → ') + '; conversa com Maria Madalena: ' + (conv ? 'sim' : 'NÃO'));
     });
+    await teste('coisas para olhar no Gólgota: as cruzes (as sete palavras), o letreiro, a pedra rolada, os túmulos antigos', (it) => testaInteracoes(it, ['as cruzes', 'o letreiro', 'a pedra rolada', 'os túmulos antigos']));
     await teste('as pontas da estrada perguntam: "voltar para a cidade" (sudeste) e "seguir pela estrada de Emaús" (noroeste)', async (it) => {
       const T = W().TESTE, N = T.AMOS.length, r = [];
       for (const [i, txt] of [[1, 'cidade'], [N - 2, 'Emaús']]) {
@@ -516,6 +539,14 @@ async function rodar() {
     const erros = [...new Set(W().ERROS || []), ...arquivosFalhos()];
     if (erros.length) it.erro(erros.slice(0, 10).join('\n')); else it.ok(tempo.toFixed(1) + ' s');
   });
+  await teste('a abertura: a conversa com Cléopas (o encontro na estrada de Emaús)', async (it) => {
+    const T = W().TESTE; let n = 0, viu = '';
+    for (let k = 0; k < 40 && !viu; k++) { quadros(30); const d = [...D().querySelectorAll('div')].find((x) => x.style.zIndex === '8' && visivel(x)); if (d) viu = d.textContent; await espera(50); }
+    while (n < 8 && (await responde('Cléopas', 'Continuar', 800))) n++;
+    const fechou = await responde('Cléopas', 'Fechar', 1500); quadros(30);
+    (fechou && /Cléopas/.test(viu) ? it.ok : it.erro)('a conversa abriu: ' + (viu ? 'sim' : 'NÃO') + '; ' + (n + 1) + ' falas; terminou: ' + (fechou ? 'sim' : 'NÃO'));
+  });
+  await teste('interações em Betânia: Marta, Lázaro (Jo 11), a padeira, o poço', (it) => testaInteracoes(it, ['Marta', 'Lázaro', 'A padeira', 'o poço']));
 
   grupo('Backups e endereços antigos');
   for (const url of ['fase-betfage/antigo.html', 'fase-betania/antigo.html']) {

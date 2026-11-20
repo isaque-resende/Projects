@@ -101,6 +101,34 @@ CONVERSAS.push({ nome: 'Um homem com um cordeiro', o: romeiro.o, r: 2.2, falas: 
 ] });
 const AND = [{ st: romeiro, i: 2, ida: true, espera: 0 }, { st: puxa, i: 1, ida: true, espera: 6 }];
 
+
+// ---------- as coisas para olhar (entram na mesma lista das conversas, com outro verbo e sem nome no título) ----------
+const coisa = (nome, x, z, falas, r = 2.2, verbo = 'olhar ' + nome) => CONVERSAS.push({ nome, titulo: '', verbo, o: { position: { x, z }, visible: true }, falas, r });
+coisa('o altar', ix - 1.0, iz - 2.6, [
+  'O altar dos holocaustos, de pedras brutas, com os quatro chifres; o fogo nunca se apaga (Lv 6.13).',
+  'Cada manhã e cada tarde, um cordeiro de um ano, sem defeito, é oferecido aqui: o holocausto contínuo (Êx 29.38-42).',
+  'João Batista, vendo Jesus, disse: “Eis o Cordeiro de Deus, que tira o pecado do mundo” (Jo 1.29).',
+], 1.8);
+coisa('o santuário', ix - 1.0, iz + 2.6, [
+  'O santuário: o pórtico alto e branco, coberto de ouro. Lá dentro, o Lugar Santo, com o candelabro, a mesa dos pães e o altar do incenso; e, atrás do véu, o Santo dos Santos, onde só o sumo sacerdote entra, uma vez por ano (Êx 26.33; Lv 16.2).',
+  'Na sexta, à hora nona, o véu do santuário se rasgou em dois, de alto a baixo (Mc 15.38).',
+], 1.8);
+coisa('o gazofilácio', 17.5, 8.5, [
+  'As arcas das ofertas, no Pátio das Mulheres, com as bocas em forma de trombeta.',
+  'Jesus, sentado aqui defronte, viu uma viúva pobre lançar duas pequenas moedas. E disse: “Esta pobre viúva deitou mais do que todos; porque todos deitaram do que lhes sobejava, mas esta, da sua pobreza, deitou tudo o que tinha, todo o seu sustento” (Mc 12.41-44).',
+], 2.6, 'olhar as arcas das ofertas');
+coisa('as mesas do mercado', LAY.mercado[0], LAY.mercado[2] - 3, [
+  'As mesas dos cambistas e as gaiolas das pombas, dentro do pátio do templo.',
+  'No começo, numa Páscoa, ele fez um açoite de cordas e expulsou todos do templo, as ovelhas e os bois, e disse: “Não façais da casa de meu Pai casa de negócio.” E os discípulos se lembraram: “O zelo da tua casa me devorará” (Jo 2.13-17; Sl 69.9).',
+], 3.0, 'olhar o mercado');
+coisa('a placa da balaustrada', LAY.soreg[0], LAY.soreg[2], [
+  'Uma placa de pedra, com letras vermelhas em grego: “Nenhum estrangeiro entre além da balaustrada e do muro em volta do santuário. Quem for apanhado será culpado da própria morte.”',
+  'Os profetas diziam que a casa de Deus seria chamada casa de oração para todos os povos (Is 56.7).',
+], 2.0, 'ler a placa');
+coisa('a Fortaleza Antônia', LAY.norte[0] - 6, LAY.norte[2] + 2.5, [
+  'A Fortaleza Antônia, colada no canto do templo: daqui os soldados romanos vigiam o pátio durante as festas, para não haver tumulto.',
+], 2.8, 'olhar a fortaleza');
+
 function npcsPasso(dt) {
   for (const o of [...ovelhas, ...bois]) {
     if (o.espera > 0) { o.espera -= dt; continue; }

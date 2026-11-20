@@ -79,6 +79,32 @@ function cenaPasso(dt, pj) {
   }
 }
 
+
+// ---------- as coisas para olhar (entram na mesma lista das conversas, com outro verbo e sem nome no título) ----------
+const coisa = (nome, x, z, falas, r = 2.2, verbo = 'olhar ' + nome) => CONVERSAS.push({ nome, titulo: '', verbo, o: { position: { x, z }, visible: true }, falas, r });
+coisa('o braseiro', pb.x - 1.2, pb.z, [
+  'Um braseiro de barro, com as brasas ainda mornas.',
+  'Os servos e os guardas acenderam um fogo de brasas, porque fazia frio, e se aquentavam; e Pedro estava com eles, aquentando-se (Jo 18.18).',
+  'E, virando-se o Senhor, olhou para Pedro; e Pedro se lembrou da palavra: “Antes que o galo cante, me negarás três vezes.” E, saindo dali, chorou amargamente (Lc 22.61-62).',
+], 1.6);
+coisa('o tribunal', pg.x - 3.0, pg.z, [
+  'O tribunal de pedra, sobre o Pavimento: daqui o governador julga.',
+  'Estando ele assentado no tribunal, sua mulher mandou dizer-lhe: “Não entres na questão desse justo, porque num sonho muito sofri por causa dele” (Mt 27.19).',
+  'Pilatos disse: “Eis aqui o vosso rei.” Mas eles bradaram: “Tira, tira, crucifica-o!” (Jo 19.14-15).',
+], 2.4);
+const cr = LAY.cenaculo_r;
+coisa('a escada da sala de cima', cr[0] + 5.0, cr[2] - 2.0, [
+  'A escada de fora, que sobe para a sala grande do andar de cima. A porta lá em cima está fechada.',
+  '“E ele vos mostrará um grande cenáculo mobilado; aí fazei preparativos” (Lc 22.12).',
+  'Na quinta à noite, ele tomou o pão, e, havendo dado graças, partiu-o e disse: “Isto é o meu corpo, que por vós é dado; fazei isto em memória de mim.” E o cálice: “Este cálice é o novo testamento no meu sangue, que é derramado por vós” (Lc 22.19-20).',
+], 2.4, 'olhar a escada');
+const pl = LAY.palacio;
+coisa('o palácio', pl[1] + 1.5, (pl[2] + pl[3]) / 2 - 12, [
+  'O palácio de Herodes, com as três torres: o pretório, onde o governador fica durante a festa.',
+  'Os principais sacerdotes não entraram no pretório, para não se contaminarem, e poderem comer a Páscoa (Jo 18.28).',
+  'Pilatos perguntou a Jesus: “Tu és o rei dos judeus?” E ele respondeu: “O meu reino não é deste mundo” (Jo 18.33-36).',
+], 2.6, 'olhar o palácio');
+
 function npcsPasso(dt, pj) {
   for (const g of galinhas) {
     if (g.espera > 0) { g.espera -= dt; continue; }

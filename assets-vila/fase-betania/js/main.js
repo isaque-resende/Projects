@@ -7,6 +7,7 @@ import { CASAS, portasPasso, chaoTerra, alturaEm } from './casas.js';
 import { porteiraPasso } from './vila.js';
 import { CAMT, TUM, pedraPasso } from './tumulo.js';
 import { andante, padeira, marta, lazaro, cleopas, NOMES } from './personagens.js';
+import { INT } from './interacoes.js';
 import { fogoPasso, padeiraPasso } from './forno.js';
 import { pisadorPasso, barracaPasso } from './oficios.js';
 import { aguadeira, aguadeiraPasso } from './poco.js';
@@ -101,12 +102,12 @@ const laco = (forca) => {
   E.pedraPerto = pj.y - chaoTerra(pj.x, pj.z) < 1.2 && Math.hypot(pj.x - TUM.lugar.x, pj.z - TUM.lugar.z) < 3.6 && Math.abs(TUM.k - TUM.alvo) < 0.01;
   E.tumbaPerto = E.pedraPerto && TUM.alvo === 1 && TUM.k > 0.99 && Math.hypot(pj.x - TUM.lugar.x, pj.z - TUM.lugar.z) < 3.4;
   E.portaPerto = [CASAS[0]].find((c) => pj.y < 0.3 && c.mundo(c.px, c.pz).distanceTo(new THREE.Vector3(pj.x, 0, pj.z)) < 2.6) || null;
-  E.falaPerto = [marta, lazaro, cleopas].find((n) => Math.hypot(n.o.position.x - pj.x, n.o.position.z - pj.z) < 2.2) || null;
+  E.falaPerto = pj.y - chaoTerra(pj.x, pj.z) < 1.0 ? INT.perto(pj) : null;       // quem (ou o que) está ao alcance: interacoes.js
   if (naSaida) textoBotao((toqueTela ? '' : 'E: ') + 'seguir para Betfagé');
   if (jog.o.position.x < -35 && !E.fora) perguntaBetfage();    // chegou ao fim da estrada: pergunta
   else if (E.tumbaPerto) textoBotao((toqueTela ? '' : 'E: ') + 'entrar no túmulo');
   else if (E.pedraPerto) textoBotao((toqueTela ? '' : 'E: ') + (TUM.alvo ? 'rolar a pedra de volta' : 'rolar a pedra'));
-  else if (E.falaPerto) textoBotao((toqueTela ? '' : 'E: ') + 'falar com ' + NOMES.get(E.falaPerto));
+  else if (E.falaPerto) textoBotao((toqueTela ? '' : 'E: ') + E.falaPerto.verbo);
   else if (E.portaPerto) textoBotao((toqueTela ? '' : 'E: ') + 'entrar na casa');
   botao.style.display = (naSaida || E.portaPerto || E.pedraPerto || E.falaPerto) && !E.fora ? 'block' : 'none';
   marcaPino(botao.style.display === 'block' ? (naSaida ? 'ir' : E.tumbaPerto ? 'entrar' : E.pedraPerto ? 'rolar' : E.falaPerto ? 'falar' : 'entrar') : '');
@@ -133,4 +134,4 @@ renderer.setAnimationLoop(() => laco());
 addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
 
 // para os testes automáticos: abrir com ?teste e usar TESTE no console
-if (globalThis.MODO_TESTE) globalThis.TESTE = { MIX, E, jog, laco, marca, tecla, bate, alturaEm, chaoTerra, scene, camera, CIRC, CAIXAS, renderer };
+if (globalThis.MODO_TESTE) globalThis.TESTE = { MIX, E, jog, laco, marca, tecla, bate, alturaEm, chaoTerra, scene, camera, CIRC, CAIXAS, renderer, INT };

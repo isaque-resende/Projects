@@ -439,3 +439,39 @@ direto ao Gólgota, pela estrada ao longo do muro. A ponta noroeste do Gólgota 
 - **Maria Madalena** fica do lado de fora, junto ao sepulcro, chorando (Jo 20.11). A conversa com ela segue Jo 20.13 e
   Mc 16.1-4. A aparição do Senhor a ela (Jo 20.14-17) não está na fase: fica para decidir.
 - A volta para a cidade (a ponta sudeste da estrada) leva à cidade alta, pela Porta de Genat.
+
+## Interações (`limpo-motor/interacoes.js`)
+
+Pessoas para conversar e coisas para olhar, com o mesmo botão de ação.
+- `INT.pessoa(nome, ator, falas)` e `INT.coisa(nome, x, z, falas)`;
+- `INT.perto(posição)` devolve o mais perto dentro do raio;
+- `INT.usa(item)` abre as falas, uma por vez (`conversa.js`). Quem conversa se vira para o jogador.
+
+Cada fase das antigas tem o seu `js/interacoes.js`. As novas (Betesda, templo, cidade, Gólgota) põem as coisas na mesma
+lista das conversas (`CONVERSAS`, com `verbo` e `titulo`).
+
+- **Betânia:**
+  - pessoas: a abertura com Cléopas (o encontro na porta da estrada de Emaús); Marta (a ceia e a unção, Jo 12.1-3;
+    "Eu sou a ressurreição", Jo 11.25); Lázaro (Jo 11.39-44; 12.10-11); a padeira, o rapaz do forno, o homem do lagar
+    (Mc 12.1-8), o vendedor (os ramos, Jo 12.12-13), uma mulher, a moça do poço (Jo 4.14), o lavrador (Lc 9.62) e um
+    freguês;
+  - coisas: o poço e o aprisco (Jo 10.7-11).
+- **Betfagé:**
+  - pessoas: o dono da jumenta (Lc 19.33-34), o vizinho (Zc 9.9), o ceifeiro (as primícias, Lv 23.10-11, que caem
+    neste domingo), a moça dos feixes (Lv 23.22), o carregador, os da eira (Mt 3.12) e um caminhante;
+  - coisas: a jumenta e o jumentinho (Mc 11.2-7), a figueira seca (Mc 11.12-22), a eira e a cevada (1Co 15.20).
+- **Monte das Oliveiras:**
+  - pessoas: o homem da prensa (Êx 27.20);
+  - coisas: Jerusalém do alto (Lc 19.41-44), a descida (Lc 19.37-40) e o caminho de Betfagé (Mt 21.1).
+- **Getsêmani:**
+  - pessoas: um guarda do olival, novo, que conta a prisão (Jo 18.2-6; Lc 22.50-51; Mc 14.50-52);
+  - coisas: a prensa, o lugar dos oito, a oliveira dos três (Mt 26.40-41), o portão (Jo 18.2), o Cedrom (2Sm 15.23)
+    e os túmulos do vale (Mt 23.29).
+- **Betesda:** a água do tanque (Jo 5.4, 7), o lugar do paralítico (Jo 5.5-14), a Porta das Ovelhas (Ne 3.1; Jo 10.9)
+  e o curral (Jo 10.2-3).
+- **Templo:** o altar (Êx 29.38-42; Jo 1.29), o santuário (Mc 15.38), as arcas das ofertas (Mc 12.41-44), o mercado
+  (Jo 2.13-17), a placa da balaustrada (Is 56.7) e a Antônia.
+- **Cidade alta:** o braseiro (Jo 18.18; Lc 22.61-62), o tribunal (Mt 27.19; Jo 19.14-15), a escada da sala de cima
+  (Lc 22.12, 19-20) e o palácio (Jo 18.28, 33-36).
+- **Gólgota:** as cruzes (as sete palavras), o letreiro (Jo 19.19-22), a pedra rolada (Mt 27.66; 28.2-4) e os túmulos
+  antigos (Mt 27.51-53).

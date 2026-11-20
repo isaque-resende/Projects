@@ -8,6 +8,7 @@ import { cleopas } from './personagens.js';
 import { jog, foco, camera, DIR } from './jogador.js';
 import { CASAI, CEU0, distTumba } from './interiores.js';
 import './acoes.js';     // só para manter a ordem de montagem
+import { INT, INTRO as CONV } from './interacoes.js';
 
 const DE = new URLSearchParams(location.search).get('de');
 const INTRO = { on: DE !== 'betfage', t: 0, fase: 'dentro' };
@@ -83,7 +84,7 @@ function introPasso(dt) {
       if (!INTRO.chegou && d.length() > 0.1) { d.normalize(); o.position.addScaledVector(d, 1.0 * dt); lerpAng(o, Math.atan2(d.x, d.z), Math.min(1, dt * 6)); jog.toca('Andar'); }
       else { INTRO.chegou = true; jog.toca('Parado'); c.aberta = false; lerpAng(o, Math.atan2(cleopas.o.position.x - o.position.x, cleopas.o.position.z - o.position.z), Math.min(1, dt * 5));
         if (T2 > 4.5) { INTRO.fase = 'conversa'; cleopas.toca('Conversando'); jog.toca('Conversando');
-          dialogo('Cléopas', '(Cléopas e o discípulo conversam sobre os acontecimentos estranhos do fim de semana…)', [['Prosseguir', () => { cleopas.toca('Parado'); fimIntro(); }]]); } }
+          const it = INT.L.find((i) => i.nome === 'Cléopas'); INT.usa(it, () => { CONV.feita = true; cleopas.toca('Parado'); fimIntro(); }); } }
     }
   }
   lerpAng(cleopas.o, Math.atan2(o.position.x - cleopas.o.position.x, o.position.z - cleopas.o.position.z), Math.min(1, dt * 3));

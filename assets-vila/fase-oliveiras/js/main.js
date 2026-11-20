@@ -7,12 +7,14 @@ import { MIX } from './gente.js';
 import { prensaPasso, PRENSA } from './prensa.js';
 import { ajustaLente, jog, camera, ctl, tecla, JOY, toqueTela, fw, rt, mv, naArea, alturaEm, camPasso, CAM, dirEm } from './jogador.js';
 import { PREG, pregacaoPasso, lembrar } from './pregacao.js';
+import { INT } from './interacoes.js';
 import { criaMarcador } from '../../limpo-motor/marcador.js';
 
 // ---------- o botão de ação ----------
 function acionar() {
   if (E.fora) return;
   if (PREG.perto) { lembrar(); return; }
+  if (E.int) { INT.usa(E.int, null, jog.o.position); return; }      // conversar / olhar (interacoes.js)
   if (E.saida === 'betfage') perguntaBetfage();
   else if (E.saida === 'getsemani') perguntaGetsemani();
 }
@@ -95,10 +97,11 @@ const laco = (forca) => {
   pregacaoPasso(pj, t);
   if (!prensaVista && pj.distanceTo(PRENSA.position) < 7) { prensaVista = true; fala('Uma prensa de azeite. O jardim lá embaixo leva esse nome: Getsêmani, “prensa de azeite”.'); setTimeout(() => fala(''), 6000); }
   // botão de ação
-  const txt = PREG.perto && !E.fora ? 'sentar diante do templo' : E.saida === 'betfage' ? 'voltar para Betfagé' : E.saida === 'getsemani' ? 'seguir para o Getsêmani' : '';
+  E.int = E.fora || PREG.perto ? null : INT.perto(pj);
+  const txt = PREG.perto && !E.fora ? 'sentar diante do templo' : E.int ? E.int.verbo : E.saida === 'betfage' ? 'voltar para Betfagé' : E.saida === 'getsemani' ? 'seguir para o Getsêmani' : '';
   if (txt) textoBotao((toqueTela ? '' : 'E: ') + txt);
   botao.style.display = txt && !E.fora ? 'block' : 'none';
-  ctl.marcaPino(botao.style.display === 'block' ? (PREG.perto ? 'olhar' : 'ir') : '');
+  ctl.marcaPino(botao.style.display === 'block' ? (PREG.perto || E.int ? 'olhar' : 'ir') : '');
 
   prensaPasso(dt);
 
@@ -113,4 +116,4 @@ if (!(globalThis.MODO_TESTE && new URLSearchParams(location.search).has('parado'
 addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; ajustaLente(); });
 
 // para os testes automáticos: abrir com ?teste (ou pelo teste.html) e usar TESTE no console
-if (globalThis.MODO_TESTE) globalThis.TESTE = { MIX, E, jog, laco, marca, tecla, bate, alturaEm: (x, z) => terreno(x, z), chaoTerra: terreno, scene, camera, CIRC, CAIXAS, renderer, AMOS, iCume, PAN, PREG, lembrar };
+if (globalThis.MODO_TESTE) globalThis.TESTE = { MIX, E, jog, laco, marca, tecla, bate, alturaEm: (x, z) => terreno(x, z), chaoTerra: terreno, scene, camera, CIRC, CAIXAS, renderer, AMOS, iCume, PAN, PREG, lembrar, INT };

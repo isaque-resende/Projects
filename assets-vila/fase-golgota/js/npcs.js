@@ -66,6 +66,33 @@ function cenaPasso(dt, pj) {
   }
 }
 
+
+// ---------- as coisas para olhar (entram na mesma lista das conversas, com outro verbo e sem nome no título) ----------
+const coisa = (nome, x, z, falas, r = 2.2, verbo = 'olhar ' + nome) => CONVERSAS.push({ nome, titulo: '', verbo, o: { position: { x, z }, visible: true }, falas, r });
+const [gx, , gz] = LAY.golgota;
+coisa('as cruzes', gx, gz - 2.0, [
+  'As três cruzes, vazias, no alto do rochedo. Os corpos foram tirados na sexta, antes do sábado (Jo 19.31).',
+  '“Pai, perdoa-lhes, porque não sabem o que fazem” (Lc 23.34).',
+  'A um dos malfeitores: “Em verdade te digo que hoje estarás comigo no Paraíso” (Lc 23.43).',
+  'À sua mãe: “Mulher, eis aí o teu filho.” Ao discípulo: “Eis aí tua mãe” (Jo 19.26-27).',
+  '“Eli, Eli, lemá sabactâni?”, isto é: “Deus meu, Deus meu, por que me desamparaste?” (Mc 15.34; Sl 22.1).',
+  '“Tenho sede” (Jo 19.28).',
+  '“Está consumado” (Jo 19.30).',
+  '“Pai, nas tuas mãos entrego o meu espírito” (Lc 23.46).',
+], 2.6);
+coisa('o letreiro', gx, gz + 2.0, [
+  'No alto da cruz do meio, uma tábua com letras em três línguas: “JESUS NAZARENO, REI DOS JUDEUS”, em hebraico, grego e latim (Jo 19.19-20).',
+  'Os principais sacerdotes pediram a Pilatos: “Não escrevas: Rei dos judeus, mas que ele disse: Sou o rei dos judeus.” Pilatos respondeu: “O que escrevi, escrevi” (Jo 19.21-22).',
+], 2.2, 'ler o letreiro');
+coisa('a pedra rolada', sx + 1.6, sz - 2.6, [
+  'A pedra redonda que fechava o sepulcro, rolada para o lado. Era muito grande (Mc 16.4).',
+  'Os principais sacerdotes tinham mandado selar a pedra e pôr uma guarda (Mt 27.66). Mas houve um grande terremoto: um anjo do Senhor desceu do céu, revolveu a pedra e se assentou sobre ela; e os guardas ficaram como mortos (Mt 28.2-4).',
+], 1.8, 'olhar a pedra');
+coisa('os túmulos antigos', -32.5, 15.0, [
+  'Túmulos antigos, cavados na parede da pedreira, fechados com pedras quadradas.',
+  'Quando ele expirou, a terra tremeu, as pedras se fenderam, e os sepulcros se abriram; e muitos corpos de santos que dormiam foram ressuscitados, e, saindo dos sepulcros, depois da ressurreição dele, entraram na cidade santa e apareceram a muitos (Mt 27.51-53).',
+], 3.0, 'olhar os túmulos');
+
 function npcsPasso(dt, pj) { cenaPasso(dt, pj); }
 
 export { CONVERSAS, CENA, npcsPasso, maria, pedro, joao };

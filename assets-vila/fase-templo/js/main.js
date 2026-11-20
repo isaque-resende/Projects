@@ -38,7 +38,7 @@ function conversar() {
   if (!quem) return;
   const n = quem; E.alvoToque = null; CAM.conversa = true;
   jog.o.rotation.y = Math.atan2(n.o.position.x - jog.o.position.x, n.o.position.z - jog.o.position.z);
-  conversa(n.nome, n.falas, () => { CAM.conversa = false; n.ouviu = true; });
+  conversa(n.titulo ?? n.nome, n.falas, () => { CAM.conversa = false; n.ouviu = true; });
 }
 
 // ---------- o botão de ação e as saídas ----------
@@ -110,7 +110,7 @@ const laco = (forca) => {
   const saida = E.norte || E.oeste;
   if (saida && !E.fora && !E.perguntou) { E.perguntou = true; (E.norte ? perguntaBetesda : perguntaCidade)(); }
   if (!saida) E.perguntou = false;
-  const txt = quem && !E.fora ? 'conversar com ' + quem.nome.toLowerCase() : E.norte ? 'voltar a Betesda' : E.oeste ? 'ir para a cidade alta' : '';
+  const txt = quem && !E.fora ? (quem.verbo || 'conversar com ' + quem.nome.toLowerCase()) : E.norte ? 'voltar a Betesda' : E.oeste ? 'ir para a cidade alta' : '';
   if (txt) textoBotao((toqueTela ? '' : 'E: ') + txt);
   botao.style.display = txt && !E.fora ? 'block' : 'none';
   ctl.marcaPino(botao.style.display === 'block' ? (quem ? 'olhar' : 'ir') : '');
@@ -127,4 +127,4 @@ if (!(globalThis.MODO_TESTE && new URLSearchParams(location.search).has('parado'
 addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; ajustaLente(); });
 
 // para os testes automáticos: abrir com ?teste (ou pelo teste.html) e usar TESTE no console
-if (globalThis.MODO_TESTE) globalThis.TESTE = { MIX, E, jog, laco, marca, tecla, bate, alturaEm: (x, z) => terreno(x, z), chaoTerra: terreno, scene, camera, CIRC, CAIXAS, renderer, LAY, CONVERSAS, acionar, conversar };
+if (globalThis.MODO_TESTE) globalThis.TESTE = { MIX, E, jog, laco, marca, tecla, bate, alturaEm: (x, z) => terreno(x, z), chaoTerra: terreno, scene, camera, CIRC, CAIXAS, renderer, LAY, CONVERSAS, acionar, conversar, INT: { L: CONVERSAS } };

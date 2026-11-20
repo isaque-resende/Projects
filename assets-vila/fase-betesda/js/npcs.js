@@ -71,6 +71,29 @@ const PORTA_IN = V3(LAY.porta[0], 0, LAY.porta[2] + 0.5);
 const ROTA_P = [...AMOS.filter((a, i) => i % 6 === 0 && a.x > LAY.porta[0] + 1).map((a) => a.clone()), V3(LAY.porta[0], 0, 3.8), PORTA_IN];
 const PAS = { i: 1, ida: true, espera: 0 };
 
+
+// ---------- as coisas para olhar (entram na mesma lista das conversas, com outro verbo e sem nome no título) ----------
+const coisa = (nome, x, z, falas, r = 2.2, verbo = 'olhar ' + nome) => CONVERSAS.push({ nome, titulo: '', verbo, o: { position: { x, z }, visible: true }, falas, r });
+const [tq, , tqz] = LAY.tanque, [pa, , paz] = LAY.paralitico, [po, , poz] = LAY.porta, [cu, , cuz] = LAY.curral;
+coisa('a água do tanque', tq, tqz, [
+  'A água verde dos tanques, parada.',
+  'Dizia-se que, de tempos em tempos, um anjo descia e agitava a água, e o primeiro que entrasse depois disso ficava são (Jo 5.4).',
+  'O paralítico disse a Jesus: “Senhor, não tenho homem algum que, quando a água é agitada, me ponha no tanque; mas, enquanto eu vou, desce outro antes de mim” (Jo 5.7).',
+], 3.0);
+coisa('o lugar do paralítico', pa, paz, [
+  'Aqui não há esteira. Era o lugar de um homem que estava enfermo havia trinta e oito anos (Jo 5.5).',
+  'Jesus perguntou: “Queres ficar são?” E disse: “Levanta-te, toma o teu leito e anda.” Logo aquele homem ficou são, tomou o seu leito e andou. E aquele dia era sábado (Jo 5.6-9).',
+  'Depois Jesus o achou no templo e lhe disse: “Eis que já estás são; não peques mais, para que não te suceda alguma coisa pior” (Jo 5.14).',
+], 1.6, 'olhar o lugar');
+coisa('a Porta das Ovelhas', po, poz - 2.5, [
+  'A Porta das Ovelhas: o sumo sacerdote Eliasibe e os sacerdotes a reconstruíram e a consagraram, no tempo de Neemias (Ne 3.1).',
+  'Jesus disse: “Eu sou a porta; se alguém entrar por mim, salvar-se-á, e entrará, e sairá, e achará pastagens” (Jo 10.9).',
+], 2.4);
+coisa('o curral', cu, cuz, [
+  'As ovelhas do curral esperam a vez de entrar no templo.',
+  '“Aquele que entra pela porta é o pastor das ovelhas. A este o porteiro abre, e as ovelhas ouvem a sua voz, e chama pelo nome às suas ovelhas, e as traz para fora” (Jo 10.2-3).',
+], 3.5);
+
 function npcsPasso(dt) {
   for (const o of ovelhas) {
     if (o.espera > 0) { o.espera -= dt; continue; }

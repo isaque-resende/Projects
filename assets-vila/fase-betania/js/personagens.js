@@ -35,4 +35,4 @@ CIRC.push({ x: ple.x, z: ple.z, r: 0.35 });
 const andante = ator(nRobusto, 1.74, 0, 0, 0, 'Andar');
 CIRC.push({ x: pve.x, z: pve.z, r: 0.3 });
 
-export { padeira, FO, pisador, LG, vendedor, lenco, andante, marta, lazaro, cleopas, NOMES };
+export { padeira, FO, pisador, LG, vendedor, lenco, andante, marta, lazaro, cleopas, NOMES, foguista, ajudante };
