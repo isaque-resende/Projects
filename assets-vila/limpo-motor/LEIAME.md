@@ -240,6 +240,11 @@ de peças, texturas pedidas por prompt, peças do Tripo) vai entrar no lugar del
   têm escala própria. A tabela está no começo do arquivo. A maquete é desenhada num "plano velho" e levada ao mundo por
   `para_mundo` (espelha o norte e reduz a 0,6 em volta da rocha); por isso há `h_velho` (onde os prédios são
   assentados) e `h_mundo` (o chão). O gerador do Getsêmani usa o mesmo `h_mundo`, então os chãos batem.
+- **Escala de RPG** (como Betânia e Betfagé): a cidade é encolhida em volta da quina nordeste do templo (`encolhe`
+  em `relevo.py`: as distâncias e o templo a ~0,18 do real, as alturas a ~0,48), e a quina fica onde estava, então o
+  Getsêmani não muda. O que se vê de perto é desenhado em metros do jogo (`MH`, `MV`): casas de 4 a 7 m, bancas de
+  2 m, ovelhas de 1 m, portas de 3 m, o rochedo do Gólgota com ~12 m e ~4,5 m de altura, o horto com ~13 x 20 m e a
+  entrada do sepulcro com 1,1 x 1,5 m. O templo inteiro tem ~50 x 75 m.
 - **A geografia** (pelo mapa "Jerusalém na época de Jesus" e pelas distâncias reais):
   - o Getsêmani fica em frente ao canto norte do muro leste do templo;
   - a Porta de Susã fica no muro leste, alinhada com o santuário, que fica a sudoeste do jardim e olha para o leste;

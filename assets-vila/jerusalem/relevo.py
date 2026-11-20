@@ -4,26 +4,27 @@
 # y para cima, o +z aponta para o sul). No Blender: (x, -z, y), então lá o norte é +y, como num mapa.
 # A Rocha da Agonia fica em (-27, -8).
 #
-# As distâncias reais, medidas a partir da Basílica da Agonia, entram reduzidas: a cidade fica a ~0,3 da distância de
-# verdade e os prédios a ~0,3 do tamanho (as fases são compactas, como Betânia e Betfagé). O jardim e o vale do
-# Cedrom têm escala própria (o leito fica a 35 m da rocha, e não a 21): é ali que se anda.
+# As distâncias reais, medidas a partir da Basílica da Agonia, entram reduzidas, em escala de RPG (como Betânia e
+# Betfagé): a cidade fica a ~0,18 da distância de verdade, e o templo a ~0,18 do tamanho; as alturas, a ~0,48. O que
+# se vê de perto (casas, bancas, portas, o Gólgota, o horto) é desenhado em metros do jogo (MH, MV). O jardim e o vale
+# do Cedrom têm escala própria (o leito fica a 35 m da rocha): é ali que se anda.
 #
 #   lugar                         real (m, a partir da rocha)      mundo (x, z)
 #   leito do Cedrom                ~70 a oeste                      x = -62,5
 #   muro leste do templo           ~270 a oeste                     x = -107
 #   quina nordeste do templo       ~270 O, ~60 N                    (-107, -26)
-#   Porta Dourada (Susã)           ~265 O, ~100 S                   (-107, +35), alinhada com o santuário
-#   santuário (Domo da Rocha)      ~420 O, ~150 S                   (-153, +35), de frente para o leste
-#   quina sudeste (pináculo)       ~270 O, ~390 S                   (-107, +109)
-#   Fortaleza Antônia              ~610 O, ~120 N (canto noroeste)  (-190, -32)
-#   Porta das Ovelhas              no muro norte, abrindo p/ norte  (-134, -39)
-#   Tanque de Betesda              ~420 O, ~200 N                   (-154, -55)
+#   Porta Dourada (Susã)           ~265 O, ~100 S                   (-106, +8), alinhada com o santuário
+#   santuário (Domo da Rocha)      ~420 O, ~150 S                   (-132, +8), de frente para o leste
+#   quina sudeste (pináculo)       ~270 O, ~390 S                   (-107, +48)
+#   Fortaleza Antônia              ~610 O, ~120 N (canto noroeste)  (-157, -29)
+#   Porta das Ovelhas              no muro norte, abrindo p/ norte  (-122, -34)
+#   Tanque de Betesda              ~420 O, ~200 N                   (-133, -42)
 #   cume do Monte das Oliveiras    ~480 L, ~80 S                    (117, +16)
-#   Gólgota (Santo Sepulcro)       ~940 O, ~110 S                   (-310, +23); o sepulcro e o horto logo a oeste
-#   Porta de Genat (a saída)       no primeiro muro, abrindo p/ norte (-304, +77); a estrada de Emaús vai p/ noroeste
-#   mercado (Pátio dos Gentios)    junto à Estoa Real                (-155, +92)
-#   Tanque de Siloé                ~475 O, ~980 S                   (-182, +279)
-#   palácio de Herodes             ~1120 O, ~540 S                  (-358, +134)
+#   Gólgota (Santo Sepulcro)       ~940 O, ~110 S                   (-223, +2); o horto e o sepulcro logo a oeste
+#   Porta de Genat (a saída)       no primeiro muro, abrindo p/ norte (-216, +31); a estrada de Emaús vai p/ noroeste
+#   mercado (Pátio dos Gentios)    junto à Estoa Real                (-134, +39)
+#   Tanque de Siloé                ~475 O, ~980 S                   (-148, +140)
+#   palácio de Herodes             ~1120 O, ~540 S                  (-245, +62)
 #
 # Leitura do mapa de referência ("Jerusalém na época de Jesus"): o Getsêmani fica em frente ao canto norte do muro
 # leste; a estrada que sai dele cruza o Cedrom na diagonal (noroeste) e chega à quina nordeste, entre o templo e o
@@ -106,6 +107,24 @@ def do_mundo(x, z):
 
 XW = para_mundo(-158.0, 0.0)[0]       # o pé dos muros, no mundo (~ -105,6)
 
+# A escala de RPG: a cidade (as distâncias, o templo, as alturas) é encolhida em volta da quina nordeste do templo, que
+# fica onde estava (é ela que o Getsêmani vê). Para leste da quina (o muro leste e a encosta do Cedrom) só o norte-sul
+# encolhe. O que se vê de perto (casas, bancas, bichos, portas, o Gólgota, o horto) é desenhado em metros do jogo:
+# no plano velho, MH = 1 m na horizontal e MV = 1 m na vertical.
+S_CID = 0.55                          # as distâncias e os tamanhos da cidade
+SY = 0.8                              # as alturas
+ANC = (-161.0, 22.0)                  # a quina nordeste do templo, no plano velho
+KY = K * SY
+MH, MV = 1 / (K * S_CID), 1 / KY
+
+
+def encolhe(x, z):
+    return (ANC[0] + S_CID * (x - ANC[0]) if x < ANC[0] else x), ANC[1] + S_CID * (z - ANC[1])
+
+
+def estica(x, z):
+    return (ANC[0] + (x - ANC[0]) / S_CID if x < ANC[0] else x), ANC[1] + (z - ANC[1]) / S_CID
+
 # ---------------- o mundo ----------------
 # a Oliveiras é outra fase: as coordenadas dela = mundo + OLIVEIRAS (o cume de lá fica no cume real, em (117, 16))
 OLIVEIRAS = (-100.0, -12.0, -16.3)
@@ -118,9 +137,9 @@ def h_mundo(x, z):
         fundo = -13.0 - 0.02 * z                            # o leito desce para o sul (+z)
         if x > LEITO: h = h + (fundo - h) * sm(-40, -59.5, x)
         else:
-            xv, zv = do_mundo(x, z)
-            if x > XW: h = fundo + (K * pe_velho(zv) - fundo) * sm(LEITO - 3, XW, x)
-            else: h = K * cidade_velho(xv, zv)
+            xv, zv = estica(*do_mundo(x, z))
+            if x > XW: h = fundo + (KY * pe_velho(zv) - fundo) * sm(LEITO - 3, XW, x)
+            else: h = KY * cidade_velho(xv, zv)
         h -= 0.9 * (1 - sm(0, 2.4, abs(x - LEITO)))          # o canal do ribeiro (seco nesta época)
     d = math.hypot(x + 70, z)                               # bem longe, o chão desce e some atrás do horizonte
     if d > 520: h -= 0.12 * (d - 520)
