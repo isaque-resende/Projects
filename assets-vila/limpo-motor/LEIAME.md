@@ -247,6 +247,24 @@ de peças, texturas pedidas por prompt, peças do Tripo) vai entrar no lugar del
   - ao norte do templo ficam o Tanque de Israel (dentro) e o muro norte; a Porta das Ovelhas fica nele e abre para
     o norte, para Betesda, que fica do lado de fora (Jo 5.2);
   - a Antônia fica no canto noroeste do templo.
+  - **O relevo da cidade:** a colina oeste (a cidade alta) fica acima da esplanada do templo; o Tiropeon (a cidade
+    baixa) desce junto ao muro oeste do templo e faz a curva até Siloé; o Hinom contorna a cidade pelo oeste e pelo sul.
+  - **Os muros:** o primeiro muro cerca a cidade alta e a baixa, das três torres de Herodes até Siloé e a Cidade de
+    Davi. O segundo muro sai da Porta de Genat e vai até a Antônia, cercando o bairro novo.
+  - **Na cidade baixa:** o Tanque de Siloé em degraus e a rua em escada que sobe dele até o templo. Ao pé do muro oeste,
+    a rua com lojas e o arco de Robinson. Ao sul, a escadaria e as portas de Hulda. O viaduto (arco de Wilson) liga a
+    cidade alta ao templo.
+  - **O templo por dentro:** colunas nos quatro pórticos; a Estoa Real, ao sul, com a nave do meio mais alta. No Pátio
+    dos Gentios, junto dela, ficam as bancas com toldo, os cambistas, os currais de ovelhas e bois e as gaiolas de pombas
+    (Jo 2.14).
+  - **O Gólgota** fica no lugar guardado pela tradição (o Santo Sepulcro), e não no "Jardim do Túmulo", que fica mais ao
+    norte. Ele está fora do segundo muro, junto à estrada que sai da Porta de Genat, e é um rochedo numa pedreira velha,
+    com três estacas vazias. A oeste fica o horto (Jo 19.41): uma mureta, oliveiras e o sepulcro cavado na parede de
+    pedra, com a pedra rolada para o lado.
+  - **A saída:** a estrada de Emaús sai da Porta de Genat, passa pelo Gólgota e segue para noroeste.
+  - Os pontos de cada lugar, já no mundo, ficam em `jerusalem_lugares.json`: `golgota`, `sepulcro`, `horto`,
+    `porta_genat`, `estrada_emaus`, `mercado`, `estoa_real`, `arco_robinson`, `escadaria_sul`, `siloe` e
+    `palacio_herodes`.
 - **`jerusalem_maquete.py`** (`blender -b --factory-startup -P jerusalem_maquete.py`) grava `jerusalem.blend`,
   `jerusalem_maquete.glb` e `jerusalem_lugares.json` (os pontos principais e o deslocamento do Monte das Oliveiras).
 - **Os chãos:** `Cidade_Chao` (a oeste do Cedrom), `Vale_Chao` (o vale, com um buraco do tamanho do terreno do

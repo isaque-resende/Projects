@@ -62,7 +62,7 @@ poePertos(scene, LAY.objetos, KIT, (o, n) => {
 // Os chãos dela (o vale do Cedrom, o Getsêmani, a outra encosta e o resto do Monte das Oliveiras) perdem o pedaço que
 // o terreno desta fase já cobre, e a borda deles vai até a altura do terreno daqui, sem degrau.
 // Os montes do fundo continuam pintados (tex/panorama_montes.webp): são o horizonte, longe demais para mudar.
-const LUG = await (await fetch('../jerusalem/jerusalem_lugares.json?v=1')).json();
+const LUG = await (await fetch('../jerusalem/jerusalem_lugares.json?v=2')).json();
 const [DX, DY, DZ] = LUG.oliveiras;
 const JER = gJer.scene; JER.name = 'Jerusalem'; JER.position.set(DX, DY, DZ);
 {

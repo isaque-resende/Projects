@@ -188,7 +188,7 @@ chao('Vale_Chao', xs, zs, h_vale, cor_campo, dentro_gs)
 chao('Vale_Miolo', [x for x in xs if gx0 + 3 - 4.01 <= x <= gx1 - 3 + 4.01], [z for z in zs if gz0 + 3 - 4.01 <= z <= gz1 - 3 + 4.01], h_vale, cor_campo,
      lambda a, b, c, d: not dentro_gs(a, b, c, d))
 chao('Leste_Chao', grade(92.0, 1100.0, 92.0, 92.0, 5.0), zs, h_vale, cor_campo)
-chao('Cidade_Chao', grade(-1100.0, -100.0, -260.0, -100.0, 5.0), grade(-1100.0, 1100.0, -150.0, 150.0, 5.0), lambda x, z: h_mundo(x, z) - 0.15, cor_cidade)
+chao('Cidade_Chao', grade(-1100.0, -100.0, -400.0, -100.0, 6.0), grade(-1100.0, 1100.0, -130.0, 330.0, 6.0), lambda x, z: h_mundo(x, z) - 0.15, cor_cidade)
 CHAOS = {o.name for o in col_exp.objects}
 
 # ================= o monte do templo =================
@@ -368,21 +368,364 @@ caixa(tq, BX + 21.6, BX + 27, yb - 3, yb - 0.05, BZ - 21.6, BZ + 21.6, k(PAL['la
 caixa(tq, BX - 27, BX - 21.6, yb - 3, yb - 0.05, BZ - 21.6, BZ + 21.6, k(PAL['lajes'], 0.98), lados='+x -x +z -z +y')
 tq.cria()
 
+# ================= ferramentas para o resto da cidade =================
+def dentro(px, pz, poli):
+    c = False
+    for (xa, za), (xb, zb) in zip(poli, poli[1:] + poli[:1]):
+        if (za > pz) != (zb > pz) and px < xa + (pz - za) * (xb - xa) / (zb - za): c = not c
+    return c
+
+
+def obox(m, xa, za, xb, zb, larg, y0, y1, cor, fora=0, topo=True, fiada=2.0, comp=(3.5, 6.0)):
+    """Uma caixa ao longo de um segmento (muros tortos). fora=1: o lado à esquerda (de quem vai de a para b) é de
+    pedra aparelhada; fora=-1: o da direita."""
+    L = math.hypot(xb - xa, zb - za); ux, uz = (xb - xa) / L, (zb - za) / L; nx, nz = -uz, ux; h = larg / 2
+    A = (xa + nx * h, za + nz * h); B = (xb + nx * h, zb + nz * h); C = (xb - nx * h, zb - nz * h); D = (xa - nx * h, za - nz * h)
+    for p, q, out, st in [(A, B, (nx, 0, nz), fora == 1), (C, D, (-nx, 0, -nz), fora == -1), (B, C, (ux, 0, uz), False), (D, A, (-ux, 0, -uz), False)]:
+        P0 = Vector((p[0], y0, p[1])); U = Vector((q[0] - p[0], 0, q[1] - p[1])); Lq = U.length; U.normalize()
+        if st: blocos(m, P0, U, (0, 1, 0), Lq, y1 - y0, out, cor, fiada, comp)
+        else: plano(m, P0, U, (0, 1, 0), Lq, y1 - y0, out, k(cor, 0.95))
+    if topo: m.quad([(A[0], y1, A[1]), (B[0], y1, B[1]), (C[0], y1, C[1]), (D[0], y1, D[1])], k(cor, 1.04), (0, 1, 0))
+
+
+def muro(m, pts, alto=11.0, esp=3.0, fora=1, torres=45.0, cor=None):
+    """Muralha que acompanha o chão, em trechos de até 16 m, com ameias do lado de fora e torres a cada `torres`."""
+    cor = cor or PAL['muro']; acum = 0.0; prox = torres / 2; tor = []
+    for (xa, za), (xb, zb) in zip(pts, pts[1:]):
+        L = math.hypot(xb - xa, zb - za); n = max(1, math.ceil(L / 16)); ux, uz = (xb - xa) / L, (zb - za) / L
+        nx, nz = -uz * fora, ux * fora
+        for i in range(n):
+            x0, z0 = xa + ux * L * i / n, za + uz * L * i / n; x1, z1 = xa + ux * L * (i + 1) / n, za + uz * L * (i + 1) / n
+            g = [h_velho(x0, z0), h_velho(x1, z1), h_velho((x0 + x1) / 2, (z0 + z1) / 2)]
+            yt = max(g) + alto
+            obox(m, x0, z0, x1, z1, esp, min(g) - 2.5, yt, cor, fora=fora)
+            o = esp / 2 - 0.45
+            ameias(m, [(x0 + nx * o, z0 + nz * o), (x1 + nx * o, z1 + nz * o)], yt, cor, passo=3.0)
+        while torres and prox <= acum + L:
+            t = prox - acum; tor.append((xa + ux * t, za + uz * t)); prox += torres
+        acum += L
+    for cx, cz in tor:
+        gs = [h_velho(cx + a, cz + b) for a in (-3.5, 3.5) for b in (-3.5, 3.5)]
+        yt = max(gs) + alto + 4
+        caixa(m, cx - 3.5, cx + 3.5, min(gs) - 2.5, yt, cz - 3.5, cz + 3.5, k(cor, 1.03), pedra='+x -x +z -z', fiada=2.0, comp=(3.0, 5.0))
+        caixa(m, cx - 3.8, cx + 3.8, yt, yt + 0.6, cz - 3.8, cz + 3.8, PAL['claro'])
+    return tor
+
+
+def estrada(m, pts, larg, cor, sobe=0.9, degraus=False, passo=3.0):
+    """Faixa calçada (ou de terra) que acompanha o chão; com degraus, listras claras e escuras (a rua em escada)."""
+    for (xa, za), (xb, zb) in zip(pts, pts[1:]):
+        L = math.hypot(xb - xa, zb - za); n = max(1, math.ceil(L / passo)); nx, nz = -(zb - za) / L * larg / 2, (xb - xa) / L * larg / 2
+        for i in range(n):
+            a, b = i / n, (i + 1) / n
+            pa = (xa + (xb - xa) * a, za + (zb - za) * a); pb = (xa + (xb - xa) * b, za + (zb - za) * b)
+            ya, yb_ = h_velho(*pa) + sobe, h_velho(*pb) + sobe
+            c = k(cor, 0.86 if (degraus and i % 2) else rc.uniform(0.97, 1.03))
+            m.quad([(pa[0] + nx, ya, pa[1] + nz), (pb[0] + nx, yb_, pb[1] + nz), (pb[0] - nx, yb_, pb[1] - nz), (pa[0] - nx, ya, pa[1] - nz)], c, (0, 1, 0))
+
+
+def canteiro(m, x0, x1, z0, z1, cores, sobe=0.5, passo=3.0):
+    nx_, nz_ = max(1, round((x1 - x0) / passo)), max(1, round((z1 - z0) / passo))
+    for i in range(nx_):
+        for j in range(nz_):
+            a, b = x0 + (x1 - x0) * i / nx_, x0 + (x1 - x0) * (i + 1) / nx_; c, d = z0 + (z1 - z0) * j / nz_, z0 + (z1 - z0) * (j + 1) / nz_
+            y = lambda x, z: h_velho(x, z) + sobe
+            m.quad([(a, y(a, c), c), (b, y(b, c), c), (b, y(b, d), d), (a, y(a, d), d)], k(rc.choice(cores), rc.uniform(0.94, 1.05)), (0, 1, 0))
+
+
+def arvore(m, x, z, r=2.2, alto=5.0, cor=None, cipreste=False):
+    y = h_velho(x, z) - 0.3; cor = cor or k(hx('7f8c56'), rc.uniform(0.88, 1.08))
+    caixa(m, x - 0.25, x + 0.25, y, y + alto * 0.5, z - 0.25, z + 0.25, PAL['madeira'], lados='+x -x +z -z')
+    if cipreste: r, y0, ym, y1 = r * 0.45, y + alto * 0.2, y + alto * 0.5, y + alto * 1.35
+    else: y0, ym, y1 = y + alto * 0.38, y + alto * 0.68, y + alto
+    n = 6; a0 = rc.uniform(0, 6.28)
+    an = [(x + math.cos(a0 + i * 2 * math.pi / n) * r * rc.uniform(0.85, 1.1), ym + rc.uniform(-0.2, 0.2), z + math.sin(a0 + i * 2 * math.pi / n) * r * rc.uniform(0.85, 1.1)) for i in range(n)]
+    for i in range(n):
+        p, q = an[i], an[(i + 1) % n]; ox, oz = p[0] + q[0] - 2 * x, p[2] + q[2] - 2 * z
+        m.quad([p, q, (x, y1, z)], k(cor, 1.06), (ox, 1, oz))
+        m.quad([q, p, (x, y0, z)], k(cor, 0.78), (ox, -1, oz))
+
+
+def penedo(m, x, z, r0, r1, y0, y1, cor, n=9, ez=1.0):
+    """Um rochedo: tronco de cone irregular, com o topo em leque."""
+    a0 = rc.uniform(0, 6.28); A = [a0 + i * 2 * math.pi / n for i in range(n)]
+    base = [(x + math.cos(a) * r0 * rc.uniform(0.85, 1.12), y0, z + math.sin(a) * r0 * ez * rc.uniform(0.85, 1.12)) for a in A]
+    topo = [(x + math.cos(a) * r1 * rc.uniform(0.8, 1.2), y1 + rc.uniform(-0.7, 0.4), z + math.sin(a) * r1 * ez * rc.uniform(0.8, 1.2)) for a in A]
+    for i in range(n):
+        j = (i + 1) % n; am = (A[i] + A[j]) / 2
+        m.quad([base[i], base[j], topo[j], topo[i]], k(cor, rc.uniform(0.82, 0.98)), (math.cos(am), 0.3, math.sin(am)))
+        m.quad([topo[i], topo[j], (x, y1 + 0.5, z)], k(cor, rc.uniform(1.0, 1.08)), (0, 1, 0))
+    return topo
+
+
+# os bairros: só dentro dos muros (os polígonos abaixo), longe das ruas e dos lugares abertos
+CID_SUL = [(-606.0, -150.0), (-608.0, -330.0), (-575.0, -480.0), (-480.0, -507.0), (-262.0, -507.0), (-222.0, -478.0), (-175.0, -440.0),
+           (-163.0, -340.0), (-163.0, -203.0), (-311.0, -203.0), (-311.0, -146.0), (-372.0, -148.0), (-482.0, -150.0)]
+CID_NORTE = [(-470.0, -150.0), (-470.0, 25.0), (-452.0, 58.0), (-336.0, 42.0), (-332.0, 18.0), (-311.0, 18.0), (-311.0, -146.0), (-372.0, -148.0)]
+ESTR = []        # (pontos, meia largura + folga): nenhuma casa em cima
+
+# ================= as muralhas: o primeiro muro (a cidade alta e a baixa) e o segundo (o bairro novo, ao norte) =================
+mu = M('Muralhas')
+GEN = (-489.0, -150.0)                 # a Porta de Genat ("do Jardim"): no primeiro muro, para o norte; dela sai a estrada de Emaús
+muro(mu, [(-606.0, -150.0), (GEN[0] - 7, -150.0)], fora=1, torres=40.0)
+muro(mu, [(GEN[0] + 7, -150.0), (-372.0, -148.0)], fora=1, torres=40.0)
+muro(mu, [(-606.0, -150.0), (-608.0, -330.0), (-575.0, -480.0), (-480.0, -507.0), (-262.0, -507.0), (-222.0, -478.0), (-175.0, -440.0), (-163.0, -340.0)], fora=-1, torres=42.0)
+muro(mu, [(-470.0, -150.0), (-470.0, 25.0), (-452.0, 58.0), (-336.0, 40.0)], fora=1, torres=38.0)
+# a Porta de Genat: duas torres e o vão; a estrada passa no meio
+gG = h_velho(*GEN); ytG = max(h_velho(GEN[0] + a, GEN[1] + b) for a in (-9, 9) for b in (-4, 4)) + 11
+for x0 in (GEN[0] - 12, GEN[0] + 5):
+    caixa(mu, x0, x0 + 7, gG - 3, ytG + 4, GEN[1] - 5, GEN[1] + 5, k(PAL['muro'], 1.04), pedra='+x -x +z -z', fiada=1.6, comp=(2.4, 4.0))
+    caixa(mu, x0 - 0.3, x0 + 7.3, ytG + 4, ytG + 4.6, GEN[1] - 5.3, GEN[1] + 5.3, PAL['claro'])
+caixa(mu, GEN[0] - 5, GEN[0] + 5, gG + 6.5, ytG, GEN[1] - 1.5, GEN[1] + 1.5, k(PAL['muro'], 1.04), pedra='+z -z', fiada=1.2, comp=(1.6, 2.8))
+caixa(mu, GEN[0] - 5, GEN[0] + 5, gG + 6.0, gG + 6.5, GEN[1] - 1.6, GEN[1] + 1.6, PAL['claro'])
+for s in (-1, 1):            # as folhas da porta, abertas para dentro (sul)
+    xd = GEN[0] + s * 4.6
+    caixa(mu, xd - 0.15, xd + 0.15, gG - 0.2, gG + 6.0, GEN[1] - 5.2, GEN[1] - 1.6, PAL['madeira'], lados='+x -x +z -z +y')
+# o viaduto sobre o Tiropeon (o arco de Wilson): liga a cidade alta ao templo; a rua passa por baixo
+yv = TY + 0.3
+obox(mu, -372.0, -147.5, TX0, -147.0, 7.0, yv - 2.6, yv, PAL['herod'], fora=1)
+for xa in (-366.0, -352.0, -338.0, -326.0):
+    g = min(h_velho(xa + a, -147.0) for a in (-3, 3))
+    caixa(mu, xa - 2.5, xa + 2.5, g - 1.5, yv - 2.6, -150.5, -144.0, PAL['herod'], pedra='+z -z', fiada=1.6, comp=(2.4, 4.0))
+for zz in (-150.8, -143.7):
+    obox(mu, -372.0, zz, TX0, zz, 0.6, yv, yv + 1.1, PAL['claro'])
+mu.cria()
+ESTR += [([(-372.0, -147.5), (TX0, -147.0)], 6.0)]
+
+# ================= o palácio de Herodes e as três torres (Hípico, Fasael e Mariane), no alto da cidade alta =================
+pa = M('Palacio_Herodes')
+PL = (-600.0, -556.0, -322.0, -168.0)
+ybP = max(h_velho(x, z) for x in PL[:2] for z in PL[2:]) + 0.6
+caixa(pa, PL[0], PL[1], ybP - 12, ybP, PL[2], PL[3], PAL['herod'], pedra='+x -x +z -z', fiada=1.6, comp=(3.0, 5.0))
+for z0, z1 in ((-198.0, -170.0), (-320.0, -292.0)):             # as duas alas, com o jardim no meio
+    caixa(pa, PL[0] + 2, PL[1] - 2, ybP, ybP + 9, z0, z1, PAL['branco'], pedra='+x -x +z -z', fiada=1.8, comp=(2.6, 4.2))
+    caixa(pa, PL[0] + 1.6, PL[1] - 1.6, ybP + 9, ybP + 9.6, z0 - 0.4, z1 + 0.4, PAL['claro'])
+    for xx in range(int(PL[0]) + 6, int(PL[1]) - 4, 5):
+        zf = z0 if z0 > -250 else z1
+        pa.quad([(xx - 0.8, ybP + 4, zf - 0.02 if z0 > -250 else zf + 0.02), (xx + 0.8, ybP + 4, zf - 0.02 if z0 > -250 else zf + 0.02),
+                 (xx + 0.8, ybP + 6.5, zf - 0.02 if z0 > -250 else zf + 0.02), (xx - 0.8, ybP + 6.5, zf - 0.02 if z0 > -250 else zf + 0.02)],
+                PAL['escuro'], (0, 0, -1) if z0 > -250 else (0, 0, 1))
+colunata(pa, [(PL[0] + 4, -290.0), (PL[0] + 4, -200.0)], ybP, 4.5, 3.0, PAL['coluna'], dentro=(-1, 0))
+colunata(pa, [(PL[1] - 4, -290.0), (PL[1] - 4, -200.0)], ybP, 4.5, 3.0, PAL['coluna'], dentro=(1, 0))
+pa.quad([(PL[0] + 8, ybP + 0.05, -288.0), (PL[1] - 8, ybP + 0.05, -288.0), (PL[1] - 8, ybP + 0.05, -202.0), (PL[0] + 8, ybP + 0.05, -202.0)], hx('8f9a5c'), (0, 1, 0))
+for zc in (-270.0, -245.0, -220.0):        # os tanques do jardim
+    pa.quad([(-583.0, ybP + 0.1, zc - 4), (-573.0, ybP + 0.1, zc - 4), (-573.0, ybP + 0.1, zc + 4), (-583.0, ybP + 0.1, zc + 4)], PAL['agua'], (0, 1, 0))
+gT = h_velho(-600.0, -152.0)
+for x0, x1, z0, z1, alto in [(-611.0, -601.0, -157.0, -145.0, 21.0), (-593.0, -581.0, -158.0, -145.0, 27.0), (-574.0, -566.0, -156.0, -146.0, 18.0)]:
+    caixa(pa, x0, x1, gT - 3, gT + alto, z0, z1, k(PAL['herod'], 1.03), pedra='+x -x +z -z', fiada=1.6, comp=(2.4, 4.0))
+    caixa(pa, x0 - 0.4, x1 + 0.4, gT + alto, gT + alto + 0.6, z0 - 0.4, z1 + 0.4, PAL['claro'])
+    ameias(pa, [(x0, z0), (x1, z0), (x1, z1), (x0, z1), (x0, z0)], gT + alto + 0.6, PAL['herod'])
+pa.cria()
+
+# ================= a cidade baixa: o Tanque de Siloé, a rua em escada, a rua do muro oeste com as lojas, o arco de
+# Robinson e a escadaria do sul (as portas de Hulda) =================
+cb = M('Cidade_Baixa')
+SIL = (-302.0, -268.0, -495.0, -479.0)
+ySil = max(h_velho(x, z) for x in SIL[:2] for z in SIL[2:]) + 0.3
+for i in range(5):        # o tanque em degraus (de Siloé, Jo 9.7)
+    a = i * 1.3; yt = ySil - i * 0.8
+    for x0, x1, z0, z1 in [(SIL[0] + a, SIL[1] - a, SIL[2] + a, SIL[2] + a + 1.3), (SIL[0] + a, SIL[1] - a, SIL[3] - a - 1.3, SIL[3] - a),
+                           (SIL[0] + a, SIL[0] + a + 1.3, SIL[2] + a, SIL[3] - a), (SIL[1] - a - 1.3, SIL[1] - a, SIL[2] + a, SIL[3] - a)]:
+        caixa(cb, x0, x1, ySil - 8, yt, z0, z1, k(PAL['lajes'], 1.0 + 0.03 * (i % 2)), lados='+x -x +z -z +y' if i == 0 else '+y +x -x +z -z')
+cb.quad([(SIL[0] + 6.5, ySil - 3.6, SIL[2] + 6.5), (SIL[1] - 6.5, ySil - 3.6, SIL[2] + 6.5), (SIL[1] - 6.5, ySil - 3.6, SIL[3] - 6.5), (SIL[0] + 6.5, ySil - 3.6, SIL[3] - 6.5)], PAL['agua'], (0, 1, 0))
+RUA_ESCADA = [(-285.0, -477.0), (-287.0, -440.0), (-294.0, -390.0), (-303.0, -330.0), (-313.0, -270.0), (-318.0, -225.0), (-318.0, -196.0)]
+RUA_MURO = [(-318.0, -196.0), (-318.0, -60.0), (-322.0, 10.0)]
+estrada(cb, RUA_ESCADA, 5.0, PAL['lajes'], degraus=True, passo=1.6)
+estrada(cb, RUA_MURO, 6.0, PAL['lajes'])
+ESTR += [(RUA_ESCADA, 4.5), (RUA_MURO, 5.0)]
+# as lojas do lado oeste da rua do muro (Jo 2.16: o comércio ficava também cá fora, ao pé do templo)
+PANOS = [hx(c) for c in ('b0483a', '3f6b8a', 'd9c27a', 'efe6d2', '7a5a8c', 'a86b3c')]
+z_ = -190.0
+while z_ < -60:
+    if not -156 < z_ < -138:
+        g = min(h_velho(x, zz) for x in (-331.0, -323.0) for zz in (z_ - 2, z_ + 2)) - 0.5
+        caixa(cb, -331.0, -323.5, g, g + rc.uniform(4.0, 5.5), z_ - 2.0, z_ + 2.0, rc.choice(CASAS))
+        cb.quad([(-323.47, g + 0.5, z_ - 1.0), (-323.47, g + 0.5, z_ + 1.0), (-323.47, g + 3.0, z_ + 1.0), (-323.47, g + 3.0, z_ - 1.0)], PAL['escuro'], (1, 0, 0))
+        cor = rc.choice(PANOS)
+        cb.quad([(-323.5, g + 3.4, z_ - 1.8), (-321.6, g + 2.9, z_ - 1.8), (-321.6, g + 2.9, z_ + 1.8), (-323.5, g + 3.4, z_ + 1.8)], cor, (0.3, 1, 0))
+        cb.quad([(-323.5, g + 3.4, z_ - 1.8), (-321.6, g + 2.9, z_ - 1.8), (-321.6, g + 2.9, z_ + 1.8), (-323.5, g + 3.4, z_ + 1.8)], k(cor, 0.7), (-0.3, -1, 0))
+    z_ += 4.6
+# o arco de Robinson: uma ponte em arco por cima da rua, e a escada que desce dela para o sul
+yR = TY - 0.8
+caixa(cb, -326.0, TX0, yR - 2.2, yR, -195.0, -184.0, PAL['herod'], pedra='+z -z', fiada=1.4, comp=(2.4, 4.0))
+gR = min(h_velho(x, z) for x in (-334.0, -326.0) for z in (-195.0, -184.0)) - 1
+caixa(cb, -334.0, -326.0, gR, yR, -195.0, -184.0, PAL['herod'], pedra='+x -x +z -z', fiada=1.4, comp=(2.4, 4.0))
+N_ = 10
+for i in range(N_):
+    za, zb = -195.0 - i * 4.0, -195.0 - (i + 1) * 4.0
+    yt = yR - (yR - (h_velho(-330.0, -235.0) + 0.6)) * (i + 1) / N_
+    g = min(h_velho(-334.0, zb), h_velho(-326.0, zb)) - 1
+    caixa(cb, -334.0, -326.0, g, yt, zb, za, k(PAL['lajes'], 1.0 + 0.03 * (i % 2)), pedra='+x -x', fiada=1.4, comp=(2.4, 4.0))
+ESTR += [([(-330.0, -184.0), (-330.0, -236.0)], 6.0)]
+# a escadaria do sul, as portas de Hulda (a dupla e a tripla) e a praça diante delas
+yP = max(h_velho(x, z) for x in (-292.0, -205.0) for z in (-216.0, -203.0)) + 0.3
+caixa(cb, -292.0, -205.0, yP - 4, yP, -216.0, TZ0, PAL['lajes'], lados='+x -x -z +y')
+for i in range(6):
+    caixa(cb, -290.0, -207.0, yP - 6, yP - 0.5 * (i + 1), -216.0 - (i + 1) * 2.0, -216.0 - i * 2.0, k(PAL['lajes'], 1.0 + 0.03 * (i % 2)), lados='+x -x -z +y')
+for xc, w in [(-271.0, 1.8), (-266.0, 1.8), (-228.0, 1.6), (-224.0, 1.6), (-220.0, 1.6)]:
+    cb.quad([(xc - w, yP, TZ0 - 0.04), (xc + w, yP, TZ0 - 0.04), (xc + w, yP + 4.6, TZ0 - 0.04), (xc - w, yP + 4.6, TZ0 - 0.04)], PAL['escuro'], (0, 0, -1))
+    cb.quad([(xc - w - 0.4, yP + 4.6, TZ0 - 0.05), (xc + w + 0.4, yP + 4.6, TZ0 - 0.05), (xc + w + 0.4, yP + 5.4, TZ0 - 0.05), (xc - w - 0.4, yP + 5.4, TZ0 - 0.05)], PAL['claro'], (0, 0, -1))
+cb.cria()
+
+# ================= os pórticos do templo por dentro (colunas) e o mercado no Pátio dos Gentios =================
+po = M('Porticos')
+# a Estoa Real (o pórtico do sul): a nave do meio mais alta
+caixa(po, TX0 + 4, TX1 - 10, TY + 13, TY + 18, TZ0 + 3, TZ0 + 9, PAL['herod'], lados='+x -x +z -z', pedra='+z -z', fiada=1.6, comp=(3.0, 5.0))
+caixa(po, TX0 + 3.6, TX1 - 9.6, TY + 18, TY + 18.5, TZ0 + 2.6, TZ0 + 9.4, PAL['claro'])
+caixa(po, TX0 + 4.4, TX1 - 10.4, TY + 18.5, TY + 19.4, TZ0 + 3.4, TZ0 + 8.6, PAL['cedro'])
+
+
+def fileira(face, a, b, alto, eixo):
+    """Colunas na frente da face de dentro de um pórtico, com a sombra do pórtico atrás delas."""
+    if eixo == 'x':        # a face é um plano z = face; as colunas correm em x
+        s = 1 if face < SZ else -1
+        po.quad([(a, TY, face + s * 0.04), (b, TY, face + s * 0.04), (b, TY + alto, face + s * 0.04), (a, TY + alto, face + s * 0.04)], k(PAL['escuro'], 1.5), (0, 0, s))
+        x = a + 1.5
+        while x < b - 1:
+            caixa(po, x - 0.4, x + 0.4, TY, TY + alto, face + s * 1.0 - 0.4, face + s * 1.0 + 0.4, PAL['coluna'], lados='+x -x +z -z'); x += 3.0
+        caixa(po, a, b, TY + alto, TY + alto + 0.8, min(face, face + s * 1.6), max(face, face + s * 1.6), PAL['claro'], lados='+x -x +z -z +y')
+    else:
+        s = 1 if face < SX else -1
+        po.quad([(face + s * 0.04, TY, a), (face + s * 0.04, TY, b), (face + s * 0.04, TY + alto, b), (face + s * 0.04, TY + alto, a)], k(PAL['escuro'], 1.5), (s, 0, 0))
+        z = a + 1.5
+        while z < b - 1:
+            caixa(po, face + s * 1.0 - 0.4, face + s * 1.0 + 0.4, TY, TY + alto, z - 0.4, z + 0.4, PAL['coluna'], lados='+x -x +z -z'); z += 3.0
+        caixa(po, min(face, face + s * 1.6), max(face, face + s * 1.6), TY + alto, TY + alto + 0.8, a, b, PAL['claro'], lados='+x -x +z -z +y')
+
+
+fileira(TZ0 + 12, TX0 + 12, TX1 - 12, 9.0, 'x')         # a Estoa Real
+fileira(TZ1 - 12, TX0 + 12, TX1 - 12, 4.6, 'x')         # o pórtico do norte
+fileira(TX1 - 12, TZ0 + 12, TZ1 - 12, 4.6, 'z')         # o Pórtico de Salomão (leste; Jo 10.23)
+fileira(TX0 + 12, TZ0 + 12, TZ1 - 12, 4.6, 'z')         # o pórtico do oeste
+po.cria()
+
+me_ = M('Mercado_Templo')
+MAD = hx('a07a52')
+BENS = [hx(c) for c in ('b5704a', 'c9a56a', '8c6b45', 'd8c9a0', '6f7d4a')]
+
+
+def banca(x, z, pano=True):
+    y = TY; l, p = 2.6, 1.4
+    caixa(me_, x - l / 2, x + l / 2, y, y + 0.9, z - p / 2, z + p / 2, MAD, lados='+x -x +z -z +y')
+    for i in range(rc.randint(1, 3)):
+        bx = x - l / 2 + 0.3 + i * 0.8
+        caixa(me_, bx, bx + 0.6, y + 0.9, y + 0.9 + rc.uniform(0.3, 0.6), z - 0.3, z + 0.3, rc.choice(BENS), lados='+x -x +z -z +y')
+    if not pano:
+        caixa(me_, x - l / 2, x + l / 2, y + 0.9, y + 0.93, z - p / 2, z + p / 2, hx('5a3f5c'), lados='+y')
+        return
+    for sx in (-1, 1):
+        caixa(me_, x + sx * l / 2 - 0.1, x + sx * l / 2 + 0.1, y, y + 2.4, z - p / 2 - 0.1, z - p / 2 + 0.1, MAD, lados='+x -x +z -z')
+    cor = rc.choice(PANOS); q = [(x - l / 2 - 0.2, y + 2.4, z - p / 2), (x + l / 2 + 0.2, y + 2.4, z - p / 2), (x + l / 2 + 0.2, y + 2.0, z + p / 2 + 0.6), (x - l / 2 - 0.2, y + 2.0, z + p / 2 + 0.6)]
+    me_.quad(q, cor, (0, 1, 0.3)); me_.quad(q, k(cor, 0.7), (0, -1, -0.3))
+
+
+def cerca(x0, x1, z0, z1):
+    y = TY
+    for a, b, c, d in [(x0, x1, z0 - 0.08, z0 + 0.08), (x0, x1, z1 - 0.08, z1 + 0.08), (x0 - 0.08, x0 + 0.08, z0, z1), (x1 - 0.08, x1 + 0.08, z0, z1)]:
+        caixa(me_, a, b, y + 0.5, y + 0.75, c, d, MAD, lados='+x -x +z -z +y')
+    for a in (x0, x1):
+        for c in (z0, z1): caixa(me_, a - 0.15, a + 0.15, y, y + 1.0, c - 0.15, c + 0.15, MAD, lados='+x -x +z -z +y')
+
+
+def bicho(x, z, boi=False):
+    y = TY; c = hx('a9876a') if boi else k(hx('ece6d6'), rc.uniform(0.9, 1.02)); l, w, h = (2.0, 0.8, 1.1) if boi else (1.0, 0.55, 0.6)
+    s = rc.choice((-1, 1))
+    caixa(me_, x - l / 2, x + l / 2, y + h * 0.45, y + h, z - w / 2, z + w / 2, c, lados='+x -x +z -z +y')
+    caixa(me_, x + s * l / 2, x + s * (l / 2 + w * 0.6), y + h * 0.6, y + h * 1.05, z - w * 0.3, z + w * 0.3, k(c, 0.75), lados='+x -x +z -z +y')
+    caixa(me_, x - l / 2 + 0.1, x + l / 2 - 0.1, y, y + h * 0.45, z - w / 2 + 0.1, z + w / 2 - 0.1, k(c, 0.6), lados='+x -x +z -z')
+
+
+for zr in (-184.0, -175.0):          # as bancas, em duas fileiras ao longo da Estoa Real (com passagens para as saídas das portas de Hulda)
+    x = TX0 + 15
+    while x < TX1 - 15:
+        if not (abs(x + 268.5) < 6 or abs(x + 224) < 6): banca(x + rc.uniform(-0.3, 0.3), zr)
+        x += 4.2
+for i in range(12):                 # os cambistas (mesas sem toldo)
+    banca(-262.0 + i * 4.0, -164.0, pano=False)
+for x0, x1, z0, z1, n, boi in [(-296.0, -286.0, -152.0, -140.0, 8, False), (-284.0, -274.0, -152.0, -140.0, 7, False), (-190.0, -177.0, -152.0, -138.0, 4, True)]:
+    cerca(x0, x1, z0, z1)
+    for _ in range(n): bicho(rc.uniform(x0 + 1.4, x1 - 1.4), rc.uniform(z0 + 1, z1 - 1), boi)
+for i in range(5):                  # as gaiolas das pombas, empilhadas
+    xg = -205.0 + i * 1.6
+    for j in range(rc.randint(1, 3)): caixa(me_, xg, xg + 1.3, TY + j * 0.9, TY + j * 0.9 + 0.8, -158.0, -156.8, hx('c2a36c'), lados='+x -x +z -z +y')
+me_.cria()
+
+# ================= o Gólgota, o horto e o sepulcro (Jo 19.17-20, 19.41-42) =================
+# Fora do segundo muro, junto à estrada que sai da Porta de Genat; o lugar que a tradição guarda (a Igreja do Santo
+# Sepulcro): uma pedreira velha, com um rochedo que ficou de pé e túmulos cavados na parede de pedra.
+go = M('Golgota')
+ROCHA_C = hx('bdb19a')
+GOL = (-498.0, -60.0)
+gGo = h_velho(*GOL)
+topo = penedo(go, GOL[0], GOL[1], 8.0, 4.2, gGo - 1.0, gGo + 4.6, ROCHA_C, n=11)
+for dx, dz, r in ((4.5, 3.0, 3.2), (-3.5, 4.5, 2.6), (2.0, -5.0, 2.8)):
+    penedo(go, GOL[0] + dx, GOL[1] + dz, r, r * 0.45, gGo - 0.8, gGo + rc.uniform(1.8, 2.8), k(ROCHA_C, 0.95), n=7)
+yTop = gGo + 4.6
+for dx, dz in ((-1.2, -2.0), (0.4, 0.0), (-1.2, 2.0)):          # as três estacas, vazias: é domingo
+    caixa(go, GOL[0] + dx - 0.25, GOL[0] + dx + 0.25, yTop - 0.6, yTop + 5.0, GOL[1] + dz - 0.25, GOL[1] + dz + 0.25, hx('5e4632'), lados='+x -x +z -z +y')
+# a parede da pedreira, com o sepulcro novo cavado nela (a porta olha para o leste, para o horto)
+SEP = (-519.0, -57.0)
+gS = h_velho(*SEP)
+caixa(go, -534.0, SEP[0], gS - 2.0, gS + 5.5, -70.0, -46.0, k(ROCHA_C, 0.93), lados='+x +z -z')
+for x_, z_, r, a in ((-528.0, -66.0, 7.0, 7.0), (-527.0, -50.0, 7.5, 8.0), (-533.0, -58.0, 6.0, 9.0), (-538.0, -70.0, 6.0, 6.0), (-538.0, -45.0, 6.5, 6.5)):
+    penedo(go, x_, z_, r, r * 0.45, gS - 1.5, gS + a + rc.uniform(-0.5, 0.8), k(ROCHA_C, rc.uniform(0.9, 1.0)), n=8)
+go.quad([(SEP[0] + 0.03, gS - 0.1, SEP[1] - 1.0), (SEP[0] + 0.03, gS - 0.1, SEP[1] + 1.0), (SEP[0] + 0.03, gS + 2.0, SEP[1] + 1.0), (SEP[0] + 0.03, gS + 2.0, SEP[1] - 1.0)], hx('1e1914'), (1, 0, 0))
+# a pedra que fechava a entrada, rolada para o lado (Mc 16.4)
+cz, cy, R, N = SEP[1] + 2.9, gS + 1.55, 1.65, 12
+fr = [(SEP[0] + 0.75, cy + math.sin(2 * math.pi * i / N) * R, cz + math.cos(2 * math.pi * i / N) * R) for i in range(N)]
+tr = [(SEP[0] + 0.15, y, z) for _, y, z in fr]
+go.quad(fr, hx('9d9282'), (1, 0, 0))
+for i in range(N):
+    j = (i + 1) % N; a = 2 * math.pi * (i + 0.5) / N
+    go.quad([fr[i], fr[j], tr[j], tr[i]], hx('7f766a'), (0, math.sin(a), math.cos(a)))
+# o horto: uma mureta baixa, o chão verde, oliveiras e figueiras; a entrada fica do lado do Gólgota
+HO = (-518.0, -506.0, -78.0, -38.0)
+canteiro(go, HO[0], HO[1], HO[2], HO[3], [hx('8f9a5c'), hx('9aa463'), hx('a7a46b')], sobe=0.45)
+for pts in ([(HO[1], -54.0), (HO[1], HO[3]), (HO[0], HO[3])], [(HO[0], HO[2]), (HO[1], HO[2]), (HO[1], -62.0)]):
+    for (xa, za), (xb, zb) in zip(pts, pts[1:]):
+        g = min(h_velho(xa, za), h_velho(xb, zb)); obox(go, xa, za, xb, zb, 0.7, g - 0.5, g + 1.4, hx('cdbf9f'))
+estrada(go, [(-506.5, -58.0), (-517.0, -57.5)], 2.0, hx('c6b38c'), sobe=0.55)
+go.cria()
+ESTR += [([(-540.0, -58.0), (-490.0, -60.0)], 14.0)]
+
+# ================= a estrada de Emaús e as árvores =================
+es = M('Estradas')
+EMAUS = [(GEN[0], -138.0), (GEN[0], -150.0), (-488.0, -100.0), (-487.0, -45.0), (-495.0, -10.0), (-530.0, 20.0), (-580.0, 48.0), (-650.0, 80.0), (-760.0, 120.0), (-900.0, 150.0)]
+estrada(es, EMAUS, 4.0, hx('c9b48a'), sobe=0.7, passo=4.0)
+ESTR += [(EMAUS, 4.0)]
+es.cria()
+av = M('Arvores')
+for _ in range(9): arvore(av, rc.uniform(HO[0] + 2, HO[1] - 2), rc.uniform(HO[2] + 2, HO[3] - 2), r=rc.uniform(1.6, 2.2), alto=rc.uniform(3.5, 4.8))
+for zc in (-275.0, -258.0, -232.0, -212.0):
+    for xc in (-588.0, -568.0): arvore(av, xc, zc, r=1.8, alto=5.0, cipreste=rc.random() < 0.5)
+n_ = 0
+while n_ < 46:                      # pomares e hortas fora dos muros, a oeste e ao norte (a terra do Gólgota era assim)
+    x, z = rc.uniform(-640.0, -476.0), rc.uniform(-140.0, 110.0)
+    if dist_poli(x, z, EMAUS) < 5 or (abs(x - GOL[0]) < 12 and abs(z - GOL[1]) < 12) or (HO[0] - 20 < x < HO[1] + 3 and HO[2] - 3 < z < HO[3] + 3): continue
+    arvore(av, x, z, r=rc.uniform(1.8, 2.6), alto=rc.uniform(4.0, 5.5)); n_ += 1
+av.cria()
+
 # ================= as casas =================
 cs = M('Casas_Cidade')
 LIVRE = [(TX0 - 3, TX1 + 3, TZ0 - 3, TZ1 + 3), (AX0 - 5, AX1 + 5, AZ0 - 5, AZ1 + 5), (BX - 32, BX + 32, BZ - 32, BZ + 32),
-         (TX0, TX1 + 3, TZ1, NZ + 6), (PX - 6, PX + 6, NZ, NZ + 40)]
+         (TX0, TX1 + 3, TZ1, NZ + 6), (PX - 6, PX + 6, NZ, NZ + 40), (PL[0] - 6, PL[1] + 5, PL[2] - 5, -140.0),
+         (SIL[0] - 4, SIL[1] + 4, SIL[2] - 4, SIL[3] + 5), (-296.0, -200.0, -232.0, -200.0), (-336.0, -311.0, -200.0, -55.0),
+         (GEN[0] - 14, GEN[0] + 14, -162.0, -140.0), (-475.0, -290.0, 30.0, 64.0)]
 
 
 def livre(x0, x1, z0, z1):
     for a, b, c, d in LIVRE:
         if x1 > a and x0 < b and z1 > c and z0 < d: return False
+    cx, cz, r = (x0 + x1) / 2, (z0 + z1) / 2, 0.5 * math.hypot(x1 - x0, z1 - z0)
+    for pts, w in ESTR:
+        if dist_poli(cx, cz, pts) < w + r: return False
     return True
 
 
-def casa(x, z, lx, lz, alto):
+def casa(x, z, lx, lz, alto, zona=None):
     x0, x1, z0, z1 = x - lx / 2, x + lx / 2, z - lz / 2, z + lz / 2
     if not livre(x0, x1, z0, z1): return
+    if zona and not (dentro(x, z, zona) and dist_poli(x, z, zona + zona[:1]) > 4.0 + 0.5 * math.hypot(lx, lz)): return
     y0 = min(h_velho(x0, z0), h_velho(x1, z1), h_velho(x0, z1), h_velho(x1, z0)) - 0.6
     cor = rc.choice(CASAS); yt = y0 + 0.6 + alto
     caixa(cs, x0, x1, y0, yt, z0, z1, cor)
@@ -390,19 +733,20 @@ def casa(x, z, lx, lz, alto):
     if rc.random() < 0.6: cs.quad([(x1 + 0.02, y0 + 0.6, z - 0.5), (x1 + 0.02, y0 + 0.6, z + 0.5), (x1 + 0.02, y0 + 2.5, z + 0.5), (x1 + 0.02, y0 + 2.5, z - 0.5)], PAL['escuro'], (1, 0, 0))
 
 
-def bairro(x0, x1, z0, z1, passo, alto, prob=0.8):
+def bairro(x0, x1, z0, z1, passo, alto, prob=0.8, zona=None):
     x = x1 - passo / 2
     while x > x0:
         z = z0 + passo / 2
         while z < z1:
-            if rc.random() < prob: casa(x + rc.uniform(-1, 1), z + rc.uniform(-1, 1), passo * rc.uniform(0.55, 0.85), passo * rc.uniform(0.55, 0.85), rc.uniform(*alto))
+            if rc.random() < prob: casa(x + rc.uniform(-1, 1), z + rc.uniform(-1, 1), passo * rc.uniform(0.55, 0.85), passo * rc.uniform(0.55, 0.85), rc.uniform(*alto), zona)
             z += passo
         x -= passo
 
 
-bairro(-560.0, -318.0, -240.0, 60.0, 12.0, (4.0, 8.0), 0.8)        # a cidade alta e a cidade baixa (a oeste do templo)
-bairro(-300.0, -168.0, -340.0, -210.0, 12.0, (3.0, 5.5), 0.7)      # o Ofel e a Cidade de Davi (ao sul)
-bairro(-480.0, -275.0, 48.0, 190.0, 14.0, (3.0, 5.0), 0.35)       # Bezeta (fora do muro, ainda pouco construída; o lado de Betesda fica aberto)
+bairro(-608.0, -340.0, -507.0, -150.0, 13.0, (5.0, 9.0), 0.75, CID_SUL)     # a cidade alta (casas grandes, no alto da colina oeste)
+bairro(-340.0, -163.0, -507.0, -200.0, 9.0, (3.0, 5.0), 0.85, CID_SUL)      # a cidade baixa: o Tiropeon, o Ofel e a Cidade de Davi
+bairro(-470.0, -311.0, -150.0, 58.0, 11.0, (4.0, 7.0), 0.8, CID_NORTE)      # o bairro novo, dentro do segundo muro
+bairro(-440.0, -275.0, 66.0, 190.0, 14.0, (3.0, 5.0), 0.35)               # Bezeta (fora do muro, ainda pouco construída; o lado de Betesda fica aberto)
 cs.cria()
 
 # ================= do plano velho para o mundo =================
@@ -424,7 +768,11 @@ def P(x, y, z):
 L = {'mundo': 'coordenadas do Getsêmani (x leste, y altura, o norte é -z)', 'oliveiras': OLIVEIRAS,
      'santuario': P(SX, BASE, SZ), 'fachada': P(FR, BASE + 39, SZ), 'susa': P(TX1 + 2, pe_velho(SUSA_Z), SUSA_Z),
      'quina_ne': P(TX1, TOPO, TZ1), 'porta_ovelhas': P(PX, HP, NZ + ESP + 2.5), 'betesda': P(BX, yb, BZ), 'antonia': P((AX0 + AX1) / 2, TOPO_A, (AZ0 + AZ1) / 2),
-     'betesda_leste': P(BX + 27, yb, BZ), 'nucleo_getsemani': list(NUCLEO_GS)}
+     'betesda_leste': P(BX + 27, yb, BZ), 'nucleo_getsemani': list(NUCLEO_GS),
+     'golgota': P(GOL[0], yTop, GOL[1]), 'sepulcro': P(SEP[0] + 1, gS, SEP[1]), 'horto': P(-512.0, h_velho(-512.0, -58.0), -58.0),
+     'porta_genat': P(GEN[0], gG, GEN[1]), 'estrada_emaus': P(-650.0, h_velho(-650.0, 80.0), 80.0),
+     'mercado': P(-240.0, TY, -175.0), 'estoa_real': P(-236.0, TY, -191.0), 'arco_robinson': P(-318.0, h_velho(-318.0, -190.0), -190.0),
+     'escadaria_sul': P(-248.0, yP, -222.0), 'siloe': P((SIL[0] + SIL[1]) / 2, ySil, (SIL[2] + SIL[3]) / 2), 'palacio_herodes': P(-578.0, ybP, -245.0)}
 json.dump(L, open(os.path.join(AQUI, 'jerusalem_lugares.json'), 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
 
 bpy.ops.wm.save_as_mainfile(filepath=os.path.join(AQUI, 'jerusalem.blend'))

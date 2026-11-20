@@ -19,6 +19,11 @@
 #   Porta das Ovelhas              no muro norte, abrindo p/ norte  (-134, -39)
 #   Tanque de Betesda              ~420 O, ~200 N                   (-154, -55)
 #   cume do Monte das Oliveiras    ~480 L, ~80 S                    (117, +16)
+#   Gólgota (Santo Sepulcro)       ~940 O, ~110 S                   (-310, +23); o sepulcro e o horto logo a oeste
+#   Porta de Genat (a saída)       no primeiro muro, abrindo p/ norte (-304, +77); a estrada de Emaús vai p/ noroeste
+#   mercado (Pátio dos Gentios)    junto à Estoa Real                (-155, +92)
+#   Tanque de Siloé                ~475 O, ~980 S                   (-182, +279)
+#   palácio de Herodes             ~1120 O, ~540 S                  (-358, +134)
 #
 # Leitura do mapa de referência ("Jerusalém na época de Jesus"): o Getsêmani fica em frente ao canto norte do muro
 # leste; a estrada que sai dele cruza o Cedrom na diagonal (noroeste) e chega à quina nordeste, entre o templo e o
@@ -58,8 +63,30 @@ def pe_velho(z):
     return 8.0 + 14.0 * sm(15, 45, z) - 0.07 * max(0.0, -203.0 - z)
 
 
+def dist_seg(px, pz, a, b):
+    (xa, za), (xb, zb) = a, b; dx, dz = xb - xa, zb - za; L2 = dx * dx + dz * dz or 1e-9
+    t = max(0.0, min(1.0, ((px - xa) * dx + (pz - za) * dz) / L2))
+    return math.hypot(px - xa - dx * t, pz - za - dz * t)
+
+
+def dist_poli(px, pz, pts): return min(dist_seg(px, pz, a, b) for a, b in zip(pts, pts[1:]))
+
+
+def tiro_x(z):
+    """O fundo do vale do Tiropeon: corre junto ao muro oeste do templo e, ao sul, faz a curva para o Tanque de Siloé."""
+    return -320.0 + 35.0 * sm(-150, -490, z)
+
+
+# o vale de Hinom: contorna a cidade alta pelo oeste e pelo sul e encontra o Cedrom abaixo de Siloé
+HINOM = [(-645.0, -120.0), (-648.0, -380.0), (-605.0, -535.0), (-450.0, -550.0), (-300.0, -538.0), (-215.0, -528.0)]
+
+
 def cidade_velho(x, z):
-    return pe_velho(z) + 0.02 * min(-158 - x, 300) + 0.06 * min(max(0.0, -330 - x), 150) * sm(60, 0, z)
+    h = pe_velho(z) + 0.02 * min(-158 - x, 300)
+    h += (16.0 * sm(-328, -390, x) + 0.04 * min(max(0.0, -390 - x), 200)) * sm(70, 0, z)   # a colina oeste (a cidade alta)
+    h -= 7.5 * math.exp(-((x - tiro_x(z)) / 18.0) ** 2) * sm(90, 30, z)                    # o Tiropeon (a cidade baixa)
+    if x < -165: h -= 10.0 * math.exp(-(dist_poli(x, z, HINOM) / 22.0) ** 2) * sm(-165, -215, x)   # o Hinom
+    return h
 
 
 def h_velho(x, z):
