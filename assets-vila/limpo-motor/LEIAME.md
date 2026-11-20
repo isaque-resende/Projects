@@ -393,3 +393,39 @@ no gerador do Getsêmani). O jardim continua no mesmo lugar.
 - **Gerar:** `blender -b --factory-startup -P templo_blender.py -- --regerar-tudo`. Exportar: `blender -b templo.blend
   -P exportar_templo.py`. Para testar: `fase-templo/` (`?de=cidade` começa na porta do oeste, `?de=israel` no Pátio de
   Israel).
+
+## A cidade alta (`fase-cidade/`)
+
+- **Onde fica:** no mundo da maquete, em escala 1:1. A origem é um ponto no meio da cidade alta (`LAY.mundo`).
+  - Vêm da maquete: o primeiro muro com a Porta de Genat (ao norte), o palácio de Herodes com as três torres (a
+    oeste), o viaduto do templo (a nordeste) e o templo dela.
+  - As casas, as árvores e as estradas da maquete que caem em cima do chão daqui saem, e as daqui entram.
+  - O chão é o mesmo `h_mundo`, então a borda emenda sem degrau.
+- **A planta** (`cidade_blender.py`): ruas calçadas e ~100 casas em quarteirões. São casas de terraço com parapeito
+  (Dt 22.8), algumas de pátio, algumas com o quarto de cima. Os lugares:
+  - o Xisto, a praça de colunas junto ao viaduto;
+  - o mercado de cima, com quatro barracas;
+  - o Pavimento (Gabatá) na frente do palácio, com o tribunal (Jo 19.13);
+  - a casa do sumo sacerdote, com o pátio e o braseiro (Jo 18.18);
+  - a casa do cenáculo, com a escada de fora e a porta de cima fechada (Mc 14.15; Jo 20.19).
+  Cada quarteirão é uma malha e some quando tapa a vista (`oclusores`), assim como a casa do sumo sacerdote e a do
+  cenáculo.
+- **A cena de Jo 20.1-4** (`js/npcs.js`): Maria Madalena entra correndo pela Porta de Genat e vai até a casa. Pouco
+  depois, Pedro e o outro discípulo saem correndo dela, juntos (João na frente), até a porta, e somem. A cena se repete.
+  Quando o jogador está perto, aparece a legenda.
+- **Conversas:**
+  - a mulher à porta do cenáculo (Jo 20.2, 19);
+  - a serva que guarda a porta do sumo sacerdote, junto ao braseiro, com as galinhas no pátio (Jo 18.17-18; Lc 22.61-62);
+  - um guarda no Pavimento (Jo 19.13-14; Mt 27.24-25);
+  - um mercador.
+- **As saídas:**
+  - o viaduto volta ao templo (no templo, a porta do oeste traz para cá);
+  - a Porta de Genat leva ao Gólgota (no Gólgota, a ponta sudeste da estrada traz de volta, com `?de=genat`).
+- **Gerar:** `blender -b --factory-startup -P cidade_blender.py -- --regerar-tudo`. Exportar: `blender -b cidade.blend
+  -P exportar_cidade.py`. Para testar: `fase-cidade/` (`?de=genat` começa na porta, `?de=cenaculo` junto à casa).
+
+## O caminho inteiro (as fases ligadas)
+
+Betânia → Betfagé → Monte das Oliveiras → Getsêmani → Tanque de Betesda → (pela Porta das Ovelhas) o templo → (pela
+porta do oeste e o viaduto) a cidade alta → (pela Porta de Genat) o Gólgota e o sepulcro. De Betesda também se vai
+direto ao Gólgota, pela estrada ao longo do muro. A ponta noroeste do Gólgota é a estrada de Emaús (em construção).

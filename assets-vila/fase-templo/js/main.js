@@ -56,7 +56,7 @@ function emConstrucao(texto, depois) {
   setTimeout(() => { depois(); fade.style.opacity = 0; setTimeout(() => { fade.textContent = ''; E.fora = false; }, 900); }, 2600);
 }
 function perguntaBetesda() { dialogo('', 'Deseja voltar a Betesda, pela porta do norte?', [['Ainda não', () => volta(qx, qz + 3), '#a8957a'], ['Sim', () => sair('De volta a Betesda…', '../fase-betesda/?de=templo')]]); }
-function perguntaCidade() { dialogo('', 'Deseja sair pela porta do oeste, para a cidade alta?', [['Ainda não', () => volta(ox + 3, oz), '#a8957a'], ['Sim', () => emConstrucao('A cidade alta é a próxima parte do caminho (em construção).', () => volta(ox + 3, oz))]]); }
+function perguntaCidade() { dialogo('', 'Deseja sair pela porta do oeste, para a cidade alta?', [['Ainda não', () => volta(ox + 3, oz), '#a8957a'], ['Sim', () => sair('Pelo viaduto, para a cidade alta…', '../fase-cidade/')]]); }
 
 // ---------- chegada ----------
 setTimeout(() => {

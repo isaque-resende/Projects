@@ -1,6 +1,6 @@
 // Gólgota: liga os controles às ações e roda o laço do jogo. Aqui ficam os lugares (as legendas de cada um, com o
 // texto dos evangelhos), o sepulcro (abaixar-se na porta e olhar dentro, Jo 20.5-7) e as duas pontas da estrada: a
-// sudeste, a volta para a cidade (a Porta de Genat); a noroeste, a estrada de Emaús (a próxima parte do caminho).
+// sudeste, a volta para a cidade alta (a Porta de Genat); a noroeste, a estrada de Emaús (a próxima parte do caminho).
 import * as THREE from 'three';
 import { E, LAY, fade, fala, bate, fundo, scene, sun, renderer, CIRC, CAIXAS, dialogo, botao, textoBotao } from './estado.js';
 import { terreno, AMOS, naRota, TUM, SOL_DIR } from './cenario.js';
@@ -63,12 +63,13 @@ function acionar() {
 }
 ctl.aoAcionar = acionar; botao.onclick = () => acionar();
 function recua(i) { const p = AMOS[Math.max(0, Math.min(AMOS.length - 1, i))]; jog.o.position.set(p.x, terreno(p.x, p.z), p.z); E.alvoToque = null; }
-// as duas próximas partes (a cidade e a estrada de Emaús) ainda não existem: por enquanto, avisa e volta um pouco
+// a estrada de Emaús ainda não existe: por enquanto, avisa e volta um pouco
 function emConstrucao(texto, i) {
   E.fora = true; fade.textContent = texto; fade.style.opacity = 1;
   setTimeout(() => { recua(i); fade.style.opacity = 0; setTimeout(() => { fade.textContent = ''; E.fora = false; }, 900); }, 2600);
 }
-function perguntaCidade() { dialogo('', 'Deseja voltar para a cidade, pela Porta de Genat?', [['Ainda não', () => recua(12), '#a8957a'], ['Sim', () => emConstrucao('A volta para a cidade é uma parte do caminho em construção.', 12)]]); }
+function sair(texto, url) { E.fora = true; fade.textContent = texto; fade.style.opacity = 1; setTimeout(() => { location.href = url; }, 1200); }
+function perguntaCidade() { dialogo('', 'Deseja voltar para a cidade, pela Porta de Genat?', [['Ainda não', () => recua(12), '#a8957a'], ['Sim', () => sair('De volta à cidade, pela Porta de Genat…', '../fase-cidade/?de=genat')]]); }
 function perguntaEmaus() { dialogo('', 'Deseja seguir pela estrada de Emaús?', [['Ainda não', () => recua(AMOS.length - 14), '#a8957a'], ['Sim', () => emConstrucao('A estrada de Emaús é a próxima parte do caminho (em construção).', AMOS.length - 14)]]); }
 
 // ---------- chegada ----------

@@ -430,6 +430,42 @@ async function rodar() {
     });
   } else item('Templo').aviso('pulado: a fase não carregou');
 
+  grupo('A cidade alta (fase-cidade/)');
+  await abre('fase-cidade/');
+  const okCi = await testesDaFase('Cidade alta');
+  if (okCi) {
+    await teste('Jo 20.2-4: Maria Madalena chega correndo à casa; Pedro e João saem correndo pela Porta de Genat', async (it) => {
+      const T = W().TESTE, C = T.CENA, fases = new Set();
+      for (let k = 0; k < 30 * 120 && fases.size < 4; k++) { T.laco(1 / 30); fases.add(C.fase); if (C.fase === 'espera' && fases.has('dois')) break; }
+      const ok = ['maria', 'pausa', 'dois'].every((f) => fases.has(f)) && C.fase === 'espera';
+      (ok ? it.ok : it.erro)('a cena passou por: ' + [...fases].join(' → ') + '; terminou: ' + (C.fase === 'espera' ? 'sim (os dois saíram pela porta)' : 'NÃO (' + C.fase + ')'));
+    });
+    await teste('conversas na cidade: a mulher à porta do cenáculo e a serva junto ao braseiro (Jo 18.17-18)', async (it) => {
+      const T = W().TESTE, p = T.jog.o.position, r = [];
+      for (const nome of ['Uma mulher à porta', 'A serva da porta']) {
+        const c = T.CONVERSAS.find((n) => n.nome === nome); if (!c) { r.push(nome + ': NÃO existe'); continue; }
+        T.E.fora = false; const q = c.o.position;
+        const lados = [[1.3, 0], [-1.3, 0], [0, 1.3], [0, -1.3]].find(([dx, dz]) => !T.bate(q.x + dx, q.z + dz, 0.1)) || [1.3, 0];
+        p.set(q.x + lados[0], T.chaoTerra(q.x + lados[0], q.z + lados[1]), q.z + lados[1]); quadros(3);
+        T.acionar(); quadros(2);
+        const abriu = await responde(nome, 'Continuar', 2000);
+        for (let k = 0; k < 4; k++) { if (!(await responde('', 'Continuar', 500))) break; }
+        await responde('', 'Fechar', 1500); quadros(2);
+        r.push(nome + ': ' + (abriu && !T.E.fora ? 'sim' : 'NÃO'));
+      }
+      (r.every((s) => s.endsWith('sim')) ? it.ok : it.erro)(r.join('; '));
+    });
+    await teste('as saídas perguntam: o viaduto (o templo) e a Porta de Genat; o Sim da porta leva ao Gólgota', async (it) => {
+      const T = W().TESTE, L = T.LAY, r = [];
+      T.E.fora = false; T.E.perguntou = false; T.jog.o.position.set(L.ponte[0], T.chaoTerra(L.ponte[0], L.ponte[2] - 1), L.ponte[2] - 1); quadros(3);
+      r.push('viaduto: ' + ((await responde('templo', 'Ainda não', 3000)) ? 'sim' : 'NÃO')); quadros(5);
+      T.E.fora = false; T.E.perguntou = false; T.jog.o.position.set(L.genat[0], T.chaoTerra(L.genat[0], L.genat[2] - 1.4), L.genat[2] - 1.4); quadros(3);
+      if (!await confirma('Genat')) r.push('Genat: NÃO');
+      else { const foi = await ate(() => /fase-golgota\/(index\.html)?$/.test(W().location.pathname), 8000); r.push('Genat: ' + (foi ? 'sim, foi para ' + caminho() : 'NÃO mudou de página')); }
+      (r.every((s) => s.includes('sim')) ? it.ok : it.erro)(r.join('; '));
+    });
+  } else item('Cidade alta').aviso('pulado: a fase não carregou');
+
   grupo('Gólgota e o sepulcro (fase-golgota/)');
   await abre('fase-golgota/');
   const okGo = await testesDaFase('Gólgota');
