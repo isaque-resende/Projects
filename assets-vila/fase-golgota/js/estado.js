@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { criaBase } from '../../limpo-motor/base.js';
 import { criaColisao } from '../../limpo-motor/colisao.js';
 import { criaUI } from '../../limpo-motor/ui.js';
+import { criaConversa } from '../../limpo-motor/conversa.js';
 
 // o mesmo céu do amanhecer do Getsêmani (a bruma tem a cor do horizonte: o longe some nela)
 const CEU = (() => { const c = document.createElement('canvas'); c.width = 4; c.height = 256; const g = c.getContext('2d'); const gr = g.createLinearGradient(0, 0, 0, 256);
@@ -36,5 +37,6 @@ const { CAIXAS, CIRC, bate, fundo } = criaColisao(0.25);
 CIRC.push(...LAY.obst.map(([x, z, r]) => ({ x, z, r })));
 for (const [x0, z0, x1, z1] of LAY.muros) { const L = Math.hypot(x1 - x0, z1 - z0); for (let s = 0; s <= L + 0.01; s += 0.6) CIRC.push({ x: x0 + (x1 - x0) * s / L, z: z0 + (z1 - z0) * s / L, r: 0.38 }); }
 const { botao, fade, fala, dialogo, textoBotao } = criaUI(E);
+const conversa = criaConversa(dialogo);
 
-export { LAY, DE, scene, texChao, rnd, V3, sm, CIRC, CAIXAS, E, renderer, bate, fundo, fala, botao, fade, sun, hemi, dialogo, textoBotao };
+export { LAY, DE, scene, texChao, rnd, V3, sm, CIRC, CAIXAS, E, renderer, bate, fundo, fala, botao, fade, sun, hemi, dialogo, textoBotao, conversa };

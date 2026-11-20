@@ -1,10 +1,12 @@
 // Gólgota: liga os controles às ações e roda o laço do jogo. Aqui ficam os lugares (as legendas de cada um, com o
-// texto dos evangelhos), o sepulcro (abaixar-se na porta e olhar dentro, Jo 20.5-7) e as duas pontas da estrada: a
+// texto dos evangelhos), Pedro e João e Maria Madalena (npcs.js), o sepulcro (abaixar-se na porta e olhar dentro, Jo 20.5-7) e as duas pontas da estrada: a
 // sudeste, a volta para a cidade alta (a Porta de Genat); a noroeste, a estrada de Emaús (a próxima parte do caminho).
 import * as THREE from 'three';
-import { E, LAY, fade, fala, bate, fundo, scene, sun, renderer, CIRC, CAIXAS, dialogo, botao, textoBotao } from './estado.js';
+import { E, LAY, fade, fala, bate, fundo, scene, sun, renderer, CIRC, CAIXAS, dialogo, botao, textoBotao, conversa } from './estado.js';
 import { terreno, AMOS, naRota, TUM, SOL_DIR } from './cenario.js';
 import { MIX } from './gente.js';
+import { CONVERSAS, CENA, npcsPasso } from './npcs.js';
+import { pertoDe } from '../../limpo-motor/conversa.js';
 import { ajustaLente, jog, camera, ctl, tecla, JOY, toqueTela, fw, rt, mv, naArea, alturaEm, camPasso, CAM } from './jogador.js';
 import { criaMarcador } from '../../limpo-motor/marcador.js';
 
@@ -54,9 +56,19 @@ function olharPasso(dt) {
   if (OL.t > 25.3) { OL.t = -1; fala(''); E.fora = false; E.olhou = true; jog.toca('Parado'); }
 }
 
+// ---------- conversas (Maria Madalena) ----------
+let quem = null;
+function conversar() {
+  if (!quem) return;
+  const n = quem; E.alvoToque = null;
+  jog.o.rotation.y = Math.atan2(n.o.position.x - jog.o.position.x, n.o.position.z - jog.o.position.z);
+  conversa(n.nome, n.falas, () => { n.ouviu = true; });
+}
+
 // ---------- o botão de ação e as pontas da estrada ----------
 function acionar() {
   if (E.fora) return;
+  if (quem) { conversar(); return; }
   if (OL.perto) { olhar(); return; }
   if (E.emaus) { perguntaEmaus(); return; }
   if (E.cidade) perguntaCidade();
@@ -85,6 +97,7 @@ let primeira = true;
 const laco = (forca) => {
   const dt = forca || Math.min(relogio.getDelta(), 0.05), t = relogio.elapsedTime;
   for (const m of MIX) m.update(dt);
+  npcsPasso(dt, jog.o.position);
   camera.getWorldDirection(fw); fw.setY(0).normalize(); rt.set(-fw.z, 0, fw.x);
   mv.set(0, 0, 0);
   if (!E.fora) {
@@ -120,6 +133,7 @@ const laco = (forca) => {
   // lugares, sepulcro e as pontas da estrada
   lugares(pj);
   OL.perto = Math.hypot(pj.x - ox, pj.z - oz) < 1.8;
+  quem = E.fora ? null : pertoDe(CONVERSAS, pj);
   anel.material.opacity = (E.olhou ? 0.16 : 0.3) + 0.1 * Math.sin(t * 1.6);
   olharPasso(dt);
   const [i, d] = naRota(pj.x, pj.z);
@@ -127,7 +141,7 @@ const laco = (forca) => {
   E.emaus = i >= AMOS.length - 5 && d < 4;
   if ((E.cidade || E.emaus) && !E.fora && !E.perguntou) { E.perguntou = true; (E.cidade ? perguntaCidade : perguntaEmaus)(); }
   if (!E.cidade && !E.emaus) E.perguntou = false;
-  const txt = OL.perto && !E.fora ? 'abaixar-se e olhar dentro' : E.emaus ? 'seguir para Emaús' : E.cidade ? 'voltar para a cidade' : '';
+  const txt = quem && !E.fora ? 'conversar com ' + quem.nome : OL.perto && !E.fora ? 'abaixar-se e olhar dentro' : E.emaus ? 'seguir para Emaús' : E.cidade ? 'voltar para a cidade' : '';
   if (txt) textoBotao((toqueTela ? '' : 'E: ') + txt);
   botao.style.display = txt && !E.fora ? 'block' : 'none';
   ctl.marcaPino(botao.style.display === 'block' ? (OL.perto ? 'olhar' : 'ir') : '');
@@ -143,4 +157,4 @@ if (!(globalThis.MODO_TESTE && new URLSearchParams(location.search).has('parado'
 addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; ajustaLente(); });
 
 // para os testes automáticos: abrir com ?teste (ou pelo teste.html) e usar TESTE no console
-if (globalThis.MODO_TESTE) globalThis.TESTE = { MIX, E, jog, laco, marca, tecla, bate, alturaEm: (x, z) => terreno(x, z), chaoTerra: terreno, scene, camera, CIRC, CAIXAS, renderer, AMOS, OL, LAY, TUM, olhar, acionar };
+if (globalThis.MODO_TESTE) globalThis.TESTE = { MIX, E, jog, laco, marca, tecla, bate, alturaEm: (x, z) => terreno(x, z), chaoTerra: terreno, scene, camera, CIRC, CAIXAS, renderer, AMOS, OL, LAY, TUM, olhar, acionar, CONVERSAS, CENA, conversar };

@@ -429,3 +429,13 @@ no gerador do Getsêmani). O jardim continua no mesmo lugar.
 Betânia → Betfagé → Monte das Oliveiras → Getsêmani → Tanque de Betesda → (pela Porta das Ovelhas) o templo → (pela
 porta do oeste e o viaduto) a cidade alta → (pela Porta de Genat) o Gólgota e o sepulcro. De Betesda também se vai
 direto ao Gólgota, pela estrada ao longo do muro. A ponta noroeste do Gólgota é a estrada de Emaús (em construção).
+
+## Gólgota: a gente no horto (`fase-golgota/js/npcs.js`)
+
+- **Pedro e o outro discípulo** chegam correndo pela estrada, vindos da Porta de Genat: é a continuação da cena da
+  cidade alta. O outro corre mais depressa e para na porta, sem entrar. Pedro chega e entra. Depois o outro entra também
+  ("e viu, e creu"), e os dois voltam para casa andando (Jo 20.4-10). A cena se repete, com legendas quando o jogador
+  está perto.
+- **Maria Madalena** fica do lado de fora, junto ao sepulcro, chorando (Jo 20.11). A conversa com ela segue Jo 20.13 e
+  Mc 16.1-4. A aparição do Senhor a ela (Jo 20.14-17) não está na fase: fica para decidir.
+- A volta para a cidade (a ponta sudeste da estrada) leva à cidade alta, pela Porta de Genat.

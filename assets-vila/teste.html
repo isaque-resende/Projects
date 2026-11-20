@@ -483,6 +483,20 @@ async function rodar() {
       quadros(30 * 17);
       (dSep > 25 && dSep < 45 && dEstr < 16 && /olhar dentro/.test(txt) && abaixado && /lençóis|lenço/.test(fala) && T.E.olhou && !T.E.fora ? it.ok : it.erro)('sepulcro a ' + dSep.toFixed(1) + ' m do Gólgota; o Gólgota a ' + dEstr.toFixed(1) + ' m da estrada; botão "' + txt + '"; abaixado: ' + (abaixado ? 'sim' : 'NÃO') + '; legenda: "' + fala.slice(0, 50) + '…"; depois livre: ' + (T.E.olhou && !T.E.fora ? 'sim' : 'NÃO'));
     });
+    await teste('Jo 20.4-13: Pedro e João chegam correndo, entram e voltam; Maria Madalena fica chorando e conversa', async (it) => {
+      const T = W().TESTE, C = T.CENA, fases = new Set(), p = T.jog.o.position;
+      C.fase = 'espera'; C.t = 0;          // do começo
+      for (let k = 0; k < 30 * 150; k++) { T.laco(1 / 30); fases.add(C.fase); if (C.fase === 'espera' && fases.has('voltam')) break; }
+      const cena = ['correm', 'dentro1', 'dentro2', 'voltam'].every((f) => fases.has(f)) && C.fase === 'espera';
+      const m = T.CONVERSAS.find((n) => n.nome === 'Maria Madalena'); let conv = false;
+      if (m) {
+        T.E.fora = false; const q = m.o.position; p.set(q.x + 1.2, T.chaoTerra(q.x + 1.2, q.z), q.z); quadros(3); T.acionar(); quadros(2);
+        conv = await responde('Maria Madalena', 'Continuar', 2000);
+        for (let k = 0; k < 4; k++) { if (!(await responde('', 'Continuar', 500))) break; }
+        await responde('', 'Fechar', 1500); quadros(2);
+      }
+      (cena && conv && !T.E.fora ? it.ok : it.erro)('a cena passou por: ' + [...fases].join(' → ') + '; conversa com Maria Madalena: ' + (conv ? 'sim' : 'NÃO'));
+    });
     await teste('as pontas da estrada perguntam: "voltar para a cidade" (sudeste) e "seguir pela estrada de Emaús" (noroeste)', async (it) => {
       const T = W().TESTE, N = T.AMOS.length, r = [];
       for (const [i, txt] of [[1, 'cidade'], [N - 2, 'Emaús']]) {
