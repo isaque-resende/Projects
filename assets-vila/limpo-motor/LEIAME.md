@@ -324,3 +324,28 @@ cavados nas duas encostas, alguns abertos e a maioria fechada por uma pedra quad
 das Oliveiras e de frente para o templo, estão os três monumentos que já existiam no tempo de Jesus: a coluna de
 Absalão, com o teto em cone, a fachada de colunas de Bene Hezir e o bloco de Zacarias, com a pirâmide (`Cedrom_Pedra`,
 no gerador do Getsêmani). O jardim continua no mesmo lugar.
+
+## Tanque de Betesda (`fase-betesda/`)
+
+- **Onde fica:** ao norte do templo, do lado de fora do muro da cidade, diante da Porta das Ovelhas (Jo 5.2). A origem
+  da fase é o ponto `betesda` da maquete, em escala 1:1, e a maquete entra deslocada. O muro norte, a porta, a Antônia e
+  o templo são os da maquete; a Betesda pequena dela, as casas, as árvores e a estrada que caem em cima do terreno saem.
+- **O tanque:** dois tanques cavados na rocha, com o dique no meio, e os cinco alpendres (os quatro lados e o dique),
+  com colunas e telhados de cedro. Os tanques têm paredes de blocos, a escadaria larga no sul, escadas nos cantos do
+  norte e a água. Os tanques são obstáculos (caixas). Cada telhado é uma malha própria e fica transparente quando o
+  jogador está debaixo dele ou quando ele tapa a vista da câmera.
+- **A gente** (`js/npcs.js`):
+  - enfermos deitados em esteiras debaixo dos alpendres (Jo 5.3), com parentes de pé;
+  - um cego junto a uma coluna;
+  - o pastor com o cordeiro junto ao curral, e as ovelhas dentro dele;
+  - alguém que vem pela estrada e entra pela porta.
+  O lugar do paralítico (Jo 5.5-9) fica marcado no chão, sem esteira.
+- **Conversas** (`limpo-motor/conversa.js`, comum a todas as fases): perto de quem fala aparece o botão "conversar
+  com…", e as falas passam uma a uma na caixa de diálogo. Falam um enfermo, uma mulher, o cego e o pastor.
+- **As saídas:**
+  - a leste, voltar ao Getsêmani;
+  - ao sul, a Porta das Ovelhas, para o pátio do templo (em construção);
+  - a oeste, a estrada ao longo do muro, até o Gólgota.
+  No Getsêmani, o "Sim" para Betesda já traz para cá.
+- **Gerar:** `blender -b --factory-startup -P betesda_blender.py -- --regerar-tudo`. Exportar: `blender -b betesda.blend
+  -P exportar_betesda.py`. Para testar: `fase-betesda/` (`?de=golgota` começa a oeste, `?de=templo` na porta).

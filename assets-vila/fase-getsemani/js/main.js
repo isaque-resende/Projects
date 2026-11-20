@@ -69,7 +69,7 @@ function acionar() {
 ctl.aoAcionar = acionar; botao.onclick = () => acionar();
 function recua() { const p = AMOS[Math.min(AMOS.length - 1, 10)]; jog.o.position.set(p.x, terreno(p.x, p.z), p.z); }
 function perguntaVolta() { dialogo('', 'Deseja voltar ao Monte das Oliveiras?', [['Ainda não', () => recua(), '#a8957a'], ['Sim', () => sair('De volta ao Monte das Oliveiras…', '../fase-oliveiras/?de=getsemani')]]); }
-// o Tanque de Betesda é a próxima fase (ainda não existe); por enquanto, avisa e volta um pouco
+// o Tanque de Betesda é a próxima fase (fase-betesda)
 const I_JARDIM = AMOS.findIndex((a) => a.x < LAY.jardim[0] - 1);       // a saída do jardim (o vão da mureta oeste)
 const naSaidaJardim = (i) => i >= I_JARDIM && i <= I_JARDIM + 10;
 function recuaPorta() {
@@ -77,10 +77,7 @@ function recuaPorta() {
   jog.o.position.set(p.x, terreno(p.x, p.z), p.z); E.alvoToque = null;
 }
 function perguntaBetesda() {
-  dialogo('', 'Seguir para a entrada do Tanque de Betesda, junto à Porta das Ovelhas?', [['Ainda não', () => recuaPorta(), '#a8957a'], ['Sim', () => {
-    E.fora = true; fade.textContent = 'O Tanque de Betesda é a próxima parte do caminho (em construção).'; fade.style.opacity = 1;
-    setTimeout(() => { recuaPorta(); fade.style.opacity = 0; setTimeout(() => { fade.textContent = ''; E.fora = false; }, 900); }, 2600);
-  }]]);
+  dialogo('', 'Seguir para a entrada do Tanque de Betesda, junto à Porta das Ovelhas?', [['Ainda não', () => recuaPorta(), '#a8957a'], ['Sim', () => sair('Para o Tanque de Betesda…', '../fase-betesda/')]]);
 }
 function sair(texto, url) { E.fora = true; fade.textContent = texto; fade.style.opacity = 1; setTimeout(() => { location.href = url; }, 1200); }
 

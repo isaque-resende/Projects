@@ -353,6 +353,41 @@ async function rodar() {
     });
   } else item('Getsêmani').aviso('pulado: a fase não carregou');
 
+  grupo('Tanque de Betesda (fase-betesda/)');
+  await abre('fase-betesda/');
+  const okBe = await testesDaFase('Betesda');
+  if (okBe) {
+    await teste('os cinco alpendres, os dois tanques e os enfermos deitados; a conversa com o enfermo', async (it) => {
+      const T = W().TESTE, L = T.LAY, p = T.jog.o.position;
+      const tel = ['Telhado_Norte', 'Telhado_Sul', 'Telhado_Leste', 'Telhado_Oeste', 'Telhado_Dique'].filter((n) => T.scene.getObjectByName(n)).length;
+      for (const n of ['Betesda_Tanques', 'Betesda_Colunas', 'Muro_Cidade', 'Templo_Muros', 'Fortaleza_Antonia']) if (!T.scene.getObjectByName(n)) throw new Error('falta ' + n + ' na cena');
+      const vazia = L.esteiras.filter((e) => !e[3]).length, deitados = L.esteiras.length - vazia;
+      // não se entra na água: o tanque é um obstáculo
+      const naAgua = T.bate(0, (L.caixas[0][2] + L.caixas[0][3]) / 2, 0);
+      const c = T.CONVERSAS[0]; T.E.fora = false; p.set(c.o.position.x + 1.4, T.chaoTerra(c.o.position.x + 1.4, c.o.position.z + 0.6), c.o.position.z + 0.6); quadros(3);
+      const txt = D().getElementById('acao').textContent; T.acionar(); quadros(2);
+      const falou = await responde('água se agita', 'Continuar', 2000);
+      for (let k = 0; k < 4; k++) { if (!(await responde('', 'Continuar', 600))) break; }
+      await responde('', 'Fechar', 1500); quadros(3);
+      (tel === 5 && deitados >= 10 && vazia === 1 && naAgua && /conversar/.test(txt) && falou && !T.E.fora ? it.ok : it.erro)(tel + ' alpendres; ' + deitados + ' enfermos nas esteiras e o lugar vazio do paralítico: ' + (vazia === 1 ? 'sim' : 'NÃO') + '; a água é obstáculo: ' + (naAgua ? 'sim' : 'NÃO') + '; botão "' + txt + '"; conversa: ' + (falou ? 'sim' : 'NÃO') + '; depois livre: ' + (!T.E.fora ? 'sim' : 'NÃO'));
+    });
+    await teste('as três saídas perguntam: o Getsêmani (leste), o Gólgota (oeste) e o templo (a Porta das Ovelhas)', async (it) => {
+      const T = W().TESTE, L = T.LAY, N = T.AMOS.length, r = [];
+      for (const [x, z, txt] of [[T.AMOS[1].x, T.AMOS[1].z, 'Getsêmani'], [T.AMOS[N - 2].x, T.AMOS[N - 2].z, 'Gólgota'], [L.porta[0], L.porta[2], 'templo']]) {
+        T.E.fora = false; T.E.perguntou = false; T.jog.o.position.set(x, T.chaoTerra(x, z), z); quadros(3);
+        r.push(txt + ': ' + ((await responde(txt, 'Ainda não', 3000)) ? 'sim' : 'NÃO')); quadros(5);
+      }
+      (r.every((s) => s.endsWith('sim')) && !T.E.fora ? it.ok : it.erro)(r.join('; '));
+    });
+    await teste('a ponta oeste leva ao Gólgota', async (it) => {
+      const T = W().TESTE, q = T.AMOS[T.AMOS.length - 2]; T.E.fora = false; T.E.perguntou = false; T.jog.o.position.set(q.x, T.chaoTerra(q.x, q.z), q.z); quadros(3);
+      if (!await confirma('Gólgota')) throw new Error('a pergunta não apareceu');
+      const foi = await ate(() => /fase-golgota\/(index\.html)?$/.test(W().location.pathname), 8000);
+      if (!foi) throw new Error('não mudou de página (está em ' + caminho() + ')');
+      const tempo = await esperaFase(); (tempo != null ? it.ok : it.erro)('foi para ' + caminho() + (tempo != null ? ' e carregou em ' + tempo.toFixed(1) + ' s' : ' e não carregou'));
+    });
+  } else item('Betesda').aviso('pulado: a fase não carregou');
+
   grupo('Gólgota e o sepulcro (fase-golgota/)');
   await abre('fase-golgota/');
   const okGo = await testesDaFase('Gólgota');
