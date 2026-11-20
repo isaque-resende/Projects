@@ -1,6 +1,7 @@
 // Getsêmani: liga os controles às ações e roda o laço do jogo. Aqui ficam os lugares do jardim (as legendas de
 // cada um, com o texto dos evangelhos), a Rocha da Agonia (ajoelhar ao lado dela), a volta ao Monte das Oliveiras e,
-// do outro lado do Cedrom, o fim da subida: o Tanque de Betesda, junto à Porta das Ovelhas (a próxima fase).
+// a ida para o Tanque de Betesda (a próxima fase): a pergunta vem logo ao sair do jardim, pelo vão da mureta oeste (não
+// é preciso atravessar o vale a pé); quem disser "Ainda não" pode descer ao Cedrom e subir até lá, e no fim pergunta de novo.
 import * as THREE from 'three';
 import { E, LAY, fade, fala, bate, fundo, scene, sun, renderer, CIRC, CAIXAS, dialogo, botao, textoBotao } from './estado.js';
 import { terreno, AMOS, naRota, PRENSA, SOL_DIR } from './cenario.js';
@@ -68,10 +69,15 @@ function acionar() {
 ctl.aoAcionar = acionar; botao.onclick = () => acionar();
 function recua() { const p = AMOS[Math.min(AMOS.length - 1, 10)]; jog.o.position.set(p.x, terreno(p.x, p.z), p.z); }
 function perguntaVolta() { dialogo('', 'Deseja voltar ao Monte das Oliveiras?', [['Ainda não', () => recua(), '#a8957a'], ['Sim', () => sair('De volta ao Monte das Oliveiras…', '../fase-oliveiras/?de=getsemani')]]); }
-// o fim da subida: o Tanque de Betesda é a próxima fase (ainda não existe); por enquanto, avisa e volta um pouco
-function recuaPorta() { const p = AMOS[Math.max(0, AMOS.length - 20)]; jog.o.position.set(p.x, terreno(p.x, p.z), p.z); E.alvoToque = null; }
+// o Tanque de Betesda é a próxima fase (ainda não existe); por enquanto, avisa e volta um pouco
+const I_JARDIM = AMOS.findIndex((a) => a.x < LAY.jardim[0] - 1);       // a saída do jardim (o vão da mureta oeste)
+const naSaidaJardim = (i) => i >= I_JARDIM && i <= I_JARDIM + 10;
+function recuaPorta() {
+  const p = AMOS[E.ondeB === 'jardim' ? Math.max(0, I_JARDIM - 14) : Math.max(0, AMOS.length - 20)];
+  jog.o.position.set(p.x, terreno(p.x, p.z), p.z); E.alvoToque = null;
+}
 function perguntaBetesda() {
-  dialogo('', 'Seguir para o Tanque de Betesda, junto à Porta das Ovelhas?', [['Ainda não', () => recuaPorta(), '#a8957a'], ['Sim', () => {
+  dialogo('', 'Seguir para a entrada do Tanque de Betesda, junto à Porta das Ovelhas?', [['Ainda não', () => recuaPorta(), '#a8957a'], ['Sim', () => {
     E.fora = true; fade.textContent = 'O Tanque de Betesda é a próxima parte do caminho (em construção).'; fade.style.opacity = 1;
     setTimeout(() => { recuaPorta(); fade.style.opacity = 0; setTimeout(() => { fade.textContent = ''; E.fora = false; }, 900); }, 2600);
   }]]);
@@ -132,9 +138,10 @@ const laco = (forca) => {
   E.saida = i <= 3;
   if (E.saida && !E.fora && !E.perguntou) { E.perguntou = true; perguntaVolta(); }
   if (!E.saida) E.perguntou = false;
-  E.betesda = i >= AMOS.length - 6;
+  E.ondeB = naSaidaJardim(i) ? 'jardim' : i >= AMOS.length - 6 ? 'fim' : '';
+  E.betesda = !!E.ondeB;
   if (E.betesda && !E.fora && !E.perguntouB) { E.perguntouB = true; perguntaBetesda(); }
-  if (i < AMOS.length - 14) E.perguntouB = false;
+  if (!E.betesda && !naSaidaJardim(i - 6) && !naSaidaJardim(i + 6) && i < AMOS.length - 14) E.perguntouB = false;
   const txt = AG.perto && !E.fora ? 'ajoelhar junto à rocha' : E.betesda ? 'seguir para Betesda' : E.saida ? 'voltar ao Monte das Oliveiras' : '';
   if (txt) textoBotao((toqueTela ? '' : 'E: ') + txt);
   botao.style.display = txt && !E.fora ? 'block' : 'none';

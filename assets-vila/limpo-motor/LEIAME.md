@@ -173,7 +173,9 @@ bate de frente nos muros de Jerusalém; a bruma tem a cor do pé do céu, e o lo
 - **O caminho para Betesda:** a trilha passa ao sul da rocha, sai por um vão na mureta oeste, desce ~12 m até o leito
   seco do Cedrom (legenda de Jo 18.1) e sobe a outra encosta na diagonal, para noroeste, passando pela quina nordeste
   do templo (o muro dele fica à esquerda), até o planalto ao norte do templo, de frente para o Tanque de Betesda e a
-  Porta das Ovelhas. Ali aparece "Seguir para o Tanque de Betesda?"; o Sim ainda só avisa que é a próxima parte (em
+  Porta das Ovelhas. A pergunta "Seguir para a entrada do Tanque de Betesda?" vem logo na saída do jardim (o vão da
+  mureta oeste), sem precisar atravessar o vale; com "Ainda não", dá para seguir a pé, e no fim ela vem de novo. O Sim
+  ainda só avisa que é a próxima parte (em
   construção) e devolve o jogador um pouco para trás.
 - **No Blender:** `fase-getsemani/getsemani.blend` é o original. Mexa nele e rode **EXPORTAR_PARA_O_JOGO**: ele grava
   `getsemani_cenario.glb` (terreno, trilha, mureta, `Rocha_Agonia`, `Gruta_Morro`, `Gruta_Boca` e a cidade) e

@@ -316,13 +316,20 @@ async function rodar() {
       quadros(30 * 18);
       (tiro > 20 && tiro < 35 && /ajoelhar/.test(txt) && joelhos && /sangue/.test(fala) && T.E.orou && !T.E.fora ? it.ok : it.erro)('rocha a ' + tiro.toFixed(1) + ' m dos três; botão "' + txt + '"; de joelhos: ' + (joelhos ? 'sim' : 'NÃO') + '; legenda: "' + fala.slice(0, 60) + '…"; depois livre: ' + (T.E.orou && !T.E.fora ? 'sim' : 'NÃO'));
     });
-    await teste('da rocha, a trilha desce ao Cedrom e sobe na diagonal até Betesda, ao norte do templo, e pergunta se quer seguir', async (it) => {
+    await teste('saindo do jardim, pergunta se quer ir para Betesda; dizendo "Ainda não", dá para descer ao Cedrom e subir até lá, ao norte do templo', async (it) => {
       const T = W().TESTE, L = T.LAY, p = T.jog.o.position, V = p.constructor, N = T.AMOS.length;
       for (const n of ['Templo_Muros', 'Santuario', 'Fortaleza_Antonia', 'Muro_Cidade', 'Tanques']) if (!T.scene.getObjectByName(n)) throw new Error('falta ' + n + ' na maquete');
       T.E.fora = false; T.E.orou = false;
       const i0 = T.AMOS.findIndex((a) => a.x < L.rocha[0] - 3); const a0 = T.AMOS[i0]; p.set(a0.x, T.chaoTerra(a0.x, a0.z), a0.z); quadros(3);
+      // até a saída do jardim: a pergunta aparece
+      const iJ = T.AMOS.findIndex((a) => a.x < L.jardim[0] - 1);
+      for (let j = i0; j < iJ + 4; j += 4) { const a = T.AMOS[Math.min(iJ + 4, j + 4)]; T.E.alvoToque = new V(a.x, 0, a.z); for (let k = 0; k < 200 && T.E.alvoToque && !T.E.fora; k++) T.laco(1 / 30); if (T.E.fora) break; }
+      const noJardim = T.E.betesda && await responde('Betesda', 'Ainda não'); quadros(10);
+      const voltouJardim = p.x > L.jardim[0];
+      // "Ainda não": segue a pé pelo vale (pula a pergunta da saída) até o fim
+      const b = T.AMOS[iJ + 14]; p.set(b.x, T.chaoTerra(b.x, b.z), b.z); quadros(5);
       let yMin = 1e9;
-      for (let j = i0; j < N - 12; j = Math.min(N - 12, j + 6)) {
+      for (let j = iJ + 14; j < N - 12; j = Math.min(N - 12, j + 6)) {
         const a = T.AMOS[Math.min(N - 12, j + 6)]; T.E.alvoToque = new V(a.x, 0, a.z);
         for (let k = 0; k < 240 && T.E.alvoToque; k++) { T.laco(1 / 30); yMin = Math.min(yMin, p.y); }
         if (Math.hypot(p.x - a.x, p.z - a.z) > 1.5) throw new Error('travou na trilha perto de (' + p.x.toFixed(1) + ', ' + p.z.toFixed(1) + ')');
@@ -333,7 +340,7 @@ async function rodar() {
       const desceu = L.rocha[1] - yMin, subiu = L.betesda[1] - yMin;
       // a geografia: o fim fica a noroeste do jardim, ao norte da quina nordeste do templo (x = -161, z = 22)
       const lugar = L.betesda[0] < -110 && L.betesda[2] < -40;      // o norte é -z
-      (perguntou && recuou && desceu > 8 && subiu > 25 && lugar ? it.ok : it.erro)('desceu ' + desceu.toFixed(1) + ' m até o leito e subiu ' + subiu.toFixed(1) + ' m; fim da trilha em (' + L.betesda[0].toFixed(0) + ', ' + L.betesda[2].toFixed(0) + '), ao norte do templo: ' + (lugar ? 'sim' : 'NÃO') + '; perguntou: ' + (perguntou ? 'sim' : 'NÃO') + '; "Ainda não" recuou: ' + (recuou ? 'sim' : 'NÃO'));
+      (noJardim && voltouJardim && perguntou && recuou && desceu > 8 && subiu > 20 && lugar ? it.ok : it.erro)('na saída do jardim perguntou: ' + (noJardim ? 'sim' : 'NÃO') + ' (e voltou ao jardim: ' + (voltouJardim ? 'sim' : 'NÃO') + '); desceu ' + desceu.toFixed(1) + ' m até o leito e subiu ' + subiu.toFixed(1) + ' m; fim da trilha em (' + L.betesda[0].toFixed(0) + ', ' + L.betesda[2].toFixed(0) + '), ao norte do templo: ' + (lugar ? 'sim' : 'NÃO') + '; perguntou: ' + (perguntou ? 'sim' : 'NÃO') + '; "Ainda não" recuou: ' + (recuou ? 'sim' : 'NÃO'));
     });
     await teste('a ponta da trilha pergunta "voltar ao Monte das Oliveiras" e o Sim leva até lá', async (it) => {
       const T = W().TESTE, q = T.AMOS[2]; T.E.fora = false; T.jog.o.position.set(q.x, T.chaoTerra(q.x, q.z), q.z); quadros(3);
