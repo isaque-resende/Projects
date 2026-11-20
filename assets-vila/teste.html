@@ -245,16 +245,15 @@ async function rodar() {
     });
     await teste('cume: a cidade está sempre no lugar, o monte é que a esconde, e o jogador passa sem parar', async (it) => {
       const T = W().TESTE, p = T.jog.o.position, V = p.constructor;
-      for (let k = 0; k < 40 && !T.PAN.mat.map; k++) { await new Promise((r) => setTimeout(r, 250)); quadros(3); }     // a imagem pode chegar depois (rede lenta)
-      if (!T.PAN.mat.map) { it.erro('a imagem de Jerusalém não carregou'); return; }
-      // um ponto da esplanada do templo (meio do arco da cidade, 456 de 606 px acima do pé da imagem)
-      const g = T.PAN.mesh.geometry.attributes.position, m = Math.floor(g.count / 4) * 2, bx = g.getX(m), bz = g.getZ(m), alvo = new V(bx, g.getY(m) + (g.getY(m + 1) - g.getY(m)) * 456 / 606, bz);
+      // Jerusalém é a maquete 3D (../jerusalem); o alvo é um ponto no alto da fachada do santuário
+      if (!T.PAN.mesh || !T.PAN.mesh.getObjectByName('Santuario')) { it.erro('a maquete de Jerusalém não está na cena'); return; }
+      const alvo = T.PAN.alvo.clone();
       // a câmera vê o templo? (o chão do monte no meio do caminho tapa)
       const THREE = await W().eval("import('three')"), chao = T.scene.getObjectByName('Oliveiras_Terreno'), raio = new THREE.Raycaster();
       const ve = () => { const c = T.camera.position.clone(), d = alvo.clone().sub(c), L = d.length(); raio.set(c, d.normalize()); raio.far = L; return raio.intersectObject(chao, true).length === 0; };
       const em = (i) => { const q = T.AMOS[i]; p.set(q.x, T.chaoTerra(q.x, q.z), q.z); quadros(60); return ve(); };
       const vPe = em(8), vMeio = em(Math.round(8 + (T.iCume - 8) * 0.5)), vCume = em(T.iCume - 2);
-      const sempre = T.PAN.mesh.visible && T.PAN.mat.opacity > 0.99 && Math.abs(T.PAN.mesh.position.y) < 0.01;
+      const sempre = T.PAN.mesh.visible && T.PAN.mesh.parent === T.scene;
       const livre = T.E.modo === 'descida' && !T.E.fora;
       (sempre && !vPe && vCume && livre ? it.ok : it.erro)('cidade sempre no lugar: ' + (sempre ? 'sim' : 'NÃO') + '; templo visível no pé: ' + (vPe ? 'SIM (devia estar atrás do monte)' : 'não') + ', no meio: ' + (vMeio ? 'sim' : 'não') + ', no cume: ' + (vCume ? 'sim' : 'NÃO') + '; no cume o jogador está ' + (livre ? 'livre' : 'TRAVADO (modo ' + T.E.modo + ')'));
     });
@@ -316,22 +315,24 @@ async function rodar() {
       quadros(30 * 18);
       (tiro > 20 && tiro < 35 && /ajoelhar/.test(txt) && joelhos && /sangue/.test(fala) && T.E.orou && !T.E.fora ? it.ok : it.erro)('rocha a ' + tiro.toFixed(1) + ' m dos três; botão "' + txt + '"; de joelhos: ' + (joelhos ? 'sim' : 'NÃO') + '; legenda: "' + fala.slice(0, 60) + '…"; depois livre: ' + (T.E.orou && !T.E.fora ? 'sim' : 'NÃO'));
     });
-    await teste('da rocha, a trilha desce ao Cedrom e sobe até a Porta das Ovelhas, que pergunta se quer entrar', async (it) => {
+    await teste('da rocha, a trilha desce ao Cedrom e sobe na diagonal até Betesda, ao norte do templo, e pergunta se quer seguir', async (it) => {
       const T = W().TESTE, L = T.LAY, p = T.jog.o.position, V = p.constructor, N = T.AMOS.length;
-      for (const n of ['Templo_Muros', 'Santuario', 'Fortaleza_Antonia', 'Muro_Cidade', 'Porta_Ovelhas']) if (!T.scene.getObjectByName(n)) throw new Error('falta ' + n + ' na cena');
+      for (const n of ['Templo_Muros', 'Santuario', 'Fortaleza_Antonia', 'Muro_Cidade', 'Tanques']) if (!T.scene.getObjectByName(n)) throw new Error('falta ' + n + ' na maquete');
       T.E.fora = false; T.E.orou = false;
-      let i0 = T.AMOS.findIndex((a) => a.x < L.rocha[0] - 3); const a0 = T.AMOS[i0]; p.set(a0.x, T.chaoTerra(a0.x, a0.z), a0.z); quadros(3);
+      const i0 = T.AMOS.findIndex((a) => a.x < L.rocha[0] - 3); const a0 = T.AMOS[i0]; p.set(a0.x, T.chaoTerra(a0.x, a0.z), a0.z); quadros(3);
       let yMin = 1e9;
-      for (let j = i0; j < N - 1; j = Math.min(N - 1, j + 6)) {
-        const a = T.AMOS[Math.min(N - 1, j + 6)]; T.E.alvoToque = new V(a.x, 0, a.z);
+      for (let j = i0; j < N - 12; j = Math.min(N - 12, j + 6)) {
+        const a = T.AMOS[Math.min(N - 12, j + 6)]; T.E.alvoToque = new V(a.x, 0, a.z);
         for (let k = 0; k < 240 && T.E.alvoToque; k++) { T.laco(1 / 30); yMin = Math.min(yMin, p.y); }
         if (Math.hypot(p.x - a.x, p.z - a.z) > 1.5) throw new Error('travou na trilha perto de (' + p.x.toFixed(1) + ', ' + p.z.toFixed(1) + ')');
       }
-      T.E.alvoToque = new V(L.porta[0] + 0.3, 0, L.porta[2]); quadros(30 * 4);
-      const perguntou = T.E.porta && await responde('Porta das Ovelhas', 'Ainda não'); quadros(10);
-      const recuou = p.x > L.porta[0] + 4;
-      const desceu = L.rocha[1] - yMin;
-      (perguntou && recuou && desceu > 6 ? it.ok : it.erro)('desceu ' + desceu.toFixed(1) + ' m até o leito; no alto da escada (y ' + (L.porta[1]).toFixed(1) + ') perguntou: ' + (perguntou ? 'sim' : 'NÃO') + '; "Ainda não" recuou: ' + (recuou ? 'sim' : 'NÃO'));
+      const fim = T.AMOS[N - 1]; T.E.alvoToque = new V(fim.x, 0, fim.z); quadros(30 * 4);
+      const perguntou = T.E.betesda && await responde('Betesda', 'Ainda não'); quadros(10);
+      const recuou = !T.E.betesda && !T.E.fora;
+      const desceu = L.rocha[1] - yMin, subiu = L.betesda[1] - yMin;
+      // a geografia: o fim fica a noroeste do jardim, ao norte da quina nordeste do templo (x = -161, z = 22)
+      const lugar = L.betesda[0] < -140 && L.betesda[2] > 30;
+      (perguntou && recuou && desceu > 8 && subiu > 25 && lugar ? it.ok : it.erro)('desceu ' + desceu.toFixed(1) + ' m até o leito e subiu ' + subiu.toFixed(1) + ' m; fim da trilha em (' + L.betesda[0].toFixed(0) + ', ' + L.betesda[2].toFixed(0) + '), ao norte do templo: ' + (lugar ? 'sim' : 'NÃO') + '; perguntou: ' + (perguntou ? 'sim' : 'NÃO') + '; "Ainda não" recuou: ' + (recuou ? 'sim' : 'NÃO'));
     });
     await teste('a ponta da trilha pergunta "voltar ao Monte das Oliveiras" e o Sim leva até lá', async (it) => {
       const T = W().TESTE, q = T.AMOS[2]; T.E.fora = false; T.jog.o.position.set(q.x, T.chaoTerra(q.x, q.z), q.z); quadros(3);

@@ -17,8 +17,8 @@ const sm = (a, b, x) => { let k = (x - a) / (b - a); k = k < 0 ? 0 : k > 1 ? 1 :
 const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
 
 // ---------- layout exportado do Blender (getsemani_layout.json) ----------
-const LAY = await (await fetch('../fase-getsemani/getsemani_layout.json?v=2')).json();
-const DE = new URLSearchParams(location.search).get('de');      // ?de=agonia começa perto da rocha; ?de=porta, perto da Porta das Ovelhas (testes)
+const LAY = await (await fetch('../fase-getsemani/getsemani_layout.json?v=3')).json();
+const DE = new URLSearchParams(location.search).get('de');      // ?de=agonia começa perto da rocha; ?de=betesda, no fim da subida (testes)
 
 // ---------- estado do jogo ----------
 const E = {
@@ -28,7 +28,7 @@ const E = {
   dist: 12, distAlvo: 12,   // distância da câmera (pinça e roda)
   saida: false,           // na ponta leste da trilha: voltar ao Monte das Oliveiras
   orou: false,            // já se ajoelhou junto à rocha
-  porta: false,           // no alto da escada da Porta das Ovelhas
+  betesda: false,         // no fim da trilha, de frente para Betesda
 };
 
 // ---------- obstáculos e interface (do motor comum) ----------

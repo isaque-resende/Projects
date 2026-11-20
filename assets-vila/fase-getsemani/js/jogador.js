@@ -1,6 +1,6 @@
 // Getsêmani: o jogador, a câmera e os controles.
 // A câmera fica atrás (leste) e acima do jogador, olhando para o oeste: o jardim desce para o Cedrom e Jerusalém
-// fica no alto, do outro lado (a trilha segue até a Porta das Ovelhas). Mesmo braço e mesma suavização do Monte das Oliveiras (nada treme no celular).
+// fica no alto, do outro lado (a trilha segue até Betesda, ao norte do templo). Mesmo braço e mesma suavização do Monte das Oliveiras (nada treme no celular).
 import * as THREE from 'three';
 import { criaControles } from '../../limpo-motor/controles.js';
 import { V3, LAY, E, DE, renderer } from './estado.js';
@@ -8,10 +8,10 @@ import { gJog } from './modelos.js';
 import { AMOS, terreno, ARVS } from './cenario.js';
 import { ator } from './gente.js';
 
-// de onde começa: na ponta leste da trilha (vindo do Monte das Oliveiras); ?de=agonia, perto da rocha; ?de=porta, ao pé da escada
+// de onde começa: na ponta leste da trilha (vindo do Monte das Oliveiras); ?de=agonia, perto da rocha; ?de=betesda, no fim da subida
 const dirEm = (i, n = 6) => { const a = AMOS[Math.max(0, Math.min(AMOS.length - 1, i))], b = AMOS[Math.max(0, Math.min(AMOS.length - 1, i + n))]; return b.clone().sub(a).setY(0).normalize(); };
 const perto = (x, z) => { let k = 0, m = 1e9; AMOS.forEach((a, i) => { const d = (a.x - x) ** 2 + (a.z - z) ** 2; if (d < m) { m = d; k = i; } }); return k; };
-const iInicio = DE === 'agonia' ? perto(LAY.agonia[0] + 1, LAY.agonia[2] + 0.5) : DE === 'porta' ? AMOS.length - 24 : 6;
+const iInicio = DE === 'agonia' ? perto(LAY.agonia[0] + 1, LAY.agonia[2] + 0.5) : DE === 'betesda' ? AMOS.length - 40 : 6;
 const p0 = AMOS[iInicio], d0 = dirEm(iInicio);
 const jog = ator(gJog, 1.7, p0.x, p0.z, Math.atan2(d0.x, d0.z), 'Parado');
 

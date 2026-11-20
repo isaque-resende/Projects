@@ -1,13 +1,14 @@
-// Getsêmani: o cenário que vem do Blender (terreno, trilha, mureta, a Rocha da Agonia, a gruta e Jerusalém em 3D do
-// outro lado do Cedrom: o muro do templo, o santuário, a Antônia, o muro da cidade e a Porta das Ovelhas, tudo em
-// getsemani_cenario.glb), as oliveiras, pedras e moitas do layout, a prensa na boca da gruta e o sol da manhã.
+// Getsêmani: o cenário que vem do Blender (terreno, trilha, mureta, a Rocha da Agonia e a gruta, em getsemani_cenario.glb),
+// a maquete de Jerusalém do outro lado do Cedrom (../jerusalem/jerusalem_maquete.glb, nas mesmas coordenadas: o muro do
+// templo, o santuário, a Antônia, o muro norte com a Porta das Ovelhas, Betesda, as casas e os chãos de longe), as
+// oliveiras, pedras e moitas do layout, a prensa na boca da gruta e o sol da manhã.
 import * as THREE from 'three';
 import { instanciaLonge, poePertos } from '../../limpo-motor/layout.js';
 import { suaviza, mapaAltura, texturizaChao } from '../../limpo-motor/terreno.js';
 import { CIMA } from '../../limpo-motor/atores.js';
 import { sombra } from '../../limpo-motor/base.js';
 import { scene, texChao, LAY, V3, sm } from './estado.js';
-import { gCen, gPlantas, gPrensa, KIT } from './modelos.js';
+import { gCen, gJer, gPlantas, gPrensa, KIT } from './modelos.js';
 
 // ---------- terreno, trilha, mureta, rocha e gruta ----------
 let TERRENO = null;
@@ -16,19 +17,27 @@ gCen.scene.traverse((o) => {
   if (!o.isMesh) return;
   if (o.name.startsWith('Getsemani_Terreno')) { o.material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 }); TERRENO = o; o.receiveShadow = true; }
   else if (o.name.startsWith('Getsemani_Trilha')) { o.material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2 }); o.receiveShadow = true; TRILHAS.push(o); }
-  else if (o.name.startsWith('Getsemani_Fundo') || o.name.startsWith('Cidade_Chao')) { o.material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 }); o.receiveShadow = true; LONGE.push(o); }
   else if (o.name.startsWith('Gruta_Boca')) { o.material = new THREE.MeshBasicMaterial({ color: 0x07060a, side: THREE.DoubleSide }); }      // a boca escura da gruta (sem luz)
-  // a cidade: o sol vem do leste, então a sombra dos muros cai lá dentro, onde ninguém vê; só a porta (túnel e escada) faz sombra
-  else if (/^(Templo_Muros|Santuario|Portico_Real|Fortaleza_Antonia|Casas_Cidade|Muro_Cidade)/.test(o.name)) { o.receiveShadow = true; }
   else { o.castShadow = true; o.receiveShadow = true; }
 });
 scene.add(gCen.scene);
-suaviza(TERRENO, true); for (const e of TRILHAS) suaviza(e, false); for (const e of LONGE) suaviza(e, e.name.startsWith('Getsemani'));
+// a maquete: o miolo do vale sai (aqui o chão é o detalhado); os chãos de longe ganham a textura do chão; a cidade não
+// faz sombra (o sol vem do leste: a sombra dos muros cairia lá dentro, onde ninguém vê)
+const tira = [];
+gJer.scene.traverse((o) => {
+  if (!o.isMesh) return;
+  if (o.name.startsWith('Vale_Miolo')) { tira.push(o); return; }
+  if (/^(Vale_Chao|Leste_Chao|Cidade_Chao)/.test(o.name)) { o.material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 }); LONGE.push(o); }
+  o.receiveShadow = true;
+});
+for (const o of tira) o.removeFromParent();
+scene.add(gJer.scene);
+suaviza(TERRENO, true); for (const e of TRILHAS) suaviza(e, false); for (const e of LONGE) suaviza(e, !e.name.startsWith('Cidade'));
 const TX = { grama: texChao('../fase-betfage/tex/grama.webp?v=1'), terra: texChao('../fase-betfage/tex/terra.webp?v=1') };
 texturizaChao(TERRENO, TX, false); for (const e of TRILHAS) texturizaChao(e, TX, true); for (const e of LONGE) texturizaChao(e, TX, e.name.startsWith('Cidade'));
 const terreno = mapaAltura(TERRENO, 0.35, { suave: true });
 
-// ---------- a trilha: pontos a cada meio metro, da ponta leste (vinda do Monte das Oliveiras) até a Porta das Ovelhas ----------
+// ---------- a trilha: pontos a cada meio metro, da ponta leste (vinda do Monte das Oliveiras) até Betesda ----------
 const ROTA = new THREE.CatmullRomCurve3(LAY.estrada.map(([x, z]) => V3(x, 0, z)));
 const AMOS = []; { const L = ROTA.getLength(), n = Math.ceil(L * 2); for (let i = 0; i <= n; i++) AMOS.push(ROTA.getPointAt(i / n)); }
 function naRota(x, z) { let m = 1e9, k = 0; for (let i = 0; i < AMOS.length; i++) { const d = (AMOS[i].x - x) ** 2 + (AMOS[i].z - z) ** 2; if (d < m) { m = d; k = i; } } return [k, Math.sqrt(m)]; }

@@ -170,11 +170,11 @@ bate de frente nos muros de Jerusalém; a bruma tem a cor do pé do céu, e o lo
   Mais adiante, debaixo de uma oliveira antiga, o lugar de Pedro, Tiago e João. Um tiro de pedra adiante deles
   (Lc 22.41, 26 m), a **Rocha da Agonia**: uma laje de calcário à flor da terra, entre oliveiras antigas. O leste
   (por onde se chega) e o oeste (o templo, no alto do outro lado do Cedrom) ficam abertos.
-- **O caminho para Jerusalém:** a trilha passa ao sul da rocha, sai por um vão na mureta oeste, desce ~12 m até o leito
-  seco do Cedrom (legenda de Jo 18.1) e sobe a outra encosta até a **Porta das Ovelhas** (Ne 3.1; Jo 5.2), no muro da
-  cidade ao norte do templo. Uma escada de 7 degraus leva à soleira; ali aparece "Entrar em Jerusalém pela Porta das
-  Ovelhas?". O Sim ainda só avisa que o Tanque de Betesda é a próxima parte (em construção) e devolve o jogador ao pé
-  da escada.
+- **O caminho para Betesda:** a trilha passa ao sul da rocha, sai por um vão na mureta oeste, desce ~12 m até o leito
+  seco do Cedrom (legenda de Jo 18.1) e sobe a outra encosta na diagonal, para noroeste, passando pela quina nordeste
+  do templo (o muro dele fica à esquerda), até o planalto ao norte do templo, de frente para o Tanque de Betesda e a
+  Porta das Ovelhas. Ali aparece "Seguir para o Tanque de Betesda?"; o Sim ainda só avisa que é a próxima parte (em
+  construção) e devolve o jogador um pouco para trás.
 - **No Blender:** `fase-getsemani/getsemani.blend` é o original. Mexa nele e rode **EXPORTAR_PARA_O_JOGO**: ele grava
   `getsemani_cenario.glb` (terreno, trilha, mureta, `Rocha_Agonia`, `Gruta_Morro`, `Gruta_Boca` e a cidade) e
   `getsemani_layout.json`. Em `Referencia_jogo`: `JOGO_portao`, `JOGO_oito`, `JOGO_tres`, `JOGO_agonia` (onde se ajoelha,
@@ -186,23 +186,13 @@ bate de frente nos muros de Jerusalém; a bruma tem a cor do pé do céu, e o lo
   rocha há um anel no chão e o botão "ajoelhar junto à rocha". O jogador se ajoelha de frente para ela: o clipe
   `Ajoelhar` para no meio e só termina de levantar no fim. Vêm Lc 22.42, 43 e 44 ("o seu suor tornou-se como grandes
   gotas de sangue"), e a câmera chega mais perto e mais baixa (`CAM.perto`). Depois de uns 33 s ele levanta e fica livre.
-- **Jerusalém, em 3D** (`getsemani_cidade.py`, rodado pelo gerador): sem pintura. Tudo é malha facetada com cor de
-  vértice; cada bloco de cantaria é um quadrado com o seu tom e cada fiada termina numa linha de argamassa.
-  - O monte do templo: o muro leste (face em x = -100, com pilastras na parte de cima), o Pórtico de Salomão, o
-    Pórtico Real ao sul, o pináculo, a Porta de Susã (fechada, de bronze) de frente para o santuário.
-  - O santuário, de frente para o leste: o pórtico branco de 28 x 29 m com ouro, as meias-colunas, a entrada com a
-    cortina e a videira de ouro; o pátio interno levantado e a Porta de Nicanor.
-  - A Fortaleza Antônia, no canto noroeste do templo, com a torre do sudeste mais alta.
-  - O muro da cidade ao norte do templo, com torres e merlões, e a Porta das Ovelhas: túnel de verdade (abóbada,
-    lajes, portas de madeira abertas), arco de aduelas em relevo e a escada.
-  - As casas (Bezeta, a cidade alta e o Ofel), o chão da cidade e o chão de longe (`Getsemani_Fundo`), numa grade que
-    fica mais rala com a distância. O lugar do Tanque de Betesda (x -162..-112, z 46..80) ficou sem casas.
-  - Os muros não fazem sombra (o sol vem do leste e a sombra cairia lá dentro); só a porta faz.
-- **Para testar:** `?de=agonia` começa perto da rocha; `?de=porta`, ao pé da escada da porta. O `teste.html` cobre:
+- **Jerusalém:** vem da maquete compartilhada (`../jerusalem/`, ver abaixo), carregada nas mesmas coordenadas. O
+  `Vale_Miolo` dela sai (aqui o chão é o detalhado); a cidade não faz sombra (o sol vem do leste).
+- **Para testar:** `?de=agonia` começa perto da rocha; `?de=betesda`, no fim da subida. O `teste.html` cobre:
   - a troca Oliveiras → Getsêmani;
   - os testes da fase;
   - a rocha: distância dos três, botão, de joelhos, legenda e livre depois;
-  - o caminho da rocha até a Porta das Ovelhas (sem travar), a descida ao leito, a pergunta e o "Ainda não";
+  - o caminho da rocha até Betesda (sem travar), a descida ao leito, a subida, o lugar (ao norte do templo), a pergunta e o "Ainda não";
   - a volta ao Monte das Oliveiras.
 - **Cache:** rode também `node assets-vila/limpo-motor/versiona.cjs assets-vila/fase-getsemani` antes de cada commit.
 
@@ -234,3 +224,29 @@ de fase, acrescente os passos dela no `teste.html`.
 - **Cache no celular:** o GitHub Pages deixa os arquivos 10 min no cache. Antes de cada commit que mexe em `.js` da
   fase, rodar `node assets-vila/limpo-motor/versiona.cjs assets-vila/fase-oliveiras`: ele põe no `index.html` um
   importmap com o hash de cada módulo (da fase e do motor), e o navegador baixa só o que mudou.
+
+## Jerusalém: a maquete (`jerusalem/`)
+
+Uma maquete só para situar as fases: volumes facetados com cor de vértice, nos lugares certos. O modelo bonito (kit
+de peças, texturas pedidas por prompt, peças do Tripo) vai entrar no lugar dela, peça por peça, nas mesmas posições.
+
+- **`relevo.py`:** o relevo (`h_mundo`) e os lugares, num sistema só: as coordenadas do Getsêmani (a rocha em
+  (-27, -8)). As distâncias reais, medidas a partir da Basílica da Agonia, estão reduzidas à metade na horizontal e a
+  ~0,4 na altura; a tabela está no começo do arquivo. O gerador do Getsêmani usa este mesmo relevo, então o chão dele
+  e o da maquete batem.
+- **A geografia** (pelo mapa "Jerusalém na época de Jesus" e pelas distâncias reais):
+  - o Getsêmani fica em frente ao canto norte do muro leste do templo;
+  - a Porta de Susã fica no muro leste, alinhada com o santuário, que fica a sudoeste do jardim e olha para o leste;
+  - a estrada cruza o Cedrom na diagonal e chega à quina nordeste;
+  - ao norte do templo ficam o Tanque de Israel (dentro) e o muro norte; a Porta das Ovelhas fica nele e abre para
+    o norte, para Betesda, que fica do lado de fora (Jo 5.2);
+  - a Antônia fica no canto noroeste do templo.
+- **`jerusalem_maquete.py`** (`blender -b --factory-startup -P jerusalem_maquete.py`) grava `jerusalem.blend`,
+  `jerusalem_maquete.glb` e `jerusalem_lugares.json` (os pontos principais e o deslocamento do Monte das Oliveiras).
+- **Os chãos:** `Cidade_Chao` (a oeste do Cedrom), `Vale_Chao` (o vale, com um buraco do tamanho do terreno do
+  Getsêmani), `Vale_Miolo` (tapa o buraco) e `Leste_Chao` (o Monte das Oliveiras). Bem longe, o chão desce e some
+  atrás do horizonte.
+- **No Monte das Oliveiras** a maquete entra deslocada (`oliveiras` em `jerusalem_lugares.json`), para o cume de lá
+  ficar onde fica o cume de verdade em relação ao templo (~450 m; a cidade uns 2,5° abaixo dos olhos). Os chãos dela
+  perdem o pedaço que o terreno da fase cobre, e a borda vai até a altura do terreno de lá. Saíram as pinturas da cidade
+  e da encosta e o leque do vale; ficaram só os montes do fundo, pintados. A bruma foi para 110-950 m.

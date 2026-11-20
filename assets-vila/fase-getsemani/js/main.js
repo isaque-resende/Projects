@@ -1,6 +1,6 @@
 // Getsêmani: liga os controles às ações e roda o laço do jogo. Aqui ficam os lugares do jardim (as legendas de
 // cada um, com o texto dos evangelhos), a Rocha da Agonia (ajoelhar ao lado dela), a volta ao Monte das Oliveiras e,
-// do outro lado do Cedrom, a Porta das Ovelhas (a entrada para o Tanque de Betesda).
+// do outro lado do Cedrom, o fim da subida: o Tanque de Betesda, junto à Porta das Ovelhas (a próxima fase).
 import * as THREE from 'three';
 import { E, LAY, fade, fala, bate, fundo, scene, sun, renderer, CIRC, CAIXAS, dialogo, botao, textoBotao } from './estado.js';
 import { terreno, AMOS, naRota, PRENSA, SOL_DIR } from './cenario.js';
@@ -10,7 +10,7 @@ import { criaMarcador } from '../../limpo-motor/marcador.js';
 
 // ---------- os lugares: ao chegar perto de cada um, uma legenda (uma vez) ----------
 const [gx, , gz] = LAY.portao, [ox, , oz] = LAY.oito, [tx, , tz] = LAY.tres, [ax, , az] = LAY.agonia, [rx, ry, rz] = LAY.rocha;
-const [cx, , cz] = LAY.cedrom, [px, , pz] = LAY.porta;
+const [cx, , cz] = LAY.cedrom, [bx, , bz] = LAY.betesda;
 const LUG = [
   { teste: (p) => p.x < gx - 1.5, txt: 'Do outro lado do ribeiro de Cedrom havia um horto, no qual Jesus entrou com os seus discípulos. (Jo 18.1)' },
   { x: ox, z: oz, r: 4.5, txt: '“Assentai-vos aqui, enquanto vou além orar.” (Mt 26.36)' },
@@ -18,7 +18,8 @@ const LUG = [
   { x: tx, z: tz, r: 4, txt: '“A minha alma está cheia de tristeza até à morte; ficai aqui e vigiai comigo.” (Mt 26.38)' },
   { x: rx, z: rz, r: 10, txt: 'E apartou-se deles cerca de um tiro de pedra; e, pondo-se de joelhos, orava. (Lc 22.41)' },
   { x: cx, z: cz, r: 6, txt: 'O ribeiro de Cedrom. Na quinta à noite Jesus o atravessou para ir ao jardim (Jo 18.1); horas depois, voltou por aqui, preso.' },
-  { x: px + 10, z: pz, r: 9, txt: 'A Porta das Ovelhas (Ne 3.1). Logo depois dela fica o Tanque de Betesda, com os seus cinco alpendres. (Jo 5.2)' },
+  { x: -118, z: 44, r: 9, txt: 'À esquerda, o muro do templo. Lá dentro, de frente para o leste, o santuário.' },
+  { x: bx + 4, z: bz, r: 7, txt: 'O Tanque de Betesda, com os seus cinco alpendres, junto à Porta das Ovelhas. (Jo 5.2)' },
 ];
 let falando = 0;
 function legenda(txt, seg = 7) { fala(txt); const n = ++falando; setTimeout(() => { if (n === falando) fala(''); }, seg * 1000); }
@@ -61,16 +62,16 @@ function oracaoPasso(dt) {
 function acionar() {
   if (E.fora) return;
   if (AG.perto) { ajoelhar(); return; }
-  if (E.porta) { perguntaPorta(); return; }
+  if (E.betesda) { perguntaBetesda(); return; }
   if (E.saida) perguntaVolta();
 }
 ctl.aoAcionar = acionar; botao.onclick = () => acionar();
 function recua() { const p = AMOS[Math.min(AMOS.length - 1, 10)]; jog.o.position.set(p.x, terreno(p.x, p.z), p.z); }
 function perguntaVolta() { dialogo('', 'Deseja voltar ao Monte das Oliveiras?', [['Ainda não', () => recua(), '#a8957a'], ['Sim', () => sair('De volta ao Monte das Oliveiras…', '../fase-oliveiras/?de=getsemani')]]); }
-// a Porta das Ovelhas: o Tanque de Betesda é a próxima fase (ainda não existe); por enquanto, avisa e volta um pouco
-function recuaPorta() { const p = AMOS[Math.max(0, AMOS.length - 16)]; jog.o.position.set(p.x, terreno(p.x, p.z), p.z); E.alvoToque = null; }
-function perguntaPorta() {
-  dialogo('', 'Entrar em Jerusalém pela Porta das Ovelhas? Logo depois dela fica o Tanque de Betesda.', [['Ainda não', () => recuaPorta(), '#a8957a'], ['Sim', () => {
+// o fim da subida: o Tanque de Betesda é a próxima fase (ainda não existe); por enquanto, avisa e volta um pouco
+function recuaPorta() { const p = AMOS[Math.max(0, AMOS.length - 20)]; jog.o.position.set(p.x, terreno(p.x, p.z), p.z); E.alvoToque = null; }
+function perguntaBetesda() {
+  dialogo('', 'Seguir para o Tanque de Betesda, junto à Porta das Ovelhas?', [['Ainda não', () => recuaPorta(), '#a8957a'], ['Sim', () => {
     E.fora = true; fade.textContent = 'O Tanque de Betesda é a próxima parte do caminho (em construção).'; fade.style.opacity = 1;
     setTimeout(() => { recuaPorta(); fade.style.opacity = 0; setTimeout(() => { fade.textContent = ''; E.fora = false; }, 900); }, 2600);
   }]]);
@@ -131,10 +132,10 @@ const laco = (forca) => {
   E.saida = i <= 3;
   if (E.saida && !E.fora && !E.perguntou) { E.perguntou = true; perguntaVolta(); }
   if (!E.saida) E.perguntou = false;
-  E.porta = pj.x < px + 1.6 && Math.abs(pj.z - pz) < 2.6;
-  if (E.porta && !E.fora && !E.perguntouPorta) { E.perguntouPorta = true; perguntaPorta(); }
-  if (!E.porta && Math.hypot(pj.x - px, pj.z - pz) > 6) E.perguntouPorta = false;
-  const txt = AG.perto && !E.fora ? 'ajoelhar junto à rocha' : E.porta ? 'entrar pela Porta das Ovelhas' : E.saida ? 'voltar ao Monte das Oliveiras' : '';
+  E.betesda = i >= AMOS.length - 6;
+  if (E.betesda && !E.fora && !E.perguntouB) { E.perguntouB = true; perguntaBetesda(); }
+  if (i < AMOS.length - 14) E.perguntouB = false;
+  const txt = AG.perto && !E.fora ? 'ajoelhar junto à rocha' : E.betesda ? 'seguir para Betesda' : E.saida ? 'voltar ao Monte das Oliveiras' : '';
   if (txt) textoBotao((toqueTela ? '' : 'E: ') + txt);
   botao.style.display = txt && !E.fora ? 'block' : 'none';
   ctl.marcaPino(botao.style.display === 'block' ? (AG.perto ? 'olhar' : 'ir') : '');
@@ -150,4 +151,4 @@ if (!(globalThis.MODO_TESTE && new URLSearchParams(location.search).has('parado'
 addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; ajustaLente(); });
 
 // para os testes automáticos: abrir com ?teste (ou pelo teste.html) e usar TESTE no console
-if (globalThis.MODO_TESTE) globalThis.TESTE = { MIX, E, jog, laco, marca, tecla, bate, alturaEm: (x, z) => terreno(x, z), chaoTerra: terreno, scene, camera, CIRC, CAIXAS, renderer, AMOS, AG, LAY, ajoelhar, acionar, perguntaPorta };
+if (globalThis.MODO_TESTE) globalThis.TESTE = { MIX, E, jog, laco, marca, tecla, bate, alturaEm: (x, z) => terreno(x, z), chaoTerra: terreno, scene, camera, CIRC, CAIXAS, renderer, AMOS, AG, LAY, ajoelhar, acionar, perguntaBetesda };

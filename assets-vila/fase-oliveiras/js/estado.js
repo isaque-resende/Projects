@@ -10,7 +10,7 @@ const CEU = (() => { const c = document.createElement('canvas'); c.width = 4; c.
   gr.addColorStop(0, '#cfe6e0'); gr.addColorStop(0.55, '#e9ead6'); gr.addColorStop(1, '#f6dcc0'); g.fillStyle = gr; g.fillRect(0, 0, 4, 256);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();
 const { renderer, scene, sun, rnd, texChao } = criaBase({
-  fundo: CEU, neblina: [0xe6e6d6, 70, 175], ceu: [0xe2f0ff, 0xc9b088, 1.45], sol: [0xfff0d6, 2.9], alcanceSombra: 100, semente: 31,
+  fundo: CEU, neblina: [0xe9e4d6, 110, 950], ceu: [0xe2f0ff, 0xc9b088, 1.45], sol: [0xfff0d6, 2.9], alcanceSombra: 100, semente: 31,
 });
 
 const sm = (a, b, x) => { let k = (x - a) / (b - a); k = k < 0 ? 0 : k > 1 ? 1 : k; return k * k * (3 - 2 * k); };
