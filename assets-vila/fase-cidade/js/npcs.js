@@ -36,9 +36,13 @@ for (let i = 0; i < 4; i++) { const g = ator(i % 2 ? gGal2 : gGal1, 0.42, pb.x +
 const pg = pt('gabata');
 const guarda = poe(nGuarda, 1.6, pg.x + 2.5, pg.z + 3.2, OLHA.leste, 'Parado');
 guarda.o.position.y = LAY.gabata[1];
-CONVERSAS.push({ nome: 'Um guarda do palácio', o: guarda.o, r: 2.4, falas: [
+// é o soldado que ganhou a túnica nas sortes, no Gólgota (Jo 19.23-24): o companheiro dele, lá, manda o jogador para cá
+CONVERSAS.push({ nome: 'O soldado da túnica', o: guarda.o, r: 2.4, falas: [
   'Aqui o governador se assentou no tribunal, no lugar chamado Pavimento, em hebraico Gabatá. Era a preparação da Páscoa, quase a hora sexta (Jo 19.13-14).',
   'Ele lavou as mãos diante da multidão: “Estou inocente do sangue deste justo.” E o povo respondeu: “O seu sangue caia sobre nós e sobre os nossos filhos” (Mt 27.24-25).',
+  'Lá dentro, no pretório, a coorte inteira zombou dele. Vestiram-no de púrpura, puseram-lhe uma coroa de espinhos e batiam-lhe na cabeça com uma cana (Mc 15.16-19). Eu estava lá.',
+  'A túnica? Sim, fui eu que a ganhei nas sortes. Era sem costura, tecida de alto a baixo, de uma peça só (Jo 19.23-24). Não deixamos rasgar.',
+  'Está aqui, dobrada. É boa lã. Mas não consigo vesti-la. Quando a pego, lembro que ele não disse uma palavra contra nós.',
 ] });
 // ---------- o mercado ----------
 const pm = pt('mercado');

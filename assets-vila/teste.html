@@ -462,6 +462,7 @@ async function rodar() {
       (ok ? it.ok : it.erro)('a cena passou por: ' + [...fases].join(' → ') + '; terminou: ' + (C.fase === 'espera' ? 'sim (os dois saíram pela porta)' : 'NÃO (' + C.fase + ')'));
     });
     await teste('coisas para olhar na cidade: o braseiro, o tribunal, a escada da sala de cima (Lc 22.12-20), o palácio', (it) => testaInteracoes(it, ['o braseiro', 'o tribunal', 'a escada da sala de cima', 'o palácio']));
+    await teste('o soldado da túnica, no Pavimento (Jo 19.23-24; Mc 15.16-19)', (it) => testaInteracoes(it, ['O soldado da túnica']));
     await teste('conversas na cidade: a mulher à porta do cenáculo e a serva junto ao braseiro (Jo 18.17-18)', async (it) => {
       const T = W().TESTE, p = T.jog.o.position, r = [];
       for (const nome of ['Uma mulher à porta', 'A serva da porta']) {
@@ -520,6 +521,7 @@ async function rodar() {
       (cena && conv && !T.E.fora ? it.ok : it.erro)('a cena passou por: ' + [...fases].join(' → ') + '; conversa com Maria Madalena: ' + (conv ? 'sim' : 'NÃO'));
     });
     await teste('coisas para olhar no Gólgota: as cruzes (as sete palavras), o letreiro, a pedra rolada, os túmulos antigos', (it) => testaInteracoes(it, ['as cruzes', 'o letreiro', 'a pedra rolada', 'os túmulos antigos']));
+    await teste('pessoas no Gólgota: Maria Madalena (o que viu, Jo 20.11-13), o soldado da guarda (Mt 28.2-4, 11), o soldado das vestes (Jo 19.23-24)', (it) => testaInteracoes(it, ['Maria Madalena', 'Um soldado da guarda', 'Um soldado']));
     await teste('as pontas da estrada perguntam: "voltar para a cidade" (sudeste) e "seguir pela estrada de Emaús" (noroeste)', async (it) => {
       const T = W().TESTE, N = T.AMOS.length, r = [];
       for (const [i, txt] of [[1, 'cidade'], [N - 2, 'Emaús']]) {
