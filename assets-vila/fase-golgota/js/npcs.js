@@ -75,9 +75,9 @@ function cenaPasso(dt, pj) {
   }
   if (CENA.fase === 'correm') {
     // o outro discípulo corre mais depressa (Jo 20.4)
-    if (CENA.iJ < ROTA.length) { if (anda(joao, ROTA[CENA.iJ], dt, 4.8)) CENA.iJ++; joao.toca('Correr'); }
+    if (CENA.iJ < ROTA.length) { if (anda(joao, ROTA[CENA.iJ], dt, 4.8)) CENA.iJ++; }
     else { joao.toca('Parado'); legendaPerto('joao', 'O outro discípulo chegou primeiro ao sepulcro; e, abaixando-se, viu ali os lençóis; todavia não entrou. (Jo 20.4-5)', pj, joao); }
-    if (CENA.iP < ROTA.length) { if (anda(pedro, ROTA[CENA.iP], dt, 3.9)) CENA.iP++; pedro.toca('Correr'); }
+    if (CENA.iP < ROTA.length) { if (anda(pedro, ROTA[CENA.iP], dt, 3.9)) CENA.iP++; }
     else if (anda(pedro, PORTA, dt, 1.0)) {
       pedro.o.visible = false; CENA.fase = 'dentro1'; CENA.t = 4;
       legendaPerto('pedro', 'Chegou Simão Pedro, que o seguia, e entrou no sepulcro, e viu os lençóis, e o lenço enrolado num lugar à parte. (Jo 20.6-7)', pj, joao);

@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { andante, marta, lazaro, cleopas } from './personagens.js';
 import { jog } from './jogador.js';
+import { passo } from './estado.js';
 
 const rota = new THREE.CatmullRomCurve3([[-18, 2.9], [-10, 2.4], [-2, 1.1], [6, 0.7], [12, 1.3]].map(([x, z]) => new THREE.Vector3(x, 0, z)));
 let tRota = 0, sentido = 1, pausa = 0;
@@ -10,7 +11,7 @@ function passantePasso(dt) {
     if (pausa > 0) { pausa -= dt; andante.toca('Parado'); }
     else if (jog.o.position.distanceTo(andante.o.position) < 1.1) andante.toca('Parado');   // espera o jogador sair da frente
     else {
-      andante.toca('Andar');
+      passo(andante, 1.15);
       tRota += sentido * dt * 1.15 / rota.getLength();
       if (tRota > 1 || tRota < 0) { tRota = THREE.MathUtils.clamp(tRota, 0, 1); sentido *= -1; pausa = 2.5; }
     }

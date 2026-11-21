@@ -105,7 +105,7 @@ export function criaAtores({ scene, rnd, alturaChao = () => 0, assenta = null, c
     o.position.set(x, alturaChao(x, z), z); o.rotation.y = r; scene.add(o);
     const mx = new THREE.AnimationMixer(o); MIX.push(mx); o.userData.mx = mx;
     const A = Object.fromEntries(g.animations.map((c) => [c.name, mx.clipAction(c)]));
-    const st = { o, A, atual: '' };
+    const st = { o, A, atual: '', alt: altura };
     st.toca = (n) => { if (n === st.atual || !A[n]) return; A[n].reset().fadeIn(0.2).play(); if (A[st.atual]) A[st.atual].fadeOut(0.2); st.atual = n; };
     st.toca(clipe); A[clipe] && (A[clipe].time = rnd() * 2);
     return st;
@@ -127,13 +127,23 @@ export function criaAtores({ scene, rnd, alturaChao = () => 0, assenta = null, c
   }
   // volta os ossos à pose guardada (antes de aplicar a animação sob medida do quadro)
   function posesBase() { for (const st of CORPOS) for (const [b, q] of st.base) b.quaternion.copy(q); }
-  // anda em linha reta até o alvo; devolve true quando chega
-  function anda(st, alvo, dt, vel = 0.9) {
+  // anda em linha reta até o alvo; devolve true quando chega.
+  // O clipe sai da velocidade (acima de ~2 passos por segundo de um adulto, corre), e o ritmo do clipe acompanha a
+  // velocidade, para os pés não deslizarem no chão. (Antes o anda tocava sempre 'Andar' e quem corria trocava para
+  // 'Correr' logo depois: a troca a cada quadro reiniciava o clipe, e as pernas ficavam paradas.)
+  function anda(st, alvo, dt, vel = 0.9, clipe) {
     const d = alvo.clone().sub(st.o.position).setY(0), L = d.length();
     if (L < chegou) { if (assenta) assenta(st); return true; }
-    d.normalize(); st.o.position.addScaledVector(d, Math.min(vel * dt, L)); lerpAng(st.o, Math.atan2(d.x, d.z), Math.min(1, dt * 8)); st.toca('Andar');
+    d.normalize(); st.o.position.addScaledVector(d, Math.min(vel * dt, L)); lerpAng(st.o, Math.atan2(d.x, d.z), Math.min(1, dt * 8));
+    passo(st, vel, clipe);
     if (assenta) assenta(st);
     return false;
   }
-  return { MIX, ator, corpo, posesBase, anda };
+  // toca o clipe de andar ou correr no ritmo da velocidade (m/s). A passada cresce com a altura do ator.
+  function passo(st, vel, clipe) {
+    const h = st.alt || 1.7, corre = !clipe && st.A.Correr && vel > 1.45 * h;
+    const c = clipe || (corre ? 'Correr' : 'Andar'), a = st.A[c];
+    st.toca(c); if (a) a.timeScale = THREE.MathUtils.clamp(vel / ((c === 'Correr' ? 2.3 : 0.72) * h), 0.45, 1.6);
+  }
+  return { MIX, ator, corpo, posesBase, anda, passo };
 }

@@ -1,7 +1,7 @@
 // Betânia: as ovelhas no aprisco.
 import * as THREE from 'three';
 import { nos, sombra } from '../../limpo-motor/base.js';
-import { scene, rnd, ator } from './estado.js';
+import { scene, rnd, ator, passo } from './estado.js';
 import { gPast, gOve } from './modelos.js';
 import { APRISCO } from './vila.js';
 import './lavoura.js';     // só para manter a ordem de montagem
@@ -30,7 +30,7 @@ function ovelhasPasso(dt) {
           d.normalize();
           const frente = o.o.position.clone().addScaledVector(d, 0.3);
           if (ovelhas.some((b) => b !== o && b.o.position.distanceTo(frente) < 1.2)) { o.alvo = null; o.espera = 1 + rnd() * 2; o.toca('Parado'); }
-          else { o.o.position.addScaledVector(d, 0.45 * dt); let k = Math.atan2(d.x, d.z) - o.o.rotation.y; k = Math.atan2(Math.sin(k), Math.cos(k)); o.o.rotation.y += k * Math.min(1, dt * 5); }
+          else { o.o.position.addScaledVector(d, 0.45 * dt); passo(o, 0.45); let k = Math.atan2(d.x, d.z) - o.o.rotation.y; k = Math.atan2(Math.sin(k), Math.cos(k)); o.o.rotation.y += k * Math.min(1, dt * 5); }
         }
       } else if ((o.espera -= dt) <= 0) {
         const [x, z] = lugarOvelha(); o.alvo = new THREE.Vector3(x, 0, z); o.toca('Andar');

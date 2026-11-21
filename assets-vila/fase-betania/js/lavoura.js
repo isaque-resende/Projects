@@ -1,7 +1,7 @@
 // Betânia: a lavoura. O boi puxa o arado, o lavrador vai atrás e os sulcos ficam na terra.
 import * as THREE from 'three';
 import { sombra } from '../../limpo-motor/base.js';
-import { ator, scene } from './estado.js';
+import { ator, scene, passo } from './estado.js';
 import { gBoi, nAldeao } from './modelos.js';
 import { LAV } from './vila.js';
 import './poco.js';     // só para manter a ordem de montagem
@@ -47,7 +47,7 @@ function lavouraPasso(dt) {
       boi.o.position.set(pb.x, 0, pb.z); gira(boi.o, pb, em(lav.s + 12), 5);
       arado.position.set(pa.x, 0, pa.z); arado.rotation.y = Math.atan2(-(pb.z - pa.z), pb.x - pa.x);
       lavrador.o.position.set(pl.x, 0, pl.z); gira(lavrador.o, pl, pa, 6);
-      boi.toca('Andar'); lavrador.toca('Andar');
+      passo(boi, 0.8); passo(lavrador, 0.8);
       if (pa.f >= 0) {   // o arado risca a faixa em que está
         const m = sulcos[pa.f], ini = pa.f % 2 === 0 ? LAV.x0 + 0.9 : LAV.x1 - 0.8;
         m.scale.x = Math.max(m.scale.x, Math.abs(pa.x - ini)); m.position.x = ini + Math.sign(pa.x - ini) * m.scale.x / 2;

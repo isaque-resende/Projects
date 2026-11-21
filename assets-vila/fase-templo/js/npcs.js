@@ -144,7 +144,9 @@ function npcsPasso(dt) {
   }
   // a ovelha vai atrás de quem a puxa
   const atras = puxa.o.position.clone().add(V3(-Math.sin(puxa.o.rotation.y) * 1.4, 0, -Math.cos(puxa.o.rotation.y) * 1.4));
-  if (ovelhaP.o.position.distanceTo(atras) > 0.15) anda(ovelhaP, atras, dt, 1.2); else ovelhaP.toca('Parado');
+  const dO = ovelhaP.o.position.distanceTo(atras);
+  if (dO > 0.6) ovelhaP.segue = true; else if (dO < 0.15) ovelhaP.segue = false;
+  if (ovelhaP.segue) anda(ovelhaP, atras, dt, 1.2); else ovelhaP.toca('Parado');
 }
 
 export { CONVERSAS, npcsPasso, sac1, sac2, sac3, levitas, cambistas, ovelhas, bois, pombas, romeiro };

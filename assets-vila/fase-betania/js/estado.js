@@ -35,7 +35,7 @@ if (POS.colisao) {
   for (const [x, z, r] of POS.colisao.circ) CIRC.push({ x, z, r });
   for (const [x0, x1, z0, z1] of POS.colisao.caixas) CAIXAS.push({ x0, x1, z0, z1 });
 } else console.warn('betania_posicoes.json sem colisão: rode EXPORTAR_PARA_O_JOGO no Blender');
-const { MIX, ator, corpo, posesBase, anda } = criaAtores({ scene, rnd });
+const { MIX, ator, corpo, posesBase, anda, passo } = criaAtores({ scene, rnd });
 const { botao, fade, textoBotao, fala, DIAL, dialogo } = criaUI(E);
 
 // põe um modelo na cena
@@ -45,4 +45,4 @@ function por(modelo, x, z, r = 0, k = 1, { y = 0 } = {}) {
   return n;
 }
 
-export { VER, texChao, scene, CIRC, P, por, EXTRAS, POS, tex, ator, corpo, anda, rnd, E, renderer, botao, fade, hemi, sun, textoBotao, dialogo, fala, DIAL, MIX, bate, fundo, posesBase, CAIXAS };
+export { VER, texChao, scene, CIRC, P, por, EXTRAS, POS, tex, ator, corpo, anda, passo, rnd, E, renderer, botao, fade, hemi, sun, textoBotao, dialogo, fala, DIAL, MIX, bate, fundo, posesBase, CAIXAS };

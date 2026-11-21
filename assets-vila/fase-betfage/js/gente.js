@@ -7,7 +7,7 @@ import { terreno } from './cenario.js';
 import './forno.js';     // só para manter a ordem de montagem
 
 const chao = (st) => { const x = st.o.position.x, z = st.o.position.z, r = 0.14; st.o.position.y = Math.max(terreno(x, z), terreno(x + r, z), terreno(x - r, z), terreno(x, z + r), terreno(x, z - r)); };
-const { MIX, ator, corpo, anda } = criaAtores({ scene, rnd, alturaChao: terreno, assenta: chao, chegou: 0.06 });
+const { MIX, ator, corpo, anda, passo } = criaAtores({ scene, rnd, alturaChao: terreno, assenta: chao, chegou: 0.06 });
 // estica uma vara (cilindro de altura 1) do ponto a ao ponto b
 const barra = (m, a, b) => { const d = b.clone().sub(a), L = d.length(); if (L < 1e-3) { m.visible = false; return; } m.visible = true; m.position.copy(a).add(b).multiplyScalar(0.5); m.scale.set(1, L, 1); m.quaternion.setFromUnitVectors(CIMA, d.normalize()); };
 const madeira = new THREE.MeshStandardMaterial({ color: 0x7a5232, roughness: 1, flatShading: true });
@@ -36,4 +36,4 @@ function partPasso(dt) {
   }
 }
 
-export { corpo, ator, madeira, ferro, chao, anda, cil, barra, solta, MIX, partPasso };
+export { corpo, ator, madeira, ferro, chao, anda, passo, cil, barra, solta, MIX, partPasso };
