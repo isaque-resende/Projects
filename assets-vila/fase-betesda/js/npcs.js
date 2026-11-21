@@ -1,4 +1,4 @@
-// Betesda: quem está no tanque. Os enfermos deitados nas esteiras debaixo dos alpendres (Jo 5.3), alguns parentes de pé
+// Betesda: quem está no tanque. Os enfermos sentados nas esteiras debaixo dos alpendres (Jo 5.3), alguns parentes de pé
 // junto deles, um cego encostado numa coluna, o pastor com o cordeiro junto ao curral e as ovelhas dentro dele, e
 // gente passando pela estrada e entrando pela Porta das Ovelhas. Cada um que fala tem a sua conversa (CONVERSAS).
 import * as THREE from 'three';
@@ -6,6 +6,7 @@ import { LAY, V3, CIRC, rnd } from './estado.js';
 import { gOve, nBarbudo, nMagro, nRobusto, nLenco, nRapaz, nCarreg, nPastor, nFaixa, nAldeao } from './modelos.js';
 import { terreno, AMOS } from './cenario.js';
 import { ator, anda } from './gente.js';
+import { giraMundo } from '../../limpo-motor/atores.js';
 
 const DECK = LAY.deck;
 const CONVERSAS = [];       // { nome, o, falas, r }
@@ -18,11 +19,39 @@ function deita(st, x, z, g) {
   const b = new THREE.Box3().setFromObject(o); o.position.y += DECK + 0.06 - b.min.y;
   CIRC.push({ x, z, r: 0.75 });
 }
+// senta um ator na esteira, recostado, com as pernas estendidas e as mãos no colo (o boneco não tem pose de deitado:
+// a pose é montada osso a osso, sem clipe)
+const _a = new THREE.Vector3(), _b = new THREE.Vector3();
+function alinhaOsso(osso, filho, dir) {
+  osso.getWorldPosition(_a); filho.getWorldPosition(_b);
+  giraMundo(osso, new THREE.Quaternion().setFromUnitVectors(_b.sub(_a).normalize(), dir.clone().normalize()));
+}
+function senta(st, x, z, g) {
+  const o = st.o; o.rotation.set(0, g, 0); o.position.set(x - Math.sin(g) * 0.45, DECK, z - Math.cos(g) * 0.45); o.updateMatrixWorld(true);      // o quadril atrás do meio da esteira
+  for (const a of Object.values(st.A)) a.stop();
+  const G = (n) => o.getObjectByName(n);
+  const f = V3(Math.sin(g), 0, Math.cos(g)), esq = V3(Math.cos(g), 0, -Math.sin(g));
+  const sp = G('spine_02'); if (sp) giraMundo(sp, new THREE.Quaternion().setFromAxisAngle(esq, -0.32));        // recostado
+  for (const [l, k] of [['l', 1], ['r', -1]]) {                                                                // as pernas, para a frente
+    const th = G('thigh_' + l), ca = G('calf_' + l), ft = G('foot_' + l);
+    if (th && ca) alinhaOsso(th, ca, f.clone().add(V3(0, -0.06, 0)).addScaledVector(esq, 0.12 * k));
+    if (ca && ft) alinhaOsso(ca, ft, f.clone().add(V3(0, -0.04, 0)).addScaledVector(esq, 0.04 * k));
+  }
+  for (const [l, k] of [['l', 1], ['r', -1]]) {                                                                // os braços: junto do corpo, as mãos no colo
+    const ua = G('upperarm_' + l), la = G('lowerarm_' + l), ha = G('hand_' + l);
+    if (ua && la) alinhaOsso(ua, la, V3(0, -1, 0).addScaledVector(f, 0.35).addScaledVector(esq, 0.15 * k));
+    if (la && ha) alinhaOsso(la, ha, f.clone().add(V3(0, -0.45, 0)).addScaledVector(esq, -0.35 * k));
+  }
+  o.updateMatrixWorld(true);
+  const quadril = G('thigh_l') || G('pelvis');
+  if (quadril) { quadril.getWorldPosition(_a); o.position.y -= _a.y - (DECK + 0.16); }                        // o quadril na esteira
+  CIRC.push({ x, z, r: 0.75 });
+}
 const DOENTES = [nBarbudo, nMagro, nRobusto, nRapaz, nCarreg, nLenco];
 const enfermos = [];
 LAY.esteiras.forEach(([x, z, g, quem], i) => {
   if (!quem) return;                                        // a esteira que falta: a do paralítico (Jo 5.9)
-  const n = DOENTES[i % DOENTES.length], st = ator(n, n === nLenco ? 1.52 : 1.66, x, z, 0, 'Parado'); deita(st, x, z, g); enfermos.push(st);
+  const n = DOENTES[i % DOENTES.length], st = ator(n, n === nLenco ? 1.52 : 1.66, x, z, 0, 'Parado'); senta(st, x, z, g + Math.PI / 2); enfermos.push(st);
 });
 // o velho do alpendre do norte conversa (o primeiro da lista)
 if (enfermos[0]) CONVERSAS.push({ nome: 'Um enfermo', o: enfermos[0].o, r: 2.4, falas: [

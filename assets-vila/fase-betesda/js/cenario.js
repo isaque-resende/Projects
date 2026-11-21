@@ -29,7 +29,12 @@ scene.add(gCen.scene);
 suaviza(TERRENO, true); for (const e of TRILHAS) suaviza(e, false);
 const TX = { grama: texChao('../fase-betfage/tex/grama.webp?v=1'), terra: texChao('../fase-betfage/tex/terra.webp?v=1') };
 texturizaChao(TERRENO, TX, false); for (const e of TRILHAS) texturizaChao(e, TX, true);
-const terreno = mapaAltura(TERRENO, 0.35, { suave: true });
+const terrenoBase = mapaAltura(TERRENO, 0.35, { suave: true });
+// dentro do complexo (os alpendres e o dique), fora da água, o chão é o piso de lajes: a suavização do relevo puxava a
+// beira dos tanques para baixo, e quem andava ali escorregava até o fundo, por baixo do piso
+const [CX0_, CX1_, CZ0_, CZ1_] = LAY.complexo;
+const naAgua = (x, z) => LAY.caixas.some(([x0, x1, z0, z1]) => x > x0 && x < x1 && z > z0 && z < z1);
+const terreno = (x, z) => { const h = terrenoBase(x, z); return x > CX0_ && x < CX1_ && z > CZ0_ && z < CZ1_ && !naAgua(x, z) ? Math.max(h, LAY.deck) : h; };
 
 // ---------- Jerusalém: a maquete, deslocada para cá ----------
 const [MX, MY, MZ] = LAY.mundo;
