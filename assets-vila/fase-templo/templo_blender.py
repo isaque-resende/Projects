@@ -763,11 +763,47 @@ F_sa.desloca(OS_); F_sa.cria('Templo_Santuario')
 # ---------------- o mercado no Pátio dos Gentios, junto à Estoa Real ----------------
 me_ = Formas()
 CAMBIO = [(-24.0 + i * 3.4, 29.0) for i in range(6)]          # as mesas dos cambistas
-for (x, z) in CAMBIO:
-    me_.caixa(x - 1.0, x + 1.0, 0.0, 0.85, z - 0.5, z + 0.5, COR['madeira'])
-    me_.caixa(x - 0.95, x + 0.95, 0.85, 0.88, z - 0.45, z + 0.45, COR['roxo'], var=0.0)
-    for k in range(3): me_.tronco(x - 0.6 + k * 0.5, z, 0.88, 0.94 + 0.04 * k, 0.12, 0.12, 8, COR['ouro'] if k % 2 else hexc('a7a7a2'))
-    CIRC_M = None
+PRATA, OURO_M, COBRE, COURO = hexc('c8c8c0'), hexc('dcae48'), hexc('a8683a'), hexc('6e4428')
+
+
+def mesa_cambista(x, z, i):
+    """a mesa de um cambista (Jo 2.14-15; Mc 11.15): troca o dinheiro romano e grego pelo siclo de Tiro, a moeda do
+    imposto do templo. A frente (o lado do pátio) é o norte; o cambista fica atrás, ao sul."""
+    rnd_ = random.Random(100 + i); T = 0.86
+    me_.caixa(x - 1.0, x + 1.0, T - 0.07, T, z - 0.5, z + 0.5, COR['madeira'], var=0.03)                       # o tampo de tábuas
+    for sx in (-1, 1):
+        for sz in (-1, 1): me_.caixa(x + sx * 0.88 - 0.05, x + sx * 0.88 + 0.05, 0.0, T - 0.07, z + sz * 0.4 - 0.05, z + sz * 0.4 + 0.05, COR['madeira'])
+    for sz in (-1, 1): me_.caixa(x - 0.84, x + 0.84, 0.18, 0.24, z + sz * 0.39 - 0.03, z + sz * 0.39 + 0.03, COR['madeira'])   # as travessas
+    # o pano de lã púrpura, caindo pela frente, com a barra dourada
+    me_.caixa(x - 0.8, x + 0.8, T, T + 0.012, z - 0.52, z + 0.25, COR['roxo'], var=0.0)
+    me_.caixa(x - 0.8, x + 0.8, T - 0.38, T + 0.012, z - 0.535, z - 0.52, COR['roxo'], var=0.0)
+    me_.caixa(x - 0.8, x + 0.8, T - 0.40, T - 0.37, z - 0.54, z - 0.515, COR['ouro'], var=0.0)
+    Y = T + 0.012
+    for k in range(7):          # as pilhas de moedas: siclos de prata, moedas de cobre, alguma de ouro
+        cx, cz = x - 0.65 + k * 0.17 + rnd_.uniform(-0.03, 0.03), z - 0.3 + rnd_.uniform(-0.05, 0.08)
+        n = rnd_.randint(2, 7); me_.tronco(cx, cz, Y, Y + 0.009 * n, 0.032, 0.032, 8, (PRATA, PRATA, COBRE, PRATA, OURO_M, COBRE, PRATA)[k], var=0.0)
+    for k in range(12):         # e as soltas
+        me_.tronco(x + rnd_.uniform(-0.7, 0.2), z + rnd_.uniform(-0.45, 0.1), Y, Y + 0.006, 0.03, 0.03, 7, (PRATA, COBRE, PRATA)[k % 3], var=0.0)
+    # a balança de pratos, para pesar a prata
+    bx, bz = x + 0.45, z - 0.15
+    me_.tronco(bx, bz, Y, Y + 0.025, 0.07, 0.06, 8, COR['bronze'])
+    me_.tronco(bx, bz, Y + 0.025, Y + 0.38, 0.012, 0.012, 6, COR['bronze'])
+    me_.caixa(bx - 0.22, bx + 0.22, Y + 0.37, Y + 0.385, bz - 0.008, bz + 0.008, COR['bronze'], var=0.0)
+    for sd in (-1, 1):
+        px_ = bx + sd * 0.21
+        for dz in (-0.04, 0.04): me_.caixa(px_ - 0.003, px_ + 0.003, Y + 0.13, Y + 0.37, bz + dz - 0.003, bz + dz + 0.003, COR['bronze'], var=0.0)
+        me_.tronco(px_, bz, Y + 0.12, Y + 0.135, 0.075, 0.085, 10, COR['bronze'])
+    me_.tronco(bx - 0.21, bz, Y + 0.135, Y + 0.15, 0.025, 0.025, 7, PRATA, var=0.0)
+    # o cofre de madeira com cintas de bronze, e a bolsa de couro
+    kx, kz = x + 0.62, z + 0.25
+    me_.caixa(kx - 0.2, kx + 0.2, Y, Y + 0.2, kz - 0.14, kz + 0.14, COR['madeira'])
+    me_.caixa(kx - 0.21, kx + 0.21, Y + 0.2, Y + 0.25, kz - 0.15, kz + 0.15, COR['madeira'])
+    for dx in (-0.12, 0.12): me_.caixa(kx + dx - 0.02, kx + dx + 0.02, Y - 0.001, Y + 0.255, kz - 0.155, kz + 0.155, COR['bronze'], var=0.0)
+    me_.tronco(x - 0.3, z + 0.28, Y, Y + 0.1, 0.08, 0.1, 9, COURO); me_.tronco(x - 0.3, z + 0.28, Y + 0.1, Y + 0.17, 0.1, 0.035, 9, COURO)
+    me_.tronco(x - 0.3, z + 0.28, Y + 0.17, Y + 0.2, 0.035, 0.05, 7, COURO)
+
+
+for i, (x, z) in enumerate(CAMBIO): mesa_cambista(x, z, i)
 GAIOLAS = (5.0, 13.0, 27.5, 30.0)                              # as gaiolas das pombas, empilhadas
 for i in range(5):
     x = GAIOLAS[0] + i * 1.6
@@ -847,9 +883,24 @@ for i in range(9):
     n = poe('casa-porta\\barracas.glb', 'Barraca%d' % (i + 1), x, z, math.pi, 1.0)
     if n is not None: circulo('COL_' + n.name, x, z, 1.5, n)
     BARRACAS.append([x, z])
-for (x, z, no) in ((-20.0, 33.5, 'Cesto_Oval'), (-14.0, 33.6, 'Jarro_Alto'), (-8.0, 33.4, 'Saco'), (-2.0, 33.5, 'Cesto_Raso'), (4.0, 33.6, 'Jarra_Alca'), (-17.0, 39.6, 'Pote_Escuro')):
-    n = poe('casa-porta\\objetos_casa.glb', no, x, z, random.uniform(0, 6.28), 1.0)
-    if n is not None: circulo('COL_' + n.name, x, z, 0.35, n)
+# a mercadoria de algumas barracas, encostada no lado de cada uma (não solta no pátio): cestos, jarros, sacos
+GRUPOS = [(0, ('Cesto_Oval', 'Cesto_Raso')), (1, ('Jarro_Alto', 'Jarra_Alca', 'Jarro_Rosa')), (2, ('Saco', 'Saco')),
+          (3, ('Cesto_Alca', 'Cesto_Raso')), (5, ('Pote_Escuro', 'Jarro_Alto')), (7, ('Saco', 'Cesto_Oval'))]
+for bi, nos in GRUPOS:
+    bx, bz = BARRACAS[bi]
+    for k, no in enumerate(nos):
+        x, z = bx + 1.75 + 0.08 * (k % 2), bz - 0.6 + 0.55 * k
+        n = poe('casa-porta/objetos_casa.glb', no, x, z, random.uniform(0, 6.28), 1.0)
+        if n is not None: circulo('COL_' + n.name, x, z, 0.3, n)
+
+# junto às mesas dos cambistas: os banquinhos (onde o cambista em pé está, o banquinho fica de lado) e alguns sacos
+for i, (x, z) in enumerate(CAMBIO):
+    bx_ = x - 0.75 if i in (0, 3) else x + 0.2
+    c = poe('casa-porta/objetos_casa.glb', 'Banquinho', bx_, z + 0.9, random.uniform(-0.3, 0.3), 1.0)
+    if c is not None: circulo('COL_' + c.name, bx_, z + 0.9, 0.3, c)
+    if i in (1, 4):
+        c = poe('casa-porta/objetos_casa.glb', 'Saco', x - 1.3, z + 0.2, random.uniform(0, 6.28), 1.0)
+        if c is not None: circulo('COL_' + c.name, x - 1.3, z + 0.2, 0.3, c)
 
 # os currais das ovelhas e dos bois: as cercas, os cochos e a manjedoura do kit pastoril (a colisão das cercas vai em "muros")
 def medidas(o):
