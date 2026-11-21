@@ -100,9 +100,21 @@ poePertos(scene, LAY.objetos, KIT, (o, n) => {
   }
 }
 
+// ---------- a água dos dois tanques: a textura do usuário, correndo devagar (a mesma da pia do templo) ----------
+const AGUA = (() => {
+  const tx = new THREE.TextureLoader().load('../fase-betesda/agua.png'); tx.colorSpace = THREE.SRGBColorSpace; tx.wrapS = tx.wrapT = THREE.RepeatWrapping; tx.repeat.set(31 / 3.2, 16.5 / 3.2);
+  const mat = new THREE.MeshStandardMaterial({ map: tx, roughness: 0.35 });
+  for (const [z0, z1] of [[-42.0, -25.5], [-21.5, -5.0]]) {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(31.0, z1 - z0), mat); m.rotation.x = -Math.PI / 2; m.position.set(0, LAY.agua + 0.03, (z0 + z1) / 2); m.receiveShadow = true; m.name = 'Betesda_Agua'; scene.add(m);
+  }
+  return tx;
+})();
+let T_AGUA = 0;
+
 // ---------- os telhados dos alpendres: quando um deles fica entre a câmera e o jogador (ou ele está debaixo), fica quase
 // transparente (a câmera vem de cima) ----------
 function telhadosPasso(p, dt, cam) {
+  T_AGUA += dt; AGUA.offset.set(Math.sin(T_AGUA * 0.12) * 0.05 + T_AGUA * 0.005, Math.cos(T_AGUA * 0.1) * 0.04);      // a água se move devagar
   const yT = LAY.deck + 4.2, yc = p.y + 1.2;
   for (const t of TELHADOS) {
     const [x0, x1, z0, z1] = t.r, den = (x, z, m) => x > x0 - m && x < x1 + m && z > z0 - m && z < z1 + m;
