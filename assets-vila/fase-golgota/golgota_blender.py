@@ -45,15 +45,15 @@ H0 = h_mundo(GW[0], GW[2])
 # ---------------- traçado ----------------
 ESTRADA = [(54, 57), (48, 46), (38, 36), (24, 20), (13, 5), (11, -8), (5, -22), (-10, -33), (-28, -40), (-44, -46)]     # da Porta de Genat (sudeste) para Emaús (noroeste)
 MEIA = 1.5
-CAMINHO = [(12.6, 2.0), (9.5, 11.5), (0.0, 15.5), (-12.0, 15.0), (-21.0, 10.5), (-26.0, 6.0), (-35.0, 2.6), (-43.6, -1.4)]          # da estrada ao portão do horto e ao sepulcro
+CAMINHO = [(12.6, 2.0), (9.5, 11.5), (0.0, 15.5), (-12.0, 15.0), (-23.0, 10.0), (-30.0, 6.0), (-37.0, 2.6), (-43.6, -1.4)]          # da estrada ao portão do horto e ao sepulcro
 MEIA_C = 0.8
 GOL = (-4.0, -6.0)                                      # o centro do monte do Gólgota
 H_G, RW_G, RE_G, RZ_G = 12.0, 18.0, 13.0, 18.0          # a altura do monte e os meios-eixos (oeste, leste, norte-sul)
 def XC(z): return 3.2 + 0.5 * math.sin(z * 0.45 + 1.0) + 0.25 * math.sin(z * 1.3)     # a linha do penhasco da face leste
 CRISTA = [(-38.0, 40.0), (-47.0, 16.0), (-48.0, 0.0), (-49.0, -14.0), (-52.0, -30.0), (-56.0, -46.0)]   # o pé da parede da pedreira (de sul para norte)
 SEP = (-47.4, -2.0)                                     # a porta do sepulcro (olha para o leste)
-HORTO = (-45.0, -12.0, -28.0, 12.0)                     # x0, x1, z0, z1 (a oeste fica a parede de pedra)
-PORTAO = (-26.0, 6.0)
+HORTO = (-46.0, -30.0, -14.0, 12.0)                     # x0, x1, z0, z1 (a oeste fica a parede de pedra)
+PORTAO = (-30.0, 6.0)
 X0, X1, Z0, Z1 = -88.0, 80.0, -66.0, 72.0
 AREA = [-58.0, 58.0, -44.0, 58.0]       # a leste, o segundo muro (x ~ 63); ao sul, a Porta de Genat (~ 56, 63)
 
@@ -557,7 +557,7 @@ def livre(x, z, m=0.0):
 
 
 # no horto: oliveiras e figueiras (abril: a figueira já tem folha e figo novo, Mc 13.28)
-for x, z, t in ((-30.0, -9.0, 'o'), (-36.0, -10.5, 'o'), (-41.5, -8.0, 'f'), (-29.0, 0.5, 'f'), (-31.0, 9.5, 'o'), (-38.0, 8.5, 'o'), (-42.5, 6.5, 'f')):
+for x, z, t in ((-33.0, -9.0, 'o'), (-37.5, -10.5, 'o'), (-42.0, -8.0, 'f'), (-33.0, 0.5, 'f'), (-34.0, 9.5, 'o'), (-38.0, 8.5, 'o'), (-42.5, 6.5, 'f')):
     if not livre(x, z): continue
     if t == 'o': arvore('oliveiras\\oliveiras.glb', random.choice(['Oliveira2_Retorcida', 'Oliveira4_Ancia', 'Oliveira3_Vaso']), x, z, K_OLI * random.uniform(0.9, 1.1))
     else: arvore('figueiras\\figueiras.glb', random.choice(['Figueira1_Jovem_ComFruta', 'Figueira2_Larga_ComFruta']), x, z, K_FIG * random.uniform(0.9, 1.1))
