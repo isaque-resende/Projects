@@ -17,7 +17,7 @@ gCen.scene.traverse((o) => {
   if (!o.isMesh) return;
   if (o.name.startsWith('Betesda_Terreno')) { o.material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 }); TERRENO = o; o.receiveShadow = true; }
   else if (o.name.startsWith('Betesda_Trilha')) { o.material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2 }); o.receiveShadow = true; TRILHAS.push(o); }
-  else if (o.name.startsWith('Betesda_Tanques')) { o.material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, flatShading: true, side: THREE.DoubleSide }); o.receiveShadow = true; }
+  else if (o.name.startsWith('Betesda_Tanques')) { o.receiveShadow = true; }          // a pedra (e o limo junto da água), com textura
   else if (o.name.startsWith('Telhado_')) {
     o.material = o.material.clone(); o.castShadow = true; o.receiveShadow = true;
     const nome = o.name.replace(/[._]\d+$/, '').replace(/_?\d+$/, ''); const r = LAY.telhados[Object.keys(LAY.telhados).find((k) => o.name.startsWith(k))];

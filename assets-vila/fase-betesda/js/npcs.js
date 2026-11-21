@@ -2,7 +2,7 @@
 // junto deles, um cego encostado numa coluna, o pastor com o cordeiro junto ao curral e as ovelhas dentro dele, e
 // gente passando pela estrada e entrando pela Porta das Ovelhas. Cada um que fala tem a sua conversa (CONVERSAS).
 import * as THREE from 'three';
-import { LAY, V3, CIRC, rnd } from './estado.js';
+import { LAY, V3, CIRC, rnd, scene } from './estado.js';
 import { gOve, nBarbudo, nMagro, nRobusto, nLenco, nRapaz, nCarreg, nPastor, nFaixa, nAldeao } from './modelos.js';
 import { terreno, AMOS } from './cenario.js';
 import { ator, anda } from './gente.js';
@@ -45,7 +45,20 @@ function senta(st, x, z, g) {
   o.updateMatrixWorld(true);
   const quadril = G('thigh_l') || G('pelvis');
   if (quadril) { quadril.getWorldPosition(_a); o.position.y -= _a.y - (DECK + 0.16); }                        // o quadril na esteira
+  // a manta de lã listrada por cima das pernas
+  o.updateMatrixWorld(true); if (quadril) quadril.getWorldPosition(_a);
+  const manta = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.31, 0.98, 10), MAT_MANTA); manta.castShadow = true; manta.receiveShadow = true;      // as pernas cobertas: um volume arredondado
+  manta.rotation.order = 'YXZ'; manta.rotation.set(Math.PI / 2, g, 0); manta.scale.set(1, 1, 0.62);
+  manta.position.set(_a.x + f.x * 0.55, DECK + 0.05, _a.z + f.z * 0.55); scene.add(manta);
   CIRC.push({ x, z, r: 0.75 });
+}
+// as esteiras de junco (a do paralítico, vazia, fica só o lugar) e a manta dos enfermos: as texturas do usuário
+const texJ = (arq, rx, ry) => { const t = new THREE.TextureLoader().load('../fase-betesda/' + arq); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry); return t; };
+const MAT_ESTEIRA = new THREE.MeshStandardMaterial({ map: texJ('esteira.jpg', 1, 2), roughness: 1 });
+const MAT_MANTA = new THREE.MeshStandardMaterial({ map: texJ('manta.jpg', 1, 1), roughness: 1 });
+for (const [x, z, g, quem] of LAY.esteiras) {
+  if (!quem) continue;
+  const e = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.03, 1.95), MAT_ESTEIRA); e.position.set(x, DECK + 0.015, z); e.rotation.y = g + Math.PI / 2; e.receiveShadow = true; scene.add(e);
 }
 const DOENTES = [nBarbudo, nMagro, nRobusto, nRapaz, nCarreg, nLenco];
 const enfermos = [];

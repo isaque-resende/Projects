@@ -252,8 +252,187 @@ class Formas:
         return malha(nome, self.v, self.f, lambda p: C[p.index], dupla)
 
 
-# ---------------- o tanque: as paredes de pedra, os degraus, a água e o piso ----------------
-tq = Formas()
+# ---------------- as peças com textura (o visual novo, o mesmo do templo) ----------------
+# As texturas do usuário (só cor) vezes a cor de vértice. A cor de vértice leva a sombra de contato no pé das paredes e
+# das colunas, a sombra debaixo dos alpendres e uma variação lenta de tom (para a textura não repetir à vista); o sol e as
+# sombras de verdade vêm do jogo. As texturas originais ficam com as do templo (fase-templo/texturas/originais).
+from mathutils import noise
+import numpy as np
+TEXO = os.path.join(ROOT, 'fase-templo', 'texturas', 'originais'); TEXJ = os.path.join(OUT, 'texturas_jogo')
+TEXS = {'muro': ('muro_herodiano_v3.webp', 1024, 9.0), 'limo': ('pedra_limo_v1.png', 1024, 7.0), 'lajes': ('lajes_patio_v2.webp', 1024, 6.0),
+        'marmore': ('marmore_v1.webp', 512, 3.0), 'capitel': ('capitel_v1.webp', 512, 1.0), 'cedro': ('cedro_v1.webp', 1024, 4.0),
+        'telhas': ('telhas_v1.png', 1024, 4.0)}
+TILE = {k: v[2] for k, v in TEXS.items()}
+IMGS, MATS = {}, {}
+
+
+def prepara_texturas():
+    os.makedirs(TEXJ, exist_ok=True)
+    for k, (arq, lado, _) in TEXS.items():
+        im = bpy.data.images.load(os.path.join(TEXO, arq)); w, h = im.size
+        out = bpy.data.images.new('tmp_' + k, w, h, alpha=True); out.pixels[:] = im.pixels[:]; out.scale(lado, lado)
+        cam_ = os.path.join(TEXJ, k + '.png'); out.filepath_raw = cam_; out.file_format = 'PNG'; out.save()
+        bpy.data.images.remove(im); bpy.data.images.remove(out)
+        IMGS[k] = bpy.data.images.load(cam_); IMGS[k].name = 'Tex_' + k
+
+
+prepara_texturas()
+# a esteira e a manta dos enfermos vão para o jogo à parte (o jogo as põe debaixo e por cima de cada um)
+for k_, arq_ in (('esteira', 'esteira_v1.png'), ('manta', 'manta_v1.png')):
+    im = bpy.data.images.load(os.path.join(TEXO, arq_)); w_, h_ = im.size
+    out = bpy.data.images.new('tmp_' + k_, w_, h_); out.pixels[:] = im.pixels[:]; out.scale(512, 512)
+    out.filepath_raw = os.path.join(OUT, k_ + '.jpg'); out.file_format = 'JPEG'; out.save()
+    bpy.data.images.remove(im); bpy.data.images.remove(out)
+
+
+def material(k, dupla=False):
+    if (k, dupla) in MATS: return MATS[(k, dupla)]
+    m = bpy.data.materials.new('Betesda_' + k + ('_d' if dupla else '')); m.use_nodes = True; nt = m.node_tree; nt.nodes.clear()
+    out = nt.nodes.new('ShaderNodeOutputMaterial'); bs = nt.nodes.new('ShaderNodeBsdfPrincipled')
+    ca = nt.nodes.new('ShaderNodeVertexColor'); ca.layer_name = 'Col'
+    if k in IMGS:
+        tx = nt.nodes.new('ShaderNodeTexImage'); tx.image = IMGS[k]
+        mx = nt.nodes.new('ShaderNodeMix'); mx.data_type = 'RGBA'; mx.blend_type = 'MULTIPLY'; mx.inputs[0].default_value = 1.0
+        nt.links.new(tx.outputs['Color'], mx.inputs[6]); nt.links.new(ca.outputs['Color'], mx.inputs[7]); nt.links.new(mx.outputs[2], bs.inputs['Base Color'])
+    else: nt.links.new(ca.outputs['Color'], bs.inputs['Base Color'])
+    bs.inputs['Roughness'].default_value = 0.92; nt.links.new(bs.outputs['BSDF'], out.inputs['Surface'])
+    m.use_backface_culling = not dupla
+    MATS[(k, dupla)] = m
+    return m
+
+
+class Cor(tuple):
+    """uma cor que sabe o seu material: 'liso' (só a cor de vértice) ou uma textura (e então a cor vira só um tom)"""
+    mat = 'liso'; tint = (1.0, 1.0, 1.0)
+
+
+def C(c, mat, tint=(1.0, 1.0, 1.0)):
+    n = Cor(c); n.mat = mat; n.tint = tint; return n
+
+
+def tom(c, k):
+    n = Cor(tuple(min(1, v * k) for v in c[:3]) + (1,)); n.mat = getattr(c, 'mat', 'liso')
+    n.tint = tuple(min(1.0, v * k) for v in getattr(c, 'tint', (1.0, 1.0, 1.0))); return n
+
+
+for k_, m_, t_ in (('calcario', 'muro', (1, 1, 1)), ('calc_lado', 'muro', (0.9, 0.88, 0.85)), ('muro', 'muro', (1, 1, 1)), ('limo', 'limo', (1, 1, 1)),
+                   ('lajes', 'lajes', (1, 1, 1)), ('lajes2', 'lajes', (0.95, 0.94, 0.92)), ('coluna', 'marmore', (1, 1, 1)), ('cedro', 'cedro', (1, 1, 1)),
+                   ('telha', 'telhas', (1, 1, 1))):
+    COR[k_] = C(COR[k_], m_, t_)
+COR['capitel'] = C(COR['coluna'], 'capitel')
+
+
+def uv_plano(p, n, T):
+    if abs(n.z) > 0.7: return (p.x / T, p.y / T)
+    t = Vector((-n.y, n.x, 0.0)); t = t.normalized() if t.length > 1e-6 else Vector((1.0, 0.0, 0.0))
+    return (p.dot(t) / T, p.z / T)
+
+
+def newell(pts):
+    n = Vector((0, 0, 0))
+    for i in range(len(pts)):
+        a, b = pts[i], pts[(i + 1) % len(pts)]
+        n.x += (a.y - b.y) * (a.z + b.z); n.y += (a.z - b.z) * (a.x + b.x); n.z += (a.x - b.x) * (a.y + b.y)
+    return n
+
+
+REG = []
+
+
+class FormasT:
+    """as mesmas caixas, cilindros e planos, agora com textura e luz pintada (ilumina_tudo, no fim)"""
+    def __init__(self, dupla=False): self.F = []; self.dupla = dupla
+
+    def face(self, pts, mat, base, zb=None, uv=None, luz=True):
+        self.F.append(([Vector(p) for p in pts], mat, base, zb, uv, luz))
+
+    def _cor(self, cor, var):
+        mat = getattr(cor, 'mat', 'liso'); k = 1 + random.uniform(-var, var)
+        b = getattr(cor, 'tint', (1.0, 1.0, 1.0)) if mat != 'liso' else cor[:3]
+        return mat, tuple(min(1.0, v * k) for v in b)
+
+    def caixa(self, cx, cz, y0, y1, lx, lz, cor, giro=0.0, var=0.05, fundo=False, faixa=False):
+        mat, base = self._cor(cor, var); cs, sn = math.cos(giro), math.sin(giro); hx_, hz_ = lx / 2, lz / 2
+        P = lambda u, w, y: Vector((cx + u * cs - w * sn, -(cz + u * sn + w * cs), y))
+        Q = [(-hx_, hz_), (hx_, hz_), (hx_, -hz_), (-hx_, -hz_)]                  # anti-horário visto de cima
+        B = [P(u, w, y0) for u, w in Q]; T = [P(u, w, y1) for u, w in Q]
+        H = y1 - y0; cuts = [y0] + [y0 + d for d in (0.5, 1.4, 2.8) if y0 + d < y1 - 0.2] + [y1]
+        for k in range(4):
+            a, b = B[k], B[(k + 1) % 4]; L = (b - a).length; nu = max(1, round(L / 2.5))
+            ts = [0.0, 1.0] if faixa else [(c - y0) / H for c in cuts]
+            for i in range(nu):
+                for j in range(len(ts) - 1):
+                    u0, u1, t0, t1 = i / nu, (i + 1) / nu, ts[j], ts[j + 1]
+                    pa, pb = a.lerp(b, u0), a.lerp(b, u1)
+                    up0, up1 = Vector((0, 0, H * t0)), Vector((0, 0, H * t1))
+                    uv = [(u0 * L / H, t0), (u1 * L / H, t0), (u1 * L / H, t1), (u0 * L / H, t1)] if faixa else None
+                    self.face([pa + up0, pb + up0, pb + up1, pa + up1], mat, base, y0, uv)
+        self.face(T, mat, base)
+        if fundo: self.face(B[::-1], mat, base)
+
+    def tronco(self, cx, cz, y0, y1, r0, r1, n, cor, var=0.03):
+        mat, base = self._cor(cor, var)
+        A = [Vector((cx + math.cos(2 * math.pi * (i + 0.5) / n) * r0, -cz + math.sin(2 * math.pi * (i + 0.5) / n) * r0, y0)) for i in range(n)]
+        Bt = [Vector((cx + math.cos(2 * math.pi * (i + 0.5) / n) * max(r1, 0.001), -cz + math.sin(2 * math.pi * (i + 0.5) / n) * max(r1, 0.001), y1)) for i in range(n)]
+        for i in range(n):
+            j = (i + 1) % n; self.face([A[i], A[j], Bt[j], Bt[i]], mat, base, y0)
+        if r1 > 0.01: self.face(Bt, mat, base)
+
+    def plano(self, pts, cor):
+        mat, base = self._cor(cor, 0.0)
+        P = [Vector((x, -z, y)) for x, y, z in pts]
+        if newell(P).z < -1e-6 and abs(newell(P).normalized().z) > 0.7: P = P[::-1]          # piso sempre para cima
+        self.face(P, mat, base, min(p.z for p in P) if abs(newell(P).normalized().z) < 0.5 else None)
+
+    def cria(self, nome, dupla=None):
+        dupla = self.dupla if dupla is None else dupla
+        vmap, verts, faces, info = {}, [], [], []
+        for (pts, mat, base, zb, uv, luz) in self.F:
+            idx = []
+            for p in pts:
+                key = (round(p.x, 4), round(p.y, 4), round(p.z, 4))
+                if key not in vmap: vmap[key] = len(verts); verts.append(key)
+                idx.append(vmap[key])
+            if len(set(idx)) != len(idx) or len(idx) < 3: continue
+            faces.append(idx); info.append((mat, base, zb, uv, luz))
+        me = bpy.data.meshes.new(nome); me.from_pydata(verts, [], faces); me.update()
+        mats = sorted(set(i[0] for i in info))
+        for m in mats: me.materials.append(material(m, dupla))
+        for p in me.polygons: p.material_index = mats.index(info[p.index][0])
+        o = bpy.data.objects.new(nome, me); col_exp.objects.link(o); REG.append((o, info))
+        return o
+
+
+def pinta(q, n, zb, b):
+    x, z, y = q.x, -q.y, q.z
+    f = 1.0
+    if n.z < -0.5: f = 0.72                                                   # embaixo dos telhados
+    elif n.z > 0.5 and abs(y - DECK) < 0.1:                                   # o piso perto das colunas e do parapeito
+        d = min([math.hypot(x - a, z - c) - 0.4 for a, c in COLS] + [3.0])
+        f = 0.82 + 0.18 * sm(0.0, 1.2, d)
+    elif zb is not None: f = 0.72 + 0.28 * sm(0.0, 2.2, y - zb)               # o pé das paredes e das colunas
+    if y < DECK + H_COL - 0.3 and any(x0 < x < x1 and z0 < z < z1 for (x0, x1, z0, z1) in TELHADOS.values()): f *= 0.86
+    t = 1.0 + 0.06 * noise.noise(Vector((x * 0.07, z * 0.07, y * 0.05))) + 0.035 * noise.noise(Vector((x * 0.3 + 7.1, z * 0.3, y * 0.2)))
+    fr = 1.0 - f
+    return tuple(min(1.0, b[i] * f * t * (1.0 + fr * (-0.06, -0.04, 0.10)[i])) for i in range(3))
+
+
+def ilumina_tudo():
+    for o, info in REG:
+        me = o.data
+        ul = me.uv_layers.new(name='UVMap'); ca = me.color_attributes.new('Col', 'BYTE_COLOR', 'CORNER')
+        for p in me.polygons:
+            mat, base, zb, uv, luz = info[p.index]; n = p.normal.copy()
+            for k, li in enumerate(p.loop_indices):
+                q = me.vertices[me.loops[li].vertex_index].co
+                ul.data[li].uv = uv[k] if uv else (uv_plano(q, n, TILE[mat]) if mat in TILE else (0.5, 0.5))
+                c = pinta(q, n, zb, base) if luz else base
+                ca.data[li].color_srgb = (c[0], c[1], c[2], 1.0)
+        me.color_attributes.active_color_name = 'Col'
+
+
+# ---------------- o tanque: as paredes de pedra, os degraus e o piso (a água é do jogo) ----------------
+tq = FormasT(dupla=True)
 AGUA = DECK - 2.1
 
 
@@ -276,7 +455,6 @@ def paredes(x0, x1, z0, z1):
 
 for z0, z1 in ((ZN0, ZN1), (ZS0, ZS1)):
     paredes(-X_IN, X_IN, z0, z1)
-    tq.plano([(-X_IN, AGUA, z0), (X_IN, AGUA, z0), (X_IN, AGUA, z1), (-X_IN, AGUA, z1)], COR['agua'])
 # os degraus: uma escadaria larga na parede sul do tanque do sul e escadas nos cantos do tanque do norte
 ESC = 9
 for i in range(ESC):
@@ -289,7 +467,7 @@ for sx in (-1, 1):
 tq.cria('Betesda_Tanques', dupla=True)
 
 # o piso dos alpendres e do dique: lajes, um pouco acima do chão (o estilóbato)
-pi_ = Formas()
+pi_ = FormasT(dupla=True)
 for x0, x1, z0, z1 in ((-X_OUT, X_OUT, Z_OUT0, ZN0), (-X_OUT, X_OUT, ZS1, Z_OUT1), (-X_OUT, -X_IN, ZN0, ZS1), (X_IN, X_OUT, ZN0, ZS1), (-X_IN, X_IN, ZN1, ZS0)):
     x = x0
     while x < x1 - 1e-3:
@@ -310,7 +488,7 @@ pi_.cria('Betesda_Piso')
 
 # ---------------- os cinco alpendres: colunas e telhados (cada telhado numa malha: o jogo o deixa transparente
 # quando o jogador está debaixo dele) ----------------
-CO = Formas(); COLS = []
+CO = FormasT(); COLS = []
 H_COL = 4.2
 
 
@@ -320,8 +498,9 @@ def fila(xa, za, xb, zb, passo=2.6):
         x, z = xa + (xb - xa) * i / n, za + (zb - za) * i / n
         if any(abs(x - a) < 0.3 and abs(z - b) < 0.3 for a, b in COLS): continue
         CO.caixa(x, z, DECK, DECK + 0.3, 0.8, 0.8, tom(COR['coluna'], 0.95))                       # a base
-        CO.tronco(x, z, DECK + 0.3, DECK + H_COL - 0.35, 0.28, 0.25, 8, COR['coluna'])
-        CO.caixa(x, z, DECK + H_COL - 0.35, DECK + H_COL, 0.75, 0.75, tom(COR['coluna'], 1.05))    # o capitel
+        CO.tronco(x, z, DECK + 0.3, DECK + H_COL - 0.75, 0.28, 0.25, 8, COR['coluna'])
+        CO.caixa(x, z, DECK + H_COL - 0.75, DECK + H_COL - 0.15, 0.6, 0.6, COR['capitel'], var=0.0, faixa=True)      # o capitel (acanto)
+        CO.caixa(x, z, DECK + H_COL - 0.15, DECK + H_COL, 0.82, 0.82, tom(COR['coluna'], 1.03))                     # o ábaco
         COLS.append((x, z))
 
 
@@ -334,7 +513,7 @@ CO.cria('Betesda_Colunas')
 TELHADOS = {'Telhado_Norte': (-X_OUT, X_OUT, Z_OUT0, ZN0), 'Telhado_Sul': (-X_OUT, X_OUT, ZS1, Z_OUT1), 'Telhado_Oeste': (-X_OUT, -X_IN, ZN0, ZS1),
             'Telhado_Leste': (X_IN, X_OUT, ZN0, ZS1), 'Telhado_Dique': (-X_IN, X_IN, ZN1, ZS0)}
 for nome, (x0, x1, z0, z1) in TELHADOS.items():
-    te = Formas(); y = DECK + H_COL
+    te = FormasT(); y = DECK + H_COL
     te.caixa((x0 + x1) / 2, (z0 + z1) / 2, y, y + 0.45, x1 - x0 + 0.6, z1 - z0 + 0.6, COR['cedro'], fundo=True)        # a viga e o forro de cedro
     te.caixa((x0 + x1) / 2, (z0 + z1) / 2, y + 0.45, y + 0.75, x1 - x0 + 0.9, z1 - z0 + 0.9, COR['telha'])           # o terraço por cima
     te.cria(nome)
@@ -428,7 +607,7 @@ if n is not None: circulo('COL_Cocho', cx_ + 1.8, cz_ - 2.2, 0.6, n)
 # ---------------- os enfermos: esteiras debaixo dos alpendres (o jogo deita gente nelas), jarros e cestos ----------------
 ESTEIRAS = []          # x, z, giro (a cabeça para o lado de fora), quem ('' = a esteira vazia do paralítico)
 def esteira(x, z, g, quem='e'):
-    n = poe('casa-porta\\objetos_casa.glb', 'Esteira', x, z, g, 1.0, y=DECK, afunda=-0.01)
+    # (a esteira é do jogo: a textura de junco, com a manta por cima de quem está nela)
     ESTEIRAS.append([round(x, 2), round(z, 2), round(g, 3), quem])
     if random.random() < 0.6:
         a = random.uniform(0, 6.28); poe('casa-porta\\objetos_casa.glb', random.choice(['Jarra_Alca', 'Jarro_Alto', 'Cesto_Oval', 'Tigela_Funda']), x + math.cos(a) * 1.1, z + math.sin(a) * 1.1, random.uniform(0, 6.28), 1.0, y=DECK, afunda=0.0)
@@ -501,6 +680,7 @@ try:
 except Exception as e:
     print('sem maquete', e)
 
+ilumina_tudo()          # a luz suave pintada nas peças com textura
 fixos = {'estrada': [[round(p.x, 2), round(p.y, 2)] for p in AMOS[::3]] + [[round(AMOS[-1].x, 2), round(AMOS[-1].y, 2)]], 'meia': MEIA,
          'muros': CERCA, 'area': AREA, 'terreno': [X0, X1, Z0, Z1], 'mundo': [GW[0], H0, GW[2]], 'caixas': CAIXAS,
          'telhados': {k: list(v) for k, v in TELHADOS.items()}, 'deck': round(DECK, 3), 'agua': round(AGUA, 3),
