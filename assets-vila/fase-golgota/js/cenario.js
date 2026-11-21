@@ -132,6 +132,8 @@ poePertos(scene, LAY.objetos, KIT, (o, n) => {
   raiz.traverse((o) => { if (o.name && o.name.startsWith('NPC_')) o.visible = false; });
   if (N.Tumulo_Interior) N.Tumulo_Interior.castShadow = false;
   // a candeia num nicho da parede (Mc 16.5: entrando no sepulcro…)
+  // o piso da câmara, de pedra batida (o modelo não traz piso; o terreno fica por baixo)
+  { const piso = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.1, 6.4), new THREE.MeshStandardMaterial({ color: 0xa39478, roughness: 1 })); piso.position.set(0, -0.04, -3.2); piso.receiveShadow = true; tum.add(piso); }
   const lamp = new THREE.PointLight(0xffb060, 0, 7, 1.6); lamp.position.set(-1.2, 1.15, -1.55); tum.add(lamp);
   // dentro: os lençóis no chão e o lenço enrolado à parte
   const linho = new THREE.MeshStandardMaterial({ color: 0xe9e2d0, roughness: 1, flatShading: true });
@@ -160,12 +162,16 @@ poePertos(scene, LAY.objetos, KIT, (o, n) => {
   const inv = new THREE.Matrix4().copy(tum.matrixWorld).invert(), q = new THREE.Vector3();
   TUM.y = tum.position.y + 0.02;
   TUM.dentro = (x, z) => { q.set(x, tum.position.y, z).applyMatrix4(inv); return q.x > -1.75 && q.x < 1.75 && q.z > -6.4 && q.z < -0.05; };
+  const fundo = (x, z) => { q.set(x, tum.position.y, z).applyMatrix4(inv); return q.x > -1.45 && q.x < 1.45 && q.z > -6.2 && q.z < -0.7; };
+  // o monte fica translúcido (não some): de dentro, a câmera vê o jogador e ainda se percebe a rocha em volta
+  const VEU = [];
+  for (const n of ['Tumulo_Massa_Monte', 'Rochas_Soltas']) if (N[n]) N[n].traverse((m) => { if (m.isMesh) VEU.push(m.material); });
   TUM.lencois = new THREE.Vector3(0.85, 0, -3.3).applyMatrix4(tum.matrixWorld);
   let estava = null;
   TUM.passo = (pj) => {
-    const d = !!pj && TUM.dentro(pj.x, pj.z);
+    const d = !!pj && fundo(pj.x, pj.z);
     if (d === estava) return; estava = d;
-    for (const n of ['Tumulo_Massa_Monte', 'Rochas_Soltas']) if (N[n]) N[n].visible = !d;
+    for (const m of VEU) { m.transparent = d; m.opacity = d ? 0.22 : 1; m.depthWrite = !d; m.needsUpdate = true; }
     lamp.intensity = d ? 5 : 0;
   };
   Object.assign(TUM, { tum, pedra, boca: new THREE.Vector3(0, 0, 0.2).applyMatrix4(tum.matrixWorld), frente: new THREE.Vector3(0, 0, 1).applyQuaternion(tum.quaternion).setY(0).normalize() });

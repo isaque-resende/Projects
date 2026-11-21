@@ -179,6 +179,8 @@ def altura(x, z):
     dq = math.hypot(max(SEP[0] - 10.5 - x, 0, x - SEP[0] - 1.0), max(abs(z - SEP[1]) - 3.4, 0))     # a câmara, cavada para dentro do monte do túmulo
     w = 1 - sm(0, 2.5, dq)
     if w > 0: h += (HADRO - h) * w
+    dc = math.hypot(max(SEP[0] - 9.6 - x, 0, x - SEP[0] + 0.7), max(abs(z - SEP[1]) - 2.5, 0))
+    h -= 0.5 * (1 - sm(0, 0.6, dc))
     return h
 
 
@@ -506,9 +508,9 @@ empty_ref('JOGO_sepulcro', SEP[0], SEP[1], y=HADRO, r=0.0, tam=2.0)             
 empty_ref('JOGO_olhar', SEP[0] + 1.3, SEP[1], y=HADRO, r=-math.pi / 2, tam=1.5)     # onde se abaixa para olhar dentro
 
 # colisão do Gólgota: a beira de cima do penhasco e o pé dele (o resto do monte se anda, pela trilha ou não)
-for j, z in enumerate(ZS_FACE[::3]):
+for j, z in enumerate(ZS_FACE[::2]):
     hb = monte_bruto(XC(z), z)
-    if hb > 1.2: circulo('COL_Golgota_alto_%d' % j, XC(z) - 1.6, z, 0.6, face, y=altura(XC(z) - 2.3, z))['fixo'] = 1
+    if hb > 1.2: circulo('COL_Golgota_alto_%d' % j, XC(z) - 2.2, z, 0.7, face, y=altura(XC(z) - 2.9, z))['fixo'] = 1
     circulo('COL_Golgota_pe_%d' % j, XC(z) + 1.0, z, 0.8, face)['fixo'] = 1
 for x, z, meio in CRUZES: circulo('COL_Cruz_%d' % int(z * 10 + 500), x, z, 0.3, face, y=altura(x, z))['fixo'] = 1
 
