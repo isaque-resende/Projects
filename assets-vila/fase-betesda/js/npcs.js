@@ -51,12 +51,19 @@ function senta(st, x, z, g) {
   { const qd = G('thigh_r'); if (qd && G('thigh_l')) { qd.getWorldPosition(_b); _a.lerp(_b, 0.5); } }          // o meio entre os dois quadris
   const manta = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.3, 1.3, 10), MAT_MANTA); manta.castShadow = true; manta.receiveShadow = true;      // as pernas cobertas: um volume arredondado
   manta.rotation.order = 'YXZ'; manta.rotation.set(Math.PI / 2, g, 0); manta.scale.set(1, 1, 0.9);
-  manta.position.set(_a.x + f.x * 0.7, DECK + 0.08, _a.z + f.z * 0.7); scene.add(manta);      // cobre das coxas até depois dos pés
+  manta.position.set(_a.x + f.x * 0.7, DECK + 0.08, _a.z + f.z * 0.7); scene.add(manta);
+  // o cajado (ou a muleta) deitado ao lado da esteira
+  const lado = PAU.length % 2 ? 1 : -1, pau = new THREE.Group(); PAU.push(pau);
+  const haste = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.026, 1.45, 6), MAT_PAU); haste.rotation.x = Math.PI / 2; pau.add(haste);
+  if (PAU.length % 3 === 0) { const t = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.05, 0.06), MAT_PAU); t.position.z = 0.72; pau.add(t); }      // a muleta: a travessa do sovaco
+  else { const c = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.02, 5, 8, Math.PI), MAT_PAU); c.position.set(0, 0, 0.72); c.rotation.y = Math.PI / 2; pau.add(c); }      // o cajado, com a curva
+  pau.position.set(x + esq.x * 0.62 * lado, DECK + 0.03, z + esq.z * 0.62 * lado); pau.rotation.y = g + 0.08 * lado; pau.traverse((m) => { m.castShadow = true; }); scene.add(pau);      // cobre das coxas até depois dos pés
   CIRC.push({ x, z, r: 0.75 });
 }
 // as esteiras de junco (a do paralítico, vazia, fica só o lugar) e a manta dos enfermos: as texturas do usuário
 const texJ = (arq, rx, ry) => { const t = new THREE.TextureLoader().load('../fase-betesda/' + arq); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry); return t; };
 const MAT_ESTEIRA = new THREE.MeshStandardMaterial({ map: texJ('esteira.jpg', 1, 2), roughness: 1 });
+const MAT_PAU = new THREE.MeshStandardMaterial({ color: 0x7a5634, roughness: 1, flatShading: true }), PAU = [];
 const MAT_MANTA = new THREE.MeshStandardMaterial({ map: texJ('manta.jpg', 1, 1), roughness: 1 });
 for (const [x, z, g, quem] of LAY.esteiras) {
   if (!quem) continue;

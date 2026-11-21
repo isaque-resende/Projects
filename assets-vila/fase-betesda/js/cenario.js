@@ -71,6 +71,18 @@ const JER = gJer.scene; JER.name = 'Jerusalem'; JER.position.set(-MX, -MY, -MZ);
     if (chao) { o.material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 }); CHAOS.push(o); }
   });
   for (const o of CHAOS) { suaviza(o, !o.name.startsWith('Cidade')); texturizaChao(o, TX, o.name.startsWith('Cidade')); }
+  // a Porta das Ovelhas é modelada aqui (Porta_Ovelhas): sai da maquete o trecho do muro entre as duas torres
+  const PXo = LAY.porta[0];
+  JER.traverse((o) => {
+    if (!o.isMesh || !/^(Muralhas|Muro_Cidade)/.test(o.name)) return;
+    const g = o.geometry; if (!g.index) { const n = g.attributes.position.count; g.setIndex([...Array(n).keys()]); }
+    const pos = g.attributes.position, I = g.index.array, novo = [];
+    for (let t = 0; t < I.length; t += 3) {
+      const cx = (pos.getX(I[t]) + pos.getX(I[t + 1]) + pos.getX(I[t + 2])) / 3 - MX, cz = (pos.getZ(I[t]) + pos.getZ(I[t + 1]) + pos.getZ(I[t + 2])) / 3 - MZ;
+      if (!(Math.abs(cx - PXo) < 7.2 && cz > MZL - 4 && cz < MZL + 9)) novo.push(I[t], I[t + 1], I[t + 2]);
+    }
+    g.setIndex(novo);
+  });
 }
 scene.add(JER);
 
@@ -108,7 +120,7 @@ poePertos(scene, LAY.objetos, KIT, (o, n) => {
 // ---------- a água dos dois tanques: a textura do usuário, correndo devagar (a mesma da pia do templo) ----------
 const AGUA = (() => {
   const tx = new THREE.TextureLoader().load('../fase-betesda/agua.png'); tx.colorSpace = THREE.SRGBColorSpace; tx.wrapS = tx.wrapT = THREE.RepeatWrapping; tx.repeat.set(31 / 3.2, 16.5 / 3.2);
-  const mat = new THREE.MeshStandardMaterial({ map: tx, roughness: 0.35 });
+  const mat = new THREE.MeshStandardMaterial({ map: tx, roughness: 0.35, transparent: true, opacity: 0.8, depthWrite: false });      // dá para ver o fundo e os degraus
   for (const [z0, z1] of [[-42.0, -25.5], [-21.5, -5.0]]) {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(31.0, z1 - z0), mat); m.rotation.x = -Math.PI / 2; m.position.set(0, LAY.agua + 0.03, (z0 + z1) / 2); m.receiveShadow = true; m.name = 'Betesda_Agua'; scene.add(m);
   }
@@ -120,7 +132,7 @@ let T_AGUA = 0;
 // transparente (a câmera vem de cima) ----------
 function telhadosPasso(p, dt, cam) {
   T_AGUA += dt; AGUA.offset.set(Math.sin(T_AGUA * 0.12) * 0.05 + T_AGUA * 0.005, Math.cos(T_AGUA * 0.1) * 0.04);      // a água se move devagar
-  const yT = LAY.deck + 4.2, yc = p.y + 1.2;
+  const yT = LAY.deck + 4.75, yc = p.y + 1.2;
   for (const t of TELHADOS) {
     const [x0, x1, z0, z1] = t.r, den = (x, z, m) => x > x0 - m && x < x1 + m && z > z0 - m && z < z1 + m;
     let sob = den(p.x, p.z, 0.6);

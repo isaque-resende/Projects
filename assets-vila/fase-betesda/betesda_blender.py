@@ -261,7 +261,7 @@ import numpy as np
 TEXO = os.path.join(ROOT, 'fase-templo', 'texturas', 'originais'); TEXJ = os.path.join(OUT, 'texturas_jogo')
 TEXS = {'muro': ('muro_herodiano_v3.webp', 1024, 9.0), 'limo': ('pedra_limo_v1.png', 1024, 7.0), 'lajes': ('lajes_patio_v2.webp', 1024, 6.0),
         'marmore': ('marmore_v1.webp', 512, 3.0), 'capitel': ('capitel_v1.webp', 512, 1.0), 'cedro': ('cedro_v1.webp', 1024, 4.0),
-        'telhas': ('telhas_v1.png', 1024, 4.0)}
+        'telhas': ('telhas_v1.png', 1024, 4.0), 'muroP': ('muro_plataforma_v1.webp', 1024, 12.0), 'bronze': ('bronze_v1.webp', 512, 2.5)}
 TILE = {k: v[2] for k, v in TEXS.items()}
 IMGS, MATS = {}, {}
 
@@ -320,6 +320,7 @@ for k_, m_, t_ in (('calcario', 'muro', (1, 1, 1)), ('calc_lado', 'muro', (0.9, 
                    ('telha', 'telhas', (1, 1, 1))):
     COR[k_] = C(COR[k_], m_, t_)
 COR['capitel'] = C(COR['coluna'], 'capitel')
+COR['porta'] = C(COR['muro'], 'muroP'); COR['bronze'] = C(hexc('9a7038'), 'bronze')
 
 
 def uv_plano(p, n, T):
@@ -431,6 +432,7 @@ def ilumina_tudo():
         me.color_attributes.active_color_name = 'Col'
 
 
+CAIXAS_PORTA = []
 # ---------------- o tanque: as paredes de pedra, os degraus e o piso (a água é do jogo) ----------------
 tq = FormasT(dupla=True)
 AGUA = DECK - 2.1
@@ -455,6 +457,7 @@ def paredes(x0, x1, z0, z1):
 
 for z0, z1 in ((ZN0, ZN1), (ZS0, ZS1)):
     paredes(-X_IN, X_IN, z0, z1)
+    tq.plano([(-X_IN, FUNDO, z1), (X_IN, FUNDO, z1), (X_IN, FUNDO, z0), (-X_IN, FUNDO, z0)], tom(COR['limo'], 0.72))      # o fundo, de pedra com limo
 # os degraus: uma escadaria larga na parede sul do tanque do sul e escadas nos cantos do tanque do norte
 ESC = 9
 for i in range(ESC):
@@ -492,8 +495,14 @@ CO = FormasT(); COLS = []
 H_COL = 4.2
 
 
+H_VIGA = 0.55
+
+
 def fila(xa, za, xb, zb, passo=2.6):
     L = math.hypot(xb - xa, zb - za); n = max(1, round(L / passo))
+    # a viga de pedra que corre por cima dos capitéis, com a cornija um pouco mais larga em cima
+    CO.caixa((xa + xb) / 2, (za + zb) / 2, DECK + H_COL, DECK + H_COL + H_VIGA - 0.12, L + 0.82, 0.62, COR['coluna'], giro=math.atan2(zb - za, xb - xa), var=0.0)
+    CO.caixa((xa + xb) / 2, (za + zb) / 2, DECK + H_COL + H_VIGA - 0.12, DECK + H_COL + H_VIGA, L + 0.95, 0.78, tom(COR['coluna'], 1.03), giro=math.atan2(zb - za, xb - xa), var=0.0)
     for i in range(n + 1):
         x, z = xa + (xb - xa) * i / n, za + (zb - za) * i / n
         if any(abs(x - a) < 0.3 and abs(z - b) < 0.3 for a, b in COLS): continue
@@ -513,7 +522,7 @@ CO.cria('Betesda_Colunas')
 TELHADOS = {'Telhado_Norte': (-X_OUT, X_OUT, Z_OUT0, ZN0), 'Telhado_Sul': (-X_OUT, X_OUT, ZS1, Z_OUT1), 'Telhado_Oeste': (-X_OUT, -X_IN, ZN0, ZS1),
             'Telhado_Leste': (X_IN, X_OUT, ZN0, ZS1), 'Telhado_Dique': (-X_IN, X_IN, ZN1, ZS0)}
 for nome, (x0, x1, z0, z1) in TELHADOS.items():
-    te = FormasT(); y = DECK + H_COL
+    te = FormasT(); y = DECK + H_COL + H_VIGA
     te.caixa((x0 + x1) / 2, (z0 + z1) / 2, y, y + 0.45, x1 - x0 + 0.6, z1 - z0 + 0.6, COR['cedro'], fundo=True)        # a viga e o forro de cedro
     te.caixa((x0 + x1) / 2, (z0 + z1) / 2, y + 0.45, y + 0.75, x1 - x0 + 0.9, z1 - z0 + 0.9, COR['telha'])           # o terraço por cima
     te.cria(nome)
@@ -586,10 +595,35 @@ def empty_ref(nome, x, z, y=None, r=0.0, tipo='SINGLE_ARROW', tam=1.5):
     return e
 
 
+# ---------------- a Porta das Ovelhas (Ne 3.1; Jo 5.2): duas torres de pedra herodiana, o arco, as folhas de bronze
+# abertas para dentro e as ameias. Substitui o trecho do muro da maquete entre as torres (o jogo tira esse trecho de lá).
+po = FormasT(); PX_, ZM_ = PORTA[0], MURO_Z; YG = altura(PX_, ZM_ - 1.0)
+def ameias(F, x0, x1, z0, z1, y, passo=1.1):
+    n = max(2, int((x1 - x0) / passo))
+    for i in range(n):
+        if i % 2 == 0: F.caixa(x0 + (i + 0.5) * (x1 - x0) / n, (z0 + z1) / 2, y, y + 0.8, (x1 - x0) / n, z1 - z0, COR['porta'], var=0.03)
+for sgn in (-1, 1):                                                    # as torres
+    xa, xb = PX_ + sgn * 2.2, PX_ + sgn * 7.0
+    cx, lx = (xa + xb) / 2, abs(xb - xa)
+    po.caixa(cx, ZM_ + 1.0, YG - 2.5, YG + 12.0, lx, 5.0, COR['porta'], var=0.02)
+    po.caixa(cx, ZM_ + 1.0, YG + 12.0, YG + 12.35, lx + 0.4, 5.4, tom(COR['porta'], 1.04), var=0.0)
+    ameias(po, cx - lx / 2 - 0.2, cx + lx / 2 + 0.2, ZM_ - 1.7, ZM_ - 1.2, YG + 12.35)
+    for k in range(2): po.caixa(cx, ZM_ - 1.45, YG + 7.0 + k * 2.4, YG + 7.9 + k * 2.4, 0.5, 0.12, COR['escuro'] if 'escuro' in COR else hexc('2e2620'), var=0.0)   # as seteiras
+    CAIXAS_PORTA.append([round(min(xa, xb), 2), round(max(xa, xb), 2), round(ZM_ - 1.6, 2), round(ZM_ + 3.6, 2)])
+po.caixa(PX_, ZM_ + 1.5, YG + 5.6, YG + 10.0, 4.4, 3.0, COR['porta'], var=0.02)               # o muro por cima da passagem
+ameias(po, PX_ - 2.2, PX_ + 2.2, ZM_ - 0.05, ZM_ + 0.45, YG + 10.0)
+r_ = 2.0; yA = YG + 3.6
+for i in range(10):                                                    # o arco: as aduelas em fatias acompanhando a curva
+    x0_, x1_ = PX_ - r_ + 2 * r_ * i / 10, PX_ - r_ + 2 * r_ * (i + 1) / 10; xc_ = (x0_ + x1_) / 2
+    po.caixa(xc_, ZM_ + 1.5, yA + math.sqrt(max(0.0, r_ * r_ - (xc_ - PX_) ** 2)), YG + 5.6, x1_ - x0_, 3.0, tom(COR['porta'], 0.97), var=0.0)
+for sgn in (-1, 1):                                                    # as folhas de bronze, abertas para dentro, encostadas na passagem
+    po.caixa(PX_ + sgn * 1.92, ZM_ + 1.6, YG, YG + 4.8, 0.12, 1.9, COR['bronze'], var=0.0)
+po.cria('Porta_Ovelhas')
+
 # colisão: as colunas (círculos fixos, presos às colunas) e os tanques (caixas, no layout)
 colunas = bpy.data.objects['Betesda_Colunas']
 for i, (x, z) in enumerate(COLS): circulo('COL_Coluna_%d' % i, x, z, 0.4, colunas, y=DECK, fixo=True)
-CAIXAS = [[-X_IN - 0.1, X_IN + 0.1, ZN0 - 0.1, ZN1 + 0.1], [-X_IN - 0.1, X_IN + 0.1, ZS0 - 0.1, ZS1 + 0.1]]
+CAIXAS = [[-X_IN - 0.1, X_IN + 0.1, ZN0 - 0.1, ZN1 + 0.1], [-X_IN - 0.1, X_IN + 0.1, ZS0 - 0.1, ZS1 + 0.1]] + CAIXAS_PORTA      # os tanques e as torres da porta
 
 # o curral: cercas em volta, a porteira para a estrada
 cx_, cz_, hx_, hz_ = CURRAL
@@ -609,8 +643,9 @@ ESTEIRAS = []          # x, z, giro (a cabeça para o lado de fora), quem ('' = 
 def esteira(x, z, g, quem='e'):
     # (a esteira é do jogo: a textura de junco, com a manta por cima de quem está nela)
     ESTEIRAS.append([round(x, 2), round(z, 2), round(g, 3), quem])
-    if random.random() < 0.6:
-        a = random.uniform(0, 6.28); poe('casa-porta\\objetos_casa.glb', random.choice(['Jarra_Alca', 'Jarro_Alto', 'Cesto_Oval', 'Tigela_Funda']), x + math.cos(a) * 1.1, z + math.sin(a) * 1.1, random.uniform(0, 6.28), 1.0, y=DECK, afunda=0.0)
+    a0 = random.uniform(0, 6.28)
+    for j in range(1 + (random.random() < 0.6)):
+        a = a0 + j * 0.9; poe('casa-porta\\objetos_casa.glb', random.choice(['Jarra_Alca', 'Jarro_Alto', 'Cesto_Oval', 'Tigela_Funda', 'Prato', 'Saco']), x + math.cos(a) * 1.05, z + math.sin(a) * 1.05, random.uniform(0, 6.28), 1.0, y=DECK, afunda=0.0)
 
 
 for x in (-12.5, -6.5, 1.0, 9.0):           # alpendre do norte
