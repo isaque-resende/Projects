@@ -14,7 +14,8 @@ let CHAO = null;
 const OCL = [];
 gCen.scene.traverse((o) => {
   if (!o.isMesh) return;
-  if (o.name.startsWith('Cidade_Chao_Fase')) { o.material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 }); CHAO = o; o.receiveShadow = true; return; }
+  if (o.name.startsWith('Cidade_Chao_Fase')) { CHAO = o; o.receiveShadow = true; return; }
+  if (o.name.startsWith('Cidade_Ruas')) { o.material = o.material.clone(); Object.assign(o.material, { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }); o.receiveShadow = true; return; }
   o.castShadow = true; o.receiveShadow = true;
   const k = Object.keys(LAY.oclusores).find((n) => o.name === n || o.name.startsWith(n + '_') || o.name.startsWith(n + '.'));
   if (k) { o.material = o.material.clone(); OCL.push({ o, r: LAY.oclusores[k], op: 1 }); }
@@ -49,7 +50,12 @@ scene.add(JER);
 
 // ---------- as barracas e os objetos do layout ----------
 instanciaLonge(scene, LAY.objetos, KIT);
-poePertos(scene, LAY.objetos, KIT, () => {});
+const PRONTAS = new Set(['Casa2', 'Casa_Sobrado', 'Casa_Cottage', 'CasaIA_export', 'Casa_Alcapao', 'Casa_Varal']);
+poePertos(scene, LAY.objetos, KIT, (o, n) => {
+  if (!PRONTAS.has(o.no)) return;
+  const b = new THREE.Box3().setFromObject(n), r = [b.min.x, b.max.x, b.min.z, b.max.z, b.min.y + 0.3, b.max.y];
+  n.traverse((m) => { if (m.isMesh) { m.material = m.material.clone(); m.castShadow = m.receiveShadow = true; OCL.push({ o: m, r, op: 1 }); } });
+});
 
 // ---------- muros e tetos que tapam a vista: quase transparentes ----------
 function oclusoresPasso(p, dt, cam) {
