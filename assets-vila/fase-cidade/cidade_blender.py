@@ -150,6 +150,7 @@ from mathutils import noise
 TEXC = os.path.join(OUT, 'texturas', 'originais'); TEXO = os.path.join(ROOT, 'fase-templo', 'texturas', 'originais'); TEXJ = os.path.join(OUT, 'texturas_jogo')
 TEXS = {  # chave: (arquivo da cidade, provisória do templo, lado, metros por repetição)
     'reboco': ('reboco_v1.png', 'muro_herodiano_v3.webp', 1024, 5.0), 'terraco': ('terraco_v1.png', 'chao_pedreira_v1.png', 1024, 5.0),
+    'reboco2': ('reboco_v2.png', 'muro_herodiano_v3.webp', 1024, 5.0), 'terraco2': ('terraco_v2.png', 'chao_pedreira_v1.png', 1024, 6.0),
     'porta': ('porta_v1.png', 'tabuas_v1.webp', 512, 1.0), 'muro': (None, 'muro_herodiano_v3.webp', 1024, 9.0),
     'lajes': (None, 'lajes_patio_v2.webp', 1024, 5.0), 'lajesN': (None, 'lajes_nobre_v1.webp', 1024, 4.0), 'terra': (None, 'chao_pedreira_v1.png', 1024, 6.0),
     'marmore': (None, 'marmore_v1.webp', 512, 3.0), 'capitel': (None, 'capitel_v1.webp', 512, 1.0), 'cedro': (None, 'cedro_v1.webp', 1024, 3.0)}
@@ -206,8 +207,8 @@ for k_, m_, t_ in (('lajes', 'lajes', (1, 1, 1)), ('lajes2', 'lajes', (0.95, 0.9
                    ('muro3', 'muro', (1.0, 0.98, 0.95)), ('madeira', 'cedro', (0.85, 0.8, 0.75)), ('coluna', 'marmore', (1, 1, 1)), ('cedro', 'cedro', (1, 1, 1)),
                    ('telhado', 'terraco', (1, 1, 1))):
     COR[k_] = C(COR[k_], m_, t_)
-COR['terraco'] = C(COR['telhado'], 'terraco'); COR['porta'] = C(COR['madeira'], 'porta'); COR['lajesN'] = C(COR['lajes'], 'lajesN')
-CASAS = [C(hexc('e3d6b8'), 'reboco', t) for t in ((1.0, 1.0, 1.0), (0.97, 0.94, 0.9), (1.0, 0.97, 0.92), (0.94, 0.92, 0.88), (1.0, 0.95, 0.87), (0.96, 0.96, 0.94))]
+COR['terraco'] = C(COR['telhado'], 'terraco'); COR['terraco2'] = C(COR['telhado'], 'terraco2'); COR['porta'] = C(COR['madeira'], 'porta'); COR['lajesN'] = C(COR['lajes'], 'lajesN')
+CASAS = [C(hexc('e3d6b8'), m, t) for m in ('reboco', 'reboco2') for t in ((1.0, 1.0, 1.0), (0.97, 0.94, 0.9), (1.0, 0.97, 0.92), (0.94, 0.92, 0.88), (1.0, 0.95, 0.87), (0.96, 0.96, 0.94))]
 
 
 def uv_plano(p, n, T):
@@ -409,10 +410,10 @@ def casa(f, x0, x1, z0, z1, alto, cor, patio=False):
         for (a, b, c, d) in ((x0, x1, z0, z0 + e), (x0, x1, z1 - e, z1), (x0, x0 + e, z0 + e, z1 - e), (x1 - e, x1, z0 + e, z1 - e)): f.caixa(a, b, y0, yt, c, d, cor)
         f.plano([(x0 + e, y0 + 0.45, z0 + e), (x1 - e, y0 + 0.45, z0 + e), (x1 - e, y0 + 0.45, z1 - e), (x0 + e, y0 + 0.45, z1 - e)], tom(COR['lajes'], 0.95))
         for (a, b, c, d) in ((x0, x1, z0, z0 + e), (x0, x1, z1 - e, z1), (x0, x0 + e, z0 + e, z1 - e), (x1 - e, x1, z0 + e, z1 - e)):
-            f.plano([(a, yt + 0.02, c), (b, yt + 0.02, c), (b, yt + 0.02, d), (a, yt + 0.02, d)], tom(COR['terraco'], random.uniform(0.94, 1.03)))
+            f.plano([(a, yt + 0.02, c), (b, yt + 0.02, c), (b, yt + 0.02, d), (a, yt + 0.02, d)], tom(COR[random.choice(('terraco', 'terraco2'))], random.uniform(0.94, 1.03)))
     else:
         f.caixa(x0, x1, y0, yt, z0, z1, cor)
-        f.plano([(x0, yt + 0.02, z0), (x1, yt + 0.02, z0), (x1, yt + 0.02, z1), (x0, yt + 0.02, z1)], tom(COR['terraco'], random.uniform(0.94, 1.03)))      # o terraço
+        f.plano([(x0, yt + 0.02, z0), (x1, yt + 0.02, z0), (x1, yt + 0.02, z1), (x0, yt + 0.02, z1)], tom(COR[random.choice(('terraco', 'terraco2'))], random.uniform(0.94, 1.03)))      # o terraço
         if random.random() < 0.35: f.caixa(x0 + 0.5, x0 + (x1 - x0) * 0.5, yt, yt + 2.6, z0 + 0.5, z0 + (z1 - z0) * 0.5, tom(cor, 0.97))     # o quarto de cima
     for (a, b, c, d) in ((x0, x1, z0, z0 + 0.25), (x0, x1, z1 - 0.25, z1), (x0, x0 + 0.25, z0, z1), (x1 - 0.25, x1, z0, z1)):
         f.caixa(a, b, yt, yt + 0.55, c, d, tom(cor, 1.02))       # o parapeito do terraço (Dt 22.8)
