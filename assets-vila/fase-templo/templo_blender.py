@@ -725,8 +725,23 @@ for (dx, dy, h, r) in ((0, 0, 0.9, 0.22), (0.25, 0.2, 0.6, 0.16), (-0.2, 0.15, 0
 # a pia de bronze, ao sul, entre o altar e o santuário; o lugar do sacrifício, ao norte do altar (as argolas, as mesas, as colunas dos ganchos)
 al = Formas()
 PIA = (-7.5, 6.5)
-al.tronco(PIA[0], PIA[1], Y_SAC, Y_SAC + 1.0, 0.9, 0.7, 12, COR['bronze']); al.tronco(PIA[0], PIA[1], Y_SAC + 1.0, Y_SAC + 1.6, 1.3, 1.5, 12, COR['bronze'])
-al.plano([(PIA[0] + math.cos(2 * math.pi * i / 12) * 1.35, Y_SAC + 1.55, PIA[1] - math.sin(2 * math.pi * i / 12) * 1.35) for i in range(12)], COR['agua'])
+al.tronco(PIA[0], PIA[1], Y_SAC, Y_SAC + 1.0, 0.9, 0.7, 12, COR['bronze'])          # o pé
+# a bacia aberta: a parede de fora, a borda, a parede de dentro e a água; e as doze torneiras de bronze, para doze
+# sacerdotes se lavarem ao mesmo tempo (Mishná, Yoma 3.10; Êx 30.18-21)
+_, BZ = al._cor(COR['bronze'], 0.0); CP = Vector((PIA[0], -PIA[1], 0.0)); NB = 16
+def anel(r, y): return [CP + Vector((math.cos(2 * math.pi * k / NB) * r, math.sin(2 * math.pi * k / NB) * r, y)) for k in range(NB)]
+A0, A1, A2, A3 = anel(1.3, Y_SAC + 1.0), anel(1.5, Y_SAC + 1.6), anel(1.38, Y_SAC + 1.6), anel(1.25, Y_SAC + 1.15)
+for k in range(NB):
+    k2 = (k + 1) % NB
+    al.face([A0[k], A0[k2], A1[k2], A1[k]], 'bronze', BZ, Y_SAC + 1.0)              # por fora
+    al.face([A1[k], A1[k2], A2[k2], A2[k]], 'bronze', BZ)                           # a borda
+    al.face([A2[k], A2[k2], A3[k2], A3[k]], 'bronze', mulc(BZ, (0.8, 0.8, 0.8)))    # por dentro
+al.face(anel(1.3, Y_SAC + 1.0)[::-1], 'bronze', BZ)                                  # o fundo de fora
+al.face(anel(1.31, Y_SAC + 1.45), 'liso', (0.42, 0.62, 0.66))                        # a água
+for k in range(12):
+    a_ = 2 * math.pi * (k + 0.5) / 12; d_ = Vector((math.cos(a_), math.sin(a_), 0.0))
+    p0 = CP + d_ * 1.36 + Vector((0, 0, Y_SAC + 1.22)); p1 = CP + d_ * 1.62 + Vector((0, 0, Y_SAC + 1.18))
+    prisma_s(al, p0, p1, 0.035, 6, 'bronze', BZ); prisma_s(al, p1, p1 - Vector((0, 0, 0.07)), 0.022, 6, 'bronze', BZ)
 a0, a1, b0, b1 = ALTAR
 for i in range(6):
     for j in range(2): al.tronco(a0 + 0.8 + i * 1.4, b0 - 3.0 - j * 2.0, Y_SAC, Y_SAC + 0.08, 0.3, 0.3, 8, COR['bronze'])
