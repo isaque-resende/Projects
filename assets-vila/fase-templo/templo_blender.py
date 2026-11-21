@@ -171,7 +171,7 @@ def tom(c, k):
 
 COR = {'lajes': C('ddd2b8', 'lajes'), 'lajes2': C('d1c4a6', 'lajes', (0.95, 0.94, 0.92)), 'herod': C('dccaa6', 'muro'), 'claro': C('e9dfc8', 'branco'),
        'branco': C('f2ecdd', 'branco'), 'coluna': C('ebe2cc', 'marmore'), 'capitel': C('ebe2cc', 'capitel'), 'plataforma': C('d6c29c', 'muroP'), 'cedro': C('8d6a4c', 'cedro'), 'teto': C('b49a7a', 'telhado'),
-       'ouro': C('d8a640', 'ouro'), 'ouro2': C('b9862e', 'ouro', (0.80, 0.74, 0.66)), 'bronze': C('9a7038', 'bronze'),
+       'ouro': C('d8a640', 'ouro'), 'friso': C('d4a23e', 'friso'), 'ouro2': C('b9862e', 'ouro', (0.80, 0.74, 0.66)), 'bronze': C('9a7038', 'bronze'),
        'escuro': C('2e2620'), 'pedra_altar': C('cdc3ad', 'altar'), 'verm': C('8e2f2a'), 'azul': C('3c4f86'), 'roxo': C('6a3a6e'), 'madeira': C('7a5634', 'tabua'),
        'pano': C('e8dcc0'), 'vime': C('c2a36c', 'vime'), 'agua': C('5f8f8c'), 'antonia': C('c9b791', 'antonia')}
 
@@ -360,7 +360,29 @@ for nome, (x0, x1, z0, z1) in LADOS.items():
     pl.caixa(fx0, fx1, 0.0, H_PORT, fz0, fz1, tom(COR['herod'], 1.02))          # o muro do fundo do pórtico
     if nome == 'Lado_Norte': pl.plano([(PORTA_N[0] - 1.6, 0.0, -PZ + 0.62), (PORTA_N[0] + 1.6, 0.0, -PZ + 0.62), (PORTA_N[0] + 1.6, 4.2, -PZ + 0.62), (PORTA_N[0] - 1.6, 4.2, -PZ + 0.62)], COR['escuro'])
     if nome == 'Lado_Oeste': pl.plano([(-PX + 0.62, 0.0, PORTA_O[1] - 1.6), (-PX + 0.62, 0.0, PORTA_O[1] + 1.6), (-PX + 0.62, 4.2, PORTA_O[1] + 1.6), (-PX + 0.62, 4.2, PORTA_O[1] - 1.6)], COR['escuro'])
+    # as duas saídas ganham batentes, um lintel dourado e as folhas de bronze abertas para dentro (para o jogador achar a porta)
+    if nome == 'Lado_Oeste':          # a porta do oeste: para a cidade alta, pelo viaduto
+        x0p, zc = -PX + 0.6, PORTA_O[1]
+        for s_ in (-1, 1): pl.caixa(x0p, x0p + 0.45, 0.0, 4.6, zc + s_ * 1.6, zc + s_ * 2.4, COR['claro'])
+        pl.caixa(x0p, x0p + 0.5, 4.2, 5.3, zc - 2.5, zc + 2.5, COR['friso'], var=0.0, faixa=True)
+        for s_ in (-1, 1): pl.caixa(x0p + 0.45, x0p + 1.9, 0.0, 4.15, zc + s_ * 1.55 - 0.06, zc + s_ * 1.55 + 0.06, COR['bronze'], var=0.0)
+    if nome == 'Lado_Norte':          # a porta do norte (Tadi): para Betesda
+        z0p, xc = -PZ + 0.6, PORTA_N[0]
+        for s_ in (-1, 1): pl.caixa(xc + s_ * 1.6, xc + s_ * 2.4, 0.0, 4.6, z0p, z0p + 0.45, COR['claro'])
+        pl.caixa(xc - 2.5, xc + 2.5, 4.2, 5.3, z0p, z0p + 0.5, COR['friso'], var=0.0, faixa=True)
+        for s_ in (-1, 1): pl.caixa(xc + s_ * 1.55 - 0.06, xc + s_ * 1.55 + 0.06, 0.0, 4.15, z0p + 0.45, z0p + 1.9, COR['bronze'], var=0.0)
     pl.cria(nome); OCLUSORES[nome] = [min(x0, fx0), max(x1, fx1), min(z0, fz0), max(z1, fz1), -26.0, H_PORT + 1.5]
+
+# o viaduto do oeste (o arco de Wilson): da porta do oeste, sobre o vale, para a cidade alta; o arco com os tímpanos em fatias
+po = Formas(); zc = PORTA_O[1]; XW0, XW1 = -PX - 2.5, -PX - 11.0
+po.caixa(XW1, XW0, -0.7, 0.0, zc - 3.0, zc + 3.0, COR['lajes'], var=0.0)                       # o tabuleiro
+for s_ in (-1, 1): po.caixa(XW1, XW0, 0.0, 1.0, zc + s_ * 3.0 - (0.4 if s_ > 0 else 0.0), zc + s_ * 3.0 + (0.0 if s_ > 0 else 0.4), COR['claro'])   # os parapeitos
+po.caixa(XW1, XW1 + 1.8, -26.0, -0.7, zc - 3.0, zc + 3.0, COR['plataforma'])                    # o pilar do lado da cidade
+xa_, xb_ = XW1 + 1.8, XW0; r_ = (xb_ - xa_) / 2; xm_ = (xa_ + xb_) / 2; ytop = -3.0
+for i in range(10):
+    x0_, x1_ = xa_ + (xb_ - xa_) * i / 10, xa_ + (xb_ - xa_) * (i + 1) / 10; xc_ = (x0_ + x1_) / 2
+    po.caixa(x0_, x1_, ytop - r_ + math.sqrt(max(0.0, r_ * r_ - (xc_ - xm_) ** 2)), -0.7, zc - 3.0, zc + 3.0, COR['plataforma'], var=0.0)
+po.cria('Ponte_Oeste')
 
 # ---------------- os pórticos: duas fileiras de colunas (quatro na Estoa Real) e os tetos de cedro ----------------
 co = Formas()
@@ -496,6 +518,36 @@ MF['Muro_Norte'].caixa(PORTA_MUL_N[0] - 1.8, PORTA_MUL_N[0] + 1.8, Y_TER + 5.0, 
 for (cx0, cx1, cz0, cz1) in ((X_NIC + E_ / 2, X_NIC + 5.5, ez0 + E_ / 2, ez0 + 5.5), (X_NIC + E_ / 2, X_NIC + 5.5, ez1 - 5.5, ez1 - E_ / 2),
                              (ex1 - 5.5, ex1 - E_ / 2, ez0 + E_ / 2, ez0 + 5.5), (ex1 - 5.5, ex1 - E_ / 2, ez1 - 5.5, ez1 - E_ / 2)):
     MF['Camaras'].caixa(cx0, cx1, Y_MUL - 0.1, Y_MUL + 6.0, cz0, cz1, tom(COR['herod'], 0.98), blocos=True); bloqueia(cx0, cx1, cz0, cz1)
+# o gazofilácio: as treze arcas das ofertas, de bocas em forma de trombeta, larga embaixo e estreita em cima, para
+# ninguém tirar o que caiu dentro (Mishná, Shekalim 6.5); onde a viúva pobre lançou as duas moedas (Mc 12.41-44)
+gz = Formas()
+for i in range(13):
+    x, z = 11.6 + i * 0.95, 6.4
+    gz.caixa(x - 0.32, x + 0.32, Y_MUL, Y_MUL + 0.62, z - 0.26, z + 0.26, COR['madeira'], var=0.05)
+    gz.caixa(x - 0.33, x + 0.33, Y_MUL + 0.14, Y_MUL + 0.2, z - 0.27, z + 0.27, COR['bronze'], var=0.0)        # a cinta
+    gz.caixa(x - 0.34, x + 0.34, Y_MUL + 0.62, Y_MUL + 0.68, z - 0.28, z + 0.28, COR['bronze'], var=0.0)       # a tampa
+    gz.tronco(x, z, Y_MUL + 0.68, Y_MUL + 1.12, 0.17, 0.05, 10, COR['bronze'])                                 # a trombeta
+    gz.tronco(x, z, Y_MUL + 1.12, Y_MUL + 1.18, 0.05, 0.075, 10, COR['bronze'])                                # a boca
+    gz.tronco(x, z, Y_MUL + 1.18, Y_MUL + 1.186, 0.06, 0.06, 10, COR['escuro'])
+bloqueia(11.2, 23.4, 6.1, 6.7)
+gz.cria('Templo_Gazofilacio')
+# os quatro grandes candelabros de ouro, com as quatro bacias no alto e as escadas dos jovens sacerdotes (Mishná, Sukkah
+# 5.2-3): acesos na Festa dos Tabernáculos; agora, depois da Páscoa, apagados
+lu = Formas()
+for (lx, lz) in ((14.2, -15.0), (20.8, -15.0), (14.2, 1.8), (20.8, 1.8)):
+    y0 = Y_MUL
+    lu.caixa(lx - 0.6, lx + 0.6, y0, y0 + 0.35, lz - 0.6, lz + 0.6, COR['ouro'], var=0.0)
+    lu.tronco(lx, lz, y0 + 0.35, y0 + 0.8, 0.45, 0.28, 10, COR['ouro'])
+    lu.tronco(lx, lz, y0 + 0.8, y0 + 8.6, 0.22, 0.15, 10, COR['ouro'])
+    for h_ in (3.0, 5.6): lu.tronco(lx, lz, y0 + h_, y0 + h_ + 0.18, 0.28, 0.28, 10, COR['ouro2'])            # os anéis
+    lu.tronco(lx, lz, y0 + 8.6, y0 + 8.9, 0.18, 0.32, 10, COR['ouro'])
+    for (dx, dz) in ((1, 0), (-1, 0), (0, 1), (0, -1)):                                                        # os quatro braços e as bacias
+        lu.caixa(lx + min(0, dx) * 1.0 - 0.07 * abs(dz), lx + max(0, dx) * 1.0 + 0.07 * abs(dz), y0 + 8.8, y0 + 8.95, lz + min(0, dz) * 1.0 - 0.07 * abs(dx), lz + max(0, dz) * 1.0 + 0.07 * abs(dx), COR['ouro'], var=0.0)
+        lu.tronco(lx + dx * 1.0, lz + dz * 1.0, y0 + 8.95, y0 + 9.25, 0.14, 0.36, 10, COR['ouro'])
+    for s_ in (-1, 1): lu.caixa(lx + 0.55, lx + 0.62, y0, y0 + 8.7, lz + s_ * 0.25 - 0.035, lz + s_ * 0.25 + 0.035, COR['madeira'], var=0.0)   # a escada
+    for k in range(17): lu.caixa(lx + 0.55, lx + 0.62, y0 + 0.4 + k * 0.5, y0 + 0.45 + k * 0.5, lz - 0.25, lz + 0.25, COR['madeira'], var=0.0)
+    bloqueia(lx - 0.65, lx + 0.7, lz - 0.65, lz + 0.65)
+lu.cria('Templo_Candelabros')
 # os quinze degraus em semicírculo, da Porta de Nicanor para baixo (os cânticos dos degraus)
 for i in range(15):
     r0 = 1.6 + i * 0.32; y = Y_ISR - (i + 1) * (Y_ISR - Y_MUL) / 15

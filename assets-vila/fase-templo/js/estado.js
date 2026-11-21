@@ -17,7 +17,7 @@ const sm = (a, b, x) => { let k = (x - a) / (b - a); k = k < 0 ? 0 : k > 1 ? 1 :
 const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
 
 // ---------- layout exportado do Blender (betesda_layout.json) ----------
-const LAY = await (await fetch('../fase-templo/templo_layout.json?v=4')).json();
+const LAY = await (await fetch('../fase-templo/templo_layout.json?v=5')).json();
 const DE = new URLSearchParams(location.search).get('de');      // ?de=cidade começa na porta do oeste; ?de=israel, no Pátio de Israel (testes)
 
 // ---------- estado do jogo ----------

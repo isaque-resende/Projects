@@ -113,10 +113,15 @@ coisa('o santuário', ix - 1.0, iz + 2.6, [
   'O santuário: o pórtico alto e branco, coberto de ouro. Lá dentro, o Lugar Santo, com o candelabro, a mesa dos pães e o altar do incenso; e, atrás do véu, o Santo dos Santos, onde só o sumo sacerdote entra, uma vez por ano (Êx 26.33; Lv 16.2).',
   'Na sexta, à hora nona, o véu do santuário se rasgou em dois, de alto a baixo (Mc 15.38).',
 ], 1.8);
-coisa('o gazofilácio', 17.5, 8.5, [
+coisa('o gazofilácio', 17.5, 5.5, [
   'As arcas das ofertas, no Pátio das Mulheres, com as bocas em forma de trombeta.',
   'Jesus, sentado aqui defronte, viu uma viúva pobre lançar duas pequenas moedas. E disse: “Esta pobre viúva deitou mais do que todos; porque todos deitaram do que lhes sobejava, mas esta, da sua pobreza, deitou tudo o que tinha, todo o seu sustento” (Mc 12.41-44).',
 ], 2.6, 'olhar as arcas das ofertas');
+coisa('os candelabros', 14.2, 0.6, [
+  'Quatro candelabros de ouro, altíssimos, cada um com quatro bacias no alto. Os jovens sacerdotes sobem pelas escadas para enchê-las de azeite (Mishná, Sukkah 5.2).',
+  'Na Festa dos Tabernáculos, quando eles se acendem, a cidade inteira fica clara. Foi aqui, no lugar do gazofilácio, que ele disse: “Eu sou a luz do mundo; quem me segue não andará em trevas, mas terá a luz da vida” (Jo 8.12, 20).',
+  'Agora estão apagados. Só voltam a ser acesos no outono.',
+], 2.6, 'olhar os candelabros');
 coisa('as mesas do mercado', LAY.mercado[0], LAY.mercado[2] - 3, [
   'As mesas dos cambistas e as gaiolas das pombas, dentro do pátio do templo.',
   'No começo, numa Páscoa, ele fez um açoite de cordas e expulsou todos do templo, as ovelhas e os bois, e disse: “Não façais da casa de meu Pai casa de negócio.” E os discípulos se lembraram: “O zelo da tua casa me devorará” (Jo 2.13-17; Sl 69.9).',
