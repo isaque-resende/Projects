@@ -96,7 +96,14 @@ import numpy as np
 TEXD = os.path.join(OUT, 'texturas'); TEXJ = os.path.join(TEXD, 'jogo')
 TEXS = {'muro': ('muro_herodiano_v3.webp', 1024, 13.0), 'branco': ('muro_herodiano_v3.webp', 1024, 13.0), 'lajes': ('lajes_patio_v2.webp', 1024, 8.0),
         'altar': ('pedra_altar_v1.webp', 1024, 3.6), 'madeira': ('lenha_v1.webp', 512, 1.6), 'ouro': ('ouro_v2.webp', 512, 4.0),
-        'cortina': ('cortina_v1.webp', 512, 5.5), 'chama': ('chama_v1.webp', 512, 1.0)}
+        'cortina': ('cortina_v1.webp', 512, 5.5), 'chama': ('chama_v1.webp', 512, 1.0),
+        'muroP': ('muro_plataforma_v1.webp', 1024, 16.0), 'antonia': ('antonia_v1.webp', 1024, 10.0), 'telhado': ('telhado_v1.webp', 1024, 8.0),
+        'lajesN': ('lajes_nobre_v1.webp', 1024, 6.0), 'marmore': ('marmore_v1.webp', 512, 3.0), 'cedro': ('cedro_v1.webp', 1024, 4.0),
+        'bronze': ('bronze_v1.webp', 512, 2.5), 'tabua': ('tabuas_v1.webp', 512, 2.0), 'vime': ('vime_v1.webp', 512, 1.0),
+        'capitel': ('capitel_v1.webp', 512, 1.0), 'friso': ('friso_ouro_v1.webp', 512, 1.0), 'barra': ('barra_cortina_v1.webp', 512, 1.0),
+        'folha': ('folha_videira_v1.webp', 512, 1.0), 'uvas': ('uvas_ouro_v1.webp', 512, 1.0), 'trelica': ('balaustrada_v1.webp', 1024, 1.3),
+        'placa': ('placa_v1.webp', 1024, 1.0)}
+RECORTE = ('chama', 'folha', 'uvas', 'trelica')          # com transparência (o fundo branco sai)
 TILE = {k: v[2] for k, v in TEXS.items()}
 IMGS = {}
 
@@ -107,7 +114,11 @@ def prepara_texturas():
         im = bpy.data.images.load(os.path.join(TEXD, 'originais', arq))
         w, h = im.size; px = np.array(im.pixels[:], dtype=np.float32).reshape(h, w, 4)
         if k == 'branco': px[:, :, :3] = px[:, :, :3] * 0.55 + np.array([0.45, 0.44, 0.41], dtype=np.float32)   # a pedra do santuário, "muito branca" (Josefo)
-        if k == 'chama': px[:, :, 3] = np.clip((np.max(1.0 - px[:, :, :3], axis=2) - 0.05) / 0.10, 0, 1)      # tira o fundo branco
+        if k == 'trelica':      # só os trilhos e a treliça: a faixa de baixo (com uma inscrição que não é deste templo) sai; o trilho de cima, espelhado, vira o de baixo
+            t0, t1 = int(h * 0.18), int(h * 0.805)
+            topo_ = px[h - t0:h]; lat = px[h - t1:h - t0]
+            px = np.ascontiguousarray(np.concatenate([np.flipud(topo_), lat, topo_], axis=0)); h = px.shape[0]
+        if k in RECORTE: px[:, :, 3] = np.clip((np.max(1.0 - px[:, :, :3], axis=2) - 0.05) / 0.10, 0, 1)      # tira o fundo branco
         out = bpy.data.images.new('tmp_' + k, w, h, alpha=True); out.pixels[:] = px.ravel(); out.scale(lado, lado)
         cam_ = os.path.join(TEXJ, k + '.png'); out.filepath_raw = cam_; out.file_format = 'PNG'; out.save()
         bpy.data.images.remove(im); bpy.data.images.remove(out)
@@ -127,7 +138,7 @@ def material(k):
         tx = nt.nodes.new('ShaderNodeTexImage'); tx.image = IMGS[k]
         mx = nt.nodes.new('ShaderNodeMix'); mx.data_type = 'RGBA'; mx.blend_type = 'MULTIPLY'; mx.inputs[0].default_value = 1.0
         nt.links.new(tx.outputs['Color'], mx.inputs[6]); nt.links.new(ca.outputs['Color'], mx.inputs[7]); nt.links.new(mx.outputs[2], bs.inputs['Base Color'])
-        if k == 'chama':
+        if k in RECORTE:
             r = nt.nodes.new('ShaderNodeMath'); r.operation = 'ROUND'
             nt.links.new(tx.outputs['Alpha'], r.inputs[0]); nt.links.new(r.outputs[0], bs.inputs['Alpha'])
             try: m.surface_render_method = 'DITHERED'
@@ -136,7 +147,7 @@ def material(k):
         nt.links.new(ca.outputs['Color'], bs.inputs['Base Color'])
     bs.inputs['Roughness'].default_value = 0.92
     nt.links.new(bs.outputs['BSDF'], out.inputs['Surface'])
-    m.use_backface_culling = k != 'chama'
+    m.use_backface_culling = k not in RECORTE
     MATS[k] = m
     return m
 
@@ -159,10 +170,10 @@ def tom(c, k):
 
 
 COR = {'lajes': C('ddd2b8', 'lajes'), 'lajes2': C('d1c4a6', 'lajes', (0.95, 0.94, 0.92)), 'herod': C('dccaa6', 'muro'), 'claro': C('e9dfc8', 'branco'),
-       'branco': C('f2ecdd', 'branco'), 'coluna': C('ebe2cc'), 'cedro': C('8d6a4c'), 'teto': C('b49a7a', 'lajes', (0.84, 0.80, 0.74)),
-       'ouro': C('d8a640', 'ouro'), 'ouro2': C('b9862e', 'ouro', (0.80, 0.74, 0.66)), 'bronze': C('9a7038'),
-       'escuro': C('2e2620'), 'pedra_altar': C('cdc3ad', 'altar'), 'verm': C('8e2f2a'), 'azul': C('3c4f86'), 'roxo': C('6a3a6e'), 'madeira': C('7a5634'),
-       'pano': C('e8dcc0'), 'vime': C('c2a36c'), 'agua': C('5f8f8c'), 'antonia': C('c9b791', 'muro', (0.95, 0.90, 0.82))}
+       'branco': C('f2ecdd', 'branco'), 'coluna': C('ebe2cc', 'marmore'), 'capitel': C('ebe2cc', 'capitel'), 'plataforma': C('d6c29c', 'muroP'), 'cedro': C('8d6a4c', 'cedro'), 'teto': C('b49a7a', 'telhado'),
+       'ouro': C('d8a640', 'ouro'), 'ouro2': C('b9862e', 'ouro', (0.80, 0.74, 0.66)), 'bronze': C('9a7038', 'bronze'),
+       'escuro': C('2e2620'), 'pedra_altar': C('cdc3ad', 'altar'), 'verm': C('8e2f2a'), 'azul': C('3c4f86'), 'roxo': C('6a3a6e'), 'madeira': C('7a5634', 'tabua'),
+       'pano': C('e8dcc0'), 'vime': C('c2a36c', 'vime'), 'agua': C('5f8f8c'), 'antonia': C('c9b791', 'antonia')}
 
 
 def uv_plano(p, n, T):
@@ -199,14 +210,15 @@ class Formas:
         b = getattr(cor, 'tint', (1.0, 1.0, 1.0)) if mat != 'liso' else cor[:3]
         return mat, tuple(min(1.0, v * k) for v in b)
 
-    def grade(self, a, b, c, d, mat, base, nu, ts, zb):
+    def grade(self, a, b, c, d, mat, base, nu, ts, zb, uvL=None):
         P = lambda u, t: (a.lerp(b, u)).lerp(d.lerp(c, u), t)
         for i in range(nu):
             for j in range(len(ts) - 1):
                 u0, u1, t0, t1 = i / nu, (i + 1) / nu, ts[j], ts[j + 1]
-                self.face([P(u0, t0), P(u1, t0), P(u1, t1), P(u0, t1)], mat, base, zb)
+                uv = [(u0 * uvL, t0), (u1 * uvL, t0), (u1 * uvL, t1), (u0 * uvL, t1)] if uvL else None
+                self.face([P(u0, t0), P(u1, t0), P(u1, t1), P(u0, t1)], mat, base, zb, uv)
 
-    def caixa(self, x0, x1, y0, y1, z0, z1, cor, var=0.04, fundo=False, blocos=False):
+    def caixa(self, x0, x1, y0, y1, z0, z1, cor, var=0.04, fundo=False, blocos=False, faixa=False):
         x0, x1 = min(x0, x1), max(x0, x1); z0, z1 = min(z0, z1), max(z0, z1)
         mat, base = self._cor(cor, var)
         V_ = lambda x, z, y: Vector((x, -z, y))
@@ -216,7 +228,8 @@ class Formas:
         for k in range(4):
             a, b = B[k], B[(k + 1) % 4]; L = (b - a).length
             if L < 1e-6 or y1 - y0 < 1e-6: continue
-            self.grade(a, b, T[(k + 1) % 4], T[k], mat, base, max(1, round(L / 3.0)), ts, y0)
+            if faixa: self.grade(a, b, T[(k + 1) % 4], T[k], mat, base, max(1, round(L / 3.0)), [0.0, 1.0], y0, L / (y1 - y0))
+            else: self.grade(a, b, T[(k + 1) % 4], T[k], mat, base, max(1, round(L / 3.0)), ts, y0)
         nu, nv = max(1, round((x1 - x0) / 4.0)), max(1, round((z1 - z0) / 4.0))
         self.grade(T[0], T[1], T[2], T[3], mat, base, nu, [j / nv for j in range(nv + 1)], None)
         if fundo: self.face([B[3], B[2], B[1], B[0]], mat, base)
@@ -326,16 +339,23 @@ for i in range(len(GX) - 1):
         if (i + k) % 2 == 0: ch_.face([a, b, c], 'lajes', base); ch_.face([a, c, d], 'lajes', base)
         else: ch_.face([a, b, d], 'lajes', base); ch_.face([b, c, d], 'lajes', base)
 chao = ch_.cria('Templo_Chao')
+# os pisos dos pátios de dentro (Mulheres, Israel, Sacerdotes): uma laje mais nobre, um pouco acima do chão (só para a vista: quem anda é o chão)
+pd_ = Formas()
+for x0 in range(int(ENC[0]) + 1, int(ENC[1]) - 1):
+    for z0 in range(int(ENC[2]) + 1, int(ENC[3]) - 1):
+        P = lambda x, z: Vector((x, -z, NV[(float(x), float(z))] + 0.03))
+        pd_.face([P(x0, z0 + 1), P(x0 + 1, z0 + 1), P(x0 + 1, z0), P(x0, z0)], 'lajesN', (1.0, 1.0, 1.0))
+pd_.cria('Piso_Patios')
 
 # ---------------- a plataforma: os muros de fora (descem até o vale) e o parapeito ----------------
 # cada lado numa malha (Lado_Norte...): o jogo deixa transparente o que tapar a vista da câmera (OCLUSORES)
 OCLUSORES = {}
 LADOS = {'Lado_Norte': (-PX - 2.5, PX + 2.5, -PZ - 2.5, -PZ), 'Lado_Sul': (-PX - 2.5, PX + 2.5, PZ, PZ + 2.5), 'Lado_Oeste': (-PX - 2.5, -PX, -PZ, PZ), 'Lado_Leste': (PX, PX + 2.5, -PZ, PZ)}
 for nome, (x0, x1, z0, z1) in LADOS.items():
-    pl = Formas(1.7); pl.caixa(x0, x1, -26.0, H_PORT + 1.5, z0, z1, COR['herod'], blocos=True)
+    pl = Formas(); pl.caixa(x0, x1, -26.0, H_PORT + 1.5, z0, z1, COR['plataforma'], blocos=True)
     if nome in ('Lado_Norte', 'Lado_Sul'):        # pilastras na face de fora (como no muro de Herodes que ainda se vê)
         zz = (z0 - 0.4, z0) if nome == 'Lado_Norte' else (z1, z1 + 0.4)
-        for x in [(-PX + 4 + i * 5.0) for i in range(int((2 * PX - 6) / 5.0) + 1)]: pl.caixa(x - 0.7, x + 0.7, 0.0, H_PORT + 1.0, zz[0], zz[1], tom(COR['herod'], 1.06))
+        for x in [(-PX + 4 + i * 5.0) for i in range(int((2 * PX - 6) / 5.0) + 1)]: pl.caixa(x - 0.7, x + 0.7, 0.0, H_PORT + 1.0, zz[0], zz[1], tom(COR['plataforma'], 1.04))
     fx0, fx1, fz0, fz1 = {'Lado_Norte': (-PX, PX, -PZ, -PZ + 0.6), 'Lado_Sul': (-PX, PX, PZ - 0.6, PZ), 'Lado_Oeste': (-PX, -PX + 0.6, -PZ, PZ), 'Lado_Leste': (PX - 0.6, PX, -PZ, PZ)}[nome]
     pl.caixa(fx0, fx1, 0.0, H_PORT, fz0, fz1, tom(COR['herod'], 1.02))          # o muro do fundo do pórtico
     if nome == 'Lado_Norte': pl.plano([(PORTA_N[0] - 1.6, 0.0, -PZ + 0.62), (PORTA_N[0] + 1.6, 0.0, -PZ + 0.62), (PORTA_N[0] + 1.6, 4.2, -PZ + 0.62), (PORTA_N[0] - 1.6, 4.2, -PZ + 0.62)], COR['escuro'])
@@ -348,8 +368,9 @@ co = Formas()
 
 def coluna(x, z, y0, alto, r=0.36):
     co.caixa(x - 0.55, x + 0.55, y0, y0 + 0.35, z - 0.55, z + 0.55, tom(COR['coluna'], 0.94))
-    co.tronco(x, z, y0 + 0.35, y0 + alto - 0.45, r, r * 0.9, 10, COR['coluna'])
-    co.caixa(x - 0.6, x + 0.6, y0 + alto - 0.45, y0 + alto, z - 0.6, z + 0.6, tom(COR['coluna'], 1.05))
+    co.tronco(x, z, y0 + 0.35, y0 + alto - 0.8, r, r * 0.9, 10, COR['coluna'])
+    co.caixa(x - 0.42, x + 0.42, y0 + alto - 0.8, y0 + alto - 0.15, z - 0.42, z + 0.42, COR['capitel'], var=0.0, faixa=True)      # o capitel (acanto)
+    co.caixa(x - 0.62, x + 0.62, y0 + alto - 0.15, y0 + alto, z - 0.62, z + 0.62, tom(COR['coluna'], 1.03))                    # o ábaco
     COLS.append((round(x, 2), round(z, 2), r + 0.12))
 
 
@@ -384,7 +405,7 @@ for nome, (x0, x1, z0, z1) in TETOS.items():
 # a colisão dos pórticos: as colunas (círculos, no layout) e a borda da esplanada (naArea, no jogo)
 
 # ---------------- a Fortaleza Antônia (a noroeste, fora da esplanada; a escada desce para o pórtico, At 21.35) ----------------
-an = Formas(1.5)
+an = Formas()
 AX0, AX1, AZ0, AZ1 = -44.0, -18.0, -84.0, -PZ - 2.5
 an.caixa(AX0, AX1, -20.0, 16.0, AZ0, AZ1, COR['antonia'], blocos=True)
 for tx, tz, alto in ((AX0, AZ0, 24.0), (AX1 - 6, AZ0, 22.0), (AX0, AZ1 - 6, 22.0), (AX1 - 6, AZ1 - 6, 28.0)):
@@ -397,6 +418,14 @@ an.cria('Fortaleza_Antonia_Templo')
 # ---------------- a balaustrada (soreg), o terraço e a placa ----------------
 so = Formas()
 tx0, tx1, tz0, tz1 = TER
+
+
+def trelica_seg(F, lado, a, b, fixo):
+    """um trecho da balaustrada: a treliça de pedra (recortada, dá para ver através), de 1,3 m de altura"""
+    if lado in 'ns': p0, p1 = Vector((a, -fixo, Y_TER)), Vector((b, -fixo, Y_TER))
+    else: p0, p1 = Vector((fixo, -a, Y_TER)), Vector((fixo, -b, Y_TER))
+    up = Vector((0, 0, 1.3)); u0, u1 = a / 1.3, b / 1.3
+    F.face([p0, p1, p1 + up, p0 + up], 'trelica', (1, 1, 1), None, [(u0, 0), (u1, 0), (u1, 1), (u0, 1)])
 
 
 def aberta(lado, p):
@@ -419,7 +448,7 @@ def borda(lado, a0, a1, fixo):
                 else: so.caixa(fixo - d, fixo - d + 0.45, -0.3, y, z0, z1, COR['lajes'])
         else:
             so.caixa(x0, x1, -0.3, Y_TER + 0.05, z0, z1, tom(COR['herod'], 0.97))          # a borda do terraço
-            so.caixa(x0 + 0.05, x1 - 0.05, Y_TER, Y_TER + 1.3, z0 + 0.05, z1 - 0.05, COR['claro'], var=0.02)     # a balaustrada
+            trelica_seg(so, lado, a, b, fixo)                                                                   # a balaustrada
             bloqueia(x0, x1, z0, z1)
         a = b
 
@@ -427,7 +456,8 @@ def borda(lado, a0, a1, fixo):
 borda('n', tx0, tx1, tz0); borda('s', tx0, tx1, tz1); borda('l', tz0, tz1, tx1); borda('o', tz0, tz1, tx0)
 # a placa de aviso, ao lado da abertura do leste (Josefo; uma delas foi achada inteira, em grego)
 so.caixa(tx1 + 0.3, tx1 + 0.45, Y_TER, Y_TER + 1.3, EIXO - 5.3, EIXO - 4.0, COR['branco'])
-for i in range(5): so.caixa(tx1 + 0.45, tx1 + 0.47, Y_TER + 0.3 + i * 0.2, Y_TER + 0.33 + i * 0.2, EIXO - 5.2, EIXO - 4.1 - 0.12 * (i % 2), COR['verm'], var=0.0)
+xp_, ya_, yb_ = tx1 + 0.455, -(EIXO - 4.0), -(EIXO - 5.3)          # a face da frente (para o leste), com a inscrição
+so.face([(xp_, ya_, Y_TER), (xp_, yb_, Y_TER), (xp_, yb_, Y_TER + 1.3), (xp_, ya_, Y_TER + 1.3)], 'placa', (1, 1, 1), None, [(0, 0), (1, 0), (1, 1), (0, 1)])
 so.cria('Templo_Soreg')
 
 # ---------------- o muro dos pátios de dentro, as portas e as câmaras ----------------
@@ -496,13 +526,13 @@ def mulc(a, b): return tuple(min(1.0, a[i] * b[i]) for i in range(3))
 def J(p, amp): return p if amp <= 0 else p + noise.noise_vector(p * 1.9) * amp * sm(0.0, 0.25, p.z)
 
 
-def grade_s(F, a, b, c, d, mat, nu, cortes, base, zb=None, jit=0.0, luz=True):
+def grade_s(F, a, b, c, d, mat, nu, cortes, base, zb=None, jit=0.0, luz=True, uvL=None):
     a, b, c, d = Vector(a), Vector(b), Vector(c), Vector(d)
     P = lambda u, t: J((a.lerp(b, u)).lerp(d.lerp(c, u), t), jit)
     for i in range(nu):
         for j in range(len(cortes) - 1):
             u0, u1, t0, t1 = i / nu, (i + 1) / nu, cortes[j], cortes[j + 1]
-            F.face([P(u0, t0), P(u1, t0), P(u1, t1), P(u0, t1)], mat, base, zb, None, luz)
+            F.face([P(u0, t0), P(u1, t0), P(u1, t1), P(u0, t1)], mat, base, zb, [(u0 * uvL, t0), (u1 * uvL, t0), (u1 * uvL, t1), (u0 * uvL, t1)] if uvL else None, luz)
 
 
 def cortes_em(z0, z1, passo, extras=()):
@@ -513,7 +543,7 @@ def cortes_em(z0, z1, passo, extras=()):
     return [(z - z0) / (z1 - z0) for z in out]
 
 
-def bloco_s(F, x0, x1, y0, y1, z0, z1, mat, base, mat_topo=None, bat=0.0, ch=0.05, jit=0.0, passo=0.6, extras=(), fundo=False, lados=(1, 1, 1, 1), topo=True, luz=True):
+def bloco_s(F, x0, x1, y0, y1, z0, z1, mat, base, mat_topo=None, bat=0.0, ch=0.05, jit=0.0, passo=0.6, extras=(), fundo=False, lados=(1, 1, 1, 1), topo=True, luz=True, faixa=False):
     zt = z1 - ch; d1 = bat * (zt - z0); d2 = d1 + ch
     B = [Vector((x0, y0, z0)), Vector((x1, y0, z0)), Vector((x1, y1, z0)), Vector((x0, y1, z0))]
     def ins(p, d, z): return Vector((p.x + (d if p.x == x0 else -d), p.y + (d if p.y == y0 else -d), z))
@@ -521,7 +551,8 @@ def bloco_s(F, x0, x1, y0, y1, z0, z1, mat, base, mat_topo=None, bat=0.0, ch=0.0
     for k in range(4):
         if not lados[k]: continue
         a, b = B[k], B[(k + 1) % 4]; nu = max(1, round((b - a).length / passo))
-        grade_s(F, a, b, T1[(k + 1) % 4], T1[k], mat, nu, cortes_em(z0, zt, passo * 0.85, extras), base, z0, jit, luz)
+        if faixa: grade_s(F, a, b, T1[(k + 1) % 4], T1[k], mat, nu, [0.0, 1.0], base, z0, jit, luz, (b - a).length / nu / (zt - z0) * nu)
+        else: grade_s(F, a, b, T1[(k + 1) % 4], T1[k], mat, nu, cortes_em(z0, zt, passo * 0.85, extras), base, z0, jit, luz)
         if ch > 0: grade_s(F, T1[k], T1[(k + 1) % 4], T2[(k + 1) % 4], T2[k], mat, nu, [0, 1], base, z0, jit, luz)
     if topo:
         a, b, c, d = T2; nu = max(1, round((b - a).length / passo)); nv = max(1, round((d - a).length / passo))
@@ -673,13 +704,13 @@ bloco_s(F_sa, FX - 4.0, FX, -11.0, -3.2, YP, H, 'branco', cor_mu, ch=0.0, passo=
 bloco_s(F_sa, FX - 4.0, FX, 3.2, 11.0, YP, H, 'branco', cor_mu, ch=0.0, passo=1.5, jit=0.01)
 bloco_s(F_sa, FX - 4.0, FX, -3.2, 3.2, YP + 14.0, H, 'branco', cor_mu, ch=0.0, passo=1.5, fundo=True, jit=0.01)   # sobre a abertura, sem portas
 bloco_s(F_sa, FX - 17.0, FX - 4.0, -6.5, 6.5, YP, YP + 18.0, 'branco', cor_mu, ch=0.0, passo=2.0)        # o corpo: o Santo Lugar e o Santo dos Santos
-bloco_s(F_sa, FX - 17.3, FX - 3.7, -6.8, 6.8, YP + 18.0, YP + 18.6, 'ouro', (1, 1, 1), ch=0.1, passo=2.0)
+bloco_s(F_sa, FX - 17.3, FX - 3.7, -6.8, 6.8, YP + 18.0, YP + 18.9, 'friso', (1, 1, 1), ch=0.1, passo=2.0, faixa=True)
 OURO, OURO2 = (1.0, 1.0, 1.0), (0.74, 0.68, 0.60)
 for y in (-9.0, -5.6, 5.6, 9.0):                              # as meias-colunas com capitel de ouro
     bloco_s(F_sa, FX, FX + 0.55, y - 0.65, y + 0.65, YP, YP + 19.4, 'branco', cor_mu, ch=0.06, passo=1.2, jit=0.008)
     bloco_s(F_sa, FX - 0.05, FX + 0.85, y - 0.95, y + 0.95, YP + 19.4, YP + 20.3, 'ouro', OURO, bat=-0.15, ch=0.12, passo=1)
     bloco_s(F_sa, FX - 0.05, FX + 0.75, y - 0.85, y + 0.85, YP, YP + 0.5, 'branco', cor_mu, ch=0.08, passo=1.2)
-bloco_s(F_sa, FX - 4.3, FX + 0.6, -11.4, 11.4, H - 0.2, H + 0.7, 'ouro', OURO, ch=0.15, passo=2)       # a cornija dourada
+bloco_s(F_sa, FX - 4.3, FX + 0.6, -11.4, 11.4, H - 0.4, H + 0.7, 'friso', OURO, ch=0.15, passo=2, faixa=True)       # a cornija dourada
 for i in range(19):                                            # as pontas de ouro no alto (Middot 4.6: contra as aves)
     y = -10.4 + i * (20.8 / 18); prisma_s(F_sa, (FX - 0.6, y, H + 0.7), (FX - 0.6, y, H + 1.9), 0.11, 4, 'ouro', OURO, r2=0.01)
 # dentro do pórtico: a parede coberta de ouro e a porta do Santo Lugar, com a cortina
@@ -687,8 +718,7 @@ XI = FX - 3.0
 for (ya, yb, za, zb) in ((-3.2, -2.5, YP, YP + 14), (2.5, 3.2, YP, YP + 14), (-2.5, 2.5, YP + 10.6, YP + 14)):
     F_sa.face([(XI, yb, zb), (XI, ya, zb), (XI, ya, za), (XI, yb, za)], 'ouro', OURO)
 AZUL, LINHO, ESC, PURP, OUROC = (0.17, 0.22, 0.50), (0.88, 0.84, 0.74), (0.66, 0.15, 0.13), (0.34, 0.16, 0.40), (0.90, 0.72, 0.34)
-FAIXAS = [(0.0, 0.05, ESC), (0.05, 0.075, OUROC), (0.075, 0.10, LINHO), (0.30, 0.33, ESC), (0.33, 0.345, OUROC), (0.62, 0.65, PURP), (0.65, 0.665, OUROC),
-          (0.88, 0.905, LINHO), (0.905, 0.93, OUROC), (0.93, 1.0, ESC)]
+FAIXAS = [(0.0, 0.075, 'barra'), (0.075, 0.09, OUROC), (0.30, 0.36, 'barra'), (0.62, 0.68, 'barra'), (0.91, 0.925, OUROC), (0.925, 1.0, 'barra')]
 CZ = sorted(set([0.0, 1.0] + [a for a, b, c in FAIXAS] + [b for a, b, c in FAIXAS] + [k / 10 for k in range(11)]))
 TC = TILE['cortina']
 for k in range(18):
@@ -699,6 +729,10 @@ for k in range(18):
         c2 = next((c for a, b, c in FAIXAS if a <= tm < b), None)
         pts = [(x1, y1, zb), (x0, y0, zb), (x0, y0, za), (x1, y1, za)]
         if c2 is None: F_sa.face(pts, 'cortina', (1, 1, 1), None, [(y1 / TC, zb / TC), (y0 / TC, zb / TC), (y0 / TC, za / TC), (y1 / TC, za / TC)])
+        elif c2 == 'barra':          # a barra bordada (as romãs): a faixa do meio da imagem, repetindo ao longo da cortina
+            a_, b_ = next((a, b) for a, b, c in FAIXAS if a <= tm < b); hb = (b_ - a_) * 10.4 / 0.39
+            va, vb = 0.31 + 0.39 * (ta - a_) / (b_ - a_), 0.31 + 0.39 * (tb - a_) / (b_ - a_)
+            F_sa.face(pts, 'barra', (1, 1, 1), None, [(y1 / hb, vb), (y0 / hb, vb), (y0 / hb, va), (y1 / hb, va)])
         else: F_sa.face(pts, 'liso', c2)
 prisma_s(F_sa, (XI + 0.12, -2.7, YP + 10.5), (XI + 0.12, 2.7, YP + 10.5), 0.09, 6, 'ouro', OURO)     # a vara
 # a videira de ouro sobre a porta de dentro, com os cachos pendurados (Josefo, Guerras V.5.4)
@@ -711,7 +745,11 @@ def folha(F, c, s, ang):
         a = math.pi * k / 6; r = s * (1.0 if k % 2 == 0 else 0.62)
         pts_.append(c + Vector((0.05 * math.sin(a), math.cos(a + ang) * r, math.sin(a + ang) * r + s * 0.2)))
     F.face(pts_ + [c], 'ouro', OURO); F.face((pts_ + [c])[::-1], 'ouro', OURO)
-for i in range(1, 24, 2): folha(F_sa, vp[i] + Vector((0.04, 0, 0.05)), 0.42, random.uniform(-0.4, 0.4))
+def card_x(F, c, w, h, mat, ang=0.0):
+    """um cartão recortado de frente para o leste (+x), com o pé em c, inclinado de ang no próprio plano"""
+    c = Vector(c); sv = Vector((0, math.cos(ang), math.sin(ang))) * (w / 2); up = Vector((0, -math.sin(ang), math.cos(ang))) * h
+    F.face([c - sv, c + sv, c + sv + up, c - sv + up], mat, (1, 1, 1), None, [(0, 0), (1, 0), (1, 1), (0, 1)], False)
+for i in range(1, 24, 2): card_x(F_sa, vp[i] + Vector((0.06, 0, -0.12)), 0.9, 0.9, 'folha', random.uniform(-0.5, 0.5))
 def cacho(F, c, n=10):
     c = Vector(c)
     for k in range(n):
@@ -719,7 +757,7 @@ def cacho(F, c, n=10):
         a = k * 2.4; p = Vector((c.x + 0.08, c.y + math.cos(a) * r, z + math.sin(a) * 0.03))
         prisma_s(F, p - Vector((0.07, 0, 0)), p + Vector((0.07, 0, 0)), 0.08, 5, 'ouro', mixc(OURO, OURO2, 0.5 * (k % 2)))
     prisma_s(F, c, c - Vector((0, 0, 0.14)), 0.03, 4, 'ouro', OURO2)
-for i in range(3, 24, 4): cacho(F_sa, vp[i])
+for i in range(3, 24, 4): card_x(F_sa, vp[i] + Vector((0.1, 0, -1.08)), 0.78, 1.1, 'uvas', random.uniform(-0.12, 0.12))
 F_sa.desloca(OS_); F_sa.cria('Templo_Santuario')
 
 # ---------------- o mercado no Pátio dos Gentios, junto à Estoa Real ----------------
@@ -736,13 +774,7 @@ for i in range(5):
     for j in range(1 + (i % 3)): me_.caixa(x, x + 1.4, j * 0.75, j * 0.75 + 0.7, GAIOLAS[2], GAIOLAS[2] + 1.0, COR['vime'], var=0.06)
 CURRAL_OV = (16.0, 25.0, 23.0, 31.0)
 CURRAL_BOI = (27.0, 36.0, 23.0, 32.0)
-for (x0, x1, z0, z1) in (CURRAL_OV, CURRAL_BOI):
-    for (xa, za, xb, zb) in ((x0, z0, x1, z0), (x1, z0, x1, z1), (x0, z1, x1, z1), (x0, z0, x0, z1)):
-        if abs(za - zb) < 1e-3: me_.caixa(min(xa, xb), max(xa, xb), 0.55, 0.75, za - 0.06, za + 0.06, COR['madeira'])
-        else: me_.caixa(xa - 0.06, xa + 0.06, 0.55, 0.75, min(za, zb), max(za, zb), COR['madeira'])
-    for x in (x0, x1):
-        for z in (z0, z1): me_.caixa(x - 0.12, x + 0.12, 0.0, 1.0, z - 0.12, z + 0.12, COR['madeira'])
-    me_.caixa(x0 + 0.8, x0 + 2.4, 0.0, 0.5, z0 + 0.8, z0 + 1.4, tom(COR['claro'], 0.9))      # o cocho
+# (as cercas, os cochos e a manjedoura dos currais vêm do kit pastoril, mais abaixo)
 me_.cria('Templo_Mercado')
 CERCAS = []
 for (x0, x1, z0, z1) in (CURRAL_OV, CURRAL_BOI):
@@ -764,6 +796,7 @@ def importa(arq):
 
 
 for arq in ['casa-porta\\barracas.glb', 'casa-porta\\objetos_casa.glb']: importa(arq)
+importa(os.path.join('casa-porta', 'pastoril.glb'))
 col_proto.hide_render = True; col_proto.hide_viewport = True
 bpy.context.view_layer.update()
 
@@ -817,6 +850,31 @@ for i in range(9):
 for (x, z, no) in ((-20.0, 33.5, 'Cesto_Oval'), (-14.0, 33.6, 'Jarro_Alto'), (-8.0, 33.4, 'Saco'), (-2.0, 33.5, 'Cesto_Raso'), (4.0, 33.6, 'Jarra_Alca'), (-17.0, 39.6, 'Pote_Escuro')):
     n = poe('casa-porta\\objetos_casa.glb', no, x, z, random.uniform(0, 6.28), 1.0)
     if n is not None: circulo('COL_' + n.name, x, z, 0.35, n)
+
+# os currais das ovelhas e dos bois: as cercas, os cochos e a manjedoura do kit pastoril (a colisão das cercas vai em "muros")
+def medidas(o):
+    vs = []
+    for ob in [o] + list(o.children_recursive):
+        if ob.type == 'MESH': vs += [ob.matrix_world @ v.co for v in ob.data.vertices]
+    return tuple(max(v[i] for v in vs) - min(v[i] for v in vs) for i in range(3)) if vs else (1.0, 1.0, 1.0)
+
+
+def cerca_linha(xa, za, xb, zb, no='Cerca_Longa'):
+    o = PROTO.get((os.path.join('casa-porta', 'pastoril.glb'), no))
+    if o is None: print('FALTA', no); return
+    dx, dy, _ = medidas(o); comp = max(dx, dy); L = math.hypot(xb - xa, zb - za)
+    n = max(1, round(L / comp)); k = L / (n * comp)
+    ang = math.atan2(-(zb - za), xb - xa) - (math.pi / 2 if dy > dx else 0.0)
+    for i in range(n):
+        f = (i + 0.5) / n; c = poe('casa-porta/pastoril.glb', no, xa + (xb - xa) * f, za + (zb - za) * f, ang, k)
+        if c is not None: c['col_feita'] = c.name
+
+
+for (x0, x1, z0, z1) in (CURRAL_OV, CURRAL_BOI):
+    for (xa, za, xb, zb) in ((x0, z0, x1, z0), (x1, z0, x1, z1), (x0, z1, x1, z1), (x0, z0, x0, z1)): cerca_linha(xa, za, xb, zb)
+for (no, x, z, r) in (('Cocho', CURRAL_OV[0] + 1.8, CURRAL_OV[2] + 1.3, 0.0), ('Cocho', CURRAL_OV[1] - 1.8, CURRAL_OV[3] - 1.3, math.pi), ('Manjedoura', CURRAL_BOI[0] + 2.2, CURRAL_BOI[2] + 1.4, 0.0)):
+    c = poe('casa-porta/pastoril.glb', no, x, z, r, 1.0)
+    if c is not None: circulo('COL_' + c.name, x, z, 0.8, c)
 
 # colisão das colunas: círculos fixos, presos à malha das colunas
 colunas = bpy.data.objects['Templo_Colunas']
