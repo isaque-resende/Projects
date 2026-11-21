@@ -70,9 +70,9 @@ export function mapaAltura(mesh, passo = 0.15, { suave = false, caixa = null } =
 export function texturizaChao(mesh, TX, soTerra = false) {
   const m = mesh.material;
   m.onBeforeCompile = (sh) => {
-    sh.uniforms.uGrama = { value: TX.grama }; sh.uniforms.uTerra = { value: TX.terra };
+    sh.uniforms.uGrama = { value: TX.grama }; sh.uniforms.uTerra = { value: TX.terra }; sh.uniforms.uRocha = { value: TX.rocha || TX.terra };
     sh.vertexShader = 'varying vec3 vWP; varying vec3 vWN;\n' + sh.vertexShader.replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\n vWP = (modelMatrix * vec4(transformed, 1.0)).xyz; vWN = normalize(mat3(modelMatrix) * objectNormal);');
-    sh.fragmentShader = 'uniform sampler2D uGrama; uniform sampler2D uTerra; varying vec3 vWP; varying vec3 vWN;\n' + sh.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
+    sh.fragmentShader = 'uniform sampler2D uGrama; uniform sampler2D uTerra; uniform sampler2D uRocha; varying vec3 vWP; varying vec3 vWN;\n' + sh.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
       vec3 vc = vColor.rgb;
       vec3 tg = texture2D(uGrama, vWP.xz * 0.2).rgb;
       vec3 tt = texture2D(uTerra, vWP.xz * 0.16 + 0.37).rgb;
@@ -81,8 +81,11 @@ export function texturizaChao(mesh, TX, soTerra = false) {
       tg = mix(tg, vec3(dot(tg, vec3(0.3, 0.59, 0.11))), 0.18) * vec3(0.9, 0.88, 0.8);              // grama menos neon
       tg = mix(tg, tg * vec3(1.15, 1.0, 0.65), seco * 0.6);                                         // capim seco amarelado
       float lt = dot(tt, vec3(0.3, 0.59, 0.11));
-      vec3 terra = mix(tt, vec3(lt) * vec3(1.18, 1.02, 0.78), 0.45) * 1.05;                         // terra bege, menos laranja
-      diffuseColor.rgb = mix(terra, tg, gr);`);
+      vec3 terra = ${TX.puro ? 'tt' : 'mix(tt, vec3(lt) * vec3(1.18, 1.02, 0.78), 0.45) * 1.05'};     // terra bege, menos laranja (TX.puro: a textura já vem na cor certa)
+      diffuseColor.rgb = mix(terra, tg, gr);
+      ${TX.rocha ? `vec3 nw = abs(vWN); nw /= (nw.x + nw.y + nw.z);                      // TX.rocha: a rocha nas encostas a pique, projetada pelos três eixos (as camadas na horizontal)
+      vec3 tr = texture2D(uRocha, vWP.zy * 0.11).rgb * nw.x + texture2D(uRocha, vWP.xy * 0.11).rgb * nw.z + texture2D(uRocha, vWP.xz * 0.11).rgb * nw.y;
+      diffuseColor.rgb = mix(diffuseColor.rgb, tr, 1.0 - smoothstep(0.5, 0.78, vWN.y));` : ''}`);
   };
-  m.customProgramCacheKey = () => 'chao-tex-' + soTerra; m.needsUpdate = true;
+  m.customProgramCacheKey = () => 'chao-tex-' + soTerra + (TX.rocha ? '-r' : '') + (TX.puro ? '-p' : ''); m.needsUpdate = true;
 }

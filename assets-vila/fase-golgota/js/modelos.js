@@ -3,13 +3,13 @@ import { baixar } from '../../limpo-motor/base.js';
 import { carregaKit } from '../../limpo-motor/layout.js';
 import { LAY } from './estado.js';
 
-const [gCen, gJer, gJog, gPlantas, gFlores, gRocha, gPedra, nPedro, nJoao, nMaria, nSoldado, nSoldado2, KIT] = await Promise.all([
-  baixar('../fase-golgota/golgota_cenario.glb?v=1'), baixar('../jerusalem/jerusalem_maquete.glb?v=4'), baixar('../vila-betania/discipulo_acoes.glb'),
+const [gCen, gJer, gJog, gPlantas, gFlores, gTumulo, nPedro, nJoao, nMaria, nSoldado, nSoldado2, KIT] = await Promise.all([
+  baixar('../fase-golgota/golgota_cenario.glb?v=3'), baixar('../jerusalem/jerusalem_maquete.glb?v=4'), baixar('../vila-betania/discipulo_acoes.glb'),
   baixar('../flores/plantas_betfage.glb?v=1'), baixar('../flores/flores.glb'),
-  baixar('../casa-porta/tumulo_rocha.glb?v=3'), baixar('../casa-porta/tumulo_pedra.glb'),
+  baixar('../tumulo/tumulo.glb?v=1'),
   baixar('../personagens/barbudo.glb'), baixar('../personagens/cacheado.glb'), baixar('../personagens/mulher_lenco.glb'),
   baixar('../personagens/robusto.glb'), baixar('../personagens/magro.glb'),
   carregaKit(LAY.objetos),
 ]);
 
-export { gCen, gJer, gJog, gPlantas, gFlores, gRocha, gPedra, nPedro, nJoao, nMaria, nSoldado, nSoldado2, KIT };
+export { gCen, gJer, gJog, gPlantas, gFlores, gTumulo, nPedro, nJoao, nMaria, nSoldado, nSoldado2, KIT };

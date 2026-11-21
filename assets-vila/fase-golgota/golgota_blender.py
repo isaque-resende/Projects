@@ -274,6 +274,7 @@ def golgota():
             rr = 1 + 0.1 * math.sin(a * 3 + 0.4) + 0.07 * math.sin(a * 7 + k) + (rnd.uniform(-0.06, 0.06) if k < NR else 0)
             x, z = cx + math.cos(a) * RX * f * rr, cz + math.sin(a) * RZ * f * rr
             hh = H * (1 - f ** 2.2) ** 0.55 + (rnd.uniform(-0.35, 0.25) if k < NR else -0.4)
+            if k < NR: hh = math.floor(hh / 0.7) * 0.7 + 0.18 * math.sin(a * 5 + k) + rnd.uniform(-0.08, 0.08)      # os degraus das camadas
             if x - cx > corte:                       # a face leste: empurrada até o plano, quase a prumo
                 x = cx + corte
                 if k == NR: hh = -0.4
@@ -299,10 +300,10 @@ def golgota():
         vv = borda + dentro_ + [(fx + 0.07, -zc, yc - 0.05)]
         for i in range(n):
             j = (i + 1) % n; ff.append((i, j, n + j, n + i)); ff.append((n + i, n + j, 2 * n))
-        cs_ = {0: tom(COR['calc_lado'], 0.8), 1: tom(COR[cor], 0.95)}
+        cs_ = {0: tom(COR['calc_lado'], 0.72), 1: tom(COR['escuro'], 1.1)}
         return vv, ff, cs_
     V, F, CC = [], [], []
-    for zc, yc, rz_, ry_, nn in ((-1.3, 2.95, 0.68, 0.52, 9), (1.45, 2.72, 0.78, 0.6, 9), (0.12, 1.95, 0.18, 0.45, 7), (-0.6, 1.25, 0.2, 0.12, 7), (0.7, 1.15, 0.24, 0.1, 7), (1.9, 1.6, 0.35, 0.2, 7), (-2.1, 2.1, 0.22, 0.3, 7)):
+    for zc, yc, rz_, ry_, nn in ((-1.35, 2.95, 0.95, 0.72, 10), (1.4, 2.8, 1.0, 0.78, 10), (0.05, 1.9, 0.3, 0.55, 7), (-0.4, 0.95, 0.5, 0.17, 8), (0.42, 0.88, 0.38, 0.13, 7), (-1.0, 1.55, 0.3, 0.32, 7), (1.05, 1.5, 0.3, 0.3, 7), (2.3, 1.7, 0.3, 0.22, 7), (-2.4, 2.0, 0.25, 0.3, 7)):
         vv, ff, cs_ = cavidade(zc, y0 + yc, rz_, ry_, n=nn)      # as órbitas, o nariz, sombras da queixada e manchas de erosão
         b = len(V); V += vv
         for q in ff: F.append(tuple(b + i for i in q)); CC.append(cs_[0] if len(q) == 4 else cs_[1])
