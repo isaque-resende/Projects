@@ -651,7 +651,8 @@ except Exception as e:
 
 fixos = {'estrada': [[round(p.x, 2), round(p.y, 2)] for p in AMOS[::3]] + [[round(AMOS[-1].x, 2), round(AMOS[-1].y, 2)]], 'meia': MEIA,
          'caminho': [[round(p.x, 2), round(p.y, 2)] for p in AMOC[::3]] + [[round(AMOC[-1].x, 2), round(AMOC[-1].y, 2)]],
-         'muros': MUROS, 'area': AREA, 'horto': list(HORTO), 'terreno': [X0, X1, Z0, Z1], 'mundo': [GW[0], H0, GW[2]]}
+         'muros': MUROS, 'area': AREA, 'horto': list(HORTO), 'terreno': [X0, X1, Z0, Z1], 'mundo': [GW[0], H0, GW[2]],
+         'monte': [GOL[0], GOL[1], RW_G, RE_G, RZ_G]}
 t = bpy.data.texts.new('golgota_fixos'); t.write(json.dumps(fixos))
 bt = bpy.data.texts.new('EXPORTAR_PARA_O_JOGO')
 bt.write("# exporta o que está na cena para o jogo e salva o .blend\nRODAR_EXPORTACAO = True\nexec(open(r'" + os.path.join(OUT, 'exportar_golgota.py') + "', encoding='utf-8').read())\n")

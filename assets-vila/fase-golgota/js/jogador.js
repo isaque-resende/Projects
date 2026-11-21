@@ -49,8 +49,24 @@ function braco(pj, alvo, dt) {
   return c;
 }
 const livre = criaCamLivre(E, () => [DMIN, DMAX]);
+// subindo o Gólgota pelas encostas do oeste, a câmera dá a volta com o jogador: fica do lado de fora do monte, mais
+// baixa, olhando para dentro (o monte atrás dele e, por cima, Jerusalém ao longe). No alto e longe do monte, volta à quina.
+const [MGX, MGZ, MRW, MRE, MRZ] = LAY.monte || [0, 0, 1, 1, 1];
+const smo = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+const MONTE = V3(), U = V3();
+CAM.monte = 0;
+function pesoMonte(pj) {
+  const dx = pj.x - MGX, dz = pj.z - MGZ, r = Math.hypot(dx / (dx < 0 ? MRW : MRE), dz / MRZ);
+  return smo(0.38, 0.52, r) * (1 - smo(1.05, 1.3, r)) * (1 - smo(-3, 1, dx));       // nas encostas; não no alto, não do lado da estrada
+}
 function camAlvo(pj, dt) {
-  const k = CAM.perto, dir = livre.aplica(QUINA.clone().lerp(PERTO, k).normalize());
+  const k = CAM.perto; let dir = livre.aplica(QUINA.clone().lerp(PERTO, k).normalize());
+  CAM.monte += (pesoMonte(pj) - CAM.monte) * suave(1.5, dt);
+  if (CAM.monte > 0.001) {
+    U.set(pj.x - MGX, 0, pj.z - MGZ).normalize();
+    MONTE.set(U.x, 0.55, U.z).normalize();
+    dir = dir.clone().lerp(MONTE, CAM.monte).normalize();
+  }
   const d = E.dist * (1 - k) + 5.5 * k;
   const alvo = braco(pj, pj.clone().addScaledVector(dir, d), dt);
   // olha para o jogador; abaixado, para a frente e para baixo (a boca do sepulcro)
