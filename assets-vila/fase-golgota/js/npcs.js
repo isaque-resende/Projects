@@ -44,8 +44,8 @@ CONVERSAS.push({ nome: 'Um soldado da guarda', o: soldadoHorto.o, r: 2.4, falas:
 ] });
 // um do pelotão da crucificação, no alto do Gólgota: as vestes (Jo 19.23-24)
 const [gx0, , gz0] = LAY.golgota;
-const [vx, vz] = livre(gx0 + 2.6, gz0 + 0.6);
-const soldadoGolgota = ator(nSoldado2, 1.72, vx, vz, Math.atan2(gx0 - vx, gz0 - vz), 'Parado'); CIRC.push({ x: vx, z: vz, r: 0.35 });
+const [vx, vz] = livre(gx0 + 0.8, gz0 + 4.6);
+const soldadoGolgota = ator(nSoldado2, 1.72, vx, vz, Math.atan2(gx0 + 3 - vx, gz0 - vz), 'Parado'); CIRC.push({ x: vx, z: vz, r: 0.35 });
 CONVERSAS.push({ nome: 'Um soldado', o: soldadoGolgota.o, r: 2.4, falas: [
   'Vim ver se as traves já foram recolhidas. Na sexta, éramos quatro aqui, com o centurião.',
   'Depois que o crucificamos, repartimos as vestes dele em quatro partes, uma para cada soldado (Jo 19.23).',
@@ -106,7 +106,7 @@ function cenaPasso(dt, pj) {
 // ---------- as coisas para olhar (entram na mesma lista das conversas, com outro verbo e sem nome no título) ----------
 const coisa = (nome, x, z, falas, r = 2.2, verbo = 'olhar ' + nome) => CONVERSAS.push({ nome, titulo: '', verbo, o: { position: { x, z }, visible: true }, falas, r });
 const [gx, , gz] = LAY.golgota;
-coisa('as cruzes', gx, gz - 2.0, [
+coisa('as cruzes', gx + 1.8, gz - 2.4, [
   'As três cruzes, vazias, no alto do rochedo. Os corpos foram tirados na sexta, antes do sábado (Jo 19.31).',
   '“Pai, perdoa-lhes, porque não sabem o que fazem” (Lc 23.34).',
   'A um dos malfeitores: “Em verdade te digo que hoje estarás comigo no Paraíso” (Lc 23.43).',
@@ -116,7 +116,7 @@ coisa('as cruzes', gx, gz - 2.0, [
   '“Está consumado” (Jo 19.30).',
   '“Pai, nas tuas mãos entrego o meu espírito” (Lc 23.46).',
 ], 2.6);
-coisa('o letreiro', gx, gz + 2.0, [
+coisa('o letreiro', gx + 2.2, gz + 0.6, [
   'No alto da cruz do meio, uma tábua com letras em três línguas: “JESUS NAZARENO, REI DOS JUDEUS”, em hebraico, grego e latim (Jo 19.19-20).',
   'Os principais sacerdotes pediram a Pilatos: “Não escrevas: Rei dos judeus, mas que ele disse: Sou o rei dos judeus.” Pilatos respondeu: “O que escrevi, escrevi” (Jo 19.21-22).',
 ], 2.2, 'ler o letreiro');

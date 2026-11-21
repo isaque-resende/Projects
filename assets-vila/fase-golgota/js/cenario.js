@@ -32,6 +32,7 @@ gCen.scene.traverse((o) => {
   if (!o.isMesh) return;
   if (o.name.startsWith('Golgota_Terreno')) { o.material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 }); TERRENO = o; o.receiveShadow = true; }
   else if (o.name.startsWith('Golgota_Trilha')) { o.material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2 }); o.receiveShadow = true; TRILHAS.push(o); }
+  else if (o.name.startsWith('Golgota_Face')) { triplanar(o, TXG.rocha, 0.15, 'diffuseColor.rgb = tri * vColor.rgb * 1.5;'); o.castShadow = o.receiveShadow = true; }
   else if (/^(Golgota_Rocha|Pedreira)/.test(o.name)) { triplanar(o, TXG.rocha, 0.13, 'float l = dot(vColor.rgb, vec3(0.3, 0.59, 0.11)); diffuseColor.rgb = tri * clamp(l * 1.9, 0.55, 1.15);'); o.castShadow = o.receiveShadow = true; }
   else if (o.name.startsWith('Cruzes')) { triplanar(o, TXG.madeira, 0.9, 'float l = dot(vColor.rgb, vec3(0.3, 0.59, 0.11)); if (l < 0.25) diffuseColor.rgb = tri * 1.05;'); o.castShadow = o.receiveShadow = true; }
   else if (o.name.startsWith('Mureta')) { triplanar(o, TXG.pedra_seca, 0.7, 'diffuseColor.rgb = tri;'); o.castShadow = o.receiveShadow = true; }
@@ -117,7 +118,7 @@ poePertos(scene, LAY.objetos, KIT, (o, n) => {
 // e o lenço enrolado à parte (Jo 20.6-7) ----------
 const TUM = {};
 {
-  const K = 0.8, raiz = gTumulo.scene; raiz.position.set(0, 0, 200);          // o modelo vem com o centro em z = -200
+  const K = 1.3, raiz = gTumulo.scene; raiz.position.set(0, 0, 200);          // o modelo vem com o centro em z = -200
   const tum = new THREE.Group(); tum.add(raiz); tum.scale.setScalar(K); tum.rotation.y = Math.PI / 2;     // a fachada (+z do modelo) para o leste
   const [ox, , oz] = LAY.olhar; tum.position.set(ox - 1.4 * K, terreno(ox, oz) - 0.05, oz);                // o ponto de entrar fica onde o jogador se abaixa
   sombra(tum); scene.add(tum); tum.updateMatrixWorld(true);

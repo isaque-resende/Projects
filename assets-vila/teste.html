@@ -493,9 +493,10 @@ async function rodar() {
   await abre('fase-golgota/');
   const okGo = await testesDaFase('Gólgota');
   if (okGo) {
-    await teste('o Gólgota (com as três cruzes) fica à beira da estrada, fora do muro; o sepulcro, no horto, a ~30 m; o jogador se abaixa e olha dentro', async (it) => {
+    await teste('o Gólgota (um monte com o penhasco da caveira e as três cruzes no alto) fica à beira da estrada, fora do muro; o sepulcro, no horto, a ~30 m; o jogador se abaixa e olha dentro', async (it) => {
       const T = W().TESTE, L = T.LAY, p = T.jog.o.position;
-      for (const n of ['Golgota_Rocha', 'Golgota_Cavidades', 'Cruzes', 'Pedreira']) if (!T.scene.getObjectByName(n)) throw new Error('falta ' + n + ' na cena');
+      for (const n of ['Golgota_Face', 'Cruzes', 'Pedreira']) if (!T.scene.getObjectByName(n)) throw new Error('falta ' + n + ' na cena');
+      if (T.chaoTerra(L.golgota[0], L.golgota[2]) < 7) throw new Error('o Gólgota não é um monte: alto a ' + T.chaoTerra(L.golgota[0], L.golgota[2]).toFixed(1) + ' m');
       if (!T.scene.getObjectByName('Muralhas') || !T.scene.getObjectByName('Templo_Muros')) throw new Error('falta a maquete de Jerusalém');
       const dSep = Math.hypot(L.sepulcro[0] - L.golgota[0], L.sepulcro[2] - L.golgota[2]);
       const [, dEstr] = (() => { let m = 1e9; for (const a of T.AMOS) m = Math.min(m, Math.hypot(a.x - L.golgota[0], a.z - L.golgota[2])); return [0, m]; })();
