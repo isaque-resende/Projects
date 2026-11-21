@@ -2,7 +2,7 @@
 // junto deles, um cego encostado numa coluna, o pastor com o cordeiro junto ao curral e as ovelhas dentro dele, e
 // gente passando pela estrada e entrando pela Porta das Ovelhas. Cada um que fala tem a sua conversa (CONVERSAS).
 import * as THREE from 'three';
-import { LAY, V3, CIRC, rnd, scene } from './estado.js';
+import { LAY, V3, CIRC, rnd, scene, fala } from './estado.js';
 import { gOve, nBarbudo, nMagro, nRobusto, nLenco, nRapaz, nCarreg, nPastor, nFaixa, nAldeao } from './modelos.js';
 import { terreno, AMOS } from './cenario.js';
 import { ator, anda } from './gente.js';
@@ -145,7 +145,94 @@ coisa('o curral', cu, cuz, [
   '“Aquele que entra pela porta é o pastor das ovelhas. A este o porteiro abre, e as ovelhas ouvem a sua voz, e chama pelo nome às suas ovelhas, e as traz para fora” (Jo 10.2-3).',
 ], 3.5);
 
-function npcsPasso(dt) {
+// ---------- o lugar do paralítico: a marca da esteira no pó do piso, e a tigela que ficou (Jo 5.5-9) ----------
+{
+  const marca = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 2.0), new THREE.MeshBasicMaterial({ color: 0x6e5a40, transparent: true, opacity: 0.42, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
+  marca.rotation.x = -Math.PI / 2; marca.rotation.z = Math.PI / 2 - LAY.paralitico[3]; marca.position.set(pa, DECK + 0.012, paz); scene.add(marca);
+  const tig = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.09, 0.09, 10, 1, true), new THREE.MeshStandardMaterial({ color: 0xa8683a, roughness: 1, flatShading: true, side: THREE.DoubleSide }));
+  tig.position.set(pa + 0.75, DECK + 0.045, paz - 0.55); tig.castShadow = true; scene.add(tig);
+}
+
+// ---------- quem usa o tanque: uma mulher desce a escadaria do sul com um jarro, enche e sobe; um homem lava os pés no
+// último degrau acima da água ----------
+const ZS1_ = -5.0, AGUA = LAY.agua, PASSO_E = 0.55, NE = 9;
+function yEscada(z) {                                     // a altura dos degraus da escadaria do sul (a mesma conta do gerador)
+  if (z > ZS1_ - 0.08) return DECK;
+  const i = Math.max(0, Math.min(NE - 1, Math.round((ZS1_ - 0.35 - z) / PASSO_E)));
+  return DECK - (i + 1) * (DECK - AGUA + 0.6) / NE;
+}
+const zDegrau = (i) => ZS1_ - 0.35 - i * PASSO_E;
+const aguadeira = ator(nFaixa, 1.58, 2.6, -2.4, Math.PI, 'Parado');
+{ const jarro = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.14, 0.34, 9), new THREE.MeshStandardMaterial({ color: 0xa8683a, roughness: 1, flatShading: true }));
+  const k = 1 / aguadeira.o.scale.x; jarro.position.set(0.22 * k, 1.12 * k, 0.05 * k); jarro.scale.setScalar(k); jarro.castShadow = true; aguadeira.o.add(jarro); }
+const ROTA_AG = [V3(2.6, 0, -2.4), V3(2.6, 0, zDegrau(0) + 0.3), V3(2.6, 0, zDegrau(5))];
+const AG = { i: 1, ida: true, espera: 4 };
+CONVERSAS.push({ nome: 'Uma mulher com um jarro', o: aguadeira.o, r: 2.0, falas: [
+  'Venho buscar água para a minha mãe, ali no alpendre do norte. Ela não consegue descer.',
+  'Quando a água se agita, todos querem descer ao mesmo tempo. Os mais fortes chegam primeiro; os que mais precisam, nunca.',
+] });
+const lavador = ator(nAldeao, 1.68, -2.2, zDegrau(6), Math.PI, 'Parado');      // de frente para a água, os pés no último degrau
+lavador.o.position.y = yEscada(zDegrau(6)) - 0.12;
+CONVERSAS.push({ nome: 'Um homem na escada', o: lavador.o, r: 2.0, falas: [
+  'Só lavo os pés. A água é fria de manhã.',
+  'Dizem que um anjo desce e agita a água. Eu nunca vi o anjo; vi a água se mexer, isso sim.',
+] });
+
+// ---------- a água que se agita (Jo 5.4, 7): de tempos em tempos, um ponto de um dos tanques borbulha, com anéis e
+// respingos; os parentes se voltam para lá e um deles vai até a beira ver ----------
+const AGITA = { t: 14 + rnd() * 10, ativo: 0, x: 0, z: 0, aneis: [], bolhas: [], viu: false };
+{
+  const matA = new THREE.MeshBasicMaterial({ color: 0xe8f4f0, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide });
+  for (let i = 0; i < 4; i++) { const r = new THREE.Mesh(new THREE.RingGeometry(0.85, 1.0, 28), matA.clone()); r.rotation.x = -Math.PI / 2; r.visible = false; scene.add(r); AGITA.aneis.push(r); }
+  const matB = new THREE.MeshBasicMaterial({ color: 0xf2faf8, transparent: true, opacity: 0.85 });
+  for (let i = 0; i < 18; i++) { const b = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 4), matB); b.visible = false; scene.add(b); AGITA.bolhas.push({ b, v: V3(0, 0, 0), t: 0 }); }
+}
+const ORIGEM_PAR = parentes.map((p) => p.o.position.clone());
+function agitaPasso(dt, pj) {
+  if (!AGITA.ativo) {
+    AGITA.t -= dt; if (AGITA.t > 0) return;
+    const sul = rnd() < 0.5; AGITA.ativo = 8; AGITA.viu = false;
+    AGITA.x = (rnd() * 2 - 1) * 11; AGITA.z = sul ? -17 + rnd() * 8 : -38 + rnd() * 9;
+    return;
+  }
+  AGITA.ativo = Math.max(0, AGITA.ativo - dt); const T = 8 - AGITA.ativo;
+  if (pj && !AGITA.viu && Math.hypot(pj.x - AGITA.x, pj.z - AGITA.z) < 32) { AGITA.viu = true; fala('A água se agita!'); setTimeout(() => fala(''), 4000); }
+  AGITA.aneis.forEach((r, i) => {                         // os anéis que se abrem
+    const u = (T - i * 0.9) / 3.2, on = u > 0 && u < 1 && AGITA.ativo > 0;
+    r.visible = on; if (!on) return;
+    r.position.set(AGITA.x, AGUA + 0.05, AGITA.z); r.scale.setScalar(0.4 + u * 3.2); r.material.opacity = 0.55 * (1 - u);
+  });
+  for (const q of AGITA.bolhas) {                         // as bolhas e os respingos
+    if (q.t <= 0 && AGITA.ativo > 1 && rnd() < dt * 6) {
+      q.t = 0.7 + rnd() * 0.5; q.b.visible = true; q.b.position.set(AGITA.x + (rnd() - 0.5) * 1.2, AGUA + 0.02, AGITA.z + (rnd() - 0.5) * 1.2);
+      q.v.set((rnd() - 0.5) * 0.8, 1.2 + rnd() * 1.6, (rnd() - 0.5) * 0.8);
+    }
+    if (q.t > 0) { q.t -= dt; q.v.y -= 6 * dt; q.b.position.addScaledVector(q.v, dt); if (q.t <= 0 || q.b.position.y < AGUA) q.b.visible = false; }
+  }
+  // os parentes se voltam para a água; o primeiro vai até a beira e depois volta
+  parentes.forEach((p, i) => {
+    const alvoAng = Math.atan2(AGITA.x - p.o.position.x, AGITA.z - p.o.position.z);
+    let d = alvoAng - p.o.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d)); p.o.rotation.y += d * Math.min(1, dt * 3);
+  });
+  if (parentes[0]) {
+    const o0 = ORIGEM_PAR[0], beira = V3(Math.max(-14.5, Math.min(14.5, AGITA.x)), 0, AGITA.z < -23.5 ? -24.2 : -22.8);
+    const alvo = AGITA.ativo > 1.5 ? (Math.hypot(beira.x - o0.x, beira.z - o0.z) < 12 ? beira : o0) : o0;
+    if (!anda(parentes[0], alvo, dt, 1.4)) parentes[0].toca('Andar'); else parentes[0].toca('Conversando');
+    parentes[0].o.position.y = Math.max(parentes[0].o.position.y, DECK);
+  }
+  if (!AGITA.ativo) { AGITA.t = 35 + rnd() * 30; for (const r of AGITA.aneis) r.visible = false; }
+}
+function usoPasso(dt) {
+  if (AG.espera > 0) { AG.espera -= dt; aguadeira.toca('Parado'); }
+  else if (anda(aguadeira, ROTA_AG[AG.i], dt, 0.7)) {
+    if (AG.ida) { if (AG.i < ROTA_AG.length - 1) AG.i++; else { AG.ida = false; AG.espera = 4; } }
+    else { if (AG.i > 0) AG.i--; else { AG.ida = true; AG.espera = 9; } }
+  }
+  aguadeira.o.position.y = yEscada(aguadeira.o.position.z);
+}
+
+function npcsPasso(dt, pj) {
+  agitaPasso(dt, pj); usoPasso(dt);
   for (const o of ovelhas) {
     if (o.espera > 0) { o.espera -= dt; continue; }
     if (!o.alvo) { o.alvo = V3(AREA_OV.x + (rnd() * 2 - 1) * AREA_OV.rx, 0, AREA_OV.z + (rnd() * 2 - 1) * AREA_OV.rz); }
@@ -159,4 +246,4 @@ function npcsPasso(dt) {
   }
 }
 
-export { CONVERSAS, enfermos, pastor, ovelhas, cego, passante, npcsPasso };
+export { CONVERSAS, enfermos, pastor, ovelhas, cego, passante, aguadeira, lavador, AGITA, npcsPasso };

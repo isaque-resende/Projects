@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { E, LAY, fade, fala, bate, fundo, scene, sun, renderer, CIRC, CAIXAS, dialogo, botao, textoBotao, conversa } from './estado.js';
 import { terreno, AMOS, naRota, SOL_DIR, telhadosPasso } from './cenario.js';
 import { MIX } from './gente.js';
-import { CONVERSAS, npcsPasso } from './npcs.js';
+import { CONVERSAS, npcsPasso, AGITA } from './npcs.js';
 import { pertoDe } from '../../limpo-motor/conversa.js';
 import { ajustaLente, jog, camera, ctl, tecla, JOY, toqueTela, fw, rt, mv, naArea, alturaEm, camPasso, CAM } from './jogador.js';
 import { criaMarcador } from '../../limpo-motor/marcador.js';
@@ -75,7 +75,7 @@ let primeira = true;
 const laco = (forca) => {
   const dt = forca || Math.min(relogio.getDelta(), 0.05), t = relogio.elapsedTime;
   for (const m of MIX) m.update(dt);
-  npcsPasso(dt);
+  npcsPasso(dt, jog.o.position);
   camera.getWorldDirection(fw); fw.setY(0).normalize(); rt.set(-fw.z, 0, fw.x);
   mv.set(0, 0, 0);
   if (!E.fora) {
@@ -134,4 +134,4 @@ if (!(globalThis.MODO_TESTE && new URLSearchParams(location.search).has('parado'
 addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; ajustaLente(); });
 
 // para os testes automáticos: abrir com ?teste (ou pelo teste.html) e usar TESTE no console
-if (globalThis.MODO_TESTE) globalThis.TESTE = { MIX, E, jog, laco, marca, tecla, bate, alturaEm: (x, z) => terreno(x, z), chaoTerra: terreno, scene, camera, CIRC, CAIXAS, renderer, AMOS, LAY, CONVERSAS, acionar, conversar, INT: { L: CONVERSAS } };
+if (globalThis.MODO_TESTE) globalThis.TESTE = { MIX, E, jog, laco, marca, tecla, bate, alturaEm: (x, z) => terreno(x, z), chaoTerra: terreno, scene, camera, CIRC, CAIXAS, renderer, AMOS, LAY, CONVERSAS, AGITA, acionar, conversar, INT: { L: CONVERSAS } };
