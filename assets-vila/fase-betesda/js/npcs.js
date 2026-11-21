@@ -34,22 +34,24 @@ function senta(st, x, z, g) {
   const sp = G('spine_02'); if (sp) giraMundo(sp, new THREE.Quaternion().setFromAxisAngle(esq, -0.32));        // recostado
   for (const [l, k] of [['l', 1], ['r', -1]]) {                                                                // as pernas, para a frente
     const th = G('thigh_' + l), ca = G('calf_' + l), ft = G('foot_' + l);
-    if (th && ca) alinhaOsso(th, ca, f.clone().add(V3(0, -0.06, 0)).addScaledVector(esq, 0.12 * k));
-    if (ca && ft) alinhaOsso(ca, ft, f.clone().add(V3(0, -0.04, 0)).addScaledVector(esq, 0.04 * k));
+    if (th && ca) alinhaOsso(th, ca, f.clone().add(V3(0, -0.14, 0)).addScaledVector(esq, 0.02 * k));
+    if (ca && ft) alinhaOsso(ca, ft, f.clone().add(V3(0, -0.1, 0)).addScaledVector(esq, -0.02 * k));
+    if (ft) ft.scale.setScalar(0.01);                                                                          // os pés ficam debaixo da manta
   }
   for (const [l, k] of [['l', 1], ['r', -1]]) {                                                                // os braços: junto do corpo, as mãos no colo
     const ua = G('upperarm_' + l), la = G('lowerarm_' + l), ha = G('hand_' + l);
     if (ua && la) alinhaOsso(ua, la, V3(0, -1, 0).addScaledVector(f, 0.35).addScaledVector(esq, 0.15 * k));
-    if (la && ha) alinhaOsso(la, ha, f.clone().add(V3(0, -0.45, 0)).addScaledVector(esq, -0.35 * k));
+    if (la && ha) alinhaOsso(la, ha, f.clone().add(V3(0, 0.05, 0)).addScaledVector(esq, -0.25 * k));      // os antebraços por cima da manta
   }
   o.updateMatrixWorld(true);
   const quadril = G('thigh_l') || G('pelvis');
   if (quadril) { quadril.getWorldPosition(_a); o.position.y -= _a.y - (DECK + 0.16); }                        // o quadril na esteira
   // a manta de lã listrada por cima das pernas
   o.updateMatrixWorld(true); if (quadril) quadril.getWorldPosition(_a);
-  const manta = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.31, 0.98, 10), MAT_MANTA); manta.castShadow = true; manta.receiveShadow = true;      // as pernas cobertas: um volume arredondado
-  manta.rotation.order = 'YXZ'; manta.rotation.set(Math.PI / 2, g, 0); manta.scale.set(1, 1, 0.62);
-  manta.position.set(_a.x + f.x * 0.55, DECK + 0.05, _a.z + f.z * 0.55); scene.add(manta);
+  { const qd = G('thigh_r'); if (qd && G('thigh_l')) { qd.getWorldPosition(_b); _a.lerp(_b, 0.5); } }          // o meio entre os dois quadris
+  const manta = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.3, 1.3, 10), MAT_MANTA); manta.castShadow = true; manta.receiveShadow = true;      // as pernas cobertas: um volume arredondado
+  manta.rotation.order = 'YXZ'; manta.rotation.set(Math.PI / 2, g, 0); manta.scale.set(1, 1, 0.9);
+  manta.position.set(_a.x + f.x * 0.7, DECK + 0.08, _a.z + f.z * 0.7); scene.add(manta);      // cobre das coxas até depois dos pés
   CIRC.push({ x, z, r: 0.75 });
 }
 // as esteiras de junco (a do paralítico, vazia, fica só o lugar) e a manta dos enfermos: as texturas do usuário
