@@ -350,7 +350,7 @@ def face_golgota():
     while z <= GOL[1] + RZ_G:
         if monte_bruto(XC(z), z) > 0.5: ZS.append(z)
         z += 0.35
-    NV, LIP = 40, (0.6, 1.2, 1.8, 2.35)
+    NV, LIP = 40, (0.6, 1.2, 1.8, 2.4, 3.3)
     V, F = [], []
     for z in ZS:
         xc = XC(z); yb = piso(xc + 1.0, z) - 0.5; yt = piso_monte(xc, z)
@@ -358,7 +358,9 @@ def face_golgota():
             y = yb + (yt - yb) * k / NV
             d = cav(y, z)[0] * sm(0.0, 0.12, (yt - y) / max(0.1, yt - yb))
             V.append((xc + 0.25 + (off_face(y, z) if k < NV else 0.0) - d, -z, y))
-        for b in LIP: V.append((xc - b, -z, piso_monte(xc - b, z) + 0.05))
+        for b in LIP:
+            if b == LIP[-1]: V.append((xc - b, -z, altura(xc - b, z) - 0.15))
+            else: V.append((xc - b, -z, max(piso_monte(xc - b, z), altura(xc - b, z)) + 0.04))
     NR = NV + 1 + len(LIP)
     for i in range(len(ZS) - 1):
         for k in range(NR - 1):
@@ -382,7 +384,7 @@ def topo_em(x, z): return altura(x, z)
 
 # as três cruzes, de frente para a estrada (leste). A do meio, mais alta e com o letreiro por cima (Jo 19.19, Mt 27.37);
 # as dos lados, em T. Vazias: os corpos foram tirados na sexta, antes do sábado (Jo 19.31)
-_xc = XC(GOL[1]) - 3.2
+_xc = XC(GOL[1]) - 6.0
 CRUZES = [(_xc, GOL[1] - 2.6, False), (_xc + 0.3, GOL[1], True), (_xc, GOL[1] + 2.6, False)]
 cr = Caixas()
 for x, z, meio in CRUZES:

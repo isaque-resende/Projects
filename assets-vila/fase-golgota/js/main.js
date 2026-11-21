@@ -50,6 +50,8 @@ function olharPasso(dt) {
   if (OL.t < 0) return;
   OL.t += dt; CAM.perto += (1 - CAM.perto) * Math.min(1, dt * 0.8);
   if (OL.i < DENTRO.length && OL.t > DENTRO[OL.i][0]) fala(DENTRO[OL.i++][1]);
+  const quer = (JOY.on && Math.hypot(JOY.x, JOY.y) > 0.3) || E.alvoToque || tecla.KeyW || tecla.KeyS || tecla.KeyA || tecla.KeyD || tecla.ArrowUp || tecla.ArrowDown;
+  if (quer && OL.t > 1.5 && OL.t < 22.5) { OL.t = 22.5; OL.i = DENTRO.length; E.alvoToque = null; if (abaixa && OL.pausa) { abaixa.paused = false; OL.pausa = false; } }
   // o clipe Ajoelhar desce, fica e levanta (5,2 s): para no meio, abaixado, e só no fim termina de levantar
   if (abaixa && !OL.pausa && OL.t > 2.2) { abaixa.paused = true; OL.pausa = true; }
   if (abaixa && OL.pausa && OL.t > 22.5) { abaixa.paused = false; OL.pausa = false; fala(''); }
