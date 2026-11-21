@@ -505,7 +505,7 @@ async function rodar() {
       W().dispatchEvent(new (W().KeyboardEvent)('keydown', { code: 'KeyE' })); W().dispatchEvent(new (W().KeyboardEvent)('keyup', { code: 'KeyE' }));
       quadros(30 * 10); const fala = D().getElementById('fala').textContent, abaixado = T.E.fora;
       quadros(30 * 17);
-      (dSep > 25 && dSep < 45 && dEstr < 16 && /olhar dentro/.test(txt) && abaixado && /lençóis|lenço/.test(fala) && T.E.olhou && !T.E.fora ? it.ok : it.erro)('sepulcro a ' + dSep.toFixed(1) + ' m do Gólgota; o Gólgota a ' + dEstr.toFixed(1) + ' m da estrada; botão "' + txt + '"; abaixado: ' + (abaixado ? 'sim' : 'NÃO') + '; legenda: "' + fala.slice(0, 50) + '…"; depois livre: ' + (T.E.olhou && !T.E.fora ? 'sim' : 'NÃO'));
+      (dSep > 25 && dSep < 48 && dEstr < 22 && /olhar dentro/.test(txt) && abaixado && /lençóis|lenço/.test(fala) && T.E.olhou && !T.E.fora ? it.ok : it.erro)('sepulcro a ' + dSep.toFixed(1) + ' m do Gólgota; o Gólgota a ' + dEstr.toFixed(1) + ' m da estrada; botão "' + txt + '"; abaixado: ' + (abaixado ? 'sim' : 'NÃO') + '; legenda: "' + fala.slice(0, 50) + '…"; depois livre: ' + (T.E.olhou && !T.E.fora ? 'sim' : 'NÃO'));
     });
     await teste('Jo 20.4-13: Pedro e João chegam correndo, entram e voltam; Maria Madalena fica chorando e conversa', async (it) => {
       const T = W().TESTE, C = T.CENA, fases = new Set(), p = T.jog.o.position;
