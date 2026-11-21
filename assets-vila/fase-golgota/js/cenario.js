@@ -16,7 +16,7 @@ let TERRENO = null;
 const TRILHAS = [];
 // as texturas do usuário para esta fase: a rocha calcária da pedreira, o chão da pedreira velha, a estrada, a madeira bruta
 // das cruzes e a pedra seca da mureta do horto
-const TXG = Object.fromEntries(['rocha', 'chao', 'estrada', 'madeira', 'pedra_seca'].map((k) => [k, texChao('../fase-golgota/tex/' + k + '.jpg?v=1')]));
+const TXG = Object.fromEntries(['rocha', 'chao', 'estrada', 'madeira', 'pedra_seca', 'calcario', 'calcario_chao'].map((k) => [k, texChao('../fase-golgota/tex/' + k + '.jpg?v=1')]));
 // textura projetada pelos três eixos (a malha não tem UV para ela): o 'modo' decide como misturar com a cor de vértice
 function triplanar(mesh, tex, esc, modo) {
   if (!mesh.geometry.attributes.normal) mesh.geometry.computeVertexNormals();
@@ -32,8 +32,8 @@ gCen.scene.traverse((o) => {
   if (!o.isMesh) return;
   if (o.name.startsWith('Golgota_Terreno')) { o.material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 }); TERRENO = o; o.receiveShadow = true; }
   else if (o.name.startsWith('Golgota_Trilha')) { o.material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2 }); o.receiveShadow = true; TRILHAS.push(o); }
-  else if (o.name.startsWith('Golgota_Face')) { triplanar(o, TXG.rocha, 0.15, 'diffuseColor.rgb = tri * vColor.rgb * 1.5;'); o.castShadow = o.receiveShadow = true; }
-  else if (/^(Golgota_Rocha|Pedreira)/.test(o.name)) { triplanar(o, TXG.rocha, 0.13, 'float l = dot(vColor.rgb, vec3(0.3, 0.59, 0.11)); diffuseColor.rgb = tri * clamp(l * 1.9, 0.55, 1.15);'); o.castShadow = o.receiveShadow = true; }
+  else if (o.name.startsWith('Golgota_Face')) { triplanar(o, TXG.calcario, 0.09, 'diffuseColor.rgb = tri * vColor.rgb * 1.32;'); o.castShadow = o.receiveShadow = true; }
+  else if (/^(Golgota_Rocha|Pedreira)/.test(o.name)) { triplanar(o, TXG.calcario, 0.1, 'float l = dot(vColor.rgb, vec3(0.3, 0.59, 0.11)); diffuseColor.rgb = tri * clamp(l * 1.6, 0.5, 1.0);'); o.castShadow = o.receiveShadow = true; }
   else if (o.name.startsWith('Cruzes')) { triplanar(o, TXG.madeira, 0.9, 'float l = dot(vColor.rgb, vec3(0.3, 0.59, 0.11)); if (l < 0.25) diffuseColor.rgb = tri * 1.05;'); o.castShadow = o.receiveShadow = true; }
   else if (o.name.startsWith('Mureta')) { triplanar(o, TXG.pedra_seca, 0.7, 'diffuseColor.rgb = tri;'); o.castShadow = o.receiveShadow = true; }
   else if (o.name.startsWith('Golgota_Cavidades')) { o.material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, flatShading: true, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2 }); o.receiveShadow = true; }
@@ -42,9 +42,11 @@ gCen.scene.traverse((o) => {
 scene.add(gCen.scene);
 suaviza(TERRENO, true); for (const e of TRILHAS) suaviza(e, false);
 const TX = { grama: texChao('../fase-betfage/tex/grama.webp?v=1'), terra: texChao('../fase-betfage/tex/terra.webp?v=1') };
-texturizaChao(TERRENO, { grama: TX.grama, terra: TXG.chao, rocha: TXG.rocha, puro: true }, false);       // o chão da pedreira, com a rocha nas paredes a pique
+texturizaChao(TERRENO, { grama: TX.grama, terra: TXG.chao, rocha: TXG.calcario_chao, puro: true }, false);       // o chão da pedreira, com a rocha nas paredes a pique
 for (const e of TRILHAS) texturizaChao(e, { grama: TX.grama, terra: TXG.estrada, puro: true }, true);       // a estrada e o caminho do horto
-const terreno = mapaAltura(TERRENO, 0.35, { suave: true });
+const terreno0 = mapaAltura(TERRENO, 0.35, { suave: true });
+const TUM = {};
+const terreno = (x, z) => (TUM.dentro && TUM.dentro(x, z) ? TUM.y : terreno0(x, z));
 
 // ---------- Jerusalém: a maquete, deslocada para cá ----------
 // Os chãos dela perdem o pedaço que o terreno daqui cobre, e a borda vai até a altura do terreno daqui, sem degrau. O
@@ -116,15 +118,21 @@ poePertos(scene, LAY.objetos, KIT, (o, n) => {
 // crista da pedreira, com a fachada lisa e a porta baixa de frente para o leste (é preciso abaixar-se para olhar dentro,
 // Jo 20.5); a pedra redonda já rolada para o lado no seu sulco (Mc 16.4); o pátio na frente; dentro, os lençóis no chão
 // e o lenço enrolado à parte (Jo 20.6-7) ----------
-const TUM = {};
 {
   const K = 1.3, raiz = gTumulo.scene; raiz.position.set(0, 0, 200);          // o modelo vem com o centro em z = -200
   const tum = new THREE.Group(); tum.add(raiz); tum.scale.setScalar(K); tum.rotation.y = Math.PI / 2;     // a fachada (+z do modelo) para o leste
-  const [ox, , oz] = LAY.olhar; tum.position.set(ox - 1.4 * K, terreno(ox, oz) - 0.05, oz);                // o ponto de entrar fica onde o jogador se abaixa
+  const [ox, , oz] = LAY.olhar; tum.position.set(ox - 1.4 * K, terreno0(ox, oz) - 0.05, oz);                // o ponto de entrar fica onde o jogador se abaixa
   sombra(tum); scene.add(tum); tum.updateMatrixWorld(true);
   // o calcário do modelo, puxado para o tom quente da pedreira daqui
   const TOM = new THREE.Color(1.04, 0.94, 0.78);
   tum.traverse((m) => { if (m.isMesh) { m.material = m.material.clone(); m.material.color.multiply(TOM); m.receiveShadow = true; } });
+  // só o monte de pedra (o modelo traz também a versão de grama); os pontos dos NPCs não aparecem
+  const N = {}; raiz.traverse((o) => { if (o.name) N[o.name] = o; });
+  if (N.Tumulo_Massa_Grama) N.Tumulo_Massa_Grama.visible = false;
+  raiz.traverse((o) => { if (o.name && o.name.startsWith('NPC_')) o.visible = false; });
+  if (N.Tumulo_Interior) N.Tumulo_Interior.castShadow = false;
+  // a candeia num nicho da parede (Mc 16.5: entrando no sepulcro…)
+  const lamp = new THREE.PointLight(0xffb060, 0, 7, 1.6); lamp.position.set(-1.2, 1.15, -1.55); tum.add(lamp);
   // dentro: os lençóis no chão e o lenço enrolado à parte
   const linho = new THREE.MeshStandardMaterial({ color: 0xe9e2d0, roughness: 1, flatShading: true });
   for (const [x, z, lx, lz] of [[0.75, -3.0, 0.42, 1.7], [0.95, -3.6, 0.3, 1.2]]) { const l = new THREE.Mesh(new THREE.BoxGeometry(lx, 0.05, lz), linho); l.position.set(x, 0.03, z); tum.add(l); }
@@ -136,11 +144,30 @@ const TUM = {};
     const b = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.35, r * 0.5, h * 0.25, 8), m); b.position.set(x, h + 0.02 + h * 0.12, z); tum.add(b);
   }
   tum.updateMatrixWorld(true);
-  // a colisão: a pedra e a encosta do monte dos dois lados do pátio
+  // a colisão: a pedra, a fachada dos dois lados da porta, as paredes da câmara (x ±1,7; fundo 6,3 m, nas medidas do
+  // modelo) e o monte em volta (ninguém sobe nem atravessa)
   const pedra = tum.getObjectByName('Tumulo_Pedra'); const pw = pedra.getWorldPosition(new THREE.Vector3()); CIRC.push({ x: pw.x, z: pw.z, r: 0.75 });
-  for (const [lx, lz, r] of [[-3.6, 0.6, 1.4], [3.4, 0.6, 1.4], [-6.0, -1.0, 2.0], [6.0, -1.0, 2.0], [-9.5, -3.5, 2.6], [9.5, -3.5, 2.6], [-12.0, -7.0, 2.8], [12.0, -7.0, 2.8]]) {
-    const p = new THREE.Vector3(lx, 0, lz).applyMatrix4(tum.matrixWorld); CIRC.push({ x: p.x, z: p.z, r: r * K });
+  const col = (lx, lz, r) => { const p = new THREE.Vector3(lx, 0, lz).applyMatrix4(tum.matrixWorld); CIRC.push({ x: p.x, z: p.z, r: r * K }); };
+  for (const [lx, lz, r] of [[-3.6, 0.6, 1.4], [3.4, 0.6, 1.4], [-6.0, -1.0, 2.0], [6.0, -1.0, 2.0], [-9.5, -3.5, 2.6], [9.5, -3.5, 2.6], [-12.0, -7.0, 2.8], [12.0, -7.0, 2.8]]) col(lx, lz, r);
+  for (const s of [-1, 1]) {
+    for (const lx of [1.05, 1.7, 2.4]) col(s * lx, 0.1, 0.4);                    // a fachada, deixando a porta no meio
+    for (let lz = -0.5; lz > -6.4; lz -= 0.7) col(s * 2.15, lz, 0.45);            // as paredes da câmara
+    for (let lz = -9; lz > -17; lz -= 2.5) col(s * 12, lz, 1.6);                  // as encostas do monte do túmulo
   }
+  for (let lx = -1.6; lx <= 1.61; lx += 0.8) col(lx, -6.75, 0.45);                 // o fundo da câmara
+  for (let lx = -10; lx <= 10.1; lx += 2.5) col(lx, -18, 1.6);
+  // dentro da câmara: o chão é o piso dela; o monte some (a câmera vê de cima) e a candeia acende
+  const inv = new THREE.Matrix4().copy(tum.matrixWorld).invert(), q = new THREE.Vector3();
+  TUM.y = tum.position.y + 0.02;
+  TUM.dentro = (x, z) => { q.set(x, tum.position.y, z).applyMatrix4(inv); return q.x > -1.75 && q.x < 1.75 && q.z > -6.4 && q.z < -0.05; };
+  TUM.lencois = new THREE.Vector3(0.85, 0, -3.3).applyMatrix4(tum.matrixWorld);
+  let estava = null;
+  TUM.passo = (pj) => {
+    const d = !!pj && TUM.dentro(pj.x, pj.z);
+    if (d === estava) return; estava = d;
+    for (const n of ['Tumulo_Massa_Monte', 'Rochas_Soltas']) if (N[n]) N[n].visible = !d;
+    lamp.intensity = d ? 5 : 0;
+  };
   Object.assign(TUM, { tum, pedra, boca: new THREE.Vector3(0, 0, 0.2).applyMatrix4(tum.matrixWorld), frente: new THREE.Vector3(0, 0, 1).applyQuaternion(tum.quaternion).setY(0).normalize() });
 }
 

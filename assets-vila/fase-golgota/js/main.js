@@ -98,7 +98,7 @@ let primeira = true;
 const laco = (forca) => {
   const dt = forca || Math.min(relogio.getDelta(), 0.05), t = relogio.elapsedTime;
   for (const m of MIX) m.update(dt);
-  npcsPasso(dt, jog.o.position);
+  npcsPasso(dt, jog.o.position); TUM.passo(jog.o.position);
   camera.getWorldDirection(fw); fw.setY(0).normalize(); rt.set(-fw.z, 0, fw.x);
   mv.set(0, 0, 0);
   if (!E.fora) {

@@ -510,7 +510,7 @@ async function rodar() {
     await teste('Jo 20.4-13: Pedro e João chegam correndo, entram e voltam; Maria Madalena fica chorando e conversa', async (it) => {
       const T = W().TESTE, C = T.CENA, fases = new Set(), p = T.jog.o.position;
       C.fase = 'espera'; C.t = 0;          // do começo
-      for (let k = 0; k < 30 * 150; k++) { T.laco(1 / 30); fases.add(C.fase); if (C.fase === 'espera' && fases.has('voltam')) break; }
+      for (let k = 0; k < 30 * 240; k++) { T.laco(1 / 30); fases.add(C.fase); if (C.fase === 'espera' && fases.has('voltam')) break; }
       const cena = ['correm', 'dentro1', 'dentro2', 'voltam'].every((f) => fases.has(f)) && C.fase === 'espera';
       const m = T.CONVERSAS.find((n) => n.nome === 'Maria Madalena'); let conv = false;
       if (m) {

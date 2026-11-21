@@ -9,7 +9,7 @@
 // Jesus não aparece aqui: o jogador só o encontra na estrada de Emaús, sem o reconhecer (Lc 24.15-16).
 import { LAY, V3, CIRC, fala, bate } from './estado.js';
 import { nPedro, nJoao, nMaria, nSoldado, nSoldado2 } from './modelos.js';
-import { AMOS } from './cenario.js';
+import { AMOS, TUM } from './cenario.js';
 import { ator, anda } from './gente.js';
 
 const CONVERSAS = [];
@@ -124,7 +124,12 @@ coisa('a pedra rolada', sx + 1.6, sz - 2.6, [
   'A pedra redonda que fechava o sepulcro, rolada para o lado. Era muito grande (Mc 16.4).',
   'Os principais sacerdotes tinham mandado selar a pedra e pôr uma guarda (Mt 27.66). Mas houve um grande terremoto: um anjo do Senhor desceu do céu, revolveu a pedra e se assentou sobre ela; e os guardas ficaram como mortos (Mt 28.2-4).',
 ], 1.8, 'olhar a pedra');
-coisa('os túmulos antigos', -32.5, 15.0, [
+coisa('os lençóis', TUM.lencois.x, TUM.lencois.z, [
+  'Os lençóis de linho, no chão, onde o corpo tinha sido posto. E o lenço que estava sobre a cabeça, não com os lençóis, mas enrolado num lugar à parte (Jo 20.6-7).',
+  'José de Arimateia e Nicodemos o envolveram nesses lençóis com os aromas, cem libras de mirra e aloés, como os judeus costumam sepultar (Jo 19.39-40).',
+  '“Por que buscais entre os mortos aquele que vive? Não está aqui, mas ressuscitou” (Lc 24.5-6).',
+], 1.6, 'olhar os lençóis');
+coisa('os túmulos antigos', -46.5, 15.0, [
   'Túmulos antigos, cavados na parede da pedreira, fechados com pedras quadradas.',
   'Quando ele expirou, a terra tremeu, as pedras se fenderam, e os sepulcros se abriram; e muitos corpos de santos que dormiam foram ressuscitados, e, saindo dos sepulcros, depois da ressurreição dele, entraram na cidade santa e apareceram a muitos (Mt 27.51-53).',
 ], 3.0, 'olhar os túmulos');

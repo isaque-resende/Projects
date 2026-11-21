@@ -18,7 +18,7 @@ const sm = (a, b, x) => { let k = (x - a) / (b - a); k = k < 0 ? 0 : k > 1 ? 1 :
 const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
 
 // ---------- layout exportado do Blender (golgota_layout.json) ----------
-const LAY = await (await fetch('../fase-golgota/golgota_layout.json?v=7')).json();
+const LAY = await (await fetch('../fase-golgota/golgota_layout.json?v=8')).json();
 const DE = new URLSearchParams(location.search).get('de');      // ?de=emaus começa na ponta noroeste; ?de=sepulcro, no horto (testes)
 
 // ---------- estado do jogo ----------

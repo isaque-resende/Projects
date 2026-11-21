@@ -45,17 +45,17 @@ H0 = h_mundo(GW[0], GW[2])
 # ---------------- traçado ----------------
 ESTRADA = [(54, 57), (48, 46), (38, 36), (24, 20), (13, 5), (11, -8), (5, -22), (-10, -33), (-28, -40), (-44, -46)]     # da Porta de Genat (sudeste) para Emaús (noroeste)
 MEIA = 1.5
-CAMINHO = [(12.6, 2.0), (7.0, 8.8), (-3.0, 9.6), (-12.5, 6.0), (-21.0, 2.6), (-29.6, -1.4)]          # da estrada ao portão do horto e ao sepulcro
+CAMINHO = [(12.6, 2.0), (9.5, 11.5), (0.0, 15.5), (-12.0, 15.0), (-21.0, 10.5), (-26.0, 6.0), (-35.0, 2.6), (-43.6, -1.4)]          # da estrada ao portão do horto e ao sepulcro
 MEIA_C = 0.8
-GOL = (-2.0, -8.0)                                      # o centro do monte do Gólgota
-H_G, RW_G, RE_G, RZ_G = 11.0, 12.0, 13.0, 13.0          # a altura do monte e os meios-eixos (oeste, leste, norte-sul)
+GOL = (-4.0, -6.0)                                      # o centro do monte do Gólgota
+H_G, RW_G, RE_G, RZ_G = 12.0, 18.0, 13.0, 18.0          # a altura do monte e os meios-eixos (oeste, leste, norte-sul)
 def XC(z): return 3.2 + 0.5 * math.sin(z * 0.45 + 1.0) + 0.25 * math.sin(z * 1.3)     # a linha do penhasco da face leste
-CRISTA = [(-30.0, 40.0), (-33.0, 16.0), (-34.0, 0.0), (-35.0, -14.0), (-40.0, -30.0), (-48.0, -46.0)]   # o pé da parede da pedreira (de sul para norte)
-SEP = (-33.4, -2.0)                                     # a porta do sepulcro (olha para o leste)
-HORTO = (-31.0, -12.0, -14.0, 12.0)                     # x0, x1, z0, z1 (a oeste fica a parede de pedra)
-PORTAO = (-12.0, 6.0)
-X0, X1, Z0, Z1 = -72.0, 80.0, -66.0, 72.0
-AREA = [-44.0, 58.0, -44.0, 58.0]       # a leste, o segundo muro (x ~ 63); ao sul, a Porta de Genat (~ 56, 63)
+CRISTA = [(-38.0, 40.0), (-47.0, 16.0), (-48.0, 0.0), (-49.0, -14.0), (-52.0, -30.0), (-56.0, -46.0)]   # o pé da parede da pedreira (de sul para norte)
+SEP = (-47.4, -2.0)                                     # a porta do sepulcro (olha para o leste)
+HORTO = (-45.0, -12.0, -28.0, 12.0)                     # x0, x1, z0, z1 (a oeste fica a parede de pedra)
+PORTAO = (-26.0, 6.0)
+X0, X1, Z0, Z1 = -88.0, 80.0, -66.0, 72.0
+AREA = [-58.0, 58.0, -44.0, 58.0]       # a leste, o segundo muro (x ~ 63); ao sul, a Porta de Genat (~ 56, 63)
 
 
 def catmull(p0, p1, p2, p3, t):
@@ -73,7 +73,7 @@ def amostra(lista, passo=0.4):
 
 
 def trilha_monte():
-    P = [(-3.0, 9.0)]
+    P = [(-5.0, 15.2)]
     for i in range(36):
         t = i / 35; th = math.radians(90 + 200 * t); r = 0.98 - 0.70 * t
         dx = math.cos(th); P.append((GOL[0] + dx * (RW_G if dx < 0 else RE_G) * r, GOL[1] + math.sin(th) * RZ_G * r))
@@ -131,9 +131,9 @@ def monte_bruto(x, z):
     """o monte do Gólgota sem o corte: um domo de calcário com o alto chato e as camadas da rocha em degraus"""
     r = monte_r(x, z)
     if r >= 1: return 0.0
-    base = H_G * min(1.0, 1.18 * (1 - r * r) ** 1.5)
+    base = H_G * min(1.0, 1.35 * (1 - r * r) ** 1.5)          # o alto chato (r < 0,44): uns 16 m de largura, dá para andar
     f = base - math.floor(base); deg = math.floor(base) + sm(0.45, 1.0, f)
-    return max(0.0, 0.65 * deg + 0.35 * base + 0.3 * math.sin(x * 0.9 + z * 0.4) * sm(0.3, 0.45, r) * sm(0.0, 2.0, base))
+    return max(0.0, 0.65 * deg + 0.35 * base + 0.3 * math.sin(x * 0.9 + z * 0.4) * sm(0.44, 0.55, r) * sm(0.0, 2.0, base))
 
 
 def monte(x, z):
@@ -175,6 +175,9 @@ def altura(x, z):
     if w > 0: h += (HR[i] - h) * w
     da = math.hypot(x - ADRO[0], z - ADRO[1]) - ADRO[2]
     w = 1 - sm(0, 2.0, da)
+    if w > 0: h += (HADRO - h) * w
+    dq = math.hypot(max(SEP[0] - 10.5 - x, 0, x - SEP[0] - 1.0), max(abs(z - SEP[1]) - 3.4, 0))     # a câmara, cavada para dentro do monte do túmulo
+    w = 1 - sm(0, 2.5, dq)
     if w > 0: h += (HADRO - h) * w
     return h
 
@@ -346,7 +349,7 @@ def face_golgota():
     ZS = []; z = GOL[1] - RZ_G
     while z <= GOL[1] + RZ_G:
         if monte_bruto(XC(z), z) > 0.5: ZS.append(z)
-        z += 0.3
+        z += 0.35
     NV, LIP = 40, (0.6, 1.2, 1.8, 2.35)
     V, F = [], []
     for z in ZS:
@@ -363,7 +366,7 @@ def face_golgota():
     def cores(p):
         c = p.center; z, y = -c.y, c.z; n = p.normal
         r_ = cav(y, z)[1]
-        if n.z > 0.55: base = COR['seca'] if rnd.random() < 0.12 else COR['face_topo']
+        if n.z > 0.55: base = COR['face_topo']
         elif n.z < -0.3: base = tom(COR['face'], 0.72)
         else: base = COR['face']
         return tom(base, (0.9 + rnd.random() * 0.12) * (1 - 0.85 * r_ ** 0.8))
@@ -404,8 +407,8 @@ for zc, x_off in ((15.0, 0.0), (-16.5, 0.0), (26.0, 0.0)):
     pd.caixa(xc - 0.2, zc, y - 0.3, y + 2.6, 0.7, 2.8, COR['calcario'], var=0.03)             # a face cortada
     pd.caixa(xc + 0.2, zc, y - 0.1, y + 1.0, 0.25, 0.95, COR['calc_lado'], var=0.03)           # a pedra quadrada que fecha
 # blocos cortados e deixados na pedreira, e degraus de corte no pé da parede
-for x, z, lx, lz, h, g in ((-21.0, 25.0, 2.4, 1.2, 1.0, 0.2), (-18.0, 28.5, 1.8, 1.1, 0.9, -0.3), (-24.5, 31.0, 3.0, 1.4, 1.2, 0.1),
-                           (-38.0, -24.0, 2.2, 1.2, 1.0, 0.5), (-34.5, -30.0, 1.6, 1.0, 0.8, 0.9), (16.0, -28.0, 2.0, 1.1, 0.9, 0.4)):
+for x, z, lx, lz, h, g in ((-27.0, 27.0, 2.4, 1.2, 1.0, 0.2), (-24.0, 30.5, 1.8, 1.1, 0.9, -0.3), (-30.5, 33.0, 3.0, 1.4, 1.2, 0.1),
+                           (-50.0, -24.0, 2.2, 1.2, 1.0, 0.5), (-46.5, -30.0, 1.6, 1.0, 0.8, 0.9), (16.0, -28.0, 2.0, 1.1, 0.9, 0.4)):
     y = altura(x, z); pd.caixa(x, z, y - 0.2, y + h, lx, lz, COR['pedreira'], giro=g, var=0.04)
 for z0, z1 in ((18.0, 30.0), (-22.0, -12.0)):
     z = z0
@@ -496,10 +499,7 @@ for o in list(col_proto.objects):
         n = copia(o, col_prev); n.parent = tumulo; n.location = o.location; n['tumulo'] = 1
 bpy.context.view_layer.update()
 # o rochedo do túmulo não se atravessa: círculos ao longo da base dele (menos na frente da boca)
-for zz in [SEP[1] + s for s in (-7.0, -5.0, -3.0, 3.0, 5.0, 7.0)]:
-    circulo('COL_Tumulo_%d' % int(zz * 10), SEP[0] - 0.9, zz, 1.4, tumulo, y=HADRO)['fixo'] = 1
-for zz in (-1.6, 0.0, 1.6):
-    circulo('COL_Tumulo_Fundo_%d' % int(zz * 10), SEP[0] - 2.2, SEP[1] + zz, 1.4, tumulo, y=HADRO)['fixo'] = 1
+# (a colisão do sepulcro é do jogo, que sabe onde fica a câmara)
 empty_ref('JOGO_sepulcro', SEP[0], SEP[1], y=HADRO, r=0.0, tam=2.0)                  # a boca (a seta: para fora, leste)
 empty_ref('JOGO_olhar', SEP[0] + 1.3, SEP[1], y=HADRO, r=-math.pi / 2, tam=1.5)     # onde se abaixa para olhar dentro
 
@@ -547,7 +547,7 @@ def arvore(arq, nome, x, z, k, perto=True, raio=0.45):
 
 K_OLI = 4.0 / max(0.1, dims(PROTO[('oliveiras\\oliveiras.glb', 'Oliveira1_Jovem')])[2])
 K_FIG = 3.6 / max(0.1, dims(PROTO[('figueiras\\figueiras.glb', 'Figueira1_Jovem_ComFruta')])[2])
-LIVRE = [(SEP[0] + 3.0, SEP[1], 4.2), (PORTAO[0], PORTAO[1], 2.4), (GOL[0], GOL[1], 14.0), (XC(GOL[1]) + 4.0, GOL[1], 6.0)]
+LIVRE = [(SEP[0] + 3.0, SEP[1], 4.2), (PORTAO[0], PORTAO[1], 2.4), (GOL[0], GOL[1], 19.0), (XC(GOL[1]) + 4.0, GOL[1], 6.0)]
 def livre(x, z, m=0.0):
     if dist_cam(x, z)[0] < 1.4 + m: return False
     if any(math.hypot(x - a, z - b) < r + m for a, b, r in LIVRE): return False
@@ -555,7 +555,7 @@ def livre(x, z, m=0.0):
 
 
 # no horto: oliveiras e figueiras (abril: a figueira já tem folha e figo novo, Mc 13.28)
-for x, z, t in ((-16.0, -9.0, 'o'), (-22.0, -10.5, 'o'), (-27.5, -8.0, 'f'), (-15.0, 0.5, 'f'), (-17.0, 9.5, 'o'), (-24.0, 8.5, 'o'), (-28.5, 6.5, 'f')):
+for x, z, t in ((-30.0, -9.0, 'o'), (-36.0, -10.5, 'o'), (-41.5, -8.0, 'f'), (-29.0, 0.5, 'f'), (-31.0, 9.5, 'o'), (-38.0, 8.5, 'o'), (-42.5, 6.5, 'f')):
     if not livre(x, z): continue
     if t == 'o': arvore('oliveiras\\oliveiras.glb', random.choice(['Oliveira2_Retorcida', 'Oliveira4_Ancia', 'Oliveira3_Vaso']), x, z, K_OLI * random.uniform(0.9, 1.1))
     else: arvore('figueiras\\figueiras.glb', random.choice(['Figueira1_Jovem_ComFruta', 'Figueira2_Larga_ComFruta']), x, z, K_FIG * random.uniform(0.9, 1.1))
@@ -599,7 +599,7 @@ for _ in range(140):
     k = random.uniform(0.45, 1.4)
     n = poe('casa-porta\\rochas.glb', random.choice(ROCHAS), x, z, random.uniform(0, 6.28), k, afunda=0.3 * k)
     if n is not None and k > 0.8: circulo('COL_' + n.name, x, z, 0.3 * k + 0.1, n)
-for x, z in ((GOL[0] - 4.5, GOL[1] - 2.4), (GOL[0] - 3.5, GOL[1] + 4.6), (GOL[0] - 0.5, GOL[1] - 6.4)):
+for x, z in ((GOL[0] - 7.0, GOL[1] - 3.0), (GOL[0] - 5.5, GOL[1] + 5.5), (GOL[0] - 1.5, GOL[1] - 8.0)):
     if dist_cam(x, z)[0] > 1.2: arvore('oliveiras\\oliveiras.glb', random.choice(['Oliveira2_Retorcida', 'Oliveira4_Ancia']), x, z, K_OLI * random.uniform(0.85, 1.0))
 # mato pelas encostas do monte
 for _ in range(70):
