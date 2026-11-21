@@ -1,13 +1,15 @@
 // Templo: quem está no templo na manhã do domingo.
-//   - no Pátio dos Sacerdotes (onde o jogador não entra): um sacerdote no alto do altar, outro na rampa, outro na pia;
+//   - no Pátio dos Sacerdotes (onde o jogador não entra): um sacerdote no alto do altar, junto ao fogo; outro que traz a
+//     lenha e sobe a rampa; outro que leva a bacia da pia ao pé do altar; outro conversando junto à pia;
 //   - nos quinze degraus da Porta de Nicanor: levitas cantando; na Porta Formosa, um levita de guarda;
-//   - no Pátio de Israel: um homem olhando o santuário;
+//   - no Pátio de Israel: um homem olhando o santuário; um ofertante que traz um cordeiro até a mureta; um pobre com duas rolas;
 //   - no Pátio dos Gentios: os cambistas, o vendedor de pombas, os de ovelhas e de bois, uma vendedora numa barraca, as
 //     ovelhas e os bois nos currais e as pombas nas gaiolas;
 //   - um homem que traz um cordeiro nos braços e outro que traz uma ovelha, da porta do norte até a Porta Formosa;
 //   - no Pórtico de Salomão, um mestre ensinando, com gente em volta (Jo 10.23).
 // Cada um que fala tem a sua conversa (CONVERSAS).
-import { LAY, V3, CIRC, rnd } from './estado.js';
+import * as THREE from 'three';
+import { LAY, V3, CIRC, rnd, scene } from './estado.js';
 import { gOve, gBoi, gPomba1, gPomba2, nSacerdote, nEscriba, nCacheado, nMercador, nAldeao, nBotoes, nMoco, nPastor, nRobusto, nBarbudo, nFaixa, nMagro } from './modelos.js';
 import { terreno } from './cenario.js';
 import { ator, anda } from './gente.js';
@@ -21,10 +23,75 @@ function poe(g, h, x, z, r, clipe, y = null, col = 0.35) {
   return st;
 }
 
-// ---------- os sacerdotes (o holocausto da manhã) ----------
-const sac1 = poe(nSacerdote, 1.78, (a0 + a1) / 2 + 0.9, b1 - 1.4, OLHA.norte, 'Parado', YA, 0);      // no alto, junto à rampa
-const sac2 = poe(nSacerdote, 1.78, -1.5, b1 + 3.4, OLHA.norte, 'Andar', YA - (3.4 / 9) * (YA - N.sacerdotes) - 0.1, 0);
-const sac3 = poe(nSacerdote, 1.78, -6.0, 5.0, OLHA.oeste, 'Conversando', null, 0);      // junto à pia de bronze
+// ---------- o Pátio dos Sacerdotes: o holocausto da manhã ----------
+// Um sacerdote fica no alto do altar, junto ao fogo. Outro traz a lenha da pilha do norte, contorna o altar, sobe a rampa
+// e a lança no fogo ("o sacerdote acenderá lenha nele cada manhã", Lv 6.12), e volta. Outro leva a bacia de bronze da pia
+// até o pé do altar e volta. Um quarto conversa junto à pia.
+const AX = (a0 + a1) / 2, AZ = (b0 + b1) / 2;            // o centro do altar
+const ZR0 = b1 + 9.0, ZR1 = b1;                           // a rampa: do pé (ao sul) até o alto
+function yAltar(x, z, y) {                                // no alto do altar e na rampa, a altura não vem do chão
+  if (Math.abs(x - AX) < 3.7 && Math.abs(z - AZ) < 3.7) return YA;
+  if (Math.abs(x - AX) < 1.7 && z >= ZR1 && z <= ZR0) return N.sacerdotes + (YA - N.sacerdotes) * (ZR0 - z) / (ZR0 - ZR1);
+  return y;
+}
+function leva(st, obj, x, y, z) {                         // um objeto preso ao corpo (na escala do mundo, apesar da escala do ator)
+  const k = 1 / st.o.scale.x; obj.position.set(x * k, y * k, z * k); obj.scale.setScalar(k); st.o.add(obj); return obj;
+}
+const MAT_LENHA = new THREE.MeshStandardMaterial({ color: 0x7a5634, roughness: 1, flatShading: true });
+const MAT_BRONZE = new THREE.MeshStandardMaterial({ color: 0x9a7038, roughness: 0.6, metalness: 0.3, flatShading: true });
+function feixe(n, comp) {                                  // um feixe de toras (no ombro ou na pilha)
+  const g = new THREE.Group();
+  for (let i = 0; i < n; i++) {
+    const c = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, comp, 6), MAT_LENHA);
+    c.rotation.x = Math.PI / 2; c.position.set((i % 3 - 1) * 0.16, Math.floor(i / 3) * 0.14, (rnd() - 0.5) * 0.15); c.castShadow = true; g.add(c);
+  }
+  return g;
+}
+const sac1 = poe(nSacerdote, 1.78, AX + 0.4, AZ + 2.2, OLHA.leste, 'Parado', YA, 0);           // no alto, junto ao fogo
+const sac3 = poe(nSacerdote, 1.78, -5.2, 8.2, OLHA.oeste, 'Conversando', null, 0);               // junto à pia de bronze
+// a pilha de lenha, ao norte do altar
+const PILHA = V3(2.4, 0, -16.5);
+{ const g = feixe(12, 1.3); g.position.set(PILHA.x, terreno(PILHA.x, PILHA.z) + 0.08, PILHA.z); g.rotation.y = Math.PI / 2; scene.add(g); }
+// o que traz a lenha: da pilha, pelo lado leste do altar, até o pé da rampa, sobe e lança no fogo
+const sac2 = poe(nSacerdote, 1.78, PILHA.x - 0.9, PILHA.z + 0.6, 0, 'Parado', null, 0);
+const LENHA_OMBRO = leva(sac2, feixe(3, 1.0), 0.2, 1.42, 0.0);
+const sac4 = poe(nSacerdote, 1.78, -6.0, 5.6, OLHA.norte, 'Parado', null, 0);
+const BACIA = leva(sac4, new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.1, 0.11, 10), MAT_BRONZE), 0.0, 1.02, 0.3);
+const ROTAS_ALTAR = [
+  { st: sac2, vel: 0.8, ini: 4, fim: 3, R: [V3(PILHA.x - 0.9, 0, PILHA.z + 0.6), V3(3.5, 0, -12), V3(3.5, 0, ZR0 + 1.5), V3(AX, 0, ZR0 + 1.5), V3(AX, 0, ZR0), V3(AX, 0, ZR1 - 0.4), V3(AX + 0.9, 0, AZ + 2.4)],
+    aoFim: () => { LENHA_OMBRO.visible = false; }, aoIni: () => { LENHA_OMBRO.visible = true; } },
+  { st: sac4, vel: 0.7, ini: 5, fim: 3, R: [V3(-6.0, 0, 5.6), V3(-6.8, 0, 1.0), V3(-6.8, 0, -0.8)] },
+];
+for (const A of ROTAS_ALTAR) Object.assign(A, { i: 1, ida: true, espera: rnd() * 3 });
+// ---------- no Pátio de Israel: quem traz a oferta até a mureta ----------
+const ofertante = poe(nAldeao, 1.7, 9.2, EIXO - 0.6, OLHA.oeste, 'Parado', null, 0);
+const cordeiro = ator(gOve, 0.62, 10.2, EIXO - 0.6, OLHA.oeste, 'Parado');
+ROTAS_ALTAR.push(Object.assign({ st: ofertante, vel: 0.75, ini: 8, fim: 6, R: [V3(9.2, 0, EIXO - 0.6), V3(6.5, 0, EIXO - 1.8), V3(4.75, 0, EIXO - 2.9)] }, { i: 1, ida: true, espera: 2 }));
+CONVERSAS.push({ nome: 'Um ofertante', o: ofertante.o, r: 2.2, falas: [
+  'É um cordeiro sem defeito, de um ano (Êx 12.5). Vou entregá-lo ao sacerdote, ali na mureta; daqui para lá, só eles.',
+  'Todos os dias, de manhã e à tarde, um cordeiro é oferecido aqui por todo o povo: é o holocausto contínuo (Êx 29.38-42).',
+] });
+const pobre = poe(nMagro, 1.72, 4.75, EIXO - 6.0, OLHA.oeste, 'Parado');
+leva(pobre, new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.14, 0.2, 8), new THREE.MeshStandardMaterial({ color: 0xc2a36c, roughness: 1, flatShading: true })), 0.0, 0.95, 0.28);
+CONVERSAS.push({ nome: 'Um homem com duas rolas', o: pobre.o, r: 2.2, falas: [
+  'Trouxe duas rolas. Quem não pode dar um cordeiro dá duas rolas ou dois pombinhos: a Lei pensou nos pobres (Lv 5.7; 12.8).',
+  'Entrego daqui da mureta. O sacerdote leva ao altar por mim.',
+] });
+function altarPasso(dt) {
+  for (const A of ROTAS_ALTAR) {
+    if (A.espera > 0) { A.espera -= dt; A.st.toca('Parado'); }
+    else if (anda(A.st, A.R[A.i], dt, A.vel)) {
+      if (A.ida) { if (A.i < A.R.length - 1) A.i++; else { A.ida = false; A.espera = A.fim; if (A.aoFim) A.aoFim(); } }
+      else { if (A.i > 0) A.i--; else { A.ida = true; A.espera = A.ini; if (A.aoIni) A.aoIni(); } }
+    }
+    const p = A.st.o.position; p.y = yAltar(p.x, p.z, p.y);
+  }
+  // o cordeiro vai atrás do ofertante
+  const atr = ofertante.o.position.clone().add(V3(-Math.sin(ofertante.o.rotation.y) * 1.1, 0, -Math.cos(ofertante.o.rotation.y) * 1.1));
+  const dC = cordeiro.o.position.distanceTo(atr);
+  if (dC > 0.5) cordeiro.segue = true; else if (dC < 0.12) cordeiro.segue = false;
+  if (cordeiro.segue) anda(cordeiro, atr, dt, 0.9); else cordeiro.toca('Parado');
+}
 // ---------- os levitas nos degraus, de frente para o Pátio das Mulheres; o guarda da Porta Formosa ----------
 const [nx] = [LAY.x_nic];
 // nos lados dos degraus: o meio fica livre para passar
@@ -135,6 +202,7 @@ coisa('a Fortaleza Antônia', LAY.norte[0] - 6, LAY.norte[2] + 2.5, [
 ], 2.8, 'olhar a fortaleza');
 
 function npcsPasso(dt) {
+  altarPasso(dt);
   for (const o of [...ovelhas, ...bois]) {
     if (o.espera > 0) { o.espera -= dt; continue; }
     const a = o.area; if (!o.alvo) o.alvo = V3(a.cx + (rnd() * 2 - 1) * a.rx, 0, a.cz + (rnd() * 2 - 1) * a.rz);
@@ -154,4 +222,4 @@ function npcsPasso(dt) {
   if (ovelhaP.segue) anda(ovelhaP, atras, dt, 1.2); else ovelhaP.toca('Parado');
 }
 
-export { CONVERSAS, npcsPasso, sac1, sac2, sac3, levitas, cambistas, ovelhas, bois, pombas, romeiro };
+export { CONVERSAS, npcsPasso, sac1, sac2, sac3, sac4, ofertante, pobre, levitas, cambistas, ovelhas, bois, pombas, romeiro };

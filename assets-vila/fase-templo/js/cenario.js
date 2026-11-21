@@ -13,6 +13,7 @@ import { gCen, gJer, KIT } from './modelos.js';
 let CHAO = null;
 const OCL = [];
 const FOGO = [];        // as línguas e os cartões do fogo do altar (sobem, balançam, mudam de altura)
+const AGUA = [];        // o material da água da pia: a textura corre devagar
 gCen.scene.traverse((o) => {
   if (!o.isMesh) return;
   if (o.name.startsWith('Templo_Chao')) { CHAO = o; o.receiveShadow = true; return; }        // as lajes (textura) vezes a cor de vértice
@@ -25,6 +26,7 @@ gCen.scene.traverse((o) => {
     o.material = new THREE.MeshBasicMaterial({ map: o.material.map, alphaTest: 0.5, side: THREE.DoubleSide }); o.castShadow = o.receiveShadow = false;
     FOGO.push({ o, f: Math.random() * 6.28 }); return;
   }
+  if (o.material && o.material.name === 'Templo_agua') { AGUA.push(o.material); o.castShadow = false; o.receiveShadow = true; return; }   // a água da pia
   o.castShadow = true; o.receiveShadow = true;
   const k = Object.keys(LAY.oclusores).find((n) => o.name === n || o.name.startsWith(n + '_') || o.name.startsWith(n + '.'));
   if (k) { o.material = o.material.clone(); OCL.push({ o, r: LAY.oclusores[k], op: 1 }); }
@@ -76,6 +78,7 @@ const FUMACA = (() => {
   let T = 0;
   return (dt) => {
     T += dt;
+    for (const m of AGUA) if (m.map) { m.map.offset.set(Math.sin(T * 0.15) * 0.04 + T * 0.006, Math.cos(T * 0.12) * 0.03); }
     for (const { o, f } of FOGO) {          // cada língua de fogo sobe e desce no seu ritmo, e balança um pouco
       const s = 1 + 0.16 * Math.sin(T * 5.3 + f) + 0.07 * Math.sin(T * 11.7 + f * 2.1);
       o.scale.set(1 + 0.08 * Math.sin(T * 7.1 + f), s, 1 + 0.08 * Math.cos(T * 6.3 + f));

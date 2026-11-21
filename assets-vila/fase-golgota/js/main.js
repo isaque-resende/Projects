@@ -81,7 +81,8 @@ function emConstrucao(texto, i) {
   setTimeout(() => { recua(i); fade.style.opacity = 0; setTimeout(() => { fade.textContent = ''; E.fora = false; }, 900); }, 2600);
 }
 function sair(texto, url) { E.fora = true; fade.textContent = texto; fade.style.opacity = 1; setTimeout(() => { location.href = url; }, 1200); }
-function perguntaCidade() { dialogo('', 'Deseja voltar para a cidade, pela Porta de Genat?', [['Ainda não', () => recua(12), '#a8957a'], ['Sim', () => sair('De volta à cidade, pela Porta de Genat…', '../fase-cidade/?de=genat')]]); }
+// a ponta sudeste da estrada: volta para a cidade alta (Porta de Genat) ou, por fora do muro do norte, para Betesda (de onde também se chega aqui)
+function perguntaCidade() { dialogo('', 'Voltar para a cidade, pela Porta de Genat, ou seguir por fora do muro até Betesda?', [['Ainda não', () => recua(12), '#a8957a'], ['Betesda', () => sair('Para Betesda, ao longo do muro do norte…', '../fase-betesda/?de=golgota')], ['Porta de Genat', () => sair('De volta à cidade, pela Porta de Genat…', '../fase-cidade/?de=genat')]]); }
 function perguntaEmaus() { dialogo('', 'Deseja seguir pela estrada de Emaús?', [['Ainda não', () => recua(AMOS.length - 14), '#a8957a'], ['Sim', () => emConstrucao('A estrada de Emaús é a próxima parte do caminho (em construção).', AMOS.length - 14)]]); }
 
 // ---------- chegada ----------
@@ -141,7 +142,7 @@ const laco = (forca) => {
   E.emaus = i >= AMOS.length - 5 && d < 4;
   if ((E.cidade || E.emaus) && !E.fora && !E.perguntou) { E.perguntou = true; (E.cidade ? perguntaCidade : perguntaEmaus)(); }
   if (!E.cidade && !E.emaus) E.perguntou = false;
-  const txt = quem && !E.fora ? (quem.verbo || 'conversar com ' + quem.nome) : OL.perto && !E.fora ? 'abaixar-se e olhar dentro' : E.emaus ? 'seguir para Emaús' : E.cidade ? 'voltar para a cidade' : '';
+  const txt = quem && !E.fora ? (quem.verbo || 'conversar com ' + quem.nome) : OL.perto && !E.fora ? 'abaixar-se e olhar dentro' : E.emaus ? 'seguir para Emaús' : E.cidade ? 'voltar (cidade ou Betesda)' : '';
   if (txt) textoBotao((toqueTela ? '' : 'E: ') + txt);
   botao.style.display = txt && !E.fora ? 'block' : 'none';
   ctl.marcaPino(botao.style.display === 'block' ? (OL.perto ? 'olhar' : 'ir') : '');

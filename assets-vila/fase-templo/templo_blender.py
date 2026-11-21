@@ -102,7 +102,7 @@ TEXS = {'muro': ('muro_herodiano_v3.webp', 1024, 13.0), 'branco': ('muro_herodia
         'bronze': ('bronze_v1.webp', 512, 2.5), 'tabua': ('tabuas_v1.webp', 512, 2.0), 'vime': ('vime_v1.webp', 512, 1.0),
         'capitel': ('capitel_v1.webp', 512, 1.0), 'friso': ('friso_ouro_v1.webp', 512, 1.0), 'barra': ('barra_cortina_v1.webp', 512, 1.0),
         'folha': ('folha_videira_v1.webp', 512, 1.0), 'uvas': ('uvas_ouro_v1.webp', 512, 1.0), 'trelica': ('balaustrada_v1.webp', 1024, 1.3),
-        'placa': ('placa_v1.webp', 1024, 1.0)}
+        'placa': ('placa_v1.webp', 1024, 1.0), 'agua': ('agua_v1.png', 512, 1.6)}
 RECORTE = ('chama', 'folha', 'uvas', 'trelica')          # com transparência (o fundo branco sai)
 TILE = {k: v[2] for k, v in TEXS.items()}
 IMGS = {}
@@ -737,7 +737,7 @@ for k in range(NB):
     al.face([A1[k], A1[k2], A2[k2], A2[k]], 'bronze', BZ)                           # a borda
     al.face([A2[k], A2[k2], A3[k2], A3[k]], 'bronze', mulc(BZ, (0.8, 0.8, 0.8)))    # por dentro
 al.face(anel(1.3, Y_SAC + 1.0)[::-1], 'bronze', BZ)                                  # o fundo de fora
-al.face(anel(1.31, Y_SAC + 1.45), 'liso', (0.42, 0.62, 0.66))                        # a água
+al.face(anel(1.31, Y_SAC + 1.45), 'agua', (1.0, 1.0, 1.0), None, None, False)        # a água (no jogo, a textura corre devagar)
 for k in range(12):
     a_ = 2 * math.pi * (k + 0.5) / 12; d_ = Vector((math.cos(a_), math.sin(a_), 0.0))
     p0 = CP + d_ * 1.36 + Vector((0, 0, Y_SAC + 1.22)); p1 = CP + d_ * 1.62 + Vector((0, 0, Y_SAC + 1.18))
