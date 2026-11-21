@@ -12,9 +12,19 @@ import { gCen, gJer, KIT } from './modelos.js';
 // ---------- o cenário ----------
 let CHAO = null;
 const OCL = [];
+const FOGO = [];        // as línguas e os cartões do fogo do altar (sobem, balançam, mudam de altura)
 gCen.scene.traverse((o) => {
   if (!o.isMesh) return;
-  if (o.name.startsWith('Templo_Chao')) { o.material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 }); CHAO = o; o.receiveShadow = true; return; }
+  if (o.name.startsWith('Templo_Chao')) { CHAO = o; o.receiveShadow = true; return; }        // as lajes (textura) vezes a cor de vértice
+  if (o.name.startsWith('Altar_Fogo') || o.name.startsWith('Altar_Brasas')) {               // o fogo não recebe luz nem faz sombra
+    o.material = new THREE.MeshBasicMaterial({ vertexColors: true }); o.castShadow = o.receiveShadow = false;
+    if (o.name.startsWith('Altar_Fogo')) FOGO.push({ o, f: Math.random() * 6.28 });
+    return;
+  }
+  if (o.name.startsWith('Altar_Chama')) {
+    o.material = new THREE.MeshBasicMaterial({ map: o.material.map, alphaTest: 0.5, side: THREE.DoubleSide }); o.castShadow = o.receiveShadow = false;
+    FOGO.push({ o, f: Math.random() * 6.28 }); return;
+  }
   o.castShadow = true; o.receiveShadow = true;
   const k = Object.keys(LAY.oclusores).find((n) => o.name === n || o.name.startsWith(n + '_') || o.name.startsWith(n + '.'));
   if (k) { o.material = o.material.clone(); OCL.push({ o, r: LAY.oclusores[k], op: 1 }); }
@@ -63,7 +73,14 @@ const FUMACA = (() => {
     s.userData.t = i / N; s.userData.dx = (Math.random() - 0.5) * 1.2; s.userData.dz = (Math.random() - 0.5) * 1.2; scene.add(s); P.push(s);
   }
   const VENTO = V3(-0.35, 0, 0.12);         // a brisa da manhã leva a fumaça para oeste
+  let T = 0;
   return (dt) => {
+    T += dt;
+    for (const { o, f } of FOGO) {          // cada língua de fogo sobe e desce no seu ritmo, e balança um pouco
+      const s = 1 + 0.16 * Math.sin(T * 5.3 + f) + 0.07 * Math.sin(T * 11.7 + f * 2.1);
+      o.scale.set(1 + 0.08 * Math.sin(T * 7.1 + f), s, 1 + 0.08 * Math.cos(T * 6.3 + f));
+      o.rotation.z = 0.07 * Math.sin(T * 3.1 + f); o.rotation.x = 0.05 * Math.cos(T * 2.7 + f);
+    }
     for (const s of P) {
       const u = (s.userData.t = (s.userData.t + dt / 9) % 1);
       const sobe = u * 14, larg = 0.8 + u * 4.5;

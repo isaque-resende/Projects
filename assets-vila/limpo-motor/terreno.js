@@ -4,12 +4,12 @@ import * as THREE from 'three';
 // Junta os vértices repetidos e mistura as cores entre eles: o chão deixa de ter faces chapadas.
 // verdeia: deixa a grama um pouco mais viva (usado em Betfagé).
 export function suaviza(mesh, verdeia = false) {
-  const g0 = mesh.geometry, pos = g0.attributes.position, col = g0.attributes.color, idx = g0.index;
-  const mapa = new Map(), P = [], C = [], N = [], I = [], n = idx ? idx.count : pos.count;
+  const g0 = mesh.geometry, pos = g0.attributes.position, col = g0.attributes.color, uv = g0.attributes.uv, idx = g0.index;
+  const mapa = new Map(), P = [], C = [], N = [], I = [], U = [], n = idx ? idx.count : pos.count;      // U: a UV (se a malha tem textura, como o chão do templo)
   for (let t = 0; t < n; t++) {
     const v = idx ? idx.getX(t) : t, x = pos.getX(v), y = pos.getY(v), z = pos.getZ(v), k = Math.round(x * 50) + '_' + Math.round(z * 50) + '_' + Math.round(y * 50);
     let j = mapa.get(k);
-    if (j === undefined) { j = P.length / 3; mapa.set(k, j); P.push(x, y, z); C.push(0, 0, 0); N.push(0); }
+    if (j === undefined) { j = P.length / 3; mapa.set(k, j); P.push(x, y, z); C.push(0, 0, 0); N.push(0); if (uv) U.push(uv.getX(v), uv.getY(v)); }
     if (col) { C[j * 3] += col.getX(v); C[j * 3 + 1] += col.getY(v); C[j * 3 + 2] += col.getZ(v); N[j]++; }
     I.push(j);
   }
@@ -20,6 +20,7 @@ export function suaviza(mesh, verdeia = false) {
   }
   const g1 = new THREE.BufferGeometry();
   g1.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g1.setAttribute('color', new THREE.Float32BufferAttribute(C, 3)); g1.setIndex(I);
+  if (uv) g1.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2));
   g1.computeVertexNormals(); mesh.geometry = g1;
 }
 

@@ -22,9 +22,9 @@ function poe(g, h, x, z, r, clipe, y = null, col = 0.35) {
 }
 
 // ---------- os sacerdotes (o holocausto da manhã) ----------
-const sac1 = poe(nSacerdote, 1.78, a0 + 1.0, b1 - 0.7, OLHA.norte, 'Parado', YA, 0);
+const sac1 = poe(nSacerdote, 1.78, (a0 + a1) / 2 + 0.9, b1 - 1.4, OLHA.norte, 'Parado', YA, 0);      // no alto, junto à rampa
 const sac2 = poe(nSacerdote, 1.78, -1.5, b1 + 3.4, OLHA.norte, 'Andar', YA - (3.4 / 9) * (YA - N.sacerdotes) - 0.1, 0);
-const sac3 = poe(nSacerdote, 1.78, -9.0, 3.8, OLHA.norte, 'Conversando', null, 0);
+const sac3 = poe(nSacerdote, 1.78, -6.0, 5.0, OLHA.oeste, 'Conversando', null, 0);      // junto à pia de bronze
 // ---------- os levitas nos degraus, de frente para o Pátio das Mulheres; o guarda da Porta Formosa ----------
 const [nx] = [LAY.x_nic];
 // nos lados dos degraus: o meio fica livre para passar
