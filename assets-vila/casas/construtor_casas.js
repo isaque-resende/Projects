@@ -128,6 +128,15 @@ export async function carregarKit(url, texDir = 'tex/') {
     });
     pecas[no.name] = porMat;
   }
+  // versão leve das paredes rebocadas (casa.leve, para a cidade): sem as duas fiadas de pedras 3D da base (o shader já
+  // pinta a base de pedra) e, nas paredes sem vão, sem as manchas de pedra; ficam batentes, vergas, peitoris e janelas
+  for (const n of Object.keys(pecas)) {
+    if (!/^Parede_/.test(n) || !pecas[n].Casa_Atlas) continue;
+    const liso = /^Parede_\d$/.test(n), leve = { ...pecas[n] };
+    if (liso) delete leve.Casa_Atlas;
+    else leve.Casa_Atlas = semPedrasDaBase(pecas[n].Casa_Atlas);
+    pecas[n + '_Leve'] = leve;
+  }
   const atl = atlas.clone(); atl.vertexColors = true;
   // pedras (metade de cima do atlas = folhas de pedras): mais claras e levemente acinzentadas,
   // e com restos de reboco por cima, que se desfazem aos poucos e revelam a pedra
@@ -153,6 +162,28 @@ export async function carregarKit(url, texDir = 'tex/') {
   atl.customProgramCacheKey = () => 'casa_atlas_pedras';
   const materiais = { Casa_Alvenaria: materialMundo('alvenaria', tex), Casa_Teto: materialMundo('teto', tex), Casa_Atlas: atl };
   return { pecas, materiais, tex };
+}
+// tira de uma geometria (indexada ou não) as peças soltas (pedras) que ficam na base da parede (até 0,78 m e rentes à
+// face) e as travessas finas das folhas da janela
+function semPedrasDaBase(g) {
+  const idx = g.index ? g.index.array : null, P = g.attributes.position, nt = (idx ? idx.length : P.count) / 3;
+  const vi = (t, c) => (idx ? idx[t * 3 + c] : t * 3 + c);
+  const par = new Int32Array(nt).map((_, i) => i), f = (i) => { while (par[i] !== i) i = par[i] = par[par[i]]; return i; }, vt = new Map();
+  const key = (v) => P.getX(v).toFixed(3) + ',' + P.getY(v).toFixed(3) + ',' + P.getZ(v).toFixed(3);
+  for (let t = 0; t < nt; t++) for (let c = 0; c < 3; c++) { const k = key(vi(t, c)); if (vt.has(k)) par[f(t)] = f(vt.get(k)); else vt.set(k, t); }
+  const bb = new Map();
+  for (let t = 0; t < nt; t++) {
+    const r = f(t); let b = bb.get(r); if (!b) bb.set(r, b = [1e9, -1e9, 1e9, -1e9]);
+    for (let c = 0; c < 3; c++) { const v = vi(t, c), y = P.getY(v), z = P.getZ(v); b[0] = Math.min(b[0], y); b[1] = Math.max(b[1], y); b[2] = Math.min(b[2], z); b[3] = Math.max(b[3], z); }
+  }
+  const fica = []; for (let t = 0; t < nt; t++) { const b = bb.get(f(t)); if (!(b[1] <= 0.78 && b[2] >= 0.0 && b[3] <= 0.27) && !(b[1] - b[0] < 0.08 && b[2] > 0.2)) fica.push(t); }
+  const s = g.toNonIndexed(), out = new THREE.BufferGeometry();
+  for (const [nome, a] of Object.entries(s.attributes)) {
+    const k = a.itemSize, arr = new a.array.constructor(fica.length * 3 * k);
+    fica.forEach((t, j) => arr.set(a.array.subarray(t * 3 * k, (t + 1) * 3 * k), j * 3 * k));
+    out.setAttribute(nome, new THREE.BufferAttribute(arr, k, a.normalized));
+  }
+  return out;
 }
 function toFloat(g) {
   for (const name of Object.keys(g.attributes)) {
@@ -190,6 +221,7 @@ class Montador {
       const sub = new THREE.Group(); sub.name = 'casas_' + nome;
       for (const [mn, lista] of Object.entries(porMat)) {
         if (!lista.length) continue;
+        if (lista.some((g) => !g.index)) for (let i = 0; i < lista.length; i++) if (lista[i].index) lista[i] = lista[i].toNonIndexed();
         const mesh = new THREE.Mesh(mergeGeometries(lista, false), this.kit.materiais[mn]);
         mesh.castShadow = true; mesh.receiveShadow = true; sub.add(mesh);
       }
@@ -315,6 +347,7 @@ function construir(kit, mapa, casas, rnd) {
           }
           pilar(no, a.nivel, 'Pilar', casa);
         }
+        if (casa.leve && kit.pecas[nome + '_Leve']) nome += '_Leve';
         M.naAresta(nome, a.lado, no, a.nivel, 0, 0, a.tipo === 'muro' ? 'base' : camada, a.tipo === 'muro' ? null : casa.tom, casa.parede);
         // pedrinhas soltas no pé das paredes de fora (não na frente da porta nem do lado da escada)
         const ladoEscada = casa.escada && casa.escada.lado === a.lado;
@@ -431,6 +464,8 @@ export function casaCidade(kit, semente, w, d, y0 = 0) {
     g.traverse((o) => { if (o.isMesh && o.material === kit.materiais.Casa_Alvenaria) o.material = mat; });
     g.traverse((o) => { if (o.isMesh && o.geometry.attributes.parede) { const a = o.geometry.attributes.parede; for (let i = 0; i < a.count; i++) a.setZ(i, a.getZ(i) + y0); } });
   }
+  // as peças miúdas do atlas (batentes, vergas, toldo...) não fazem sombra: corta a passada de sombra pela metade
+  g.traverse((o) => { if (o.isMesh && o.material === kit.materiais.Casa_Atlas) o.castShadow = false; });
   g.userData.tamanho = [w, d]; g.userData.andares = dois || cima ? 2 : 1;
   return g;
 }

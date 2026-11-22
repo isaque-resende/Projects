@@ -8,7 +8,8 @@ import { instanciaLonge, poePertos } from '../../limpo-motor/layout.js';
 import { suaviza, mapaAltura } from '../../limpo-motor/terreno.js';
 import { scene, LAY, V3 } from './estado.js';
 import { gCen, gJer, KIT } from './modelos.js';
-import { carregarKit, casaCidade, materialAlvenaria } from '../../casas/construtor_casas.js';
+import { carregarKit, casaCidade, materialAlvenaria } from '../../casas/construtor_casas.js?v=99d5c594';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 // ---------- o cenário ----------
 let CHAO = null;
@@ -57,6 +58,23 @@ const hash = (a, b) => { const s = Math.sin(a * 127.1 + b * 311.7) * 43758.5453;
     g.setAttribute('parede', new THREE.BufferAttribute(par, 3)); g.setAttribute('aCodigo', new THREE.BufferAttribute(new Float32Array(n), 1));
     o.material = copiaM(alv);
   });
+  // os ~170 blocos viram poucos objetos (um por material; os que somem na frente da câmera, um por retângulo):
+  // cada objeto é uma chamada de desenho, e no celular isso pesava mais que os triângulos
+  const grupos = new Map(), ocl = new Map(OCL.map((t) => [t.o, t]));
+  gCen.scene.traverse((o) => {
+    if (!o.isMesh || !/^Bloco_/.test(o.name)) return;
+    const t = ocl.get(o), tipo = o.material.customProgramCacheKey ? o.material.customProgramCacheKey() : o.material.name;
+    const k = (t ? JSON.stringify(t.r) : 'fundo') + '|' + tipo + '|' + Object.keys(o.geometry.attributes).sort().join(',') + '|' + !!o.geometry.index;
+    if (!grupos.has(k)) grupos.set(k, { t, l: [] }); grupos.get(k).l.push(o);
+  });
+  for (const { t, l } of grupos.values()) {
+    if (l.length < 2) continue;
+    const g = mergeGeometries(l.map((o) => o.geometry.clone().applyMatrix4(o.matrixWorld)), false);
+    if (!g) continue;
+    const m = new THREE.Mesh(g, l[0].material); m.name = l[0].name + '_junto'; m.castShadow = m.receiveShadow = true;
+    for (const o of l) { o.parent.remove(o); const i = OCL.findIndex((x) => x.o === o); if (i >= 0) OCL.splice(i, 1); }
+    scene.add(m); if (t) OCL.push({ o: m, r: t.r, op: 1 });
+  }
 }
 function caixaPedra(x0, x1, y0, y1, z0, z1, mat) {
   const g = new THREE.BoxGeometry(x1 - x0, y1 - y0, z1 - z0).toNonIndexed(); g.translate((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
