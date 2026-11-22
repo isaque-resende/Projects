@@ -55,10 +55,10 @@ vec3 macro(vec3 w){
   return vec3(0.9 + 0.16 * a + 0.05 * b, 0.9 + 0.13 * a + 0.04 * b, 0.9 + 0.1 * a);
 }
 `;
-function materialMundo(tipo, tex) {
+function materialMundo(tipo, tex, y0 = 0) {
   const m = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.95, metalness: 0 });
   m.onBeforeCompile = (sh) => {
-    Object.assign(sh.uniforms, { tReboco: { value: tex.reboco }, tPedra: { value: tex.pedra }, tCantaria: { value: tex.cantaria }, tTeto: { value: tex.teto } });
+    Object.assign(sh.uniforms, { tReboco: { value: tex.reboco }, tPedra: { value: tex.pedra }, tCantaria: { value: tex.cantaria }, tTeto: { value: tex.teto }, uY0: { value: y0 } });
     sh.vertexShader = 'attribute vec3 parede; attribute float aCodigo; varying vec3 vParede; varying float vCodigo; varying vec3 vWPos;\n' +
       sh.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>\n vWPos = (modelMatrix * vec4(transformed, 1.0)).xyz; vParede = parede; vCodigo = aCodigo;');
     const corpo = tipo === 'alvenaria' ? `
@@ -83,7 +83,7 @@ function materialMundo(tipo, tex) {
       float pinc = dot(semRep(tPedra, p / 2.2), vec3(0.333));
       col = mix(col, vec3(1.0, 0.92, 0.8) * (0.62 + 0.18 * grao + 0.22 * pinc), bloco);
       // por andar: sombra suave sob o beiral e escorridos de sujeira descendo do topo (só por fora)
-      float t = mod(vWPos.y, 2.8);
+      float t = mod(vWPos.y - uY0, 2.8);
       float fora = step(vCodigo, 0.5) * (1.0 - bloco);
       float beiral = smoothstep(2.35, 2.78, t) * 0.22 * fora;
       float esc = smoothstep(0.62, 0.92, vnoise(vec2(p.x * 2.3, floor(vWPos.y / 2.8) * 5.0))) * smoothstep(0.9, 2.6, t) * 0.16 * fora;
@@ -93,7 +93,7 @@ function materialMundo(tipo, tex) {
       vec3 nW = normalize(cross(dFdx(vWPos), dFdy(vWPos)));
       vec2 p = planar(vWPos, nW);
       diffuseColor.rgb *= semRep(tTeto, p / 2.6) * macro(vWPos);`;
-    sh.fragmentShader = 'uniform sampler2D tReboco, tPedra, tCantaria, tTeto; varying vec3 vParede; varying float vCodigo; varying vec3 vWPos;\n' + GLSL_NOISE +
+    sh.fragmentShader = 'uniform float uY0; uniform sampler2D tReboco, tPedra, tCantaria, tTeto; varying vec3 vParede; varying float vCodigo; varying vec3 vWPos;\n' + GLSL_NOISE +
       sh.fragmentShader.replace('#include <map_fragment>', corpo);
   };
   m.customProgramCacheKey = () => 'casa_' + tipo;
@@ -318,7 +318,7 @@ function construir(kit, mapa, casas, rnd) {
         M.naAresta(nome, a.lado, no, a.nivel, 0, 0, a.tipo === 'muro' ? 'base' : camada, a.tipo === 'muro' ? null : casa.tom, casa.parede);
         // pedrinhas soltas no pé das paredes de fora (não na frente da porta nem do lado da escada)
         const ladoEscada = casa.escada && casa.escada.lado === a.lado;
-        if (a.tipo === 'ext' && a.nivel === 0 && !nome.endsWith('_Porta') && !ladoEscada) {
+        if (a.tipo === 'ext' && a.nivel === 0 && !nome.endsWith('_Porta') && !ladoEscada && !casa.leve) {
           // calçada de pedras chatas encostada na parede, e às vezes um montinho de pedrinhas
           for (let q = 0; q < n; q++) if (rnd() < 0.55) M.naAresta('Calcada_' + (1 + Math.floor(rnd() * 3)), a.lado, no, 0, q, 0, 'base');
           if (rnd() < 0.2) M.naAresta('Pedrisco_' + (1 + Math.floor(rnd() * 3)), a.lado, no, 0, 0.3 + rnd() * (n - 0.6), 1.1, 'base');
@@ -337,7 +337,7 @@ function construir(kit, mapa, casas, rnd) {
     const quad = [[0, -1], [-1, -1], [-1, 0], [0, 0]].filter(([dx, dz]) => ocup(cel(no[0] + dx, no[1] + dz), nivel));
     if (quad.length !== 1) continue;
     const dono = casas.get(cel(no[0] + quad[0][0], no[1] + quad[0][1]).casa);
-    if (dono.parede[0] < 0.3) continue;
+    if (dono.parede[0] < 0.3 || dono.leve) continue;
     M.por('Cunhal', no[0], nivel * H, no[1], giro[quad[0].join(',')], nivel > 0 ? 'cima' : 'base', dono.tom, 1, dono.parede);
   }
   for (const k of semPilar) { const pp = pilares.get(k); if (pp && pp[0] === 'Pilar_Mureta') pilares.delete(k); }
@@ -403,6 +403,36 @@ export function casaAleatoria(kit, semente) {
   M.por('Cama_Esteira', 0.4, 0, 2.2, 0);
   M.por('Jarro_Grande', w - 0.6, 0, d - 0.6, 0);
   return M.grupo();
+}
+
+// ------------------------------------------------------------------ casa da cidade (lote dado, porta no lado S)
+// Para a cidade alta: casa rebocada (ou de reboco gasto), de um andar com quarto em cima ou de dois andares,
+// sem calçada/pedrisco nem cunhal (leve para o celular), com toldo ou varal no terraço. y0: altura do piso no
+// mundo (a base de pedra e a sombra do beiral acompanham). Devolve o grupo com a origem no canto (0, 0, 0) do lote.
+export function materialAlvenaria(kit, y0 = 0) { return materialMundo('alvenaria', kit.tex, y0); }
+export function casaCidade(kit, semente, w, d, y0 = 0) {
+  let s = (semente % 2147483646) + 1; const rnd = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
+  const mapa = new Map();
+  const dois = rnd() < 0.4, cima = !dois && rnd() < 0.65;
+  const cw = Math.min(w - 2, 2 + Math.floor(rnd() * 2)), cd = 2;
+  for (let i = 0; i < w; i++) for (let k = 0; k < d; k++) mapa.set(i + ',' + k, { casa: 1, andares: dois ? 2 : cima && i >= w - cw && k < cd ? 2 : 1 });
+  const casa = { parede: rnd() < 0.7 ? VARIANTES.Rebocada(rnd) : VARIANTES.Gasta(rnd), tom: tomDaCasa(rnd), portas: [], leve: true };
+  const pi = Math.max(0, Math.min(w - 2, Math.floor(w / 2) - 1 + (rnd() < 0.5 ? 0 : -1)));
+  casa.portas.push({ nivel: 0, lado: 'S', i: pi, k: d - 1 });
+  if (cima) { casa.portas.push({ nivel: 1, lado: 'W', i: w - cw, k: 0 }); casa.escadaMao = { lado: 'N', i: 0, k: 0 }; }
+  const M = construir(kit, mapa, new Map([[1, casa]]), rnd);
+  const y = (dois ? 2 : 1) * H + 0.2, r2 = rnd();
+  if (r2 < 0.45) M.por(['Toldo', 'Toldo_Vermelho', 'Toldo_Azul', 'Toldo_Ocre'][Math.floor(rnd() * 4)], 0.5, y - 0.2, d - 0.5, 0, 'cima', null, 0.8);
+  else if (r2 < 0.75) M.por('Varal', 0.5, y - 0.2, cima ? d - 1.2 : 1.5, 0, 'cima', null, Math.min(1, (w - 1) / 2.4));
+  else M.por('Jarro_Grande', 0.6, y - 0.2, 0.6, 0, 'cima', casa.tom);
+  const g = M.grupo();
+  if (y0) {
+    const mat = materialMundo('alvenaria', kit.tex, y0);
+    g.traverse((o) => { if (o.isMesh && o.material === kit.materiais.Casa_Alvenaria) o.material = mat; });
+    g.traverse((o) => { if (o.isMesh && o.geometry.attributes.parede) { const a = o.geometry.attributes.parede; for (let i = 0; i < a.count; i++) a.setZ(i, a.getZ(i) + y0); } });
+  }
+  g.userData.tamanho = [w, d]; g.userData.andares = dois || cima ? 2 : 1;
+  return g;
 }
 
 // ------------------------------------------------------------------ quarteirão de fundo (casas geminadas)

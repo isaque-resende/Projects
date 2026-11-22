@@ -440,12 +440,33 @@ PRONTAS, USO = [], {m[1]: 0 for m in MODELOS}
 GIRO = {'s': 0.0, 'n': math.pi, 'l': math.pi / 2, 'o': -math.pi / 2}
 
 
+LOTES = []
 def casa_pronta(x0, x1, z0, z1):
-    """se o lote dá de frente para a rua, põe ali uma casa pronta (a que couber e foi menos usada)"""
-    if len(PRONTAS) >= 16: return False
+    """lote de frente para a rua: fica vazio aqui; o jogo monta nele uma casa do kit de Betânia antiga
+    (casas/construtor_casas.js, casaCidade), com a porta para a rua"""
+    if len(LOTES) >= 22: return False
     lados = [((x0 + x1) / 2, z0 - 0.6, 'n'), ((x0 + x1) / 2, z1 + 0.6, 's'), (x0 - 0.6, (z0 + z1) / 2, 'o'), (x1 + 0.6, (z0 + z1) / 2, 'l')]
     px_, pz_, ld = min(lados, key=lambda t: dist_rua(t[0], t[1]))
     if dist_rua(px_, pz_) > 3.5: return False
+    fx, fz = x1 - x0, z1 - z0; w, d = (fx, fz) if ld in 'ns' else (fz, fx)
+    w, d = min(7, int(w)), min(7, int(d))
+    if w < 4 or d < 4: return False
+    lx, lz = (w, d) if ld in 'ns' else (d, w)
+    cx, cz = (x0 + x1) / 2, (z0 + z1) / 2
+    if ld == 's': cz = z1 - lz / 2
+    elif ld == 'n': cz = z0 + lz / 2
+    elif ld == 'l': cx = x1 - lx / 2
+    else: cx = x0 + lx / 2
+    pp = {'s': (cx, cz + lz / 2 + 0.4), 'n': (cx, cz - lz / 2 - 0.4), 'l': (cx + lx / 2 + 0.4, cz), 'o': (cx - lx / 2 - 0.4, cz)}[ld]
+    yp = altura(*pp); ym = sum(altura(cx + sx * lx / 2, cz + sz * lz / 2) for sx in (-1, 1) for sz in (-1, 1)) / 4
+    LOTES.append({'c': [round(cx, 3), round(cz, 3)], 'w': w, 'd': d, 'giro': round(GIRO[ld], 4), 'y': round(max(ym, yp - 0.1), 3), 'yp': round(yp, 3), 's': random.randint(1, 99999)})
+    bloqueia(cx - lx / 2 - 0.1, cx + lx / 2 + 0.1, cz - lz / 2 - 0.1, cz + lz / 2 + 0.1)
+    return True
+
+
+def casa_pronta_antiga(x0, x1, z0, z1):
+    lados = [((x0 + x1) / 2, z0 - 0.6, 'n'), ((x0 + x1) / 2, z1 + 0.6, 's'), (x0 - 0.6, (z0 + z1) / 2, 'o'), (x1 + 0.6, (z0 + z1) / 2, 'l')]
+    px_, pz_, ld = min(lados, key=lambda t: dist_rua(t[0], t[1]))
     op = []
     for arq, no, w, d, kmax in MODELOS:
         fx, fz = (w, d) if ld in 'ns' else (d, w)
@@ -609,8 +630,7 @@ def empty_ref(nome, x, z, y=None, r=0.0, tipo='SINGLE_ARROW', tam=1.5):
     return e
 
 
-for arq, no, cx, cz, r, k, y in PRONTAS: poe(arq, no, cx, cz, r, k, y=y)
-print('PRONTAS', len(PRONTAS), USO)
+print('LOTES do kit', len(LOTES))
 x0, x1, z0, z1 = MERCADO
 for i, no in enumerate(('Barraca3', 'Barraca7', 'Barraca1', 'Barraca9')):
     x = x0 + 2.0 + i * 4.2; n = poe('casa-porta\\barracas.glb', no, x, z1 - 1.5, math.pi, 1.0)
@@ -644,7 +664,7 @@ empty_ref('JOGO_cenaculo', PORTA_CEN[0], PORTA_CEN[1], tam=2.0)
 ilumina_tudo()          # a luz suave pintada nas peças com textura
 fixos = {'area': AREA, 'terreno': [X0, X1, Z0, Z1], 'mundo': [CW[0], H0, CW[1]], 'caixas': CAIXAS, 'muros': [], 'oclusores': OCLUSORES,
          'ruas': [[[round(x, 2), round(z, 2)] for x, z in pts] for pts, w in RUAS], 'cenaculo_r': list(CENACULO), 'caifas_r': list(CAIFAS), 'y_patio': round(yp, 3),
-         'palacio': [PX0, PX1, PZ0, PZ1]}
+         'palacio': [PX0, PX1, PZ0, PZ1], 'lotes': LOTES}
 t = bpy.data.texts.new('cidade_fixos'); t.write(json.dumps(fixos))
 bt = bpy.data.texts.new('EXPORTAR_PARA_O_JOGO')
 bt.write("# exporta o que está na cena para o jogo e salva o .blend\nRODAR_EXPORTACAO = True\nexec(open(r'" + os.path.join(OUT, 'exportar_cidade.py') + "', encoding='utf-8').read())\n")

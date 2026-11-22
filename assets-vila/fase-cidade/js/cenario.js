@@ -8,6 +8,7 @@ import { instanciaLonge, poePertos } from '../../limpo-motor/layout.js';
 import { suaviza, mapaAltura } from '../../limpo-motor/terreno.js';
 import { scene, LAY, V3 } from './estado.js';
 import { gCen, gJer, KIT } from './modelos.js';
+import { carregarKit, casaCidade, materialAlvenaria } from '../../casas/construtor_casas.js';
 
 // ---------- o cenário ----------
 let CHAO = null;
@@ -34,6 +35,60 @@ const terreno = (x, z) => {
   return y;
 };
 
+// ---------- as casas: as da frente montadas com o kit de Betânia antiga; as do fundo (blocos do Blender) pintadas com
+// o mesmo material de parede (reboco com base de pedra, pelo mundo) e de terraço ----------
+const KITC = await carregarKit('../casas/casas_kit.glb', '../casas/tex/');
+// cópia de material que mantém o shader (o clone do three não leva o onBeforeCompile): cada casa some sozinha quando tapa a vista
+const copiaM = (m) => { const c = m.clone(); c.onBeforeCompile = m.onBeforeCompile; c.customProgramCacheKey = m.customProgramCacheKey; return c; };
+const hash = (a, b) => { const s = Math.sin(a * 127.1 + b * 311.7) * 43758.5453; return s - Math.floor(s); };
+{
+  const alv = materialAlvenaria(KITC, 0), P = V3();
+  gCen.scene.updateMatrixWorld(true);
+  gCen.scene.traverse((o) => {
+    if (!o.isMesh || !/^Bloco_/.test(o.name)) return;
+    const mn = o.material.name || '';
+    if (/terraco/.test(mn)) { o.material = copiaM(KITC.materiais.Casa_Teto); return; }
+    if (!/reboco/.test(mn)) return;
+    const g = o.geometry, pos = g.attributes.position, n = pos.count, par = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) {
+      P.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+      par[i * 3] = 0.82 + 0.18 * hash(Math.floor(P.x / 6), Math.floor(P.z / 6)); par[i * 3 + 1] = 0; par[i * 3 + 2] = terreno(P.x, P.z) + 0.55;
+    }
+    g.setAttribute('parede', new THREE.BufferAttribute(par, 3)); g.setAttribute('aCodigo', new THREE.BufferAttribute(new Float32Array(n), 1));
+    o.material = copiaM(alv);
+  });
+}
+function caixaPedra(x0, x1, y0, y1, z0, z1, mat) {
+  const g = new THREE.BoxGeometry(x1 - x0, y1 - y0, z1 - z0).toNonIndexed(); g.translate((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
+  const n = g.attributes.position.count;
+  g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(n * 3).fill(0.92), 3));
+  g.setAttribute('parede', new THREE.BufferAttribute(new Float32Array(n * 3).fill(99), 3));
+  g.setAttribute('aCodigo', new THREE.BufferAttribute(new Float32Array(n).fill(2), 1));
+  const m = new THREE.Mesh(g, mat); m.castShadow = m.receiveShadow = true; return m;
+}
+const CASAS_KIT = [];
+for (const l of LAY.lotes || []) {
+  const g = casaCidade(KITC, l.s, l.w, l.d, l.y), th = l.giro, c = Math.cos(th), s = Math.sin(th);
+  const [cx, cz] = l.c;
+  // degraus da porta até a rua, se o piso ficou acima do chão (a porta: lado +z do lote, no meio da folha)
+  const pv = g.userData.portas[0];
+  const mat = g.children[0].children.find((m) => m.geometry.attributes.parede)?.material || materialAlvenaria(KITC, l.y);
+  const dy = l.y - l.yp;
+  if (pv && dy > 0.12) {
+    const px = pv.position.x + 0.45, ne = Math.ceil(dy / 0.2);
+    for (let j = 0; j < ne; j++) g.add(caixaPedra(px - 0.8, px + 0.8, l.yp - l.y - 0.3, -(j + 1) * dy / (ne + 1), l.d + j * 0.33, l.d + (j + 1) * 0.33, mat));
+  }
+  // base de pedra embaixo, onde o chão desce
+  const lx = Math.abs(l.w * c) + Math.abs(l.d * s), lz = Math.abs(l.w * s) + Math.abs(l.d * c);
+  let ymin = l.y; for (const sx of [-1, 0, 1]) for (const sz of [-1, 0, 1]) ymin = Math.min(ymin, terreno(cx + sx * lx / 2, cz + sz * lz / 2));
+  if (ymin < l.y - 0.02) g.add(caixaPedra(0.02, l.w - 0.02, ymin - l.y - 0.3, 0.0, 0.02, l.d - 0.02, mat));
+  g.rotation.y = th;
+  g.position.set(cx - (l.w / 2 * c + l.d / 2 * s), l.y, cz - (-l.w / 2 * s + l.d / 2 * c));
+  scene.add(g); CASAS_KIT.push(g);
+  const r = [cx - lx / 2, cx + lx / 2, cz - lz / 2, cz + lz / 2, l.y + 0.3, l.y + g.userData.andares * 2.8 + 1.2];
+  const mm = new Map(); g.traverse((m) => { if (!m.isMesh) return; if (!mm.has(m.material)) mm.set(m.material, copiaM(m.material)); m.material = mm.get(m.material); OCL.push({ o: m, r, op: 1 }); });
+}
+
 // ---------- Jerusalém em volta ----------
 const [MX, MY, MZ] = LAY.mundo;
 const JER = gJer.scene; JER.name = 'Jerusalem'; JER.position.set(-MX, -MY, -MZ);
@@ -43,6 +98,7 @@ const JER = gJer.scene; JER.name = 'Jerusalem'; JER.position.set(-MX, -MY, -MZ);
   JER.traverse((o) => {
     if (!o.isMesh) return;
     o.receiveShadow = true;
+    if (!o.geometry.attributes.normal) o.geometry.computeVertexNormals();      // sem normal, o normalBias da sombra não age e a sombra serrilha (janelas do palácio)
     if (!/^(Casas_Cidade|Arvores|Estradas|Cidade_Chao|Vale_Chao|Leste_Chao|Vale_Miolo)/.test(o.name)) return;
     const g = o.geometry; if (!g.index) { const n = g.attributes.position.count; g.setIndex([...Array(n).keys()]); }
     const pos = g.attributes.position, I = g.index.array, novo = [];
