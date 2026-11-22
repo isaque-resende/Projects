@@ -258,7 +258,7 @@ for i in range(16):
 for z_ in (SZ - 13, SZ - 8, SZ + 8, SZ + 13):         # meias-colunas com capitel de ouro
     caixa(sa, FR, FR + 0.7, BASE, BASE + 34.5, z_ - 0.9, z_ + 0.9, k(PAL['branco'], 1.03), lados='+x +z -z')
     caixa(sa, FR, FR + 0.9, BASE + 34.5, BASE + 35.8, z_ - 1.1, z_ + 1.1, PAL['ouro'], lados='+x +z -z +y')
-sa.quad([(FR + 0.03, BASE, SZ - 5), (FR + 0.03, BASE, SZ + 5), (FR + 0.03, BASE + 22, SZ + 5), (FR + 0.03, BASE + 22, SZ - 5)], PAL['ouro'], (1, 0, 0))
+sa.quad([(FR + 0.12, BASE, SZ - 5), (FR + 0.12, BASE, SZ + 5), (FR + 0.12, BASE + 22, SZ + 5), (FR + 0.12, BASE + 22, SZ - 5)], PAL['ouro'], (1, 0, 0))
 sa.quad([(FR + 0.06, BASE, SZ - 3.6), (FR + 0.06, BASE, SZ + 3.6), (FR + 0.06, BASE + 20, SZ + 3.6), (FR + 0.06, BASE + 20, SZ - 3.6)], hx('7d3b2a'), (1, 0, 0))
 sa.quad([(FR + 0.05, BASE + 22.6, SZ - 6.5), (FR + 0.05, BASE + 22.6, SZ + 6.5), (FR + 0.05, BASE + 24.6, SZ + 6.5), (FR + 0.05, BASE + 24.6, SZ - 6.5)], PAL['ouro'], (1, 0, 0))
 for i in range(6):        # a escadaria do pátio dos sacerdotes até o pórtico
@@ -325,7 +325,7 @@ for s in (-1, 1):
     mc.quad([(PX + s * ABRE, HP, FZ + 0.15), (PX + s * (ABRE + 0.6), HP, FZ + 0.15), (PX + s * (ABRE + 0.6), yc, FZ + 0.15), (PX + s * ABRE, yc, FZ + 0.15)], k(PAL['claro'], 0.98), (0, 0, 1))
     xd = PX + s * (ABRE - 0.18)
     caixa(mc, min(xd, xd - s * 0.14), max(xd, xd - s * 0.14), HP, HP + MOLA + 0.6, FZ - 2.2, FZ - 0.4, PAL['madeira'], lados='+x -x +z -z +y')
-mc.quad([(PX - ABRE, HP + 0.02, NZ - 1), (PX + ABRE, HP + 0.02, NZ - 1), (PX + ABRE, HP + 0.02, FZ + 0.15), (PX - ABRE, HP + 0.02, FZ + 0.15)], PAL['lajes'], (0, 1, 0))
+mc.quad([(PX - ABRE, HP + 0.1, NZ - 1), (PX + ABRE, HP + 0.1, NZ - 1), (PX + ABRE, HP + 0.1, FZ + 0.15), (PX - ABRE, HP + 0.1, FZ + 0.15)], PAL['lajes'], (0, 1, 0))
 # a cidade de Davi: o muro desce pelo lado do Cedrom, da quina sudeste do templo para o sul
 z = TZ0
 while z > -340:
@@ -508,13 +508,13 @@ for z0, z1, zf, s in ((-198.0, -170.0, -198.0, -1), (-320.0, -292.0, -292.0, 1))
     xx = PL[0] + 6
     while xx < PL[1] - 5:
         for y_ in (ybP + 0.8 * MV, ybP + 3.6 * MV):
-            pa.quad([(xx - 0.5 * MH, y_, zf + s * 0.03), (xx + 0.5 * MH, y_, zf + s * 0.03), (xx + 0.5 * MH, y_ + 1.6 * MV, zf + s * 0.03), (xx - 0.5 * MH, y_ + 1.6 * MV, zf + s * 0.03)], PAL['escuro'], (0, 0, s))
+            pa.quad([(xx - 0.5 * MH, y_, zf + s * 0.15), (xx + 0.5 * MH, y_, zf + s * 0.15), (xx + 0.5 * MH, y_ + 1.6 * MV, zf + s * 0.15), (xx - 0.5 * MH, y_ + 1.6 * MV, zf + s * 0.15)], PAL['escuro'], (0, 0, s))
         xx += 3.2 * MH
 colunata(pa, [(PL[0] + 4, -290.0), (PL[0] + 4, -200.0)], ybP, 3.5 * MV, 3.0, PAL['coluna'], dentro=(-1, 0))
 colunata(pa, [(PL[1] - 4, -290.0), (PL[1] - 4, -200.0)], ybP, 3.5 * MV, 3.0, PAL['coluna'], dentro=(1, 0))
-pa.quad([(PL[0] + 8, ybP + 0.05, -288.0), (PL[1] - 8, ybP + 0.05, -288.0), (PL[1] - 8, ybP + 0.05, -202.0), (PL[0] + 8, ybP + 0.05, -202.0)], hx('8f9a5c'), (0, 1, 0))
+pa.quad([(PL[0] + 8, ybP + 0.35, -288.0), (PL[1] - 8, ybP + 0.35, -288.0), (PL[1] - 8, ybP + 0.35, -202.0), (PL[0] + 8, ybP + 0.35, -202.0)], hx('8f9a5c'), (0, 1, 0))
 for zc in (-270.0, -245.0, -220.0):        # os tanques do jardim
-    pa.quad([(-583.0, ybP + 0.1, zc - 4), (-573.0, ybP + 0.1, zc - 4), (-573.0, ybP + 0.1, zc + 4), (-583.0, ybP + 0.1, zc + 4)], PAL['agua'], (0, 1, 0))
+    pa.quad([(-583.0, ybP + 0.65, zc - 4), (-573.0, ybP + 0.65, zc - 4), (-573.0, ybP + 0.65, zc + 4), (-583.0, ybP + 0.65, zc + 4)], PAL['agua'], (0, 1, 0))
 gT = h_velho(-600.0, -152.0)
 for x0, x1, z0, z1, alto in [(-617.0, -601.0, -160.0, -144.0, 13.0 * MV), (-596.0, -576.0, -162.0, -144.0, 16.0 * MV), (-572.0, -558.0, -158.0, -144.0, 11.0 * MV)]:
     caixa(pa, x0, x1, gT - 3, gT + alto, z0, z1, k(PAL['herod'], 1.03), pedra='+x -x +z -z', fiada=1.6, comp=(2.4, 4.0))
@@ -549,7 +549,7 @@ while z_ < -62:
         w = 1.5 * MH - 0.4
         g = min(h_velho(x, zz) for x in (XL0, XL1) for zz in (z_ - w, z_ + w)) - 0.5
         caixa(cb, XL0, XL1, g, g + rc.uniform(3.2, 4.2) * MV, z_ - w, z_ + w, rc.choice(CASAS))
-        cb.quad([(XL1 + 0.03, g + 0.5, z_ - 0.5 * MH), (XL1 + 0.03, g + 0.5, z_ + 0.5 * MH), (XL1 + 0.03, g + 0.5 + 2.0 * MV, z_ + 0.5 * MH), (XL1 + 0.03, g + 0.5 + 2.0 * MV, z_ - 0.5 * MH)], PAL['escuro'], (1, 0, 0))
+        cb.quad([(XL1 + 0.12, g + 0.5, z_ - 0.5 * MH), (XL1 + 0.12, g + 0.5, z_ + 0.5 * MH), (XL1 + 0.12, g + 0.5 + 2.0 * MV, z_ + 0.5 * MH), (XL1 + 0.12, g + 0.5 + 2.0 * MV, z_ - 0.5 * MH)], PAL['escuro'], (1, 0, 0))
         cor = rc.choice(PANOS); q = [(XL1, g + 2.6 * MV, z_ - w), (XL1 + 1.1 * MH, g + 2.2 * MV, z_ - w), (XL1 + 1.1 * MH, g + 2.2 * MV, z_ + w), (XL1, g + 2.6 * MV, z_ + w)]
         cb.quad(q, cor, (0.3, 1, 0)); cb.quad(q, k(cor, 0.7), (-0.3, -1, 0))
     z_ += 3.0 * MH + 0.6
@@ -588,7 +588,7 @@ def fileira(face, a, b, alto, eixo):
     """Colunas na frente da face de dentro de um pórtico, com a sombra do pórtico atrás delas."""
     if eixo == 'x':        # a face é um plano z = face; as colunas correm em x
         s = 1 if face < SZ else -1
-        po.quad([(a, TY, face + s * 0.04), (b, TY, face + s * 0.04), (b, TY + alto, face + s * 0.04), (a, TY + alto, face + s * 0.04)], k(PAL['escuro'], 1.5), (0, 0, s))
+        po.quad([(a, TY, face + s * 0.12), (b, TY, face + s * 0.12), (b, TY + alto, face + s * 0.12), (a, TY + alto, face + s * 0.12)], k(PAL['escuro'], 1.5), (0, 0, s))
         x = a + CP / 2
         while x < b - 1:
             caixa(po, x - CR, x + CR, TY, TY + alto, face + s * CF - CR, face + s * CF + CR, PAL['coluna'], lados='+x -x +z -z'); x += CP
@@ -757,7 +757,7 @@ def casa(x, z, lx, lz, alto, zona=None):
     caixa(cs, x0, x1, y0, yt, z0, z1, cor)
     if rc.random() < 0.3: caixa(cs, x0 + 0.6, x0 + lx * 0.5, yt, yt + 2.2 * MV, z0 + 0.6, z0 + lz * 0.5, k(cor, 0.97))
     if rc.random() < 0.6:
-        d = 0.5 * MH; cs.quad([(x1 + 0.02, y0 + 0.6, z - d), (x1 + 0.02, y0 + 0.6, z + d), (x1 + 0.02, y0 + 0.6 + 1.9 * MV, z + d), (x1 + 0.02, y0 + 0.6 + 1.9 * MV, z - d)], PAL['escuro'], (1, 0, 0))
+        d = 0.5 * MH; cs.quad([(x1 + 0.12, y0 + 0.6, z - d), (x1 + 0.12, y0 + 0.6, z + d), (x1 + 0.12, y0 + 0.6 + 1.9 * MV, z + d), (x1 + 0.12, y0 + 0.6 + 1.9 * MV, z - d)], PAL['escuro'], (1, 0, 0))
 
 
 def bairro(x0, x1, z0, z1, passo, alto, prob=0.8, zona=None):

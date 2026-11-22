@@ -4,7 +4,7 @@ import { carregaKit } from '../../limpo-motor/layout.js';
 import { LAY } from './estado.js';
 
 const [gCen, gJer, gJog, gPrensa, gPlantas, nGuarda, KIT] = await Promise.all([
-  baixar('../fase-getsemani/getsemani_cenario.glb?v=5'), baixar('../jerusalem/jerusalem_maquete.glb?v=4'), baixar('../vila-betania/discipulo_acoes.glb'),
+  baixar('../fase-getsemani/getsemani_cenario.glb?v=5'), baixar('../jerusalem/jerusalem_maquete.glb?v=5'), baixar('../vila-betania/discipulo_acoes.glb'),
   baixar('../prensa-azeite/prensa.glb'), baixar('../flores/plantas_betfage.glb?v=1'), baixar('../personagens/aldeao.glb'),
   carregaKit(LAY.objetos),
 ]);
