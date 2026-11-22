@@ -22,7 +22,17 @@ gCen.scene.traverse((o) => {
 });
 scene.add(gCen.scene);
 suaviza(CHAO, false);
-const terreno = mapaAltura(CHAO, 0.35, { suave: false });
+// o chão desce abaixo de zero (rumo ao vale): o mapa "suave" guarda alturas negativas; o outro cortava no zero e o
+// jogador andava no ar. Em cima, o Pavimento (Gabatá), que é mais alto que o chão e tem a escada.
+const terreno0 = mapaAltura(CHAO, 0.35, { suave: true });
+const GAB = []; gCen.scene.traverse((o) => { if (o.isMesh && /^Gabata/.test(o.name)) GAB.push(o); });
+const gabB = new THREE.Box3(); GAB.forEach((m) => gabB.expandByObject(m));
+const gabH = GAB.map((m) => mapaAltura(m, 0.2, { caixa: null }));
+const terreno = (x, z) => {
+  let y = terreno0(x, z);
+  if (GAB.length && x > gabB.min.x && x < gabB.max.x && z > gabB.min.z && z < gabB.max.z) for (const f of gabH) { const g = f(x, z); if (g > y) y = g; }
+  return y;
+};
 
 // ---------- Jerusalém em volta ----------
 const [MX, MY, MZ] = LAY.mundo;

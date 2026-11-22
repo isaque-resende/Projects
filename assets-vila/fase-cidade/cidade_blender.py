@@ -390,7 +390,7 @@ _bm.to_mesh(mr); _bm.free(); mr.update()
 ruas = bpy.data.objects.new('Cidade_Ruas', mr); col_exp.objects.link(ruas); chao_textura(ruas, 'lajes', TILE['lajes'])
 
 # ---------------- as casas: ao longo das ruas, em quarteirões (cada quarteirão numa malha, que some se tapar a vista) ----------------
-LIVRES = [XISTO, MERCADO, GABATA, (CAIFAS[0] - 2, CAIFAS[1] + 2, CAIFAS[2] - 2, CAIFAS[3] + 2), (CENACULO[0] - 3, CENACULO[1] + 3, CENACULO[2] - 3, CENACULO[3] + 3),
+LIVRES = [XISTO, MERCADO, (GABATA[0], GABATA[1] + 4.5, GABATA[2] - 0.5, GABATA[3] + 0.5), (CAIFAS[0] - 2, CAIFAS[1] + 2, CAIFAS[2] - 2, CAIFAS[3] + 2), (CENACULO[0] - 3, CENACULO[1] + 3, CENACULO[2] - 3, CENACULO[3] + 3),
           (PX0 - 4, PX1 + 1.5, PZ0 - 4, PZ1 + 4), (GEN[0] - 8, GEN[0] + 8, GEN[1] - 2, GEN[1] + 8)]
 
 
@@ -482,17 +482,30 @@ for qi, (qx0, qz0) in enumerate([(x, z) for x in range(int(X0) + 4, int(X1) - 4,
 # ---------------- o Xisto: uma praça calçada com colunas em volta ----------------
 xi = Formas()
 x0, x1, z0, z1 = XISTO; COLS = []
+def viga(f, xa, za, ya, xb, zb, yb, cor, ea=0.0, eb=0.0, w=0.5, h=0.5):
+    """uma viga de A a B (em x ou em z) que acompanha a inclinação; ea/eb: quanto passa das pontas"""
+    mat, base = f._cor(cor, 0.03); L_ = math.hypot(xb - xa, zb - za); ux, uz = (xb - xa) / L_, (zb - za) / L_; px, pz = -uz * w, ux * w
+    def pt(s, lado, dy): return Vector((xa + ux * s + px * lado, -(za + uz * s + pz * lado), ya + (yb - ya) * s / L_ + dy))
+    B = [pt(-ea, -1, 0), pt(L_ + eb, -1, 0), pt(L_ + eb, 1, 0), pt(-ea, 1, 0)]
+    if newell(B).z < 0: B = B[::-1]
+    T = [b + Vector((0, 0, h)) for b in B]
+    for k in range(4):
+        a, b = B[k], B[(k + 1) % 4]
+        if abs((b.x - a.x) * ux - (b.y - a.y) * uz) < 1e-6:                    # tampa da ponta: só onde a viga termina (entre vãos, as tampas se encostariam)
+            s = (a.x - xa) * ux - (a.y + za) * uz
+            if (s < L_ / 2 and ea == 0.0) or (s > L_ / 2 and eb == 0.0): continue
+        f.face([a, b, T[(k + 1) % 4], T[k]], mat, base)
+    f.face(T, mat, base); f.face(B[::-1], mat, base)
 for (xa, za, xb, zb) in ((x0, z0, x1, z0), (x0, z1, x1, z1), (x1, z0, x1, z1)):
-    L_ = math.hypot(xb - xa, zb - za); n = max(1, round(L_ / 3.0))
+    L_ = math.hypot(xb - xa, zb - za); n = max(1, round(L_ / 3.0)); TOP = []
     for i in range(n + 1):
         x, z = xa + (xb - xa) * i / n, za + (zb - za) * i / n; y = altura(x, z)
         xi.caixa(x - 0.45, x + 0.45, y - 0.3, y + 0.25, z - 0.45, z + 0.45, tom(COR['coluna'], 0.94))
         xi.tronco(x, z, y + 0.25, y + 4.2, 0.3, 0.27, 10, COR['coluna'])
-        xi.caixa(x - 0.5, x + 0.5, y + 4.2, y + 4.6, z - 0.5, z + 0.5, tom(COR['coluna'], 1.05)); COLS.append((x, z))
-for (xa, za, xb, zb) in ((x0, z0, x1, z0), (x0, z1, x1, z1), (x1, z0, x1, z1)):
-    y = max(altura(xa, za), altura(xb, zb)) + 4.6
-    if abs(za - zb) < 1e-3: xi.caixa(min(xa, xb) - 0.5, max(xa, xb) + 0.5, y, y + 0.5, za - 0.5, za + 0.5, COR['coluna'])
-    else: xi.caixa(xa - 0.5, xa + 0.5, y, y + 0.5, min(za, zb) - 0.5, max(za, zb) + 0.5, COR['coluna'])
+        xi.caixa(x - 0.5, x + 0.5, y + 4.2, y + 4.6, z - 0.5, z + 0.5, tom(COR['coluna'], 1.05)); COLS.append((x, z)); TOP.append((x, z, y + 4.6))
+    for i in range(n):      # a viga de capitel a capitel: em rampa, desce junto com as colunas (antes era reta e ficava no ar)
+        (ax_, az_, ay_), (bx_, bz_, by_) = TOP[i], TOP[i + 1]
+        viga(xi, ax_, az_, ay_, bx_, bz_, by_, COR['coluna'], 0.5 if i == 0 else 0.0, 0.5 if i == n - 1 else 0.0)
 xi.cria('Xisto')
 
 # ---------------- o Pavimento (Gabatá) na frente do palácio: lajes grandes, com o tribunal ----------------
@@ -502,6 +515,10 @@ ga.plano([(x0, yg, z0), (x1, yg, z0), (x1, yg, z1), (x0, yg, z1)], COR['lajesN']
 ga.caixa(x0 - 0.2, x1, yg - 1.5, yg, z0 - 0.2, z0, COR['muro2']); ga.caixa(x0 - 0.2, x1, yg - 1.5, yg, z1, z1 + 0.2, COR['muro2']); ga.caixa(x1, x1 + 0.2, yg - 1.5, yg, z0, z1, COR['muro2'])
 ga.caixa(x0 + 0.5, x0 + 3.0, yg, yg + 1.2, (z0 + z1) / 2 - 1.5, (z0 + z1) / 2 + 1.5, COR['muro3'])           # o tribunal (bema), de onde se julgava
 ga.caixa(x0 + 1.0, x0 + 2.2, yg + 1.2, yg + 2.1, (z0 + z1) / 2 - 0.5, (z0 + z1) / 2 + 0.5, COR['madeira'])   # a cadeira
+# a escada do lado da cidade (leste): o jogador sobe ao Pavimento por ela
+zc_ = (z0 + z1) / 2; ych = altura(x1 + 2.5, zc_); ne = max(2, math.ceil((yg - ych) / 0.24)); de = 0.4; ybe = min(altura(x1 + 0.2 + ne * de, zc_ + s * 1.6) for s in (-1, 1)) - 0.3
+for i in range(1, ne + 1):
+    ga.caixa(x1 + 0.2 + (i - 1) * de, x1 + 0.2 + i * de, ybe, yg - i * (yg - ych) / ne + 0.03, zc_ - 1.6, zc_ + 1.6, tom(COR['muro2'], 1.0 + 0.03 * (i % 2)))
 ga.cria('Gabata')
 bloqueia(x0 + 0.5, x0 + 3.0, (z0 + z1) / 2 - 1.5, (z0 + z1) / 2 + 1.5)
 
