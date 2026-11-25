@@ -143,7 +143,7 @@ def ponto(nome):
 def layout():
     bpy.context.view_layer.update()
     lay = json.loads(bpy.data.texts['cidade_fixos'].as_string())
-    for n in ('ponte', 'genat', 'xisto', 'mercado', 'gabata', 'braseiro', 'caifas', 'cenaculo'): lay[n] = ponto('JOGO_' + n)
+    for n in ('ponte', 'genat', 'xisto', 'mercado', 'gabata', 'braseiro', 'caifas', 'cenaculo', 'porta_cima'): lay[n] = ponto('JOGO_' + n)
     lay['objetos'] = objetos()
     lay['obst'] = colisao()
     lay['plantas'] = plantas()

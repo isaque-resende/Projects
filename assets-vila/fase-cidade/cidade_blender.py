@@ -459,7 +459,7 @@ def casa_pronta(x0, x1, z0, z1):
     else: cx = x0 + lx / 2
     pp = {'s': (cx, cz + lz / 2 + 0.4), 'n': (cx, cz - lz / 2 - 0.4), 'l': (cx + lx / 2 + 0.4, cz), 'o': (cx - lx / 2 - 0.4, cz)}[ld]
     yp = altura(*pp); ym = sum(altura(cx + sx * lx / 2, cz + sz * lz / 2) for sx in (-1, 1) for sz in (-1, 1)) / 4
-    LOTES.append({'c': [round(cx, 3), round(cz, 3)], 'w': w, 'd': d, 'giro': round(GIRO[ld], 4), 'y': round(max(ym, yp - 0.1), 3), 'yp': round(yp, 3), 's': random.randint(1, 99999)})
+    LOTES.append({'c': [round(cx, 3), round(cz, 3)], 'w': w, 'd': d, 'giro': round(GIRO[ld], 4), 'y': round(max(ym, yp + 0.12), 3), 'yp': round(yp, 3), 's': random.randint(1, 99999)})     # o piso sempre um pouco acima do chão da porta (abaixo, a porta afundava no calçamento)
     bloqueia(cx - lx / 2 - 0.1, cx + lx / 2 + 0.1, cz - lz / 2 - 0.1, cz + lz / 2 + 0.1)
     return True
 
@@ -490,7 +490,7 @@ def lote(x0, x1, z0, z1, ld):
     cx, cz = (x0 + x1) / 2, (z0 + z1) / 2; lx, lz = x1 - x0, z1 - z0
     pp = {'s': (cx, z1 + 0.4), 'n': (cx, z0 - 0.4), 'l': (x1 + 0.4, cz), 'o': (x0 - 0.4, cz)}[ld]
     yp = altura(*pp); ym = sum(altura(cx + sx * lx / 2, cz + sz * lz / 2) for sx in (-1, 1) for sz in (-1, 1)) / 4
-    LOTES.append({'c': [round(cx, 3), round(cz, 3)], 'w': int(w), 'd': int(d), 'giro': round(GIRO[ld], 4), 'y': round(max(ym, yp - 0.1), 3), 'yp': round(yp, 3), 's': random.randint(1, 99999)})
+    LOTES.append({'c': [round(cx, 3), round(cz, 3)], 'w': int(w), 'd': int(d), 'giro': round(GIRO[ld], 4), 'y': round(max(ym, yp + 0.12), 3), 'yp': round(yp, 3), 's': random.randint(1, 99999)})     # o piso sempre um pouco acima do chão da porta (abaixo, a porta afundava no calçamento)
     bloqueia(x0, x1, z0, z1)
 PX = PRACA[0]
 lote(PX, PX + 6.0, -49.0, -43.0, 'l')         # noroeste, entre o muro e o Pavimento
@@ -577,28 +577,41 @@ for (a, b, c, d) in ((x0, x0 + 1.2, z0 + e, (z0 + z1) / 2 - 1.6), (x0, x0 + 1.2,
     cf.caixa(a, b, yc, yc + 4.5, c, d, COR['muro2']); bloqueia(a, b, c, d)
 for s in (-1, 1): cf.caixa(x0 - 0.1, x0 + 0.1, yc, yc + 3.4, (z0 + z1) / 2 + s * 1.6 - (0.0 if s > 0 else -0.0), (z0 + z1) / 2 + s * 1.6 + s * 0.05, COR['madeira'])
 yp = max(altura(x, z) for x in (x0 + e, x1 - e) for z in (z0 + e, z1 - e))
-cf.plano([(x0 + 1.2, yp + 0.05, z0 + e), (x1 - e, yp + 0.05, z0 + e), (x1 - e, yp + 0.05, z1 - e), (x0 + 1.2, yp + 0.05, z1 - e)], tom(COR['lajes'], 0.97))
+pa = Formas()      # o piso do pátio, em placas de 1 m que acompanham o chão (se fosse plano, o jogador afundava nele)
+_xs = [x0 + 1.2 + (x1 - e - x0 - 1.2) * i / 8 for i in range(9)]; _zs = [z0 + e + (z1 - e - z0 - e) * j / 8 for j in range(9)]
+for i in range(8):
+    for j in range(8):
+        a_, b_, c_, d_ = _xs[i], _xs[i + 1], _zs[j], _zs[j + 1]
+        pa.plano([(a_, altura(a_, c_) + 0.05, c_), (b_, altura(b_, c_) + 0.05, c_), (b_, altura(b_, d_) + 0.05, d_), (a_, altura(a_, d_) + 0.05, d_)], tom(COR['lajes'], 0.97))
+pa.cria('Patio_SumoSacerdote')
 for (a, b, c, d) in ((x0, x1, z0, z0 + 0.3), (x0, x1, z1 - 0.3, z1), (x1 - 0.3, x1, z0, z1)): cf.caixa(a, b, ytc, ytc + 0.6, c, d, COR['muro3'])
 BRASEIRO = ((x0 + x1) / 2 - 1.0, (z0 + z1) / 2)        # o braseiro (Jo 18.18), no meio do pátio
 bx_, bz_ = BRASEIRO
-cf.tronco(bx_, bz_, yp, yp + 0.5, 0.55, 0.65, 10, COR['cinza']); cf.tronco(bx_, bz_, yp + 0.45, yp + 0.55, 0.5, 0.5, 10, COR['brasa'])
-cf.plano([(x1 - e - 0.02, yp, (z0 + z1) / 2 - 0.7), (x1 - e - 0.02, yp, (z0 + z1) / 2 + 0.7), (x1 - e - 0.02, yp + 2.3, (z0 + z1) / 2 + 0.7), (x1 - e - 0.02, yp + 2.3, (z0 + z1) / 2 - 0.7)], COR['escuro'])
+cf.plano([(x1 - e - 0.08, yp, (z0 + z1) / 2 - 0.7), (x1 - e - 0.08, yp, (z0 + z1) / 2 + 0.7), (x1 - e - 0.08, yp + 2.3, (z0 + z1) / 2 + 0.7), (x1 - e - 0.08, yp + 2.3, (z0 + z1) / 2 - 0.7)], COR['escuro'])
 cf.cria('Casa_SumoSacerdote'); OCLUSORES['Casa_SumoSacerdote'] = [x0, x1, z0, z1, yc, ytc + 0.6]
-bloqueia(bx_ - 0.7, bx_ + 0.7, bz_ - 0.7, bz_ + 0.7)
+bloqueia(bx_ - 0.6, bx_ + 0.6, bz_ - 0.6, bz_ + 0.6)
 
 # ---------------- a casa da sala de cima: dois andares, a escada de fora e a porta fechada ----------------
 cn = Formas()
 x0, x1, z0, z1 = CENACULO; yn = min(altura(x, z) for x in (x0, x1) for z in (z0, z1)) - 0.3; ytn = yn + 8.0
 cn.caixa(x0, x1, yn, ytn, z0, z1, COR['muro3']); bloqueia(x0, x1, z0, z1)
 for (a, b, c, d) in ((x0, x1, z0, z0 + 0.3), (x0, x1, z1 - 0.3, z1), (x0, x0 + 0.3, z0, z1), (x1 - 0.3, x1, z0, z1)): cn.caixa(a, b, ytn, ytn + 0.6, c, d, COR['muro3'])
-for i in range(12):     # a escada de fora, subindo junto à face norte, para a porta da sala de cima
-    cn.caixa(x0 + 0.5 + i * 0.75, x0 + 1.25 + i * 0.75, yn, yn + (i + 1) * 0.36, z0 - 1.3, z0, tom(COR['muro2'], 1.0 + 0.02 * (i % 2)))
-bloqueia(x0 + 0.5, x0 + 9.5, z0 - 1.3, z0)
-cn.porta([(x0 + 9.6, yn + 4.3, z0 - 0.02), (x0 + 10.8, yn + 4.3, z0 - 0.02), (x0 + 10.8, yn + 6.4, z0 - 0.02), (x0 + 9.6, yn + 6.4, z0 - 0.02)])   # a porta de cima, fechada (Jo 20.19)
+es = Formas()
+ye0 = min(altura(x0 + 0.5 + i * 0.75, z0 - 0.6) for i in range(13)) - 0.3; yla = yn + 0.3 + 12 * 0.36       # o patamar, na altura da sala de cima
+for i in range(12):     # a escada de fora, subindo junto à face norte (de oeste para leste), até o patamar da porta de cima
+    es.caixa(x0 + 0.5 + i * 0.75, x0 + 1.25 + i * 0.75, ye0, yn + 0.3 + (i + 1) * 0.36, z0 - 1.3, z0, tom(COR['muro2'], 1.0 + 0.02 * (i % 2)))
+es.caixa(x0 + 9.5, x0 + 11.3, ye0, yla, z0 - 1.3, z0, tom(COR['muro2'], 1.03))                                   # o patamar
+es.caixa(x0 + 11.3, x0 + 11.5, yla, yla + 0.9, z0 - 1.3, z0, tom(COR['muro3'], 1.0))                             # o parapeito do patamar
+es.cria('Escada_Cenaculo')
+bloqueia(x0 + 11.3, x0 + 11.5, z0 - 1.3, z0)
+for q in ([(x0 + 9.8, yla, z0 - 0.08), (x0 + 11.0, yla, z0 - 0.08), (x0 + 11.0, yla + 2.1, z0 - 0.08), (x0 + 9.8, yla + 2.1, z0 - 0.08)],):
+    cn.porta(q)          # a porta de cima, fechada (Jo 20.19)
 yd_ = altura(x0 + 12.4, z0 - 0.5)
-cn.porta([(x0 + 11.8, yd_, z0 - 0.02), (x0 + 13.0, yd_, z0 - 0.02), (x0 + 13.0, yd_ + 2.2, z0 - 0.02), (x0 + 11.8, yd_ + 2.2, z0 - 0.02)])      # a porta de baixo, para a praça
-for k in range(4): cn.plano([(x0 + 2 + k * 3.5, ytn - 2.4, z0 - 0.02), (x0 + 2.6 + k * 3.5, ytn - 2.4, z0 - 0.02), (x0 + 2.6 + k * 3.5, ytn - 1.6, z0 - 0.02), (x0 + 2 + k * 3.5, ytn - 1.6, z0 - 0.02)], COR['escuro'])
-cn.cria('Casa_Cenaculo'); OCLUSORES['Casa_Cenaculo'] = [x0, x1, z0 - 1.3, z1, yn, ytn + 0.6]
+for q in ([(x0 + 11.8, yd_, z0 - 0.08), (x0 + 13.0, yd_, z0 - 0.08), (x0 + 13.0, yd_ + 2.2, z0 - 0.08), (x0 + 11.8, yd_ + 2.2, z0 - 0.08)],):
+    cn.porta(q)          # a porta de baixo, para a praça
+PORTA_CIMA = (x0 + 10.4, z0 - 0.7, yla)
+for k in (0, 1, 3): cn.plano([(x0 + 2 + k * 3.5, ytn - 2.4, z0 - 0.08), (x0 + 2.6 + k * 3.5, ytn - 2.4, z0 - 0.08), (x0 + 2.6 + k * 3.5, ytn - 1.6, z0 - 0.08), (x0 + 2 + k * 3.5, ytn - 1.6, z0 - 0.08)], COR['escuro'])
+cn.cria('Casa_Cenaculo', dupla=True); OCLUSORES['Casa_Cenaculo'] = [x0, x1, z0 - 1.3, z1, yn, ytn + 0.6]
 PORTA_CEN = (x0 + 12.4, z0 - 1.2)
 
 # ---------------- peças dos kits: algumas barracas no mercado, jarros e cestos ----------------
@@ -663,7 +676,7 @@ for i, no in enumerate(('Barraca3', 'Barraca7')):
     if n is not None: circulo('COL_' + n.name, x, z1 - 1.5, 1.4, n)
 for (x, z, no) in ((x0 + 2.5 - 1.75, z1 - 1.3, 'Jarro_Alto'), (x0 + 2.5 + 1.7, z1 - 0.9, 'Cesto_Oval'), (x0 + 7.5 + 1.75, z1 - 1.4, 'Saco')):     # junto das barracas, dos lados
     n = poe('casa-porta\\objetos_casa.glb', no, x, z, random.uniform(0, 6.28), 1.0)
-    if n is not None: circulo('COL_' + n.name, x, z, 0.35, n)
+    if n is not None: circulo('COL_' + n.name, x, z, 0.15, n)
 # árvores nos pátios e nas praças (poucas: é uma cidade)
 # (sem árvores: nem na praça nem no pátio)
 
@@ -683,6 +696,7 @@ empty_ref('JOGO_gabata', (GABATA[0] + GABATA[1]) / 2, (GABATA[2] + GABATA[3]) / 
 empty_ref('JOGO_braseiro', BRASEIRO[0], BRASEIRO[1], y=yp, tipo='SPHERE', tam=0.6)
 empty_ref('JOGO_caifas', CAIFAS[0] - 1.5, (CAIFAS[2] + CAIFAS[3]) / 2, tam=2.0)     # o portão da casa
 empty_ref('JOGO_cenaculo', PORTA_CEN[0], PORTA_CEN[1], tam=2.0)
+empty_ref('JOGO_porta_cima', PORTA_CIMA[0], PORTA_CIMA[1], y=PORTA_CIMA[2], tam=1.0)
 
 ilumina_tudo()          # a luz suave pintada nas peças com textura
 fixos = {'area': AREA, 'terreno': [X0, X1, Z0, Z1], 'mundo': [CW[0], H0, CW[1]], 'caixas': CAIXAS, 'muros': [], 'oclusores': OCLUSORES,

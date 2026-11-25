@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { criaControles } from '../../limpo-motor/controles.js';
 import { criaCamLivre } from '../../limpo-motor/camlivre.js';
-import { V3, LAY, E, DE, renderer, sm } from './estado.js';
+import { V3, LAY, E, DE, renderer, sm, scene } from './estado.js';
 import { gJog } from './modelos.js';
 import { terreno } from './cenario.js';
 import { ator } from './gente.js';
@@ -13,7 +13,7 @@ import { ator } from './gente.js';
 // de onde começa: na rua do viaduto, entrando na praça (vindo do templo); ?de=genat, na Porta de Genat; ?de=cenaculo,
 // junto à casa do cenáculo
 const ARVS = [];
-const ini = DE === 'genat' ? [LAY.genat[0], 0, LAY.genat[2] + 2.5] : DE === 'cenaculo' ? [LAY.cenaculo[0] + 2.5, 0, LAY.cenaculo[2] - 1.0] : [LAY.ponte[0] - 3.0, 0, LAY.ponte[2]];
+const ini = DE === 'genat' ? [LAY.genat[0], 0, LAY.genat[2] + 2.5] : DE === 'cenaculo' ? [LAY.cenaculo[0] + 2.5, 0, LAY.cenaculo[2] - 1.0] : [LAY.ponte[0] - 9.5, 0, LAY.ponte[2]];
 const d0 = DE === 'genat' ? V3(0, 0, 1) : DE === 'cenaculo' ? V3(0, 0, -1) : V3(-1, 0, 0.35).normalize();
 const jog = ator(gJog, 1.7, ini[0], ini[2], Math.atan2(d0.x, d0.z), 'Parado');
 
@@ -42,6 +42,37 @@ const FOCOS = [
   { x: (cfr[0] + cfr[1]) / 2 - 3, z: (cfr[2] + cfr[3]) / 2, r: 11, dir: [-0.6, 0.8] },
 ];
 const YAW0 = Math.atan2(QUINA.x, QUINA.z), EIXO_Y = V3(0, 1, 0);
+// a câmera desvia das paredes: se uma casa ou muro fica entre ela e o jogador, procura (aos poucos) outro ângulo, mais
+// alto ou um pouco girado, de onde ele apareça; se nenhum servir, fica o triângulo amarelo
+const RC = new THREE.Raycaster(); let OBST = null; const DESVIO = { yaw: 0, el: 0, ay: 0, ae: 0, t: 0 };
+const CANDS = [[0, 0], [0, 14], [22, 10], [-22, 10], [0, 28], [40, 18], [-40, 18], [0, 42], [70, 25], [-70, 25]].map(([a, b]) => [a * Math.PI / 180, b * Math.PI / 180]);
+function obstaculos() {
+  if (OBST) return OBST; OBST = [];
+  scene.traverse((o) => {
+    if (!o.isMesh || o.isSkinnedMesh || /Chao|Ruas|Patio_|Escada_|Gabata/.test(o.name)) return;
+    for (let p = o; p; p = p.parent) if (p.name === 'Jerusalem') return;
+    const m = Array.isArray(o.material) ? o.material[0] : o.material; if (!m || m.transparent || m.depthWrite === false) return;
+    OBST.push(o);
+  });
+  return OBST;
+}
+function vira(dir, yaw, el) {
+  const h = Math.hypot(dir.x, dir.z), e = Math.min(1.35, Math.atan2(dir.y, h) + el), a = Math.atan2(dir.x, dir.z) + yaw;
+  return dir.set(Math.sin(a) * Math.cos(e), Math.sin(e), Math.cos(a) * Math.cos(e));
+}
+function desvio(pj, dir, d, dt) {
+  DESVIO.t -= dt;
+  if (DESVIO.t <= 0) {
+    DESVIO.t = 0.15;
+    const h = V3(pj.x, pj.y + 1.3, pj.z), L = Math.min(d, 22), ob = obstaculos();
+    for (const [a, b] of CANDS) {
+      const q = vira(dir.clone(), a, b); RC.set(h, q); RC.far = L;
+      if (!RC.intersectObjects(ob, false).length) { DESVIO.ay = a; DESVIO.ae = b; break; }
+    }
+  }
+  DESVIO.yaw += (DESVIO.ay - DESVIO.yaw) * Math.min(1, dt * 1.8); DESVIO.el += (DESVIO.ae - DESVIO.el) * Math.min(1, dt * 1.8);
+  return vira(dir, DESVIO.yaw, DESVIO.el);
+}
 function giroAlvo(pj) {
   let g = 0, wm = 0;
   for (const f of FOCOS) {
@@ -67,6 +98,7 @@ function camAlvo(pj, dt) {
   CAM.giro += (giroAlvo(pj) - CAM.giro) * Math.min(1, dt * 1.2);
   const k = CAM.perto, dir = livre.aplica(QUINA.clone().lerp(PERTO, k).normalize().applyAxisAngle(EIXO_Y, CAM.giro));
   const d = E.dist * (1 - k) + 9 * k;
+  desvio(pj, dir, d, dt);
   const alvo = braco(pj, pj.clone().addScaledVector(dir, d), dt);
   return [alvo, pj.clone().add(V3(0, 1.1 + 0.3 * k, 0))];
 }

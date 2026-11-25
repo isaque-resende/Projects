@@ -19,20 +19,21 @@ gCen.scene.traverse((o) => {
   if (o.name.startsWith('Cidade_Chao_Fase')) { CHAO = o; o.receiveShadow = true; return; }
   if (o.name.startsWith('Cidade_Ruas')) { o.material = o.material.clone(); Object.assign(o.material, { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }); o.receiveShadow = true; return; }
   o.castShadow = true; o.receiveShadow = true;
+  // normais planas: sem normal, o normalBias da sombra não age e a parede fica serrilhada, piscando (o portão)
+  if (!o.geometry.attributes.normal) { o.geometry = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry; o.geometry.computeVertexNormals(); }
   const k = Object.keys(LAY.oclusores).find((n) => o.name === n || o.name.startsWith(n + '_') || o.name.startsWith(n + '.'));
   if (k) { o.material = o.material.clone(); OCL.push({ o, r: LAY.oclusores[k], op: 1 }); }
 });
 scene.add(gCen.scene);
 suaviza(CHAO, false);
 // o chão desce abaixo de zero (rumo ao vale): o mapa "suave" guarda alturas negativas; o outro cortava no zero e o
-// jogador andava no ar. Em cima, o Pavimento (Gabatá), que é mais alto que o chão e tem a escada.
+// jogador andava no ar. Por cima dele, os pisos que se pisam: o Pavimento (Gabatá), com a escada, e a escada de fora do
+// cenáculo, com o patamar da porta de cima.
 const terreno0 = mapaAltura(CHAO, 0.35, { suave: true });
-const GAB = []; gCen.scene.traverse((o) => { if (o.isMesh && /^Gabata/.test(o.name)) GAB.push(o); });
-const gabB = new THREE.Box3(); GAB.forEach((m) => gabB.expandByObject(m));
-const gabH = GAB.map((m) => mapaAltura(m, 0.2, { caixa: null }));
+const PISOS = []; gCen.scene.traverse((o) => { if (o.isMesh && /^(Gabata|Escada_Cenaculo)/.test(o.name)) PISOS.push({ b: new THREE.Box3().setFromObject(o), f: mapaAltura(o, 0.2, { caixa: null }) }); });
 const terreno = (x, z) => {
   let y = terreno0(x, z);
-  if (GAB.length && x > gabB.min.x && x < gabB.max.x && z > gabB.min.z && z < gabB.max.z) for (const f of gabH) { const g = f(x, z); if (g > y) y = g; }
+  for (const p of PISOS) if (x > p.b.min.x && x < p.b.max.x && z > p.b.min.z && z < p.b.max.z) { const g = p.f(x, z); if (g > y) y = g; }
   return y;
 };
 
@@ -115,8 +116,7 @@ const JER = gJer.scene; JER.name = 'Jerusalem'; JER.position.set(-MX, -MY, -MZ);
   const tira = [];
   JER.traverse((o) => {
     if (!o.isMesh) return;
-    o.receiveShadow = true;
-    if (!o.geometry.attributes.normal) o.geometry.computeVertexNormals();      // sem normal, o normalBias da sombra não age e a sombra serrilha (janelas do palácio)
+    o.receiveShadow = false;      // a maquete é fundo: recebendo sombra, as janelas do palácio ficavam serrilhadas e piscando
     if (!/^(Casas_Cidade|Arvores|Estradas|Cidade_Chao|Vale_Chao|Leste_Chao|Vale_Miolo)/.test(o.name)) return;
     const g = o.geometry; if (!g.index) { const n = g.attributes.position.count; g.setIndex([...Array(n).keys()]); }
     const pos = g.attributes.position, I = g.index.array, novo = [];
