@@ -21,6 +21,7 @@ Quinze NPCs: pastor, aldeão e sacerdote (um modelo do Tripo) e mais doze de qua
 | `mulher_botoes.glb` | mulher de faixa e túnica de botões | 1,62 m | 15.003 | 1,1 MB |
 | `marta.glb` | Marta (usada na Betânia) | 1,62 m | 15.000 | 570 KB |
 | `lazaro.glb` | Lázaro (usado na Betânia) | 1,70 m | 15.000 | 568 KB |
+| `maria.glb` | Maria (véu e manto roxos; do trio de Betânia): no jogo, Maria Madalena (cidade alta e Gólgota) | 1,50 m | 15.000 | 822 KB |
 
 Origem nos pés, de frente para +Z no three.js.
 

@@ -7,7 +7,7 @@ const [gCen, gJer, gJog, gPlantas, gFlores, gTumulo, nPedro, nJoao, nMaria, nSol
   baixar('../fase-golgota/golgota_cenario.glb?v=12'), baixar('../jerusalem/jerusalem_maquete.glb?v=5'), baixar('../vila-betania/discipulo_acoes.glb'),
   baixar('../flores/plantas_betfage.glb?v=1'), baixar('../flores/flores.glb'),
   baixar('../tumulo/tumulo.glb?v=1'),
-  baixar('../personagens/barbudo.glb'), baixar('../personagens/cacheado.glb'), baixar('../personagens/mulher_lenco.glb'),
+  baixar('../personagens/barbudo.glb'), baixar('../personagens/cacheado.glb'), baixar('../personagens/maria.glb'),
   baixar('../personagens/robusto.glb'), baixar('../personagens/magro.glb'),
   carregaKit(LAY.objetos),
 ]);

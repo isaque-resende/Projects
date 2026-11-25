@@ -13,7 +13,7 @@
 import * as THREE from 'three';
 import { LAY, DE, V3, CIRC, CAIXAS, rnd, fala, scene } from './estado.js';
 import { terreno } from './cenario.js';
-import { gGal1, gGal2, nPedro, nJoao, nMaria, nPorteira, nServa, nGuarda, nMercador, nAldeao, nMoco, nMarta } from './modelos.js';
+import { gGal1, gGal2, nPedro, nJoao, nMaria, nPorteira, nServa, nGuarda, nMercador, nAldeao, nMoco, nMulher } from './modelos.js';
 import { ator, anda, sombrasPerto } from './gente.js';
 
 const CONVERSAS = [];
@@ -88,7 +88,7 @@ const cDois = { nome: 'Pedro e João', o: pedro.o, r: 2.8, oculto: true, falas: 
 CONVERSAS.push(cDois);
 
 // ---------- as outras mulheres (Lc 24.1-11; Mc 16.1; Mt 28.1-8) ----------
-const mulheres = [ator(nMarta, 1.58, FORA.x, FORA.z, 0, 'Andar'), ator(nServa, 1.6, FORA.x, FORA.z, 0, 'Andar'), ator(nPorteira, 1.55, FORA.x, FORA.z, 0, 'Andar')];
+const mulheres = [ator(nMulher, 1.55, FORA.x, FORA.z, 0, 'Andar'), ator(nServa, 1.6, FORA.x, FORA.z, 0, 'Andar'), ator(nPorteira, 1.55, FORA.x, FORA.z, 0, 'Andar')];
 tinge(mulheres[1], [0.75, 0.82, 1.0]); tinge(mulheres[2], [1.0, 0.8, 0.7]);
 for (const st of mulheres) st.o.visible = false;
 const LUG_M = [V3(pc.x - 2.8, 0, pc.z - 2.4), V3(pc.x - 3.8, 0, pc.z - 3.2), V3(pc.x - 2.0, 0, pc.z - 3.4)];
