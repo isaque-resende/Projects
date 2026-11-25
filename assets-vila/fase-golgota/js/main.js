@@ -64,7 +64,7 @@ function conversar() {
   if (!quem) return;
   const n = quem; E.alvoToque = null;
   jog.o.rotation.y = Math.atan2(n.o.position.x - jog.o.position.x, n.o.position.z - jog.o.position.z);
-  conversa(n.titulo ?? n.nome, n.falas, () => { n.ouviu = true; });
+  conversa(n.titulo ?? n.nome, n.falas, () => { n.ouviu = true; if (n.aoFim) n.aoFim(); });
 }
 
 // ---------- o botão de ação e as pontas da estrada ----------
@@ -136,7 +136,7 @@ const laco = (forca) => {
   // lugares, sepulcro e as pontas da estrada
   lugares(pj);
   OL.perto = Math.hypot(pj.x - ox, pj.z - oz) < 1.8;
-  quem = E.fora ? null : pertoDe(CONVERSAS, pj);
+  quem = E.fora ? null : pertoDe(CONVERSAS.filter((n) => !n.oculto && n.o.visible !== false), pj);
   anel.material.opacity = (E.olhou ? 0.16 : 0.3) + 0.1 * Math.sin(t * 1.6);
   olharPasso(dt);
   const [i, d] = naRota(pj.x, pj.z);

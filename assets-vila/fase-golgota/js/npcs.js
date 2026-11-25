@@ -1,8 +1,8 @@
-// Gólgota: quem está no horto na manhã do domingo (Jo 20.1-13).
-//   - Pedro e o outro discípulo chegam correndo pela estrada, vindos da Porta de Genat (a cena começa na cidade alta).
-//     O outro chega primeiro e para na porta, sem entrar; Pedro chega e entra; depois o outro entra também, "e viu, e
-//     creu"; e os dois voltam para casa (Jo 20.4-10). A cena se repete.
-//   - Maria Madalena fica do lado de fora, junto ao sepulcro, chorando (Jo 20.11): conta o que viu.
+// Gólgota: quem está no horto na manhã do domingo (Jo 20.11-18).
+//   - Pedro e o outro discípulo já estiveram aqui e voltaram para casa: o jogador os encontrou voltando, na Porta de
+//     Genat (cidade alta). Eles ficam escondidos aqui (a cena antiga, deles correndo, não roda mais).
+//   - Maria Madalena ficou junto ao sepulcro e, quando o jogador chega, já viu os anjos e o Senhor, que já partiu: ela
+//     conta tudo e corre à cidade para anunciar aos discípulos (Jo 20.18).
 //   - Um soldado da guarda do sepulcro ficou por ali: alguns da guarda foram à cidade (Mt 28.11), ele não.
 //   - No alto do Gólgota, um soldado do pelotão da crucificação conta das vestes (Jo 19.23-24) e manda procurar, na
 //     cidade alta, o companheiro que ficou com a túnica.
@@ -14,16 +14,18 @@ import { ator, anda } from './gente.js';
 
 const CONVERSAS = [];
 const [sx, , sz] = LAY.sepulcro, [ox, , oz] = LAY.olhar;
-// ---------- Maria Madalena, chorando do lado de fora ----------
+// ---------- Maria Madalena, depois do encontro (Jo 20.11-18): conta e corre à cidade ----------
 const maria = ator(nMaria, 1.5, sx + 2.6, sz + 3.2, -Math.PI / 2 - 0.5, 'Parado'); CIRC.push({ x: sx + 2.6, z: sz + 3.2, r: 0.35 });
-CONVERSAS.push({ nome: 'Maria Madalena', o: maria.o, r: 2.4, falas: [
-  'Ela está chorando junto ao sepulcro. Levanta os olhos para você.',
-  'Viemos de madrugada, ainda escuro, trazendo os aromas para ungir o corpo. No caminho dizíamos: “Quem nos removerá a pedra da porta do sepulcro?” (Mc 16.1-3).',
-  'Quando chegamos, a pedra já estava revolvida (Jo 20.1). Corri à cidade e chamei Pedro e o outro discípulo. Eles vieram correndo, entraram, viram os lençóis no chão e o lenço enrolado à parte… e voltaram para casa (Jo 20.2-10).',
-  'Eu fiquei. Abaixei-me para olhar dentro e vi dois anjos vestidos de branco, sentados onde o corpo de Jesus tinha sido posto, um à cabeceira e outro aos pés (Jo 20.11-12).',
-  'Eles me perguntaram: “Mulher, por que choras?” E eu disse: “Porque levaram o meu Senhor, e não sei onde o puseram” (Jo 20.13).',
-  'As outras mulheres dizem que os anjos falaram com elas: “Por que buscais entre os mortos aquele que vive? Não está aqui, mas ressuscitou” (Lc 24.5-6). Eu não sei o que pensar. Só sei que o corpo não está aí.',
-] });
+const cMaria = { nome: 'Maria Madalena', o: maria.o, r: 2.4, falas: [
+  'Maria Madalena está de pé junto ao sepulcro. Já não chora: o rosto dela brilha.',
+  'Fiquei aqui fora, chorando. Abaixei-me para olhar dentro e vi dois anjos vestidos de branco, sentados onde o corpo de Jesus tinha sido posto, um à cabeceira e outro aos pés (Jo 20.11-12).',
+  'Eles me perguntaram: “Mulher, por que choras?” Eu disse: “Porque levaram o meu Senhor, e não sei onde o puseram” (Jo 20.13).',
+  'Voltei-me e vi alguém em pé. Pensei que fosse o jardineiro, e disse: “Senhor, se tu o levaste, dize-me onde o puseste, e eu o levarei” (Jo 20.14-15).',
+  'Então ele disse: “Maria!” E eu soube. Voltei-me e disse: “Raboni!”, que quer dizer Mestre (Jo 20.16).',
+  'Ele me disse: “Não me detenhas, porque ainda não subi para meu Pai. Mas vai a meus irmãos e dize-lhes: Subo para meu Pai e vosso Pai, meu Deus e vosso Deus” (Jo 20.17).',
+  'Ele já se foi. Preciso correr à cidade e contar aos discípulos: eu vi o Senhor!',
+], aoFim: () => { if (CENA.fase === 'parado') { CENA.fase = 'maria_vai'; CENA.iM = ROTA.length - 1; cMaria.oculto = true; } } };
+CONVERSAS.push(cMaria);
 
 // ---------- os soldados ----------
 // procura, perto do ponto pedido, um lugar onde a pessoa não fique dentro da rocha ou do muro
@@ -52,7 +54,7 @@ CONVERSAS.push({ nome: 'Um soldado', o: soldadoGolgota.o, r: 2.4, falas: [
   'Mas a túnica era sem costura, tecida de alto a baixo, de uma peça só. Dissemos: “Não a rasguemos, mas lancemos sortes sobre ela, para ver de quem será” (Jo 19.23-24).',
   'Um dos judeus que olhavam ficou repetindo umas palavras dos salmos deles: “Repartiram entre si as minhas vestes, e sobre a minha túnica lançaram sortes” (Sl 22.18). Como se já estivesse escrito.',
   'O centurião, quando ele deu o último grito e expirou, disse: “Verdadeiramente este homem era Filho de Deus” (Mc 15.39).',
-  'Quem ganhou a túnica foi o meu companheiro. Ele está de guarda na cidade alta, na frente do palácio, no Pavimento. Vá falar com ele, se quiser.',
+  'Quem ganhou a túnica foi o meu companheiro, o que está de guarda na cidade alta, na frente do palácio, no Pavimento. Você o viu lá?',
 ] });
 
 // ---------- Pedro e João (Jo 20.3-10) ----------
@@ -62,13 +64,22 @@ const ROTA = [...AMOS.filter((a, i) => i >= 6 && i < iC && i % 8 === 0).map((a) 
 const PORTA = V3(sx + 0.2, 0, sz);
 const pedro = ator(nPedro, 1.68, ROTA[0].x, ROTA[0].z, 0, 'Correr'), joao = ator(nJoao, 1.71, ROTA[0].x, ROTA[0].z, 0, 'Correr');
 for (const st of [pedro, joao]) st.o.visible = false;
-const CENA = { fase: 'espera', t: 2, iP: 0, iJ: 0, viu: {} };
+const CENA = { fase: 'parado', t: 2, iP: 0, iJ: 0, iM: 0, viu: {} };
 function legendaPerto(chave, txt, pj, st) {
   if (CENA.viu[chave] || Math.hypot(st.o.position.x - pj.x, st.o.position.z - pj.z) > 24) return;
   CENA.viu[chave] = true; fala(txt); setTimeout(() => fala(''), 9000);
 }
 function cenaPasso(dt, pj) {
   CENA.t -= dt;
+  if (CENA.fase === 'parado' || CENA.fase === 'fim') return;
+  if (CENA.fase === 'maria_vai') {
+    // Maria corre pelo caminho do horto e pela estrada, rumo à Porta de Genat (Jo 20.18)
+    if (anda(maria, ROTA[CENA.iM], dt, 4.6)) CENA.iM--;
+    maria.toca('Correr');
+    if (!CENA.viu.anuncia) { CENA.viu.anuncia = true; fala('Foi Maria Madalena e anunciou aos discípulos que vira o Senhor, e que ele lhe dissera isto. (Jo 20.18)'); setTimeout(() => fala(''), 9000); }
+    if (CENA.iM < 0 || Math.hypot(maria.o.position.x - pj.x, maria.o.position.z - pj.z) > 45) { maria.o.visible = false; CENA.fase = 'fim'; }
+    return;
+  }
   if (CENA.fase === 'espera') {
     if (CENA.t > 0) return;
     CENA.fase = 'correm'; CENA.iP = CENA.iJ = 1; pedro.o.position.copy(ROTA[0]); joao.o.position.copy(ROTA[0]).add(V3(0.7, 0, 0.5)); pedro.o.visible = joao.o.visible = true; return;

@@ -58,22 +58,22 @@ MURO1 = [L(x, z) for x, z in ((-606.0, -150.0), (-489.0 - 4.5 - 12.1, -150.0))] 
 PAL = [L(-600.0, -322.0), L(-556.0, -168.0)]          # a plataforma do palácio (dois cantos)
 TORRES = [(L(-617.0, -160.0), L(-601.0, -144.0)), (L(-596.0, -162.0), L(-576.0, -144.0)), (L(-572.0, -158.0), L(-558.0, -144.0))]
 PX0, PX1 = min(PAL[0][0], PAL[1][0]), max(PAL[0][0], PAL[1][0]); PZ0, PZ1 = min(PAL[0][1], PAL[1][1]), max(PAL[0][1], PAL[1][1])
-X0, X1, Z0, Z1 = -64.0, 64.0, -66.0, 66.0
-AREA = [PX1 + 1.0, 54.0, GEN[1] + 1.2, 58.0]          # do palácio até o vale; do muro (com a porta) até o sul
+# A fase é uma praça só, entre o palácio (oeste) e a casa do sumo sacerdote (leste), do muro com a Porta de Genat
+# (norte) até a casa do cenáculo (sul). Em volta, a maquete. O jogador não sai da praça: as fachadas e os muros a fecham.
+X0, X1, Z0, Z1 = -36.0, 24.0, -56.0, -4.0
+PRACA = (PX1 + 1.25, 3.5, GEN[1] + 2.8, -17.0)        # o calçamento da praça
+AREA = [PX1 + 1.0, 15.0, GEN[1] + 1.2, -11.0]
 
 # ---------------- o traçado (metros, x leste, z sul) ----------------
-ZR = GEN[1] + 9.0                                    # a rua principal corre ao sul do muro
+ZR = GEN[1] + 6.0                                    # a rua para o viaduto (e o templo) sai da praça para leste
 RUAS = [  # (pontos, meia largura)
-    ([(PONTE[0] + 2.0, PONTE[1] + 1.5), (PONTE[0] - 4.0, ZR), (GEN[0] + 6.0, ZR), (GEN[0], ZR - 3.0), (GEN[0], GEN[1] + 2.5)], 2.2),     # do viaduto à Porta de Genat
-    ([(6.0, ZR), (6.0, 52.0)], 2.0),                                                                                                    # a rua do sul
-    ([(PX1 + 2.0, 6.0), (46.0, 6.0)], 1.8),                                                                                              # a transversal
-    ([(PX1 + 2.0, ZR + 12.0), (PX1 + 2.0, 40.0), (-20.0, 46.0), (6.0, 46.0)], 1.6),                                                      # ao longo do palácio, até o cenáculo
+    ([(PRACA[1] - 1.0, ZR), (14.0, ZR)], 2.0),
 ]
-XISTO = (18.0, 40.0, ZR + 3.5, ZR + 18.0)             # a praça de colunas
-MERCADO = (-14.0, 2.0, ZR + 3.0, ZR + 11.0)
-GABATA = (PX1 + 1.0, PX1 + 11.0, -6.0, 4.0)          # o Pavimento, na frente do palácio
-CAIFAS = (22.0, 42.0, 18.0, 38.0)                    # a casa do sumo sacerdote (com o pátio no meio)
-CENACULO = (-24.0, -12.0, 30.0, 40.0)                # a casa da sala de cima
+XISTO = (40.0, 41.0, 60.0, 61.0)                     # (o Xisto ficou na maquete; fora da fase)
+MERCADO = (-8.0, 2.0, GEN[1] + 3.5, GEN[1] + 10.0)    # umas barracas no canto nordeste da praça
+GABATA = (PX1 + 1.0, PX1 + 9.0, -40.0, -31.0)        # o Pavimento, na frente do palácio
+CAIFAS = (3.5, 21.0, ZR + 2.6, -24.0)                # a casa do sumo sacerdote (com o pátio no meio), o portão para a praça
+CENACULO = (-24.0, -10.0, -16.5, -7.0)               # a casa da sala de cima, com a escada de fora para a praça
 
 AMR = []                                             # amostras das ruas: (Vector(x, z), meia largura)
 for pts, w in RUAS:
@@ -92,7 +92,7 @@ def dist_rua(x, z):
 def dentro(r, x, z, m=0.0): return r[0] + m < x < r[1] - m and r[2] + m < z < r[3] - m
 
 
-PRACAS = [XISTO, MERCADO, GABATA]
+PRACAS = [PRACA, GABATA]
 # o chão: o relevo da maquete, mais liso; ruas e praças em degraus suaves
 def h_base(x, z):
     return hm(x, z)                  # o mesmo chão da maquete: a borda emenda sem degrau
@@ -374,7 +374,7 @@ def fita(pts, w):
             for j in range(4): _fs.append((prev[j], prev[j + 1], row[j + 1], row[j]))
         prev = row
 for pts, w in RUAS: fita(pts, w + 0.25)
-for (x0, x1, z0, z1) in (XISTO, MERCADO):
+for (x0, x1, z0, z1) in (PRACA,):
     nx_, nz_ = max(1, round(x1 - x0)), max(1, round(z1 - z0)); b0 = len(_vs)
     for i in range(nx_ + 1):
         for j in range(nz_ + 1):
@@ -484,7 +484,32 @@ def casa_pronta_antiga(x0, x1, z0, z1):
     PRONTAS.append((arq, no, cx, cz, GIRO[ld], k, y)); USO[no] += 1
     bloqueia(cx - lx / 2 + 0.15, cx + lx / 2 - 0.15, cz - lz / 2 + 0.15, cz + lz / 2 - 0.15)
     return True
-for qi, (qx0, qz0) in enumerate([(x, z) for x in range(int(X0) + 4, int(X1) - 4, 16) for z in range(int(GEN[1]) + 5, int(Z1) - 4, 16)]):
+def lote(x0, x1, z0, z1, ld):
+    """lote fixo com a porta para o lado ld (n, s, l, o): o jogo monta nele uma casa do kit"""
+    w, d = (x1 - x0, z1 - z0) if ld in 'ns' else (z1 - z0, x1 - x0)
+    cx, cz = (x0 + x1) / 2, (z0 + z1) / 2; lx, lz = x1 - x0, z1 - z0
+    pp = {'s': (cx, z1 + 0.4), 'n': (cx, z0 - 0.4), 'l': (x1 + 0.4, cz), 'o': (x0 - 0.4, cz)}[ld]
+    yp = altura(*pp); ym = sum(altura(cx + sx * lx / 2, cz + sz * lz / 2) for sx in (-1, 1) for sz in (-1, 1)) / 4
+    LOTES.append({'c': [round(cx, 3), round(cz, 3)], 'w': int(w), 'd': int(d), 'giro': round(GIRO[ld], 4), 'y': round(max(ym, yp - 0.1), 3), 'yp': round(yp, 3), 's': random.randint(1, 99999)})
+    bloqueia(x0, x1, z0, z1)
+PX = PRACA[0]
+lote(PX, PX + 6.0, -49.0, -43.0, 'l')         # noroeste, entre o muro e o Pavimento
+lote(PX, PX + 6.0, -29.0, -23.0, 'l')         # oeste, ao sul do Pavimento
+lote(PX, PX + 6.0, -23.0, -17.0, 'l')
+lote(-8.0, -2.0, -17.0, -11.0, 'n')           # sul, ao lado do cenáculo
+lote(-1.5, 4.5, -17.0, -11.0, 'n')
+mu = Formas()
+def muro(x0, x1, z0, z1, alto=3.2):
+    y0 = min(altura(x, z) for x in (x0, x1) for z in (z0, z1)) - 0.4; y1 = max(altura(x, z) for x in (x0, x1) for z in (z0, z1)) + alto
+    mu.caixa(x0, x1, y0, y1, z0, z1, COR['muro2']); mu.caixa(x0 - 0.06, x1 + 0.06, y1, y1 + 0.25, z0 - 0.06, z1 + 0.06, tom(COR['muro2'], 1.05)); bloqueia(x0, x1, z0, z1)
+muro(-10.0, -8.0, -16.4, -15.6)               # entre o cenáculo e a casa do sul
+muro(PX - 1.25, -24.0, -16.6, -15.8)          # atrás das casas do oeste, até o cenáculo
+muro(PRACA[1], PRACA[1] + 0.8, -24.0, -17.0)  # entre a casa do sumo sacerdote e as do sul
+muro(14.0, 15.0, GEN[1] + 0.5, CAIFAS[2])     # o fim da rua do viaduto (depois dela, a maquete)
+mu.cria('Muros_Praca')
+bloqueia(PX - 1.25, PX, -52.0, -16.0)         # a fresta entre o palácio e as casas
+bloqueia(-2.0, -1.5, -17.0, -11.0)
+for qi, (qx0, qz0) in enumerate([]):
     f = Formas(); ret = [1e9, -1e9, 1e9, -1e9, 0, 0]; feitas = 0
     x = qx0
     while x < qx0 + 16 - 4:
@@ -517,7 +542,7 @@ def viga(f, xa, za, ya, xb, zb, yb, cor, ea=0.0, eb=0.0, w=0.5, h=0.5):
             if (s < L_ / 2 and ea == 0.0) or (s > L_ / 2 and eb == 0.0): continue
         f.face([a, b, T[(k + 1) % 4], T[k]], mat, base)
     f.face(T, mat, base); f.face(B[::-1], mat, base)
-for (xa, za, xb, zb) in ((x0, z0, x1, z0), (x0, z1, x1, z1), (x1, z0, x1, z1)):
+for (xa, za, xb, zb) in ():
     L_ = math.hypot(xb - xa, zb - za); n = max(1, round(L_ / 3.0)); TOP = []
     for i in range(n + 1):
         x, z = xa + (xb - xa) * i / n, za + (zb - za) * i / n; y = altura(x, z)
@@ -527,7 +552,7 @@ for (xa, za, xb, zb) in ((x0, z0, x1, z0), (x0, z1, x1, z1), (x1, z0, x1, z1)):
     for i in range(n):      # a viga de capitel a capitel: em rampa, desce junto com as colunas (antes era reta e ficava no ar)
         (ax_, az_, ay_), (bx_, bz_, by_) = TOP[i], TOP[i + 1]
         viga(xi, ax_, az_, ay_, bx_, bz_, by_, COR['coluna'], 0.5 if i == 0 else 0.0, 0.5 if i == n - 1 else 0.0)
-xi.cria('Xisto')
+# (o Xisto ficou na maquete)
 
 # ---------------- o Pavimento (Gabatá) na frente do palácio: lajes grandes, com o tribunal ----------------
 ga = Formas()
@@ -570,10 +595,11 @@ for i in range(12):     # a escada de fora, subindo junto à face norte, para a 
     cn.caixa(x0 + 0.5 + i * 0.75, x0 + 1.25 + i * 0.75, yn, yn + (i + 1) * 0.36, z0 - 1.3, z0, tom(COR['muro2'], 1.0 + 0.02 * (i % 2)))
 bloqueia(x0 + 0.5, x0 + 9.5, z0 - 1.3, z0)
 cn.porta([(x0 + 9.6, yn + 4.3, z0 - 0.02), (x0 + 10.8, yn + 4.3, z0 - 0.02), (x0 + 10.8, yn + 6.4, z0 - 0.02), (x0 + 9.6, yn + 6.4, z0 - 0.02)])   # a porta de cima, fechada (Jo 20.19)
-cn.porta([(x1 + 0.02, yn + 0.3, (z0 + z1) / 2 - 0.6), (x1 + 0.02, yn + 0.3, (z0 + z1) / 2 + 0.6), (x1 + 0.02, yn + 2.4, (z0 + z1) / 2 + 0.6), (x1 + 0.02, yn + 2.4, (z0 + z1) / 2 - 0.6)])      # a porta de baixo
-for k in range(3): cn.plano([(x0 + 2 + k * 3.5, ytn - 2.4, z0 - 0.02), (x0 + 2.6 + k * 3.5, ytn - 2.4, z0 - 0.02), (x0 + 2.6 + k * 3.5, ytn - 1.6, z0 - 0.02), (x0 + 2 + k * 3.5, ytn - 1.6, z0 - 0.02)], COR['escuro'])
+yd_ = altura(x0 + 12.4, z0 - 0.5)
+cn.porta([(x0 + 11.8, yd_, z0 - 0.02), (x0 + 13.0, yd_, z0 - 0.02), (x0 + 13.0, yd_ + 2.2, z0 - 0.02), (x0 + 11.8, yd_ + 2.2, z0 - 0.02)])      # a porta de baixo, para a praça
+for k in range(4): cn.plano([(x0 + 2 + k * 3.5, ytn - 2.4, z0 - 0.02), (x0 + 2.6 + k * 3.5, ytn - 2.4, z0 - 0.02), (x0 + 2.6 + k * 3.5, ytn - 1.6, z0 - 0.02), (x0 + 2 + k * 3.5, ytn - 1.6, z0 - 0.02)], COR['escuro'])
 cn.cria('Casa_Cenaculo'); OCLUSORES['Casa_Cenaculo'] = [x0, x1, z0 - 1.3, z1, yn, ytn + 0.6]
-PORTA_CEN = (x1 + 1.0, (z0 + z1) / 2)
+PORTA_CEN = (x0 + 12.4, z0 - 1.2)
 
 # ---------------- peças dos kits: algumas barracas no mercado, jarros e cestos ----------------
 PROTO = {}
@@ -632,19 +658,19 @@ def empty_ref(nome, x, z, y=None, r=0.0, tipo='SINGLE_ARROW', tam=1.5):
 
 print('LOTES do kit', len(LOTES))
 x0, x1, z0, z1 = MERCADO
-for i, no in enumerate(('Barraca3', 'Barraca7', 'Barraca1', 'Barraca9')):
-    x = x0 + 2.0 + i * 4.2; n = poe('casa-porta\\barracas.glb', no, x, z1 - 1.5, math.pi, 1.0)
+for i, no in enumerate(('Barraca3', 'Barraca7')):
+    x = x0 + 2.5 + i * 5.0; n = poe('casa-porta\\barracas.glb', no, x, z1 - 1.5, math.pi, 1.0)
     if n is not None: circulo('COL_' + n.name, x, z1 - 1.5, 1.4, n)
-for (x, z, no) in ((x0 + 3.5, z0 + 2.5, 'Jarro_Alto'), (x0 + 8.0, z0 + 2.2, 'Cesto_Oval'), (x0 + 12.5, z0 + 2.6, 'Saco'), (x1 - 2.0, z0 + 2.0, 'Pote_Escuro')):
+for (x, z, no) in ((x0 + 1.0, z0 + 2.5, 'Jarro_Alto'), (x0 + 5.0, z0 + 2.2, 'Cesto_Oval'), (x1 - 1.5, z0 + 2.6, 'Saco')):
     n = poe('casa-porta\\objetos_casa.glb', no, x, z, random.uniform(0, 6.28), 1.0)
     if n is not None: circulo('COL_' + n.name, x, z, 0.35, n)
 # árvores nos pátios e nas praças (poucas: é uma cidade)
-for (x, z, arq, no, k) in ((XISTO[0] + 4, XISTO[3] - 3, 'oliveiras\\oliveiras.glb', 'Oliveira3_Vaso', 1.0), ((CAIFAS[0] + CAIFAS[1]) / 2 + 3.0, (CAIFAS[2] + CAIFAS[3]) / 2 + 3.0, 'figueiras\\figueiras.glb', 'Figueira1_Jovem_ComFruta', 0.8),
-                           (GABATA[1] - 1.5, GABATA[3] + 2.5, 'oliveiras\\oliveiras.glb', 'Oliveira1_Jovem', 0.9)):
+for (x, z, arq, no, k) in ((-17.0, -27.0, 'oliveiras\\oliveiras.glb', 'Oliveira3_Vaso', 1.0), ((CAIFAS[0] + CAIFAS[1]) / 2 + 3.0, (CAIFAS[2] + CAIFAS[3]) / 2 + 3.0, 'figueiras\\figueiras.glb', 'Figueira1_Jovem_ComFruta', 0.8),
+                           (-4.0, -24.0, 'oliveiras\\oliveiras.glb', 'Oliveira1_Jovem', 0.9)):
     n = poe(arq, no, x, z, random.uniform(0, 6.28), k)
     if n is not None: circulo('COL_' + n.name, x, z, 0.45, n)
 
-for i, (x, z) in enumerate(COLS): circulo('COL_Xisto_%d' % i, x, z, 0.4, bpy.data.objects['Xisto'], fixo=True)
+
 # a colisão do que vem da maquete: o muro (com a Porta de Genat aberta), o palácio e as torres
 for seg in MURO1:
     (xa, za), (xb, zb) = seg; bloqueia(xa, xb, min(za, zb) - 1.2, max(za, zb) + 1.2)
@@ -652,9 +678,9 @@ bloqueia(PX0, PX1, PZ0, PZ1)
 for (a, b) in TORRES: bloqueia(a[0], b[0], a[1], b[1])
 
 # ---------------- os lugares ----------------
-empty_ref('JOGO_ponte', PONTE[0] - 1.0, PONTE[1] + 3.0, tam=2.0)           # de onde se chega do templo
+empty_ref('JOGO_ponte', 12.5, ZR, tam=2.0)           # a rua do viaduto: por ela se chega do templo e se volta para lá
 empty_ref('JOGO_genat', GEN[0], GEN[1] + 3.0, tam=2.0)                     # a Porta de Genat (por dentro)
-empty_ref('JOGO_xisto', (XISTO[0] + XISTO[1]) / 2, (XISTO[2] + XISTO[3]) / 2, tam=2.0)
+empty_ref('JOGO_xisto', 9.0, ZR, tam=2.0)
 empty_ref('JOGO_mercado', (MERCADO[0] + MERCADO[1]) / 2, (MERCADO[2] + MERCADO[3]) / 2, tam=2.0)
 empty_ref('JOGO_gabata', (GABATA[0] + GABATA[1]) / 2, (GABATA[2] + GABATA[3]) / 2, y=yg, tam=2.0)
 empty_ref('JOGO_braseiro', BRASEIRO[0], BRASEIRO[1], y=yp, tipo='SPHERE', tam=0.6)

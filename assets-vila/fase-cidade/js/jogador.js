@@ -10,10 +10,11 @@ import { gJog } from './modelos.js';
 import { terreno } from './cenario.js';
 import { ator } from './gente.js';
 
-// de onde começa: no viaduto (vindo do templo); ?de=genat, na Porta de Genat; ?de=cenaculo, junto à casa do cenáculo
+// de onde começa: na rua do viaduto, entrando na praça (vindo do templo); ?de=genat, na Porta de Genat; ?de=cenaculo,
+// junto à casa do cenáculo
 const ARVS = [];
-const ini = DE === 'genat' ? [LAY.genat[0], 0, LAY.genat[2] + 2.5] : DE === 'cenaculo' ? [LAY.cenaculo[0] + 2.5, 0, LAY.cenaculo[2]] : [LAY.ponte[0] - 1.5, 0, LAY.ponte[2] + 3.0];
-const d0 = DE === 'genat' ? V3(0, 0, 1) : DE === 'cenaculo' ? V3(1, 0, 0) : V3(-0.5, 0, 1).normalize();
+const ini = DE === 'genat' ? [LAY.genat[0], 0, LAY.genat[2] + 2.5] : DE === 'cenaculo' ? [LAY.cenaculo[0] + 2.5, 0, LAY.cenaculo[2] - 1.0] : [LAY.ponte[0] - 3.0, 0, LAY.ponte[2]];
+const d0 = DE === 'genat' ? V3(0, 0, 1) : DE === 'cenaculo' ? V3(0, 0, -1) : V3(-1, 0, 0.35).normalize();
 const jog = ator(gJog, 1.7, ini[0], ini[2], Math.atan2(d0.x, d0.z), 'Parado');
 
 const [AX0, AX1, AZ0, AZ1] = LAY.area;

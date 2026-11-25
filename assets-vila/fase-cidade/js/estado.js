@@ -17,7 +17,7 @@ const sm = (a, b, x) => { let k = (x - a) / (b - a); k = k < 0 ? 0 : k > 1 ? 1 :
 const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
 
 // ---------- layout exportado do Blender (betesda_layout.json) ----------
-const LAY = await (await fetch('../fase-cidade/cidade_layout.json?v=6')).json();
+const LAY = await (await fetch('../fase-cidade/cidade_layout.json?v=7')).json();
 const DE = new URLSearchParams(location.search).get('de');      // ?de=genat começa na Porta de Genat (vindo do Gólgota); ?de=cenaculo, junto à casa do cenáculo (testes)
 
 // ---------- estado do jogo ----------

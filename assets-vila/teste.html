@@ -455,11 +455,19 @@ async function rodar() {
   await abre('fase-cidade/');
   const okCi = await testesDaFase('Cidade alta');
   if (okCi) {
-    await teste('Jo 20.2-4: Maria Madalena chega correndo à casa; Pedro e João saem correndo pela Porta de Genat', async (it) => {
-      const T = W().TESTE, C = T.CENA, fases = new Set();
-      for (let k = 0; k < 30 * 120 && fases.size < 4; k++) { T.laco(1 / 30); fases.add(C.fase); if (C.fase === 'espera' && fases.has('dois')) break; }
-      const ok = ['maria', 'pausa', 'dois'].every((f) => fases.has(f)) && C.fase === 'espera';
-      (ok ? it.ok : it.erro)('a cena passou por: ' + [...fases].join(' → ') + '; terminou: ' + (C.fase === 'espera' ? 'sim (os dois saíram pela porta)' : 'NÃO (' + C.fase + ')'));
+    await teste('Jo 20.1-10 e Lc 24.1-11: depois da mulher à porta, Maria chega e Pedro e João saem; as mulheres; Maria volta ao sepulcro; Pedro e João voltando na Porta de Genat a destravam', async (it) => {
+      const T = W().TESTE, C = T.CENA, fases = new Set(), p = T.jog.o.position, conv = (n) => T.CONVERSAS.find((c) => c.nome === n);
+      const corre = (ate_, max = 30 * 60) => { for (let k = 0; k < max && !ate_(); k++) { T.laco(1 / 30); fases.add(C.fase); } };
+      const travada = !C.livre;
+      conv('Uma mulher à porta').aoFim(); fases.add(C.fase);
+      corre(() => C.fase === 'maria_porta');
+      corre(() => !conv('As mulheres').oculto);
+      conv('Maria Madalena').aoFim(); corre(() => C.fase === 'espera_dois');
+      T.E.fora = false; p.set(T.LAY.genat[0], T.chaoTerra(T.LAY.genat[0], T.LAY.genat[2] + 3), T.LAY.genat[2] + 3);
+      corre(() => C.fase === 'dois_aqui');
+      conv('Pedro e João').aoFim(); corre(() => C.fase === 'fim');
+      const ok = travada && C.livre && ['maria_vem', 'dois_vao', 'maria_porta', 'maria_volta', 'espera_dois', 'dois_voltam', 'dois_aqui', 'fim'].every((f) => fases.has(f));
+      (ok ? it.ok : it.erro)('a cena passou por: ' + [...fases].join(' → ') + '; a porta travada antes: ' + (travada ? 'sim' : 'NÃO') + ', livre depois: ' + (C.livre ? 'sim' : 'NÃO'));
     });
     await teste('coisas para olhar na cidade: o braseiro, o tribunal, a escada da sala de cima (Lc 22.12-20), o palácio', (it) => testaInteracoes(it, ['o braseiro', 'o tribunal', 'a escada da sala de cima', 'o palácio']));
     await teste('o soldado da túnica, no Pavimento (Jo 19.23-24; Mc 15.16-19)', (it) => testaInteracoes(it, ['O soldado da túnica']));
@@ -507,22 +515,20 @@ async function rodar() {
       quadros(30 * 17);
       (dSep > 25 && dSep < 48 && dEstr < 22 && /olhar dentro/.test(txt) && abaixado && /lençóis|lenço/.test(fala) && T.E.olhou && !T.E.fora ? it.ok : it.erro)('sepulcro a ' + dSep.toFixed(1) + ' m do Gólgota; o Gólgota a ' + dEstr.toFixed(1) + ' m da estrada; botão "' + txt + '"; abaixado: ' + (abaixado ? 'sim' : 'NÃO') + '; legenda: "' + fala.slice(0, 50) + '…"; depois livre: ' + (T.E.olhou && !T.E.fora ? 'sim' : 'NÃO'));
     });
-    await teste('Jo 20.4-13: Pedro e João chegam correndo, entram e voltam; Maria Madalena fica chorando e conversa', async (it) => {
+    await teste('Jo 20.11-18: Maria Madalena, que já viu o Senhor, conversa e corre à cidade para anunciar', async (it) => {
       const T = W().TESTE, C = T.CENA, fases = new Set(), p = T.jog.o.position;
-      C.fase = 'espera'; C.t = 0;          // do começo
-      for (let k = 0; k < 30 * 240; k++) { T.laco(1 / 30); fases.add(C.fase); if (C.fase === 'espera' && fases.has('voltam')) break; }
-      const cena = ['correm', 'dentro1', 'dentro2', 'voltam'].every((f) => fases.has(f)) && C.fase === 'espera';
       const m = T.CONVERSAS.find((n) => n.nome === 'Maria Madalena'); let conv = false;
       if (m) {
         T.E.fora = false; const q = m.o.position; p.set(q.x + 1.2, T.chaoTerra(q.x + 1.2, q.z), q.z); quadros(3); T.acionar(); quadros(2);
         conv = await responde('Maria Madalena', 'Continuar', 2000);
-        for (let k = 0; k < 4; k++) { if (!(await responde('', 'Continuar', 500))) break; }
+        for (let k = 0; k < 8; k++) { if (!(await responde('', 'Continuar', 500))) break; }
         await responde('', 'Fechar', 1500); quadros(2);
       }
-      (cena && conv && !T.E.fora ? it.ok : it.erro)('a cena passou por: ' + [...fases].join(' → ') + '; conversa com Maria Madalena: ' + (conv ? 'sim' : 'NÃO'));
+      for (let k = 0; k < 30 * 60 && C.fase !== 'fim'; k++) { T.laco(1 / 30); fases.add(C.fase); }
+      (conv && C.fase === 'fim' && fases.has('maria_vai') && !T.E.fora ? it.ok : it.erro)('conversa com Maria Madalena: ' + (conv ? 'sim' : 'NÃO') + '; a cena passou por: ' + [...fases].join(' → '));
     });
     await teste('coisas para olhar no Gólgota: as cruzes (as sete palavras), o letreiro, a pedra rolada, os túmulos antigos', (it) => testaInteracoes(it, ['as cruzes', 'o letreiro', 'a pedra rolada', 'os túmulos antigos']));
-    await teste('pessoas no Gólgota: Maria Madalena (o que viu, Jo 20.11-13), o soldado da guarda (Mt 28.2-4, 11), o soldado das vestes (Jo 19.23-24)', (it) => testaInteracoes(it, ['Maria Madalena', 'Um soldado da guarda', 'Um soldado']));
+    await teste('pessoas no Gólgota: o soldado da guarda (Mt 28.2-4, 11), o soldado das vestes (Jo 19.23-24)', (it) => testaInteracoes(it, ['Um soldado da guarda', 'Um soldado']));
     await teste('as pontas da estrada perguntam: "voltar para a cidade" (sudeste) e "seguir pela estrada de Emaús" (noroeste)', async (it) => {
       const T = W().TESTE, N = T.AMOS.length, r = [];
       for (const [i, txt] of [[1, 'cidade'], [N - 2, 'Emaús']]) {

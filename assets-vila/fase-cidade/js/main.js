@@ -12,13 +12,12 @@ import { criaMarcador } from '../../limpo-motor/marcador.js';
 
 // ---------- os lugares: ao chegar perto de cada um, uma legenda (uma vez) ----------
 const P = (k) => [LAY[k][0], LAY[k][2]];
-const [px, pz] = P('ponte'), [gx, gz] = P('genat'), [xx, xz] = P('xisto'), [mx, mz] = P('mercado'), [bx, bz] = P('gabata'), [cx, cz] = P('caifas'), [nx, nz] = P('cenaculo');
+const [px, pz] = P('ponte'), [gx, gz] = P('genat'), [mx, mz] = P('mercado'), [bx, bz] = P('gabata'), [cx, cz] = P('caifas'), [nx, nz] = P('cenaculo');
 const LUG = [
-  { x: xx, z: xz, r: 10, txt: 'O Xisto, a praça de colunas junto ao viaduto que liga a cidade alta ao templo. Aqui moram os sacerdotes e os ricos da cidade.' },
-  { x: mx, z: mz, r: 8, txt: 'O mercado de cima. A cidade ainda está cheia de gente que veio para a Páscoa.' },
+  { x: mx, z: mz, r: 6, txt: 'Umas barracas de mercado. A cidade ainda está cheia de gente que veio para a Páscoa.' },
   { x: bx, z: bz, r: 7, txt: 'O palácio de Herodes, onde o governador fica na festa: o pretório (Jo 18.28). Na frente, o Pavimento, em hebraico Gabatá: ali Pilatos se assentou no tribunal (Jo 19.13).' },
-  { x: cx, z: cz, r: 5, txt: 'A casa do sumo sacerdote. Pedro seguiu Jesus de longe até aqui, e ficou do lado de fora, à porta (Jo 18.15-16).' },
-  { x: nx, z: nz, r: 7, txt: 'Uma casa com uma grande sala no andar de cima (Mc 14.15). Ali os discípulos estão reunidos, com as portas fechadas (Jo 20.19).' },
+  { x: cx, z: cz, r: 5, txt: 'A casa do sumo sacerdote, com o portão aberto para o pátio. Pedro seguiu Jesus de longe até aqui, e ficou do lado de fora, à porta (Jo 18.15-16).' },
+  { x: nx, z: nz, r: 7, txt: 'Uma casa com uma grande sala no andar de cima (Mc 14.15). Ali os discípulos estão reunidos, com as portas fechadas (Jo 20.19). Uma mulher guarda a porta de baixo.' },
   { x: gx, z: gz, r: 6, txt: 'A Porta de Genat, a “porta do Jardim”. Lá fora, junto à estrada, perto da cidade, fica o Gólgota (Jo 19.20).' },
 ];
 let falando = 0;
@@ -37,7 +36,7 @@ function conversar() {
   if (!quem) return;
   const n = quem; E.alvoToque = null; CAM.conversa = true;
   jog.o.rotation.y = Math.atan2(n.o.position.x - jog.o.position.x, n.o.position.z - jog.o.position.z);
-  conversa(n.titulo ?? n.nome, n.falas, () => { CAM.conversa = false; n.ouviu = true; });
+  conversa(n.titulo ?? n.nome, n.falas, () => { CAM.conversa = false; n.ouviu = true; if (n.aoFim) n.aoFim(); });
 }
 
 // ---------- o botão de ação e as saídas ----------
@@ -50,13 +49,13 @@ function acionar() {
 ctl.aoAcionar = acionar; botao.onclick = () => acionar();
 function volta(x, z) { jog.o.position.set(x, terreno(x, z), z); E.alvoToque = null; }
 function sair(texto, url) { E.fora = true; fade.textContent = texto; fade.style.opacity = 1; setTimeout(() => { location.href = url; }, 1200); }
-function perguntaTemplo() { dialogo('', 'Deseja voltar ao templo, pelo viaduto?', [['Ainda não', () => volta(px - 1.5, pz + 3.0), '#a8957a'], ['Sim', () => sair('De volta ao templo…', '../fase-templo/?de=cidade')]]); }
+function perguntaTemplo() { dialogo('', 'Deseja voltar ao templo, pelo viaduto?', [['Ainda não', () => volta(px - 3.0, pz), '#a8957a'], ['Sim', () => sair('De volta ao templo…', '../fase-templo/?de=cidade')]]); }
 function perguntaGolgota() { dialogo('', 'Deseja sair pela Porta de Genat, para o Gólgota e o sepulcro?', [['Ainda não', () => volta(gx, gz + 2.5), '#a8957a'], ['Sim', () => sair('Pela Porta de Genat, para fora da cidade…', '../fase-golgota/')]]); }
 
 // ---------- chegada ----------
 setTimeout(() => {
   fade.style.opacity = 0;
-  setTimeout(() => { fade.textContent = ''; legenda('Domingo, de manhã cedo. A cidade alta: casas de pedra com terraços, ruas calçadas e, a oeste, as torres do palácio de Herodes.', 8); }, 900);
+  setTimeout(() => { fade.textContent = ''; legenda('Domingo, de manhã cedo. Uma praça da cidade alta: a oeste, o palácio de Herodes; ao norte, a Porta de Genat; ao sul, a casa onde os discípulos estão escondidos.', 8); }, 900);
 }, 1200);
 
 // ---------- laço ----------
@@ -99,9 +98,9 @@ const laco = (forca) => {
 
   // lugares, conversas e saídas
   lugares(pj);
-  quem = E.fora ? null : pertoDe(CONVERSAS, pj);
-  E.ponte = Math.hypot(pj.x - px, pj.z - (pz - 1.0)) < 2.0;
-  E.genat = Math.hypot(pj.x - gx, pj.z - (gz - 1.4)) < 1.9;
+  quem = E.fora ? null : pertoDe(CONVERSAS.filter((n) => !n.oculto && n.o.visible !== false), pj);
+  E.ponte = pj.x > px - 0.5 && Math.abs(pj.z - pz) < 3.0;
+  E.genat = CENA.livre && Math.hypot(pj.x - gx, pj.z - (gz - 1.4)) < 1.9;
   const saida = E.ponte || E.genat;
   if (saida && !E.fora && !E.perguntou) { E.perguntou = true; (E.genat ? perguntaGolgota : perguntaTemplo)(); }
   if (!saida) E.perguntou = false;
