@@ -66,7 +66,7 @@ function tapa(a, h, c) {
 function abreVista(pj, dt) {
   const h = V3(pj.x, pj.y + 1.1, pj.z), c = camera.position;
   for (const a of ARVS) {
-    const alvo = tapa(a, h, c) ? 0.12 : 1;
+    const alvo = 1;      // nada fica transparente: o que tapa o jogador fica como está, e o triângulo amarelo o mostra
     if (Math.abs(alvo - a.op) < 0.005) continue;
     if (!a.mats) { a.mats = []; a.n.traverse((m) => { if (m.isMesh) { m.material = m.material.clone(); a.mats.push(m.material); } }); }
     a.op += (alvo - a.op) * Math.min(1, dt * 6); if (Math.abs(alvo - a.op) < 0.01) a.op = alvo;

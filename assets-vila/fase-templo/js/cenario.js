@@ -106,7 +106,7 @@ function oclusoresPasso(p, dt, cam) {
       tapa = x > x0 - 0.3 && x < x1 + 0.3 && z > z0 - 0.3 && z < z1 + 0.3 && y > y0 && y < y1 + 0.3;
     }
     if (!tapa && y0 > p.y + 1.5 && p.x > x0 && p.x < x1 && p.z > z0 && p.z < z1) tapa = true;      // debaixo de um teto
-    const alvo = tapa ? 0.1 : 1; if (Math.abs(alvo - t.op) < 0.005) continue;
+    const alvo = 1; if (Math.abs(alvo - t.op) < 0.005) continue;
     t.op += (alvo - t.op) * Math.min(1, dt * 6); if (Math.abs(alvo - t.op) < 0.01) t.op = alvo;
     const tr = t.op < 0.999, m = t.o.material;
     if (m.transparent !== tr) { m.transparent = tr; m.depthWrite = !tr; m.needsUpdate = true; } m.opacity = t.op; t.o.castShadow = !tr;

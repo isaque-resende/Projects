@@ -128,13 +128,14 @@ export async function carregarKit(url, texDir = 'tex/') {
     });
     pecas[no.name] = porMat;
   }
-  // versão leve das paredes rebocadas (casa.leve, para a cidade): sem as duas fiadas de pedras 3D da base (o shader já
-  // pinta a base de pedra) e, nas paredes sem vão, sem as manchas de pedra; ficam batentes, vergas, peitoris e janelas
+  // versão leve das paredes rebocadas (casa.leve, para a cidade): sem as duas fiadas de pedras 3D da base nem a argamassa
+  // escura atrás delas (o shader já pinta a base de pedra); ficam batentes, vergas, peitoris, janelas e as manchas de pedra
   for (const n of Object.keys(pecas)) {
     if (!/^Parede_/.test(n) || !pecas[n].Casa_Atlas) continue;
     const liso = /^Parede_\d$/.test(n), leve = { ...pecas[n] };
-    if (liso) delete leve.Casa_Atlas;
-    else leve.Casa_Atlas = semPedrasDaBase(pecas[n].Casa_Atlas);
+    leve.Casa_Atlas = semPedrasDaBase(pecas[n].Casa_Atlas);
+    // a argamassa escura que fica atrás das fiadas de pedra (código 2): sem as pedras, ela aparecia como buraco
+    if (pecas[n].Casa_Alvenaria) leve.Casa_Alvenaria = soTriangulos(pecas[n].Casa_Alvenaria, (c, ym, zm) => c < 1.5 || zm < 0.1 || ym > 0.8);     // só a da base, na face de fora; a de dentro e as janelinhas ficam
     pecas[n + '_Leve'] = leve;
   }
   const atl = atlas.clone(); atl.vertexColors = true;
@@ -178,6 +179,18 @@ function semPedrasDaBase(g) {
   }
   const fica = []; for (let t = 0; t < nt; t++) { const b = bb.get(f(t)); if (!(b[1] <= 0.78 && b[2] >= 0.0 && b[3] <= 0.27) && !(b[1] - b[0] < 0.08 && b[2] > 0.2)) fica.push(t); }
   const s = g.toNonIndexed(), out = new THREE.BufferGeometry();
+  for (const [nome, a] of Object.entries(s.attributes)) {
+    const k = a.itemSize, arr = new a.array.constructor(fica.length * 3 * k);
+    fica.forEach((t, j) => arr.set(a.array.subarray(t * 3 * k, (t + 1) * 3 * k), j * 3 * k));
+    out.setAttribute(nome, new THREE.BufferAttribute(arr, k, a.normalized));
+  }
+  return out;
+}
+// fica só com os triângulos cujo aCodigo (dos três vértices) passa no teste
+function soTriangulos(g, ok) {
+  const s = g.index ? g.toNonIndexed() : g, cod = s.attributes.aCodigo, nt = s.attributes.position.count / 3, fica = [];
+  for (let t = 0; t < nt; t++) if (ok(Math.max(cod.getX(t * 3), cod.getX(t * 3 + 1), cod.getX(t * 3 + 2)), Math.max(s.attributes.position.getY(t * 3), s.attributes.position.getY(t * 3 + 1), s.attributes.position.getY(t * 3 + 2)), Math.min(s.attributes.position.getZ(t * 3), s.attributes.position.getZ(t * 3 + 1), s.attributes.position.getZ(t * 3 + 2)))) fica.push(t);
+  const out = new THREE.BufferGeometry();
   for (const [nome, a] of Object.entries(s.attributes)) {
     const k = a.itemSize, arr = new a.array.constructor(fica.length * 3 * k);
     fica.forEach((t, j) => arr.set(a.array.subarray(t * 3 * k, (t + 1) * 3 * k), j * 3 * k));
@@ -449,7 +462,8 @@ export function casaCidade(kit, semente, w, d, y0 = 0) {
   const dois = rnd() < 0.4, cima = !dois && rnd() < 0.65;
   const cw = Math.min(w - 2, 2 + Math.floor(rnd() * 2)), cd = 2;
   for (let i = 0; i < w; i++) for (let k = 0; k < d; k++) mapa.set(i + ',' + k, { casa: 1, andares: dois ? 2 : cima && i >= w - cw && k < cd ? 2 : 1 });
-  const casa = { parede: rnd() < 0.7 ? VARIANTES.Rebocada(rnd) : VARIANTES.Gasta(rnd), tom: tomDaCasa(rnd), portas: [], leve: true };
+  const casa = { parede: (rnd(), VARIANTES.Rebocada(rnd)), tom: tomDaCasa(rnd), portas: [], leve: true };
+  casa.parede[0] = 1.3;      // reboco inteiro: sem manchas de pedra (a base de pedra pintada fica)
   const pi = Math.max(0, Math.min(w - 2, Math.floor(w / 2) - 1 + (rnd() < 0.5 ? 0 : -1)));
   casa.portas.push({ nivel: 0, lado: 'S', i: pi, k: d - 1 });
   if (cima) { casa.portas.push({ nivel: 1, lado: 'W', i: w - cw, k: 0 }); casa.escadaMao = { lado: 'N', i: 0, k: 0 }; }

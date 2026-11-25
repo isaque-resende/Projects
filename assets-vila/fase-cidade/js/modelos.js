@@ -5,7 +5,7 @@ import { LAY } from './estado.js';
 
 const P = (n) => baixar('../personagens/' + n + '.glb');
 const [gCen, gJer, gJog, gGal1, gGal2, nPedro, nJoao, nMaria, nPorteira, nServa, nGuarda, nMercador, nAldeao, nMoco, nMarta, KIT] = await Promise.all([
-  baixar('../fase-cidade/cidade_cenario.glb?v=7'), baixar('../jerusalem/jerusalem_maquete.glb?v=5'), baixar('../vila-betania/discipulo_acoes.glb'),
+  baixar('../fase-cidade/cidade_cenario.glb?v=8'), baixar('../jerusalem/jerusalem_maquete.glb?v=5'), baixar('../vila-betania/discipulo_acoes.glb'),
   baixar('../animais/galinha1.glb'), baixar('../animais/galinha2.glb'),
   P('barbudo'), P('cacheado'), P('mulher_lenco'), P('mulher_botoes'), P('mulher_faixa'), P('robusto'), P('mercador'), P('aldeao'), P('moco'), P('marta'),
   carregaKit(LAY.objetos),

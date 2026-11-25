@@ -137,7 +137,7 @@ function telhadosPasso(p, dt, cam) {
     const [x0, x1, z0, z1] = t.r, den = (x, z, m) => x > x0 - m && x < x1 + m && z > z0 - m && z < z1 + m;
     let sob = den(p.x, p.z, 0.6);
     if (!sob && cam && cam.y > yT && yc < yT) { const k = (yT - yc) / (cam.y - yc); sob = den(p.x + (cam.x - p.x) * k, p.z + (cam.z - p.z) * k, 1.0); }
-    const alvo = sob ? 0.18 : 1; if (Math.abs(alvo - t.op) < 0.005) continue;
+    const alvo = 1; if (Math.abs(alvo - t.op) < 0.005) continue;
     t.op += (alvo - t.op) * Math.min(1, dt * 6); if (Math.abs(alvo - t.op) < 0.01) t.op = alvo;
     const tr = t.op < 0.999, m = t.o.material;
     if (m.transparent !== tr) { m.transparent = tr; m.depthWrite = !tr; m.needsUpdate = true; } m.opacity = t.op; t.o.castShadow = !tr;

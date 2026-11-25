@@ -659,16 +659,13 @@ def empty_ref(nome, x, z, y=None, r=0.0, tipo='SINGLE_ARROW', tam=1.5):
 print('LOTES do kit', len(LOTES))
 x0, x1, z0, z1 = MERCADO
 for i, no in enumerate(('Barraca3', 'Barraca7')):
-    x = x0 + 2.5 + i * 5.0; n = poe('casa-porta\\barracas.glb', no, x, z1 - 1.5, math.pi, 1.0)
+    x = x0 + 2.5 + i * 5.0; n = poe('casa-porta\\barracas.glb', no, x, z1 - 1.5, 0.0, 1.0)     # o balcão para o sul (a praça); o vendedor dentro
     if n is not None: circulo('COL_' + n.name, x, z1 - 1.5, 1.4, n)
-for (x, z, no) in ((x0 + 1.0, z0 + 2.5, 'Jarro_Alto'), (x0 + 5.0, z0 + 2.2, 'Cesto_Oval'), (x1 - 1.5, z0 + 2.6, 'Saco')):
+for (x, z, no) in ((x0 + 2.5 - 1.75, z1 - 1.3, 'Jarro_Alto'), (x0 + 2.5 + 1.7, z1 - 0.9, 'Cesto_Oval'), (x0 + 7.5 + 1.75, z1 - 1.4, 'Saco')):     # junto das barracas, dos lados
     n = poe('casa-porta\\objetos_casa.glb', no, x, z, random.uniform(0, 6.28), 1.0)
     if n is not None: circulo('COL_' + n.name, x, z, 0.35, n)
 # árvores nos pátios e nas praças (poucas: é uma cidade)
-for (x, z, arq, no, k) in ((-17.0, -27.0, 'oliveiras\\oliveiras.glb', 'Oliveira3_Vaso', 1.0), ((CAIFAS[0] + CAIFAS[1]) / 2 + 3.0, (CAIFAS[2] + CAIFAS[3]) / 2 + 3.0, 'figueiras\\figueiras.glb', 'Figueira1_Jovem_ComFruta', 0.8),
-                           (-4.0, -24.0, 'oliveiras\\oliveiras.glb', 'Oliveira1_Jovem', 0.9)):
-    n = poe(arq, no, x, z, random.uniform(0, 6.28), k)
-    if n is not None: circulo('COL_' + n.name, x, z, 0.45, n)
+# (sem árvores: nem na praça nem no pátio)
 
 
 # a colisão do que vem da maquete: o muro (com a Porta de Genat aberta), o palácio e as torres

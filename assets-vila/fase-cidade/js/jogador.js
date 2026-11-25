@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { criaControles } from '../../limpo-motor/controles.js';
 import { criaCamLivre } from '../../limpo-motor/camlivre.js';
-import { V3, LAY, E, DE, renderer } from './estado.js';
+import { V3, LAY, E, DE, renderer, sm } from './estado.js';
 import { gJog } from './modelos.js';
 import { terreno } from './cenario.js';
 import { ator } from './gente.js';
@@ -33,7 +33,23 @@ ajustaLente();
 const DMIN = 8, DMAX = 90;
 const QUINA = V3(1, 0.8165, 0.45).normalize();        // a leste-sudeste e acima (30°): olha o palácio e a Porta de Genat
 const PERTO = V3(1, 0.45, 0.45).normalize();           // conversando: mais baixa e mais perto
-const CAM = { pos: V3(), olho: V3(), braco: 1, off: V3(), offO: V3(), perto: 0 };
+const CAM = { pos: V3(), olho: V3(), braco: 1, off: V3(), offO: V3(), perto: 0, giro: 0 };
+// A câmera gira aos poucos perto das fachadas que olham para o outro lado: a frente do cenáculo (a escada, as portas e
+// a mulher) olha para o norte; o portão e o pátio do sumo sacerdote, para o oeste. Longe delas, volta à quina de sempre.
+const cfr = LAY.caifas_r;
+const FOCOS = [
+  { x: LAY.cenaculo[0] - 5, z: LAY.cenaculo[2] - 4, r: 12, dir: [0.55, -0.83] },
+  { x: (cfr[0] + cfr[1]) / 2 - 3, z: (cfr[2] + cfr[3]) / 2, r: 11, dir: [-0.6, 0.8] },
+];
+const YAW0 = Math.atan2(QUINA.x, QUINA.z), EIXO_Y = V3(0, 1, 0);
+function giroAlvo(pj) {
+  let g = 0, wm = 0;
+  for (const f of FOCOS) {
+    const w = 1 - sm(f.r * 0.45, f.r, Math.hypot(pj.x - f.x, pj.z - f.z)); if (w <= wm) continue;
+    let d = Math.atan2(f.dir[0], f.dir[1]) - YAW0; d = Math.atan2(Math.sin(d), Math.cos(d)); wm = w; g = d * w;
+  }
+  return g;
+}
 const suave = (k, dt) => 1 - Math.exp(-k * dt);
 function braco(pj, alvo, dt) {
   const h = V3(pj.x, pj.y + 1.4, pj.z), q = V3(); let t = 1, folga0 = 1e9;
@@ -48,7 +64,8 @@ function braco(pj, alvo, dt) {
 }
 const livre = criaCamLivre(E, () => [DMIN, DMAX]);
 function camAlvo(pj, dt) {
-  const k = CAM.perto, dir = livre.aplica(QUINA.clone().lerp(PERTO, k).normalize());
+  CAM.giro += (giroAlvo(pj) - CAM.giro) * Math.min(1, dt * 1.2);
+  const k = CAM.perto, dir = livre.aplica(QUINA.clone().lerp(PERTO, k).normalize().applyAxisAngle(EIXO_Y, CAM.giro));
   const d = E.dist * (1 - k) + 9 * k;
   const alvo = braco(pj, pj.clone().addScaledVector(dir, d), dt);
   return [alvo, pj.clone().add(V3(0, 1.1 + 0.3 * k, 0))];
@@ -63,7 +80,7 @@ function tapa(a, h, c) {
 function abreVista(pj, dt) {
   const h = V3(pj.x, pj.y + 1.1, pj.z), c = camera.position;
   for (const a of ARVS) {
-    const alvo = tapa(a, h, c) ? 0.12 : 1;
+    const alvo = 1;      // nada fica transparente: o que tapa o jogador fica como está, e o triângulo amarelo o mostra
     if (Math.abs(alvo - a.op) < 0.005) continue;
     if (!a.mats) { a.mats = []; a.n.traverse((m) => { if (m.isMesh) { m.material = m.material.clone(); a.mats.push(m.material); } }); }
     a.op += (alvo - a.op) * Math.min(1, dt * 6); if (Math.abs(alvo - a.op) < 0.01) a.op = alvo;
