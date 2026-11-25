@@ -674,7 +674,7 @@ x0, x1, z0, z1 = MERCADO
 for i, no in enumerate(('Barraca3', 'Barraca7')):
     x = x0 + 2.5 + i * 5.0; n = poe('casa-porta\\barracas.glb', no, x, z1 - 1.5, 0.0, 1.0)     # o balcão para o sul (a praça); o vendedor dentro
     if n is not None: circulo('COL_' + n.name, x, z1 - 1.5, 1.4, n)
-for (x, z, no) in ((x0 + 2.5 - 1.75, z1 - 1.3, 'Jarro_Alto'), (x0 + 2.5 + 1.7, z1 - 0.9, 'Cesto_Oval'), (x0 + 7.5 + 1.75, z1 - 1.4, 'Saco')):     # junto das barracas, dos lados
+for (x, z, no) in ((x0 + 2.5 - 1.75, z1 - 1.3, 'Jarro_Alto'), (x0 + 2.5 + 1.7, z1 - 0.9, 'Pote_Escuro'), (x0 + 7.5 + 1.75, z1 - 1.4, 'Saco')):     # junto das barracas, dos lados
     n = poe('casa-porta\\objetos_casa.glb', no, x, z, random.uniform(0, 6.28), 1.0)
     if n is not None: circulo('COL_' + n.name, x, z, 0.15, n)
 # árvores nos pátios e nas praças (poucas: é uma cidade)

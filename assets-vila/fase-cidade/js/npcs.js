@@ -138,7 +138,7 @@ CONVERSAS.push({ nome: 'O soldado da túnica', o: guarda.o, r: 2.4, falas: [
 ] });
 // ---------- o mercado ----------
 const pm = pt('mercado');
-const mercador = poe(nMercador, 1.71, pm.x - 2.5, pm.z + 1.05, OLHA.sul, 'Conversando');
+const mercador = poe(nMercador, 1.71, pm.x - 2.5, pm.z + 1.5, OLHA.sul, 'Conversando');
 CONVERSAS.push({ nome: 'Um mercador', o: mercador.o, r: 2.4, falas: [
   'Azeite, figos secos, tâmaras de Jericó! A cidade ainda está cheia de peregrinos da Páscoa.',
   'Hoje cedo, uns guardas passaram por aqui correndo, para a casa do sumo sacerdote (Mt 28.11). Pareciam ter visto um fantasma.',
@@ -148,84 +148,119 @@ const ROTAS_P = [[V3(pm.x + 2, 0, pm.z + 4), V3(-4, 0, -30), V3(-20, 0, -21)], [
 const PAS = passantes.map((st, k) => ({ st, rota: ROTAS_P[k], i: 1, ida: true, espera: 0 }));
 
 // ---------- a cena ----------
+// Quem anda não recebe clipe à força: o "anda" escolhe andar ou correr pela velocidade (forçar outro clipe a cada quadro
+// reiniciava a animação, e as pernas travavam). Ao parar, toca "Parado"; para olhar, gira aos poucos.
+const DENTRO_CIMA = V3(PORTA_CIMA.x, 0, crc[2] + 0.7), DENTRO_BAIXO = V3(pc.x, 0, crc[2] + 0.7);
+function olha(st, x, z, dt) {
+  let d = Math.atan2(x - st.o.position.x, z - st.o.position.z) - st.o.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d));
+  st.o.rotation.y += d * Math.min(1, dt * 4);
+}
+const para = (st) => st.toca('Parado');
+// segue uma rota, cada um no seu ritmo; vel pode ser um número ou uma função do ponto (i) em que está; true no fim
+function segue(st, rota, dt, vel, desvio = null) {
+  st.i = st.i || 0; if (st.i >= rota.length) return true;
+  const alvo = desvio ? rota[st.i].clone().add(desvio) : rota[st.i];
+  if (anda(st, alvo, dt, typeof vel === 'function' ? vel(st.i) : vel)) { st.i++; if (st.i >= rota.length) { para(st); return true; } }
+  return false;
+}
+const comeca = (st, p) => { st.o.position.copy(p); st.o.visible = true; st.i = 0; };
+// colisão dos que estão na cena: o jogador não atravessa ninguém
+const CORPOS = [maria, pedro, joao, ...mulheres].map((st) => { const c = { x: 0, z: 0, r: 0 }; CIRC.push(c); return [st, c]; });
+// quem está parado e o jogador chega perto olha para ele
+const ATENTOS = [porteira, maria, ...mulheres];
+
 function cenaPasso(dt, pj) {
   CENA.t -= dt;
-  mulheresPasso(dt);
+  for (const [st, c] of CORPOS) { c.x = st.o.position.x; c.z = st.o.position.z; c.r = st.o.visible ? 0.32 : 0; }
+  for (const st of ATENTOS) if (st.o.visible && st.atual === 'Parado' && Math.hypot(pj.x - st.o.position.x, pj.z - st.o.position.z) < 4) olha(st, pj.x, pj.z, dt);
+  mulheresPasso(dt, pj);
   const F = CENA.fase;
   if (F === 'maria_vem') {
     if (CENA.t > 0) return;
-    if (!maria.o.visible) { maria.o.position.copy(FORA); maria.o.visible = true; CENA.i = 0; legenda('Maria Madalena correu e foi ter com Simão Pedro e com o outro discípulo. (Jo 20.2)', 7); }
-    const rota = [NA_PORTA, V3(pc.x - 1.0, 0, pc.z - 6), LUG_MARIA];
-    if (anda(maria, rota[CENA.i], dt, 4.4)) { if (CENA.i < rota.length - 1) CENA.i++; else { maria.toca('Parado'); vira(maria, PORTA_CIMA.x, PORTA_CIMA.z); CENA.fase = 'dois_vao'; CENA.t = 4.0; legenda('Maria chama do pé da escada: “Pedro! João!”', 4); } }
-    else maria.toca('Correr');
+    if (!maria.o.visible) { comeca(maria, FORA); legenda('Maria Madalena correu e foi ter com Simão Pedro e com o outro discípulo. (Jo 20.2)', 7); }
+    // corre pela praça e, perto da casa, vai diminuindo
+    if (segue(maria, [NA_PORTA, V3(pc.x - 1.0, 0, pc.z - 6), LUG_MARIA], dt, (i) => (i < 2 ? 4.2 : 1.6))) { CENA.fase = 'dois_vao'; CENA.t = 4.0; legenda('Maria chama do pé da escada: “Pedro! João!”', 4); }
     return;
   }
   if (F === 'dois_vao') {
+    olha(maria, PORTA_CIMA.x, PORTA_CIMA.z, dt);
     if (CENA.t > 0) return;
-    if (!pedro.o.visible) {
-      pedro.o.position.copy(PORTA_CIMA); joao.o.position.copy(PORTA_CIMA).add(V3(-0.4, 0, 0.2)); pedro.o.visible = joao.o.visible = true; CENA.iP = CENA.iJ = 0;
+    if (!CENA.sairam) {
+      CENA.sairam = true;
+      // saem de dentro, pela porta de cima, e descem a escada; na praça, correm (o outro discípulo mais depressa, Jo 20.4)
+      comeca(joao, DENTRO_CIMA); comeca(pedro, DENTRO_CIMA); pedro.o.visible = false; CENA.tP = 0.9;
       cPorteira.falas = FALAS_PORTEIRA_DEPOIS; cMaria.oculto = false;
       legenda('Pedro e o outro discípulo saíram e foram ao sepulcro. Os dois corriam juntos; mas o outro discípulo correu mais depressa do que Pedro. (Jo 20.3-4)', 9);
     }
-    const rota = [...DESCE, NA_PORTA, FORA], nE = DESCE.length;
-    // na escada, descem um pouco mais devagar; na praça, correm (o outro discípulo mais depressa, Jo 20.4)
-    if (CENA.iJ < rota.length && anda(joao, rota[CENA.iJ].clone().add(V3(CENA.iJ >= nE ? 0.6 : 0, 0, 0)), dt, CENA.iJ < nE ? 3.0 : 5.0)) CENA.iJ++;
-    if (CENA.t > -0.5) return;
-    if (CENA.iP < rota.length && anda(pedro, rota[CENA.iP], dt, CENA.iP < nE ? 2.8 : 4.2)) CENA.iP++;
-    joao.toca('Correr'); pedro.toca('Correr');
-    if (CENA.iJ >= rota.length) joao.o.visible = false;
-    if (CENA.iP >= rota.length) { pedro.o.visible = false; CENA.fase = 'maria_porta'; M.vem = true; }
+    const rota = [PORTA_CIMA, ...DESCE, NA_PORTA, FORA], nE = DESCE.length;      // até o pé da escada, andando
+    const fimJ = segue(joao, rota, dt, (i) => (i <= nE ? 1.6 : 4.8), joao.i > nE ? V3(0.6, 0, 0) : null);
+    if ((CENA.tP -= dt) <= 0) pedro.o.visible = true;
+    const fimP = pedro.o.visible && segue(pedro, rota, dt, (i) => (i <= nE ? 1.5 : 4.0));
+    if (fimJ) joao.o.visible = false;
+    if (fimP) { pedro.o.visible = false; CENA.fase = 'maria_porta'; M.vem = true; }
     return;
   }
-  if (F === 'maria_porta') { if (CENA.mariaFalou) { CENA.fase = 'maria_volta'; CENA.iM = 0; } return; }
+  if (F === 'maria_porta') { if (CENA.mariaFalou) { CENA.fase = 'maria_volta'; maria.i = 0; } return; }
   if (F === 'maria_volta') {
     // volta correndo ao sepulcro (Jo 20.11), mais depressa que o jogador
-    const rota = [V3(pc.x - 1.0, 0, pc.z - 6), NA_PORTA, FORA];
-    if (anda(maria, rota[CENA.iM], dt, 5.6)) CENA.iM++;
-    maria.toca('Correr');
-    if (CENA.iM >= rota.length) { maria.o.visible = false; CENA.fase = 'espera_dois'; }
+    if (segue(maria, [V3(pc.x - 1.0, 0, pc.z - 6), NA_PORTA, FORA], dt, 5.4)) { maria.o.visible = false; CENA.fase = 'espera_dois'; }
     return;
   }
   if (F === 'espera_dois') {
     // o jogador chega perto da porta: Pedro e João vêm voltando (Jo 20.10)
     if (Math.hypot(pj.x - pgn.x, pj.z - pgn.z) > 10) return;
-    pedro.o.position.copy(FORA); joao.o.position.copy(FORA).add(V3(0.8, 0, 0.3)); pedro.o.visible = joao.o.visible = true; CENA.fase = 'dois_voltam';
+    comeca(pedro, FORA); comeca(joao, FORA.clone().add(V3(0.8, 0, -0.6))); CENA.fase = 'dois_voltam';
     legenda('E os discípulos tornaram para casa. (Jo 20.10)', 6);
     return;
   }
   if (F === 'dois_voltam') {
-    const a = anda(pedro, V3(pgn.x - 0.5, 0, pgn.z + 1.6), dt, 1.3), b = anda(joao, V3(pgn.x + 0.6, 0, pgn.z + 1.9), dt, 1.3);
-    pedro.toca(a ? 'Parado' : 'Andar'); joao.toca(b ? 'Parado' : 'Andar');
-    if (a && b) { vira(pedro, pj.x, pj.z); vira(joao, pj.x, pj.z); cDois.oculto = false; CENA.fase = 'dois_aqui'; }
+    const a = segue(pedro, [V3(pgn.x - 0.5, 0, pgn.z + 1.6)], dt, 1.3), b = segue(joao, [V3(pgn.x + 0.6, 0, pgn.z + 1.9)], dt, 1.3);
+    if (a && b) { cDois.oculto = false; CENA.fase = 'dois_aqui'; }
     return;
   }
-  if (F === 'dois_aqui') { vira(pedro, pj.x, pj.z); vira(joao, pj.x, pj.z); return; }
+  if (F === 'dois_aqui') { olha(pedro, pj.x, pj.z, dt); olha(joao, pj.x, pj.z, dt); return; }
   if (F === 'dois_casa') {
-    const rota = SOBE;
-    const k = Math.min(CENA.iC, rota.length - 1);
-    const a = anda(pedro, rota[k], dt, 1.3); anda(joao, rota[k].clone().add(V3(k < rota.length - 1 ? -0.6 : 0, 0, 0)), dt, 1.3);
-    pedro.toca('Andar'); joao.toca('Andar');
-    if (a) { CENA.iC++; if (CENA.iC >= rota.length) { pedro.o.visible = joao.o.visible = false; CENA.fase = 'fim'; } }
+    if (!CENA.casa) { CENA.casa = true; pedro.i = joao.i = 0; }
+    const rota = [...SOBE, DENTRO_CIMA];
+    const a = segue(pedro, rota, dt, 1.4), b = segue(joao, rota, dt, 1.4, V3(-0.7, 0, 0));
+    if (a) pedro.o.visible = false; if (b) joao.o.visible = false;
+    if (a && b) CENA.fase = 'fim';
   }
 }
-// as mulheres: chegam pela porta, sobem para contar (somem dentro da casa) e voltam para a porta
-const M = { fase: 'fora', t: 0, i: 0, vem: false };
-function poeMulheresNaPorta() { mulheres.forEach((st, k) => { st.o.position.copy(LUG_M[k]); st.o.visible = true; st.toca('Parado'); vira(st, pc.x - 2.6, pc.z - 8); }); cMulheres.oculto = false; M.fase = 'porta'; }
+// as mulheres: chegam pela Porta de Genat, sobem a escada para contar aos onze e entram pela porta de cima; depois saem
+// pela porta de baixo e ficam ali
+const M = { fase: 'fora', t: 0, vem: false };
+function poeMulheresNaPorta() { mulheres.forEach((st, k) => { st.o.position.copy(LUG_M[k]); st.o.visible = true; para(st); st.o.rotation.y = Math.PI; }); cMulheres.oculto = false; M.fase = 'porta'; }
 function mulheresPasso(dt) {
   M.t -= dt;
-  if (M.fase === 'fora') { if (!M.vem) return; M.fase = 'vem'; M.t = 3; mulheres.forEach((st, k) => { st.o.position.copy(FORA).add(V3(k * 0.7 - 0.7, 0, -k * 0.6)); }); M.i = 0; return; }
+  if (M.fase === 'fora') { if (!M.vem) return; M.fase = 'vem'; M.t = 3; mulheres.forEach((st, k) => { st.atraso = k * 0.8; }); return; }
   if (M.fase === 'vem') {
     if (M.t > 0) return;
-    const rota = [NA_PORTA, ...SOBE];
+    const rota = [NA_PORTA, ...SOBE, DENTRO_CIMA];
     let todas = true;
-    mulheres.forEach((st, k) => { st.o.visible = true; const alvo = rota[Math.min(M.i, rota.length - 1)].clone().add(M.i >= 1 ? V3(-k * 0.8, 0, 0) : V3(k * 0.6 - 0.6, 0, k * 0.5)); const c = anda(st, alvo, dt, 2.8 - k * 0.15); st.toca('Andar'); if (!c) todas = false; });
-    if (todas) { M.i++; if (M.i >= rota.length) { mulheres.forEach((st) => { st.o.visible = false; }); M.fase = 'dentro'; M.t = 6; legenda('E, voltando do sepulcro, anunciaram todas estas coisas aos onze e a todos os demais. (Lc 24.9)', 8); } }
+    mulheres.forEach((st, k) => {
+      if ((st.atraso -= dt) > 0) { todas = false; return; }
+      if (!st.o.visible && !st.dentro) comeca(st, FORA.clone().add(V3(k * 0.5 - 0.5, 0, 0)));
+      if (st.dentro) return;
+      if (segue(st, rota, dt, 1.5, st.i > 0 && st.i < rota.length - 1 ? V3(0, 0, 0) : V3(k * 0.5 - 0.5, 0, 0))) { st.o.visible = false; st.dentro = true; } else todas = false;
+    });
+    if (todas) { M.fase = 'dentro'; M.t = 6; legenda('E, voltando do sepulcro, anunciaram todas estas coisas aos onze e a todos os demais. (Lc 24.9)', 8); }
     return;
   }
   if (M.fase === 'dentro') {
     if (M.t > 0) return;
-    poeMulheresNaPorta();
-    legenda('E as suas palavras lhes pareciam como desvario, e não as creram. (Lc 24.11)', 8);
+    mulheres.forEach((st, k) => { comeca(st, DENTRO_BAIXO); st.atraso = k * 0.7; st.o.visible = false; });
+    M.fase = 'saem'; legenda('E as suas palavras lhes pareciam como desvario, e não as creram. (Lc 24.11)', 8);
+    return;
+  }
+  if (M.fase === 'saem') {
+    let todas = true;
+    mulheres.forEach((st, k) => {
+      if ((st.atraso -= dt) > 0) { todas = false; return; }
+      st.o.visible = true;
+      if (!segue(st, [V3(pc.x, 0, pc.z - 0.6), LUG_M[k]], dt, 1.2)) todas = false;
+    });
+    if (todas) { cMulheres.oculto = false; M.fase = 'porta'; }
   }
 }
 if (CENA.fase === 'fim') poeMulheresNaPorta();
