@@ -136,4 +136,4 @@ const ctl = criaControles({ dom: renderer.domElement, E, zoom: () => [DMIN, DMAX
 const { tecla, JOY, toqueTela } = ctl;
 const fw = new THREE.Vector3(), rt = new THREE.Vector3(), mv = new THREE.Vector3();
 
-export { ajustaLente, jog, camera, ctl, tecla, JOY, toqueTela, fw, rt, mv, naArea, alturaEm, camPasso, CAM, livre };
+export { ajustaLente, jog, camera, ctl, tecla, JOY, toqueTela, fw, rt, mv, naArea, alturaEm, camPasso, CAM, livre, obstaculos };

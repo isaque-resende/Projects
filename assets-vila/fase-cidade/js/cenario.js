@@ -126,7 +126,8 @@ const JER = gJer.scene; JER.name = 'Jerusalem'; JER.position.set(-MX, -MY, -MZ);
       if (!dentro(cx, cz)) novo.push(I[t], I[t + 1], I[t + 2]);
     }
     g.setIndex(novo);
-    if (/^(Vale_Chao|Vale_Miolo|Leste_Chao|Cidade_Chao)/.test(o.name)) o.material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 });
+    // o chão, fosco e liso. Vem sem normais: com o material liso, sem elas ficava preto (lá fora da Porta de Genat)
+    if (/^(Vale_Chao|Vale_Miolo|Leste_Chao|Cidade_Chao)/.test(o.name)) { if (!g.attributes.normal) g.computeVertexNormals(); o.material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 }); }
   });
   for (const o of tira) o.removeFromParent();
 }
