@@ -73,6 +73,6 @@ INT.pessoa('Um freguês', ajudante, [
 const pp = P('poco', -4.6, 4.6);
 INT.coisa('o poço', pp.x + 1.6, pp.z - 1.2, ['Uma cisterna cavada na rocha: a água das chuvas do inverno, guardada para o verão.'], { r: 1.6 });
 const pa = P('aprisco', 0, 0);
-if (pa.x || pa.z) INT.coisa('o aprisco', pa.x, pa.z, ['O aprisco das ovelhas, com a porta.', '“Eu sou a porta das ovelhas… Eu sou o bom Pastor; o bom Pastor dá a sua vida pelas ovelhas” (Jo 10.7, 11).'], { r: 3.0 });
+if (pa.x || pa.z) INT.coisa('o aprisco', pa.x, pa.z, ['O aprisco das ovelhas, com a porta.', '“Eu sou a porta das ovelhas… Eu sou o bom Pastor; o bom Pastor dá a sua vida pelas ovelhas” (Jo 10.7, 11).'], { r: 4.6 });      // (o ponto é o meio do cercado: de fora, o mais perto fica a 3,7 m)
 
 export { INT, INTRO, ABERTURA };

@@ -153,7 +153,7 @@ const laco = (forca) => {
   OL.perto = Math.hypot(pj.x - ox, pj.z - oz) < 1.8;
   cenasPasso(dt);
   quem = E.fora || E.cine ? null : pertoDe(CONVERSAS.filter((n) => !n.oculto && n.o.visible !== false), pj);
-  anel.material.opacity = (E.olhou ? 0.16 : 0.3) + 0.1 * Math.sin(t * 1.6);
+  anel.material.opacity = (E.olhou ? 0.16 : 0.3) + 0.1 * Math.sin(t * 1.6); anel.visible = !globalThis.EM_LEMBRANCA;
   olharPasso(dt);
   const [i, d] = naRota(pj.x, pj.z);
   E.cidade = i <= 3 && d < 4;

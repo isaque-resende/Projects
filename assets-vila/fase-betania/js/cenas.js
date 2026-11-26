@@ -52,10 +52,17 @@ const DLG = { fala: cleopas, ouve: jog, yaw: 0 };
 const alvoDlg = () => cab(DLG.fala, -0.12)().lerp(cab(DLG.ouve, -0.12)(), 0.3);
 function ladoDlg() {
   const r = rumo(DLG.fala, DLG.ouve), a = alvoDlg();
-  DLG.yaw = [24, -24, 60, -60, 100, -100, 150].map((d) => r + d).find((y) => CINE.ve(a, y, 9, 3.6)) ?? r + 90;
+  const pts = [a, cab(DLG.fala, -0.12)(), cab(DLG.ouve, -0.12)(), cab(DLG.fala, -0.9)()];
+  DLG.yaw = [24, -24, 60, -60, 100, -100, 150, -150].map((d) => r + d).find((y) => pts.every((q) => CINE.ve(q, y, 9, 3.6))) ?? r + 90;
 }
 // quem vem ao encontro: a câmera atrás do jogador, do lado de onde se vê
-function ladoVem(st, d) { const r = rumo(st, jog), a = cab(st, -0.3)().lerp(cab(jog, -0.3)(), 0.25); DLG.yawVem = [30, -30, 55, -55, 80, -80].map((x) => r + x).find((y) => CINE.ve(a, y, 11, d)) ?? r + 30; }
+// (vê de onde ele parte, o jogador e o caminho entre os dois, na altura do plano: só o meio, olhado uma vez, deixava
+// as tamareiras e as rochas entrarem enquanto ele anda)
+function ladoVem(st, d, el = 11) {
+  const r = rumo(st, jog), a = cab(st, -0.3)().lerp(cab(jog, -0.3)(), 0.25), pts = [a, cab(st, -0.3)(), cab(st, -1.0)(), cab(jog, -0.3)(), cab(st, -0.3)().lerp(cab(jog, -0.3)(), 0.6)];
+  const cands = [30, -30, 55, -55, 80, -80, 110, -110, 0].map((x) => r + x);
+  DLG.yawVem = cands.find((y) => pts.every((q) => CINE.ve(q, y, el, d))) ?? cands.map((y) => [y, pts.filter((q) => CINE.ve(q, y, el, d)).length]).sort((u, v) => v[1] - u[1])[0][0];
+}
 const planoConversa = (ate, o = {}) => ({ alvo: alvoDlg, dist: 3.6, el: 9, yaw: () => DLG.yaw, k: 2.6, kd: 2, ate, aoEntrar: ladoDlg, ...o });
 function conversa(titulo, st, falas, fim) {
   const fila = [...falas];
@@ -207,7 +214,7 @@ const FALAS_MARTA = [
 function cenaMarta() {
   CENA.fase = 'marta_vem'; fala('“Espere! Bom dia!”'); depois(2.2, () => fala(''));
   CINE.roda([
-    { alvo: () => cab(marta, -0.3)().lerp(cab(jog, -0.3)(), 0.25), dist: 7.5, el: 12, yaw: () => DLG.yawVem, aoEntrar: () => ladoVem(marta, 7.5), corte: true, k: 2.5, ate: () => CENA.fase !== 'marta_vem' },
+    { alvo: () => cab(marta, -0.3)().lerp(cab(jog, -0.3)(), 0.25), dist: 7.5, el: 12, yaw: () => DLG.yawVem, aoEntrar: () => ladoVem(marta, 7.5, 12), corte: true, k: 2.5, ate: () => CENA.fase !== 'marta_vem' },
     planoConversa(() => CENA.fase !== 'marta_fala'),
   ], () => {}, { aoPular: () => { DIAL.style.display = 'none'; E.fora = false; fala(''); AGENDA = []; if (CENA.fase !== 'livre2') fimMarta(); } });
 }
@@ -265,8 +272,8 @@ function cenaLazaro() {
   const S = () => pedraMundo().addScaledVector(F, 0.7).setY(1.25);
   const yawLado = Math.atan2(F.x - ROLA.x * 0.8, F.z - ROLA.z * 0.8) * DEG;     // do lado de onde a pedra sai
   CINE.roda([
-    // (do alto: o caminho do túmulo tem tamareiras)
-    { alvo: () => cab(lazaro, -0.3)().lerp(cab(jog, -0.3)(), 0.25), dist: 8, el: 24, yaw: () => DLG.yawVem, aoEntrar: () => ladoVem(lazaro, 8), corte: true, k: 2.5, ate: () => CENA.sub !== 'vem' },
+    // (baixa, por baixo das copas: o caminho do túmulo tem tamareiras, e do alto a lente passava pelas folhas)
+    { alvo: () => cab(lazaro, -0.3)().lerp(cab(jog, -0.3)(), 0.25), dist: 6, el: 7, yaw: () => DLG.yawVem, aoEntrar: () => ladoVem(lazaro, 6, 7), corte: true, k: 2.5, ate: () => CENA.sub !== 'vem' },
     planoConversa(() => CENA.sub === 'tirai'),
     // a lembrança, de onde Jesus estava, diante da pedra
     { alvo: S, dist: 8.5, el: 6, yaw: FDEG, corte: true, fixo: true, k: 3, ate: () => CENA.sub === 'rola' },

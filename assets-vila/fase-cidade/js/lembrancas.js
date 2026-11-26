@@ -28,7 +28,7 @@ if (!DE) {
       aoEntrar: () => setTimeout(() => fala('Domingo, de manhã cedo. Uma praça da cidade alta: a oeste, o palácio de Herodes; ao norte, a Porta de Genat; ao sul, a casa onde os discípulos estão escondidos.'), 600) },
     { alvo: () => CEN.clone().setY(CEN.y + 2.5), dist: 14, el: 18, yaw: 165, corte: true, k: 2, kd: 1, titulo: 'A casa da sala de cima', dur: 3.2, aoEntrar: () => fala('') },
     { alvo: () => BRAS.clone().setY(BRAS.y + 1), dist: 9, el: 22, yaw: 230, corte: true, k: 2, kd: 1, titulo: 'O pátio do sumo sacerdote', dur: 3.2 },
-    { alvo: () => GENAT.clone().add(V3(0, 1.8, 1.5)), dist: 15, el: 13, yaw: 0, corte: true, k: 2, kd: 1, titulo: 'A Porta de Genat: para o Gólgota', dur: 3.0 },
+    { alvo: () => GENAT.clone().add(V3(0, 2.4, 1.5)), dist: 21, el: 20, yaw: 0, corte: true, k: 2, kd: 1, titulo: 'A Porta de Genat: para o Gólgota', dur: 3.0 },
   ], () => fala(''), { aoPular: () => fala('') });
 }
 
@@ -82,7 +82,7 @@ function cenaPedro() {
   roda([
     { alvo: () => BRAS.clone().setY(BRAS.y + 1), dist: 7, el: 18, yaw: 230, k: 2, ate: () => L.sub === 'fogo' },
     { alvo: () => BRAS.clone().setY(BRAS.y + 1.1), dist: 6.5, el: 14, yaw: 230, corte: true, k: 1.5, kd: 1, ate: () => L.sub === 'serva' },
-    { alvo: () => cab(PEDRO, -0.2)().lerp(cab(SERVA, -0.2)(), 0.4), dist: 4, el: 8, yaw: () => Math.atan2(PEDRO.o.position.x - SERVA.o.position.x, PEDRO.o.position.z - SERVA.o.position.z) * DEG + 30, k: 2, kd: 1.4, ate: () => L.sub === 'nega3' },
+    { alvo: () => cab(PEDRO, -0.2)().lerp(cab(SERVA, -0.2)(), 0.4), dist: 4.6, el: 8, yaw: () => Math.atan2(PEDRO.o.position.x - SERVA.o.position.x, PEDRO.o.position.z - SERVA.o.position.z) * DEG + 70, k: 2, kd: 1.4, ate: () => L.sub === 'nega3' },
     { alvo: cab(PEDRO, -0.15), dist: 2.8, el: 6, yaw: () => PEDRO.o.rotation.y * DEG + 25, k: 2, kd: 1.5, ate: () => L.sub === 'galo' },
     { alvo: () => BRAS.clone().setY(BRAS.y + 2.5), dist: 10, el: 22, yaw: 230, corte: true, k: 1.5, kd: 0.8, ate: () => L.sub === 'olhar' },
     // do lado da casa, onde ele estava: olhando Pedro (a lente fecha)

@@ -164,12 +164,12 @@ function cenaFigueira() {
   CENA.fase = 'figueira'; CENA.sub = 'entra'; CENA.f1 = CENA.f2 = false;
   const yF = Math.atan2(-FRENTE_FIG.x, -FRENTE_FIG.z) * DEG;      // a câmera do lado de onde a estrada vem
   CINE.roda([
-    { alvo: () => FIG.clone().setY(FIG.y + 2), dist: 9, el: 14, yaw: yF + 30, k: 2, ate: () => CENA.sub === 'chega' },
+    { alvo: () => FIG.clone().setY(FIG.y + 2), dist: 9, el: 14, yaw: yF + 30, corte: true, k: 2, ate: () => CENA.sub === 'chega' },
     // de onde Jesus estava, chegando perto da árvore
-    { alvo: () => FIG.clone().setY(FIG.y + 2.0), dist: 8, el: 5, yaw: yF, corte: true, fixo: true, k: 2, kd: 0.25, ate: () => CENA.sub === 'palavra' },
-    { alvo: () => FIG.clone().setY(FIG.y + 2.2), dist: 5.2, el: 9, yaw: yF, fixo: true, zoom: 0.85, k: 1.5, kd: 0.8, ate: () => CENA.sub === 'seca' },
+    { alvo: () => FIG.clone().setY(FIG.y + 2.0), dist: 11, el: 6, yaw: yF, corte: true, fixo: true, k: 2, kd: 0.25, ate: () => CENA.sub === 'palavra' },      // (a copa é larga: mais perto, a lente ficava nas folhas)
+    { alvo: () => FIG.clone().setY(FIG.y + 2.2), dist: 8, el: 9, yaw: yF, fixo: true, zoom: 0.8, k: 1.5, kd: 0.8, ate: () => CENA.sub === 'seca' },
     { alvo: () => FIG.clone().setY(FIG.y + 1.9), dist: 9, el: 13, yaw: yF + 55, k: 0.9, kd: 0.8, ate: () => CENA.sub === 'pedro' },
-    { alvo: () => cab(PEDRO, -0.2)().lerp(FIG.clone().setY(FIG.y + 1.6), 0.3), dist: 5, el: 8, yaw: () => yawDe(PEDRO.o.position, POV()) + 15, k: 2, ate: () => CENA.sub === '' },
+    { alvo: () => cab(PEDRO, -0.3)().lerp(cab(JOAO, -0.3)(), 0.5).lerp(FIG.clone().setY(FIG.y + 1.6), 0.2), dist: 7, el: 10, yaw: () => yawDe(PEDRO.o.position, POV()) + 25, k: 2, ate: () => CENA.sub === '' },      // (os dois discípulos e a figueira: só Pedro ficava cortado na borda)
   ], () => {}, { aoPular: () => { AGENDA = []; if (LEMB.on) { LEMB.desliga(); desfazFigueira(); } CENA.sub = ''; CENA.fase = 'livre'; } });
   depois(0.6, () => LEMB.entra('Segunda-feira, vindo de Betânia', montaFigueira));
 }

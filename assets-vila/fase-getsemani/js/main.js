@@ -146,7 +146,7 @@ const laco = (forca) => {
   // lugares, rocha, porta e saída
   lugares(pj);
   AG.perto = Math.hypot(pj.x - ax, pj.z - az) < 2.0;
-  anel.material.opacity = (E.orou ? 0.16 : 0.3) + 0.1 * Math.sin(t * 1.6);
+  anel.material.opacity = (E.orou ? 0.16 : 0.3) + 0.1 * Math.sin(t * 1.6); anel.visible = !globalThis.EM_LEMBRANCA;
   oracaoPasso(dt); cenasPasso(dt);
   const [i] = naRota(pj.x, pj.z);
   E.saida = i <= 3;

@@ -28,14 +28,23 @@ const ARCA = V3(17.3, 2.0, 6.4);            // as arcas das ofertas (Templo_Gazo
 const ALTAR = V3(ax, ay, az);
 const yawDe = (de, para) => Math.atan2(para.x - de.x, para.z - de.z) * DEG;      // graus: a câmera do lado de "para"
 
+// o lado livre mais perto do pedido (pórticos, colunas e o candelabro tapavam): fica com a escolha enquanto o plano dura
+const LIVRE = new Map();
+function livreDe(chave, alvo, yaw0, el, d, desvios = [0, 30, -30, 60, -60, 90, -90, 130, -130, 180]) {
+  if (LIVRE.has(chave)) return LIVRE.get(chave);
+  const y = desvios.map((x) => yaw0 + x).find((y) => CINE.ve(alvo, y, el, d)) ?? yaw0;
+  LIVRE.set(chave, y); return y;
+}
 // ---------- 1. chegada ----------
 if (DE !== 'cidade') {
   CENA.fase = 'chegada';
   CINE.roda([
-    { alvo: () => ALTAR.clone().setY(ALTAR.y + 3), dist: 62, el: 30, yaw: 120, k: 1.2, kd: 0.6, titulo: 'O templo', dur: 3.8,
+    { alvo: () => ALTAR.clone().setY(ALTAR.y + 3), dist: 62, el: 30, yaw: 120, corte: true, k: 1.2, kd: 0.6, titulo: 'O templo', dur: 3.8,
       aoEntrar: () => depois(0.6, () => fala('Pela porta do norte: o pátio de fora do templo, cercado de pórticos. A fumaça do sacrifício da manhã já sobe do altar.')) },
-    { alvo: () => ARCA.clone().setY(ARCA.y + 1), dist: 8, el: 22, yaw: 160, corte: true, k: 2, kd: 1, titulo: 'As arcas das ofertas', dur: 3.2, aoEntrar: () => fala('') },
-    { alvo: () => SANT.clone(), dist: 22, el: 6, yaw: 90, corte: true, k: 2, kd: 1, titulo: 'O santuário e o véu', dur: 3.2 },
+    { alvo: () => ARCA.clone().setY(ARCA.y + 1), dist: 12, el: 30, yaw: 160, corte: true, fixo: true,      // (fixo: o alvo fica dentro da arca, e a câmera vinha para junto dela)
+      k: 2, kd: 1, titulo: 'As arcas das ofertas', dur: 3.2, aoEntrar: () => fala('') },
+    { alvo: () => SANT.clone().setY(SANT.y - 1), dist: 24, el: 4, yaw: 90, corte: true, fixo: true,      // (o mesmo da lembrança do véu: o alvo fica dentro do santuário)
+      k: 2, kd: 1, titulo: 'O santuário e o véu', dur: 3.2 },
     { alvo: () => V3(-15.5, 1, 29), dist: 14, el: 24, yaw: 200, corte: true, k: 2, kd: 1, titulo: 'As mesas dos cambistas', dur: 3.0 },
   ], () => { fala(''); CENA.fase = 'livre'; }, { aoPular: () => { AGENDA = []; } });
 } else CENA.fase = 'livre';
@@ -85,8 +94,8 @@ function cenaViuva() {
     { alvo: () => ARCA.clone().setY(ARCA.y + 1), dist: 7, el: 20, yaw: 160, k: 2, ate: () => CENA.sub === 'ricos' },
     { alvo: () => ARCA.clone().setY(ARCA.y + 1.0), dist: ARCA.z - JESUS.z, el: 3, yaw: yPov, corte: true, fixo: true, zoom: 1.15, k: 2, kd: 1, ate: () => CENA.sub === 'viuva' },
     // do lugar dele, a lente fecha nela
-    { alvo: cab(VIUVA, -0.3), dist: 5.9, el: 4, yaw: () => yawDe(VIUVA.o.position, JESUS), fixo: true, zoom: 0.72, k: 2, kd: 1, ate: () => CENA.sub === 'mais' },
-    { alvo: cab(VIUVA, -0.2), dist: 5.9, el: 4, yaw: () => yawDe(VIUVA.o.position, JESUS), fixo: true, zoom: 0.55, k: 1.4, kd: 0.6, ate: () => CENA.sub === '' },
+    { alvo: cab(VIUVA, -0.3), dist: 5.9, el: 4, yaw: () => livreDe('viuva', cab(VIUVA, -0.3)(), yawDe(VIUVA.o.position, JESUS), 4, 5.9, [0, 8, -8, 15, -15, 25, -25]), fixo: true, zoom: 0.72, k: 2, kd: 1, ate: () => CENA.sub === 'mais' },
+    { alvo: cab(VIUVA, -0.2), dist: 5.9, el: 4, yaw: () => livreDe('viuva', cab(VIUVA, -0.3)(), yawDe(VIUVA.o.position, JESUS), 4, 5.9, [0, 8, -8, 15, -15, 25, -25]), fixo: true, zoom: 0.55, k: 1.4, kd: 0.6, ate: () => CENA.sub === '' },
   ], () => {}, { aoPular: () => { AGENDA = []; if (LEMB.on) { LEMB.desliga(); desfazViuva(); } CENA.sub = ''; CENA.fase = 'livre'; } });
   depois(0.5, () => LEMB.entra('Na terça-feira', montaViuva));
 }
@@ -174,7 +183,7 @@ const MC = { x: 0 };       // por onde ele vai, ao longo das mesas (de leste par
 function montaMesas() {
   jog.o.visible = false; for (const m of MERCADO) m.visible = false;
   for (const m of MESAS) { m.g.visible = true; m.k = 0; m.vira.rotation.x = 0; for (const q of m.moedas) { if (q.solta) { m.vira.attach(q.c); q.solta = false; } } m.moedas.forEach((q, i) => { q.c.position.set(-0.5 + (i % 5) * 0.25, 1.05 + Math.floor(i / 5) * 0.012, -0.3 - Math.floor(i / 5) * 0.15); q.c.rotation.set(0, 0, 0); }); }
-  CAMB.forEach((st, i) => { const m = MESAS[i * 2 + 1]; st.o.position.set(m.x, 0, m.z + 0.95); st.o.rotation.y = Math.PI; st.o.visible = true; st.toca('Conversando'); });
+  CAMB.forEach((st, i) => { const m = MESAS[i * 2 + 1]; st.recuo = 0; st.o.position.set(m.x, 0, m.z + 0.95); st.o.rotation.y = Math.PI; st.o.visible = true; st.toca('Conversando'); });
   MC.x = MESAS[MESAS.length - 1].x + 3;
   L4.sub = 'entra4'; L4.t = 0; fala('E, entrando Jesus no templo, começou a expulsar os que vendiam e compravam no templo. (Mc 11.15)');
 }
@@ -191,7 +200,7 @@ function mesasPasso(dt) {
     }
     for (const q of m.moedas) if (q.solta) { q.v.y -= 9.8 * dt; q.c.position.addScaledVector(q.v, dt); q.c.rotation.x += dt * 12; if (q.c.position.y < 0.01) { q.c.position.y = 0.01; q.v.set(0, 0, 0); } }
   }
-  for (const st of CAMB) if (MC.x < st.o.position.x + 2) { st.toca('Andar'); st.o.position.z += dt * 1.6; }      // recuam
+  for (const st of CAMB) if (MC.x < st.o.position.x + 4.5 && (st.recuo || 0) < 2.5) { st.toca('Andar'); st.o.position.z += dt * 2.4; st.recuo = (st.recuo || 0) + dt * 2.4; if (st.recuo >= 2.5) st.toca('Parado'); }      // recuam (antes de a mesa tombar: tarde, ela passava por dentro deles)
   if (T > 5.5 && !L4.f1) { L4.f1 = true; fala('E derribou as mesas dos cambistas e as cadeiras dos que vendiam pombas. (Mc 11.15)'); }
   if (T > 9.5 && !L4.f2) { L4.f2 = true; fala('“Não está escrito: A minha casa será chamada casa de oração para todas as nações? Mas vós a tendes feito covil de ladrões.” (Mc 11.17)'); }
   if (T > 16 && !L4.saindo) { L4.saindo = true; LEMB.sai(() => { desfazMesas(); L4.sub = ''; CENA.fase = 'livre'; }); }

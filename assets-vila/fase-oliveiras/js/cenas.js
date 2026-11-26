@@ -60,13 +60,13 @@ function cenaMirante() {
 // ---------- 3. a lembrança do sermão no monte (Mc 13) ----------
 const W = TEMPLO.clone().sub(LAJE).setY(0).normalize(), L = V3(-W.z, 0, W.x);
 const DISC = [[nPedro, 1.72, -1.5], [nTiago, 1.7, -0.5], [nJoao, 1.66, 0.5], [nAndre, 1.68, 1.5]].map(([m, h, l]) => {
-  const st = ator(m, h, 0, 0, 0, 'Parado'); empresta(st, ['Agachado']); st.o.visible = false; st.l = l; return st; });
+  const st = ator(m, h, 0, 0, 0, 'Parado'); empresta(st, ['Ajoelhar', 'Agachado']); st.o.visible = false; st.l = l; return st; });
 const [PEDRO] = DISC;
 function montaSermao() {
   jog.o.visible = false;
   for (const st of DISC) {
     const p = LAJE.clone().addScaledVector(W, 1.9 + Math.abs(st.l) * 0.35).addScaledVector(L, st.l * 1.05);
-    st.o.position.copy(p); chao(st); st.o.rotation.y = Math.atan2(LAJE.x - p.x, LAJE.z - p.z); st.o.visible = true; st.toca('Agachado');
+    st.o.position.copy(p); chao(st); st.o.rotation.y = Math.atan2(LAJE.x - p.x, LAJE.z - p.z); st.o.visible = true; st.toca('Ajoelhar'); if (st.A.Ajoelhar) st.A.Ajoelhar.time = 1.0 + Math.random() * 2;      // (ajoelhados, firmes no chão: agachados pareciam suspensos)
   }
   CENA.sub = 'assentados'; CENA.t = 0; fala('Estando ele assentado no Monte das Oliveiras, defronte do templo, Pedro, Tiago, João e André lhe perguntaram em particular (Mc 13.3)');
 }
@@ -79,7 +79,9 @@ const FALAS = [   // [quando, sub, legenda]
 ];
 function sermaoPasso(dt) {
   const T = (CENA.t += dt);
-  for (const [q, sub, txt] of FALAS) if (T >= q && CENA.ultimo !== sub) { if (FALAS.findIndex((f) => f[1] === sub) > FALAS.findIndex((f) => f[1] === CENA.ultimo)) { CENA.ultimo = sub; CENA.sub = sub; fala(txt); PEDRO.toca(sub === 'pedro' ? 'Conversando' : 'Agachado'); } }
+  // (o clipe ajoelha, fica e levanta: fica no trecho de joelhos, entre 1 s e 3,6 s)
+  for (const st of DISC) { const a = st.A.Ajoelhar; if (a && st.atual === 'Ajoelhar' && a.time > 3.6) a.time = 1.0; }
+  for (const [q, sub, txt] of FALAS) if (T >= q && CENA.ultimo !== sub) { if (FALAS.findIndex((f) => f[1] === sub) > FALAS.findIndex((f) => f[1] === CENA.ultimo)) { CENA.ultimo = sub; CENA.sub = sub; fala(txt); PEDRO.toca(sub === 'pedro' ? 'Conversando' : 'Ajoelhar'); } }
   if (T > 23 && CENA.sub !== 'volta') { CENA.sub = 'volta'; LEMB.sai(() => { desfazSermao(); CENA.sub = ''; CENA.fase = 'livre'; E.pregacao = true; fala('Vigiai.'); depois(3, () => fala('')); }); }
 }
 function cenaSermao() {

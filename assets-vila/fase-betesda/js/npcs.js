@@ -167,13 +167,15 @@ const aguadeira = ator(nFaixa, 1.58, 2.6, -2.4, Math.PI, 'Parado');
   const k = 1 / aguadeira.o.scale.x; jarro.position.set(0.22 * k, 1.12 * k, 0.05 * k); jarro.scale.setScalar(k); jarro.castShadow = true; aguadeira.o.add(jarro); }
 const ROTA_AG = [V3(2.6, 0, -2.4), V3(2.6, 0, zDegrau(0) + 0.3), V3(2.6, 0, zDegrau(5))];
 const AG = { i: 1, ida: true, espera: 4 };
-CONVERSAS.push({ nome: 'Uma mulher com um jarro', o: aguadeira.o, r: 2.0, falas: [
+CONVERSAS.push({ nome: 'Uma mulher com um jarro', o: aguadeira.o, r: 4.5,      // (ela desce a escada: fala-se do alto)
+ falas: [
   'Venho buscar água para a minha mãe, ali no alpendre do norte. Ela não consegue descer.',
   'Quando a água se agita, todos querem descer ao mesmo tempo. Os mais fortes chegam primeiro; os que mais precisam, nunca.',
 ] });
 const lavador = ator(nAldeao, 1.68, -2.2, zDegrau(6), Math.PI, 'Parado');      // de frente para a água, os pés no último degrau
 lavador.o.position.y = yEscada(zDegrau(6)) - 0.12;
-CONVERSAS.push({ nome: 'Um homem na escada', o: lavador.o, r: 2.0, falas: [
+CONVERSAS.push({ nome: 'Um homem na escada', o: lavador.o, r: 5.2,      // (ele está no 6º degrau; fala-se do alto da escada)
+ falas: [
   'Só lavo os pés. A água é fria de manhã.',
   'Dizem que um anjo desce e agita a água. Eu nunca vi o anjo; vi a água se mexer, isso sim.',
 ] });

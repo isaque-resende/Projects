@@ -123,7 +123,7 @@ const laco = (forca) => {
   // lugares, conversas e saídas
   lugares(pj);
   quem = E.fora || E.cine ? null : pertoDe(CONVERSAS, pj); cenasPasso(dt);
-  anel.material.opacity = 0.22 + 0.1 * Math.sin(t * 1.6);
+  anel.material.opacity = 0.22 + 0.1 * Math.sin(t * 1.6); anel.visible = !globalThis.EM_LEMBRANCA;
   const [i, d] = naRota(pj.x, pj.z);
   E.leste = i <= 3 && d < 4;
   E.oeste = i >= AMOS.length - 5 && d < 4;

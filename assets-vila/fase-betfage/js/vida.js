@@ -17,7 +17,7 @@ function aldeiaPasso(dt, t) {
   else { const c = jumenta.o.position.clone().add(V3(0, 0.9, 0)).addScaledVector(frente(jumenta), 0.5); barra(CORDA_J, ESTACA.clone().add(V3(0, 0.95, 0)), c); }
   if (!JUM.visto && !E.cine && jog.o.position.distanceTo(jumenta.o.position) < 3.2) { JUM.visto = true; fala('Uma jumenta amarrada, e um jumentinho com ela, em que ninguém ainda montou.'); setTimeout(() => fala(''), 5000); }
   JUM.anel.position.set(jumenta.o.position.x * 0.6 + jumentinho.o.position.x * 0.4, 0, jumenta.o.position.z * 0.6 + jumentinho.o.position.z * 0.4); JUM.anel.position.y = terreno(JUM.anel.position.x, JUM.anel.position.z) + 0.06;
-  JUM.anel.material.opacity = JUM.visto ? Math.max(0, JUM.anel.material.opacity - dt * 0.3) : 0.35 + 0.15 * Math.sin(t * 2.5);
+  JUM.anel.material.opacity = JUM.visto ? Math.max(0, JUM.anel.material.opacity - dt * 0.3) : 0.35 + 0.15 * Math.sin(t * 2.5); JUM.anel.visible = !globalThis.EM_LEMBRANCA;
   for (const o of ovelhas) {
     if (o.alvo) {
       const d = new THREE.Vector3().subVectors(o.alvo, o.o.position).setY(0);

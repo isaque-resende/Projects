@@ -18,7 +18,9 @@ import { CONVERSAS, soldadoHorto, soldadoGolgota, maria } from './npcs.js';
 import { jog, camera, CAM } from './jogador.js';
 
 const V3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z), DEG = 180 / Math.PI;
-const CINE = criaCine({ camera, E, chao: (x, z) => terreno(x, z), obstaculos: malhasAltas(scene, [TERRENO]), deOnde: () => ({ alvo: CAM.olho.clone(), pos: camera.position.clone() }), fovCena: 36 });
+// (as cruzes não contam como o que tapa: o alvo dos planos fica nelas, e a câmera vinha para junto do poste)
+const IGNORA = [TERRENO]; scene.traverse((o) => { if (o.name.startsWith('Cruzes')) IGNORA.push(o); });
+const CINE = criaCine({ camera, E, chao: (x, z) => terreno(x, z), obstaculos: malhasAltas(scene, IGNORA), deOnde: () => ({ alvo: CAM.olho.clone(), pos: camera.position.clone() }), fovCena: 36 });
 const LEMB = criaLembranca(renderer.domElement);
 const CENA = { fase: '', sub: '', t: 0, emaus: null };
 let AGENDA = []; const depois = (s, fn) => AGENDA.push({ s, fn });
@@ -70,7 +72,7 @@ function cleopasPasso(dt) {
 if (DE !== 'emaus' && DE !== 'sepulcro') {
   CENA.fase = 'chegada';
   CINE.roda([
-    { alvo: () => CRUZ.clone().setY(CRUZ.y + 2), dist: 40, el: 18, yaw: YAW_QUINA, k: 1.2, kd: 0.6, titulo: 'O lugar chamado Caveira', dur: 3.8,
+    { alvo: () => CRUZ.clone().setY(CRUZ.y + 2), dist: 40, el: 18, yaw: YAW_QUINA, corte: true, k: 1.2, kd: 0.6, titulo: 'O lugar chamado Caveira', dur: 3.8,
       aoEntrar: () => depois(0.6, () => fala('Domingo, ao nascer do sol. Fora da porta da cidade, à beira da estrada, numa pedreira velha, fica o lugar chamado Caveira.')) },
     { alvo: () => CRUZ.clone().setY(CRUZ.y + 2.5), dist: 12, el: 10, yaw: YAW_QUINA - 10, corte: true, k: 2, kd: 1, titulo: 'As cruzes', dur: 3.0, aoEntrar: () => fala('') },
     { alvo: () => SEP.clone().setY(SEP.y + 1.3), dist: 10, el: 14, yaw: Math.atan2(F.x, F.z) * DEG + 20, corte: true, k: 2, kd: 1, titulo: 'O sepulcro no horto', dur: 3.0 },

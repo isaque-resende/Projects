@@ -111,6 +111,7 @@ export function criaCine({ camera, E, chao = () => -1e9, obstaculos = () => [], 
     let encAgora = 1e9;
     if (!p.livre && !p.fixo) { const h = primeiro(C.alvo, dirDe(C.yaw + C.dy, Math.min(1.3, C.el + C.de)), D); if (h && h.distance > 1.2) encAgora = h.distance - 0.75; }      // (folga maior que o plano de corte da lente)
     const Dalvo = Math.min(D, C.encA, encAgora); C.Dc = C.Dc == null ? Dalvo : C.Dc + (Dalvo - C.Dc) * suave(Dalvo < C.Dc ? 9 : 3, dt);
+    if (encAgora < C.Dc) C.Dc = encAgora;      // algo entrou na frente agora: chega na hora (devagar, a folha passava pela lente)
     const pos = C.alvo.clone().addScaledVector(dirDe(C.yaw + C.dy, Math.min(1.3, C.el + C.de)), C.Dc);
     if (!p.livre) pos.y = Math.max(pos.y, chao(pos.x, pos.z) + 0.8);
     camera.position.copy(pos); camera.lookAt(C.alvo);
@@ -134,7 +135,7 @@ export function malhasAltas(scene, ignora = []) {
     const ve = (o) => {
       if (o.userData.mx || fora.has(o)) return;
       if (o.isInstancedMesh) { o.geometry.computeBoundingBox(); const g = o.geometry.boundingBox; if (g.max.y - g.min.y > 0.7) L.push(o); }
-      else if (o.isMesh && !o.isSkinnedMesh) { b.setFromObject(o); if (b.min.y > -30 && b.max.y - b.min.y > 0.7) L.push(o); }      // (inclusive as malhas grandes que juntam muitas árvores, como as tamareiras de Betânia)
+      else if (o.isMesh && !o.isSkinnedMesh) { b.setFromObject(o); if (b.min.y > -30 && (b.max.y - b.min.y > 0.7 || Math.max(b.max.x - b.min.x, b.max.z - b.min.z) > 2.5)) L.push(o); }      // (e as lajes largas: os tetos dos pórticos são finos)      // (inclusive as malhas grandes que juntam muitas árvores, como as tamareiras de Betânia)
       for (const c of o.children) ve(c);
     };
     ve(scene); return L;

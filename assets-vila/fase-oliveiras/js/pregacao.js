@@ -12,7 +12,7 @@ const PREG = { x, z, perto: false };
 
 function pregacaoPasso(pj, t) {
   PREG.perto = Math.hypot(pj.x - x, pj.z - z) < 2.4;
-  anel.material.opacity = (E.pregacao ? 0.18 : 0.32) + 0.12 * Math.sin(t * 2);
+  anel.material.opacity = (E.pregacao ? 0.18 : 0.32) + 0.12 * Math.sin(t * 2); anel.visible = !globalThis.EM_LEMBRANCA;
 }
 // depois da lembrança: só a legenda
 function lembrar() {

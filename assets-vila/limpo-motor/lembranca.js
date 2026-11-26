@@ -4,6 +4,7 @@
 //   L.entra('Semanas antes', () => { ...monta a cena do passado... });   // no auge do clarão
 //   L.sai(() => { ...volta tudo ao presente... });
 
+// (globalThis.EM_LEMBRANCA: as marcas do jogo, como os anéis no chão, somem dentro da lembrança)
 export function criaLembranca(tela) {
   const div = (st) => { const d = document.createElement('div'); Object.assign(d.style, { position: 'fixed', inset: 0, pointerEvents: 'none', opacity: 0, ...st }); document.body.appendChild(d); return d; };
   // grão: um quadrinho de ruído repetido, que pula de lugar a cada quadro
@@ -20,10 +21,10 @@ export function criaLembranca(tela) {
   const filtro = (on) => { tela.style.filter = on ? 'sepia(0.85) saturate(0.75) contrast(1.08) brightness(1.04)' : ''; vinheta.style.opacity = grao.style.opacity = on ? 1 : 0; };
   // clarão: sobe, troca a cena no auge e desce
   const brilho = (fn) => { clarao.style.opacity = 1; setTimeout(() => { fn(); clarao.style.transition = 'opacity .7s ease'; clarao.style.opacity = 0; setTimeout(() => { clarao.style.transition = 'opacity .35s ease'; }, 750); }, 380); };
-  L.entra = (quando, monta) => brilho(() => { L.on = true; filtro(true); mexe(); if (monta) monta();
+  L.entra = (quando, monta) => brilho(() => { L.on = globalThis.EM_LEMBRANCA = true; filtro(true); mexe(); if (monta) monta();
     if (quando) { letreiro.textContent = quando; letreiro.style.opacity = 1; setTimeout(() => { letreiro.style.opacity = 0; }, 2600); } });
-  L.sai = (volta) => brilho(() => { L.on = false; cancelAnimationFrame(raf); filtro(false); letreiro.style.opacity = 0; if (volta) volta(); });
+  L.sai = (volta) => brilho(() => { L.on = globalThis.EM_LEMBRANCA = false; cancelAnimationFrame(raf); filtro(false); letreiro.style.opacity = 0; if (volta) volta(); });
   // sem clarão (para pular a cena de uma vez)
-  L.desliga = () => { L.on = false; cancelAnimationFrame(raf); filtro(false); letreiro.style.opacity = 0; clarao.style.opacity = 0; };
+  L.desliga = () => { L.on = globalThis.EM_LEMBRANCA = false; cancelAnimationFrame(raf); filtro(false); letreiro.style.opacity = 0; clarao.style.opacity = 0; };
   return L;
 }

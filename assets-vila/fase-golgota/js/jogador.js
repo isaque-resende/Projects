@@ -100,7 +100,7 @@ function camPasso(dt, pj, primeira = false) {
   CAM.off.lerp(alvo.sub(pj), primeira ? 1 : suave(2.5, dt)); CAM.offO.lerp(olho.sub(pj), primeira ? 1 : suave(5, dt));
   CAM.pos.copy(pj).add(CAM.off); CAM.pos.y = Math.max(CAM.pos.y, terreno(CAM.pos.x, CAM.pos.z) + 1.0);
   CAM.pos.copy(FOLGA(V3(pj.x, pj.y + 1.3, pj.z), CAM.pos, primeira ? 1 : dt));      // nada alto entre ele e a câmera (folga.js)
-  CAM.olho.copy(pj).add(CAM.offO);
+  CAM.olho.copy(pj).add(CAM.offO); FOLGA.mira(pj, CAM.olho);      // perto, mira o meio do corpo
   // dentro do sepulcro: a câmera na porta da câmara, olhando para dentro (o monte continua de pedra, nada fica transparente)
   CAM.dentro += ((TUM.dentro && TUM.dentro(pj.x, pj.z) ? 1 : 0) - CAM.dentro) * Math.min(1, primeira ? 1 : dt * 4);
   if (CAM.dentro > 0.001) {

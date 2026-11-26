@@ -138,7 +138,7 @@ function cenaTres() {
     { alvo: () => TRES.clone().setY(TRES.y + 1.2), dist: 8, el: 18, yaw: YAW_QUINA, k: 2, ate: () => CENA.sub === 'dormem' },
     { alvo: grupo, dist: 6, el: 16, yaw: yPov, corte: true, k: 2, kd: 0.35, ate: () => CENA.sub === 'simao' },
     { alvo: cab(PEDRO, -0.1), dist: 2.8, el: 30, yaw: yPov + 40, k: 1.5, kd: 1, ate: () => CENA.sub === 'vigiai' },
-    { alvo: grupo, dist: 3.6, el: 24, yaw: yPov - 25, k: 1.2, kd: 0.8, ate: () => CENA.sub === 'tochas' },
+    { alvo: () => grupo().lerp(cab(PEDRO, -0.4)(), 0.35), dist: 5, el: 22, yaw: yPov - 25, k: 1.2, kd: 0.8, ate: () => CENA.sub === 'tochas' },      // (Pedro, de pé, e os que dormem: a 3,6 m ele ficava cortado na borda)
     { alvo: () => PORTAO.clone().setY(PORTAO.y + 1.4), dist: 11, el: 12, yaw: () => Math.atan2(TRES.x - PORTAO.x, TRES.z - PORTAO.z) * DEG, corte: true, k: 1.5, kd: 1, ate: () => CENA.sub === '' },
   ], () => {}, { aoPular: () => { AGENDA = []; if (LEMB.on) { LEMB.desliga(); desfazTres(); } CENA.sub = ''; CENA.fase = 'livre'; } });
   depois(0.5, () => LEMB.entra('Quinta-feira, perto da meia-noite', montaTres));
