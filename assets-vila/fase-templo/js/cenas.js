@@ -36,6 +36,7 @@ if (DE !== 'cidade') {
       aoEntrar: () => depois(0.6, () => fala('Pela porta do norte: o pátio de fora do templo, cercado de pórticos. A fumaça do sacrifício da manhã já sobe do altar.')) },
     { alvo: () => ARCA.clone().setY(ARCA.y + 1), dist: 8, el: 22, yaw: 160, corte: true, k: 2, kd: 1, titulo: 'As arcas das ofertas', dur: 3.2, aoEntrar: () => fala('') },
     { alvo: () => SANT.clone(), dist: 22, el: 6, yaw: 90, corte: true, k: 2, kd: 1, titulo: 'O santuário e o véu', dur: 3.2 },
+    { alvo: () => V3(-15.5, 1, 29), dist: 14, el: 24, yaw: 200, corte: true, k: 2, kd: 1, titulo: 'As mesas dos cambistas', dur: 3.0 },
   ], () => { fala(''); CENA.fase = 'livre'; }, { aoPular: () => { AGENDA = []; } });
 } else CENA.fase = 'livre';
 
@@ -155,6 +156,58 @@ function cenaVeu() {
   ], () => {}, { aoPular: () => { AGENDA = []; if (LEMB.on) { LEMB.desliga(); desfazVeu(); } CENA.sub = ''; CENA.fase = 'livre'; } });
   depois(0.5, () => LEMB.entra('Sexta-feira, à hora nona', montaVeu));
 }
+// ---------- 4. as mesas derrubadas (Mc 11.15-17) ----------
+// as mesas do mercado são uma malha só no modelo: na lembrança, ela some e entram seis mesas soltas, que viram
+const MERCADO = []; scene.traverse((o) => { if (o.isMesh && /^Templo_Mercado_\d$/.test(o.name)) MERCADO.push(o); });
+const MESAS = LAY.cambio.map(([x, z]) => {
+  const g = new THREE.Group(); g.position.set(x, 0, z); g.visible = false; scene.add(g);
+  const base = MERCADO.find((m) => /tabua/i.test(m.material.name)), mat = base ? Object.assign(base.material.clone(), { vertexColors: false }) : new THREE.MeshStandardMaterial({ color: 0x7a5634, roughness: 1 });
+  const vira = new THREE.Group(); vira.position.set(0, 0, 0.35); g.add(vira);      // gira em torno da borda da frente
+  const tampo = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.08, 0.7), mat); tampo.position.set(0, 1.0, -0.35); tampo.castShadow = true; vira.add(tampo);
+  for (const [lx, lz] of [[-0.7, -0.05], [0.7, -0.05], [-0.7, -0.65], [0.7, -0.65]]) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.0, 0.08), mat); p.position.set(lx, 0.5, lz); p.castShadow = true; vira.add(p); }
+  const moedas = []; const mm = new THREE.MeshStandardMaterial({ color: 0xc9a14a, metalness: 0.6, roughness: 0.35 });
+  for (let i = 0; i < 10; i++) { const c = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.01, 8), mm); c.position.set(-0.5 + (i % 5) * 0.25, 1.05 + Math.floor(i / 5) * 0.012, -0.3 - Math.floor(i / 5) * 0.15); vira.add(c); moedas.push({ c, v: new THREE.Vector3(), solta: false }); }
+  return { g, vira, moedas, k: 0, x, z };
+});
+const CAMB = [ator(nEscriba, 1.72, 0, 0, 0, 'Parado'), ator(nRobusto, 1.74, 0, 0, 0, 'Parado')]; for (const st of CAMB) st.o.visible = false;
+const MC = { x: 0 };       // por onde ele vai, ao longo das mesas (de leste para oeste)
+function montaMesas() {
+  jog.o.visible = false; for (const m of MERCADO) m.visible = false;
+  for (const m of MESAS) { m.g.visible = true; m.k = 0; m.vira.rotation.x = 0; for (const q of m.moedas) { if (q.solta) { m.vira.attach(q.c); q.solta = false; } } m.moedas.forEach((q, i) => { q.c.position.set(-0.5 + (i % 5) * 0.25, 1.05 + Math.floor(i / 5) * 0.012, -0.3 - Math.floor(i / 5) * 0.15); q.c.rotation.set(0, 0, 0); }); }
+  CAMB.forEach((st, i) => { const m = MESAS[i * 2 + 1]; st.o.position.set(m.x, 0, m.z + 0.95); st.o.rotation.y = Math.PI; st.o.visible = true; st.toca('Conversando'); });
+  MC.x = MESAS[MESAS.length - 1].x + 3;
+  L4.sub = 'entra4'; L4.t = 0; fala('E, entrando Jesus no templo, começou a expulsar os que vendiam e compravam no templo. (Mc 11.15)');
+}
+function desfazMesas() { for (const m of MESAS) m.g.visible = false; for (const m of MERCADO) m.visible = true; for (const st of CAMB) st.o.visible = false; jog.o.visible = true; fala(''); }
+const L4 = { sub: '', t: 0 };
+function mesasPasso(dt) {
+  const T = (L4.t += dt);
+  MC.x -= dt * 2.2;
+  for (const m of MESAS) {
+    if (m.k === 0 && MC.x < m.x + 0.6) m.k = 0.0001;
+    if (m.k > 0 && m.k < 1) {
+      m.k = Math.min(1, m.k + dt * 2.4); m.vira.rotation.x = Math.PI * 0.55 * THREE.MathUtils.smoothstep(m.k, 0, 1);      // tomba para o lado dos cambistas
+      for (const q of m.moedas) if (!q.solta && m.k > 0.25) { q.solta = true; scene.attach(q.c); q.v.set((Math.random() - 0.5) * 2.2, 1.5 + Math.random() * 1.5, 0.8 + Math.random() * 1.8); }
+    }
+    for (const q of m.moedas) if (q.solta) { q.v.y -= 9.8 * dt; q.c.position.addScaledVector(q.v, dt); q.c.rotation.x += dt * 12; if (q.c.position.y < 0.01) { q.c.position.y = 0.01; q.v.set(0, 0, 0); } }
+  }
+  for (const st of CAMB) if (MC.x < st.o.position.x + 2) { st.toca('Andar'); st.o.position.z += dt * 1.6; }      // recuam
+  if (T > 5.5 && !L4.f1) { L4.f1 = true; fala('E derribou as mesas dos cambistas e as cadeiras dos que vendiam pombas. (Mc 11.15)'); }
+  if (T > 9.5 && !L4.f2) { L4.f2 = true; fala('“Não está escrito: A minha casa será chamada casa de oração para todas as nações? Mas vós a tendes feito covil de ladrões.” (Mc 11.17)'); }
+  if (T > 16 && !L4.saindo) { L4.saindo = true; LEMB.sai(() => { desfazMesas(); L4.sub = ''; CENA.fase = 'livre'; }); }
+}
+function cenaMesas() {
+  CENA.fase = 'mesas'; L4.sub = 'entra'; L4.saindo = false; L4.f1 = L4.f2 = false;
+  const linha = () => V3(Math.max(MESAS[0].x, Math.min(MESAS[5].x, MC.x)), 1.0, MESAS[0].z);
+  CINE.roda([
+    { alvo: () => V3(-15.5, 1, 29), dist: 12, el: 24, yaw: 200, k: 2, ate: () => L4.sub === 'entra4' },
+    // de onde ele vinha, do lado de quem compra: as mesas viram uma a uma, à frente dele
+    { alvo: linha, dist: 4.2, el: 16, yaw: 150, corte: true, fixo: true, k: 2.5, kd: 1, ate: () => L4.f2 },
+    { alvo: () => V3(-15.5, 1.2, 29.5), dist: 11, el: 18, yaw: 180, corte: true, fixo: true, k: 1.2, kd: 0.6, ate: () => L4.sub === '' },
+  ], () => {}, { aoPular: () => { AGENDA = []; if (LEMB.on) { LEMB.desliga(); desfazMesas(); } L4.sub = ''; CENA.fase = 'livre'; } });
+  depois(0.5, () => LEMB.entra('Segunda-feira', montaMesas));
+}
+CONVERSAS.find((c) => c.nome === 'as mesas do mercado').cena = cenaMesas;
 CONVERSAS.find((c) => c.nome === 'o gazofilácio').cena = cenaViuva;
 CONVERSAS.find((c) => c.nome === 'o santuário').cena = cenaVeu;
 
@@ -164,9 +217,10 @@ function cenasPasso(dt) {
   if (!LEMB.on) return;
   if (CENA.fase === 'viuva') viuvaPasso(dt);
   else if (CENA.fase === 'veu') veuPasso(dt);
+  else if (CENA.fase === 'mesas') mesasPasso(dt);
 }
 // a terra treme: a câmera sacode (depois de posta pela cena)
 function tremor() { if (TREMOR.f > 0) camera.position.add(V3((Math.random() - 0.5) * TREMOR.f * 6, (Math.random() - 0.5) * TREMOR.f * 4, (Math.random() - 0.5) * TREMOR.f * 6)); }
 
-if (globalThis.MODO_TESTE) Object.assign(globalThis, { __VIUVA: cenaViuva, __VEU: cenaVeu, __CENA: CENA, __LEMB: LEMB, __FL: { viuva: VIUVA, sac: SAC } });
+if (globalThis.MODO_TESTE) Object.assign(globalThis, { __MESAS: cenaMesas, __VIUVA: cenaViuva, __VEU: cenaVeu, __CENA: CENA, __LEMB: LEMB, __FL: { viuva: VIUVA, sac: SAC } });
 export { cenasPasso, tremor, CINE, CENA };

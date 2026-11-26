@@ -10,6 +10,7 @@ import { pertoDe } from '../../limpo-motor/conversa.js';
 import { ajustaLente, jog, camera, ctl, tecla, JOY, toqueTela, fw, rt, mv, naArea, alturaEm, camPasso, CAM } from './jogador.js';
 import { criaMarcador } from '../../limpo-motor/marcador.js';
 import * as cine from './cine.js';
+import { lembrancasPasso } from './lembrancas.js';
 
 // ---------- os lugares: ao chegar perto de cada um, uma legenda (uma vez) ----------
 const P = (k) => [LAY[k][0], LAY[k][2]];
@@ -43,7 +44,7 @@ function conversar() {
 // ---------- o botão de ação e as saídas ----------
 function acionar() {
   if (E.fora || E.cine) return;
-  if (quem) { conversar(); return; }
+  if (quem) { if (quem.cena && !quem.cenaFeita) { quem.cenaFeita = true; quem.cena(); return; } conversar(); return; }      // a primeira vez, a lembrança (lembrancas.js)
   if (E.genat) { perguntaGolgota(); return; }
   if (E.ponte) perguntaTemplo();
 }
@@ -56,7 +57,7 @@ function perguntaGolgota() { dialogo('', 'Deseja sair pela Porta de Genat, para 
 // ---------- chegada ----------
 setTimeout(() => {
   fade.style.opacity = 0;
-  setTimeout(() => { fade.textContent = ''; legenda('Domingo, de manhã cedo. Uma praça da cidade alta: a oeste, o palácio de Herodes; ao norte, a Porta de Genat; ao sul, a casa onde os discípulos estão escondidos.', 8); }, 900);
+  setTimeout(() => { fade.textContent = ''; }, 900);      // (a chegada, com a câmera mostrando a praça: lembrancas.js)
 }, 1200);
 
 // ---------- laço ----------
@@ -67,7 +68,7 @@ const laco = (forca) => {
   const dt = forca || Math.min(relogio.getDelta(), 0.05), t = relogio.elapsedTime;
   for (const m of MIX) m.update(dt);
   const pj = jog.o.position;
-  npcsPasso(dt, pj);
+  npcsPasso(dt, pj); lembrancasPasso(dt);
   camera.getWorldDirection(fw); fw.setY(0).normalize(); rt.set(-fw.z, 0, fw.x);
   mv.set(0, 0, 0);
   if (!E.fora && !E.cine) {

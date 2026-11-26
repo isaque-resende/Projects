@@ -461,9 +461,9 @@ async function rodar() {
       (!falta.length && barracas >= 9 && chegou && subiu && parou && fumaca > 10 ? it.ok : it.erro)((falta.length ? 'falta ' + falta.join(', ') + '; ' : '') + barracas + ' barracas; do Pátio das Mulheres ao de Israel pelos degraus: ' + (chegou && subiu ? 'sim (' + p.y.toFixed(1) + ' m)' : 'NÃO') + '; parou na mureta: ' + (parou ? 'sim' : 'NÃO') + '; fumaça do altar: ' + fumaca);
     });
     await teste('coisas para olhar no templo: o altar, o santuário, as arcas das ofertas (Mc 12.41-44), a placa', (it) => testaInteracoes(it, ['o altar', 'o santuário', 'o gazofilácio', 'a placa da balaustrada']));
-    await teste('as lembranças do templo: a viúva pobre (Mc 12.41-44) e o véu rasgado (Mt 27.51)', async (it) => {
-      const a = await rodaLembranca(() => W().__VIUVA()), b = await rodaLembranca(() => W().__VEU());
-      (a && b ? it.ok : it.erro)('a viúva: ' + (a ? 'sim' : 'NÃO') + '; o véu: ' + (b ? 'sim' : 'NÃO'));
+    await teste('as lembranças do templo: a viúva pobre (Mc 12.41-44), o véu rasgado (Mt 27.51) e as mesas derrubadas (Mc 11.15-17)', async (it) => {
+      const a = await rodaLembranca(() => W().__VIUVA()), b = await rodaLembranca(() => W().__VEU()), c = await rodaLembranca(() => W().__MESAS());
+      (a && b && c ? it.ok : it.erro)('a viúva: ' + (a ? 'sim' : 'NÃO') + '; o véu: ' + (b ? 'sim' : 'NÃO') + '; as mesas: ' + (c ? 'sim' : 'NÃO'));
     });
     await teste('conversas no templo: o cambista, o levita, o mestre da Lei (Mt 28.11-15)', async (it) => {
       const T = W().TESTE, p = T.jog.o.position, r = [];
@@ -493,6 +493,12 @@ async function rodar() {
   await abre('fase-cidade/');
   const okCi = await testesDaFase('Cidade alta');
   if (okCi) {
+    await teste('a lembrança de Pedro no pátio do sumo sacerdote (Mc 14.66-72; Lc 22.61-62)', async (it) => {
+      const T = W().TESTE; T.E.fora = false; W().__PEDRO(); let viu = false;
+      for (let k = 0; k < 220; k++) { quadros(15); viu ||= W().__LEMB.on; await espera(25); if (viu && !W().__LEMB.on && !T.E.cine) break; }
+      const ok = viu && !W().__LEMB.on && !T.E.cine && T.jog.o.visible;
+      (ok ? it.ok : it.erro)('a lembrança passou e o jogador voltou: ' + (ok ? 'sim' : 'NÃO'));
+    });
     await teste('Jo 20.1-10 e Lc 24.1-11: depois da mulher à porta, Maria chega e Pedro e João saem; as mulheres; Maria volta ao sepulcro; Pedro e João voltando na Porta de Genat a destravam', async (it) => {
       const T = W().TESTE, C = T.CENA, fases = new Set(), p = T.jog.o.position, conv = (n) => T.CONVERSAS.find((c) => c.nome === n);
       const corre = (ate_, max = 30 * 60) => { for (let k = 0; k < max && !ate_(); k++) { T.laco(1 / 30); fases.add(C.fase); } };

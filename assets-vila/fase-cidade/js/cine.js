@@ -4,7 +4,8 @@
 // Cada plano: { alvo: () => ponto que a câmera olha, dist, el (graus acima), yaw (graus: de que lado fica a câmera;
 //   0 = ao sul do alvo, 90 = a leste, 180 = ao norte) ou yaw: () => graus, zoom (1 = lente de sempre; menor fecha),
 //   k (rapidez de seguir o alvo e virar), kd (rapidez de chegar à distância), dur (segundos) ou ate: () => true para
-//   passar ao seguinte, corte: true (salta, sem transição) }.
+//   passar ao seguinte, corte: true (salta, sem transição), titulo: 'texto' (letreiro), fixo: true (não desvia de paredes),
+//   aoEntrar: () => {} (quando o plano começa) }.
 // Se uma parede tapa o alvo, a câmera procura, aos poucos, um ângulo vizinho de onde ele apareça (como a do jogador).
 import * as THREE from 'three';
 import { V3, E } from './estado.js';
@@ -28,14 +29,19 @@ PULA.textContent = 'Pular cena ›';
 Object.assign(PULA.style, { position: 'fixed', right: '12px', bottom: 'calc(9vh + 10px + env(safe-area-inset-bottom))', padding: '8px 14px', border: 0, borderRadius: '10px', background: '#fdf6e3cc', color: '#4a3520', font: '14px system-ui', display: 'none', zIndex: 6 });
 PULA.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); C.pula = true; });
 document.body.appendChild(PULA);
-const barras = (on) => { B1.style.height = B2.style.height = on ? '8vh' : '0'; PULA.style.display = on ? 'block' : 'none'; };
+// o letreiro (o nome do lugar, no canto de cima, enquanto o plano dura)
+const TIT = document.createElement('div');
+Object.assign(TIT.style, { position: 'fixed', left: '18px', top: 'calc(8vh + 14px)', color: '#fdf6e3', font: '600 19px Georgia, serif', letterSpacing: '0.04em', textShadow: '0 2px 8px #000c', opacity: 0, transition: 'opacity .5s', zIndex: 5, pointerEvents: 'none' });
+document.body.appendChild(TIT);
+const titulo = (s) => { if (s) { TIT.textContent = s; TIT.style.opacity = 1; } else TIT.style.opacity = 0; };
+const barras = (on) => { B1.style.height = B2.style.height = on ? '8vh' : '0'; PULA.style.display = on ? 'block' : 'none'; if (!on) titulo(''); };
 
 const ang = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 const suave = (k, dt) => 1 - Math.exp(-k * dt);
 const dirDe = (yaw, el) => V3(Math.sin(yaw) * Math.cos(el), Math.sin(el), Math.cos(yaw) * Math.cos(el));
 
 // roda uma sequência de planos (se já há uma rodando, entra na fila); aoFim, quando acaba ou é pulada
-function roda(planos, aoFim) { C.fila.push({ planos, aoFim }); }
+function roda(planos, aoFim, o = {}) { C.fila.push({ planos, aoFim, aoPular: o.aoPular }); }
 function comeca(seq) {
   C.seq = seq; C.i = 0; C.t = 0; C.ativo = true; C.pula = false; E.cine = true; E.alvoToque = null;
   if (!C.fov0) C.fov0 = camera.fov;
@@ -47,15 +53,17 @@ function comeca(seq) {
 }
 function entra(p) {
   C.t = 0; if (!p) return;
+  if (p.aoEntrar) p.aoEntrar(); titulo(p.titulo || '');
   if (p.corte) C.cortou = 2;      // num corte, quem está rente à câmera pode sumir sem se ver
   if (p.corte) { C.alvo.copy(p.alvo()); C.dist = p.dist; C.yaw = yawDe(p); C.el = p.el * RAD; C.zoom = p.zoom ?? 1; C.dy = C.de = C.dyA = C.deA = 0; }
 }
 const yawDe = (p) => (typeof p.yaw === 'function' ? p.yaw() : p.yaw) * RAD;
-function acaba() {
+function acaba(pulou) {
   const seq = C.seq; C.seq = null; C.ativo = false; E.cine = false; barras(false);
   // a câmera do jogador continua daqui, voltando aos poucos para ele
   const pj = globalThis.__pj; if (pj) { CAM.off.copy(camera.position).sub(pj); CAM.offO.copy(C.alvo).sub(pj); }
   C.fim = 1.2; C.corteVolta = true;
+  if (seq && pulou && seq.aoPular) seq.aoPular();
   if (seq && seq.aoFim) seq.aoFim();
 }
 
@@ -67,7 +75,7 @@ function passo(dt, pj) {
     if (C.fim > 0 && C.fov0) { C.fim -= dt; camera.fov += (C.fov0 - camera.fov) * suave(4, dt); if (C.fim <= 0) camera.fov = C.fov0; camera.updateProjectionMatrix(); }
     return false;
   }
-  if (C.pula) { acaba(); return false; }
+  if (C.pula) { acaba(true); return false; }
   let p = C.seq.planos[C.i];
   C.t += dt;
   if (p && ((p.dur != null && C.t >= p.dur) || (p.ate && p.ate()))) { C.i++; p = C.seq.planos[C.i]; entra(p); }
@@ -81,7 +89,7 @@ function passo(dt, pj) {
   // tela em pé (celular): o quadro é estreito, então a câmera chega mais perto, para quem age não ficar pequeno
   const fa = Math.min(1, 0.4 + 0.6 * camera.aspect), D = C.dist * fa;
   // se algo tapa o alvo, procura um ângulo vizinho
-  if ((C.tD -= dt) <= 0) {
+  if (p.fixo) { C.dyA = C.deA = 0; } else if ((C.tD -= dt) <= 0) {
     C.tD = 0.2; const ob = obstaculos();
     for (const [a, b] of DESV) {
       const q = dirDe(C.yaw + a, Math.min(1.3, C.el + b)); RC.set(C.alvo, q); RC.far = Math.max(0.5, D - 0.6);
@@ -99,4 +107,6 @@ function passo(dt, pj) {
 // a lente de sempre mudou (a tela girou)
 function novaLente() { C.fov0 = camera.fov; }
 
+// pular a cena (os testes usam)
+C.pular = () => { if (C.ativo) C.pula = true; };
 export { roda, passo, novaLente, C as CINE };

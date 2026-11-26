@@ -11,6 +11,7 @@ estão em `js/cenas.js`.
 | o pátio, o altar e o santuário, de cima | "O templo" | "Pela porta do norte: o pátio de fora do templo, cercado de pórticos. A fumaça do sacrifício da manhã já sobe do altar." |
 | corte: as arcas no Pátio das Mulheres | "As arcas das ofertas" | — |
 | corte: a porta do santuário | "O santuário e o véu" | — |
+| corte: as mesas do mercado | "As mesas dos cambistas" | — |
 
 Quem volta da cidade alta não vê a chegada.
 
@@ -38,3 +39,14 @@ A lembrança começa na primeira vez que o jogador olha o santuário, com o letr
 
 > Nota: o véu do Santo dos Santos ficava dentro do santuário. Na cena, o pano da porta faz o papel dele, para que o
 > rasgo apareça.
+
+## 4. As mesas derrubadas (Mc 11.15-17)
+
+A lembrança começa na primeira vez que o jogador olha o mercado, com o letreiro "Segunda-feira". A câmera vem do
+lado de quem compra, ao longo da fileira, por onde ele passou; ele não aparece.
+
+| Plano | Legenda |
+|---|---|
+| as mesas viram uma a uma, as moedas se espalham e os cambistas recuam | "E, entrando Jesus no templo, começou a expulsar os que vendiam e compravam no templo." (Mc 11.15) |
+| — | "E derribou as mesas dos cambistas e as cadeiras dos que vendiam pombas." (Mc 11.15) |
+| a fileira de mesas viradas, de longe | “Não está escrito: A minha casa será chamada casa de oração para todas as nações? Mas vós a tendes feito covil de ladrões.” (Mc 11.17) |
