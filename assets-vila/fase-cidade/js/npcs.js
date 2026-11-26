@@ -179,7 +179,7 @@ const PAS = passantes.map((st, k) => ({ st, rota: ROTAS_P[k], i: 1, ida: true, e
 // Quem anda não recebe clipe à força: o "anda" escolhe andar ou correr pela velocidade (forçar outro clipe a cada quadro
 // reiniciava a animação, e as pernas travavam). Ao parar, toca "Parado"; para olhar, gira aos poucos.
 // A câmera acompanha a cena (cine.js): os planos de cada trecho estão junto dele.
-const DENTRO_CIMA = V3(PORTA_CIMA.x, 0, crc[2] + 0.7), DENTRO_BAIXO = V3(pc.x, 0, crc[2] + 0.7);
+const DENTRO_CIMA = V3(PORTA_CIMA.x, 0, crc[2] + 1.0), DENTRO_BAIXO = V3(pc.x, 0, crc[2] + 1.0);      // além do fundo do vão
 const yla = LAY.porta_cima[1];
 const PORTAO = V3(pgn.x, 0, pgn.z + 1.5);
 const PARA_M = V3(pgn.x, 0, pgn.z + 3.8);                 // logo depois da porta: Maria para, sem fôlego
@@ -207,7 +207,7 @@ const ATENTOS = [porteira, maria, ...mulheres];
 // ---------- as portas da casa, que abrem e fecham ----------
 // O vão (onde fica a porta do cenário) é medido no modelo da casa; a folha é a porta do kit das casas (tábuas, com a
 // textura), esticada para o vão. Abre para fora, na dobradiça do lado leste, um pouco acima do piso (sem raspar nele).
-function criaPorta(bx0, bx1, by0, by1) {
+function criaPorta(bx0, bx1, by0, by1, aberta = -1.75, medePiso = true) {
   let fonte = null;
   gCen.scene.traverse((o) => { if (o.isMesh && o.material && o.material.name === 'Cidade_porta_d') for (let p = o; p; p = p.parent) if (/Cenaculo/.test(p.name)) fonte = o; });
   const z = crc[2], g = new THREE.Group(); scene.add(g);
@@ -224,10 +224,17 @@ function criaPorta(bx0, bx1, by0, by1) {
   }
   if (xa > xb) { xa = bx0 + 0.15; xb = bx1 - 0.15; ya = by0; yb = ya + 2.1; }
   const w = xb - xa, h = yb - ya;
-  const vao = new THREE.Mesh(new THREE.PlaneGeometry(w + 0.04, h + 0.02), new THREE.MeshBasicMaterial({ color: 0x150d07 }));
-  vao.position.set((xa + xb) / 2, ya + h / 2, z - 0.1); vao.rotation.y = Math.PI; g.add(vao);
+  // o vão aberto na parede (a parede é maciça): o retângulo da abertura marca o estêncil onde ela aparece; ali se
+  // desenha o fundo escuro, meio metro para dentro. Quem passa pela porta aparece inteiro no vão e some no escuro do
+  // fundo (antes a parede cortava o corpo na linha da porta)
+  const marca = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false,
+    stencilWrite: true, stencilRef: 1, stencilFunc: THREE.AlwaysStencilFunc, stencilZPass: THREE.ReplaceStencilOp }));
+  marca.position.set((xa + xb) / 2, ya + h / 2, z - 0.09); marca.rotation.y = Math.PI; marca.renderOrder = 1; g.add(marca);
+  const fundo = new THREE.Mesh(new THREE.PlaneGeometry(w + 3, h + 3), new THREE.MeshBasicMaterial({ color: 0x120a05, depthFunc: THREE.AlwaysDepth,
+    stencilWrite: true, stencilRef: 1, stencilFunc: THREE.EqualStencilFunc, stencilZPass: THREE.ZeroStencilOp, stencilFail: THREE.KeepStencilOp }));
+  fundo.position.set((xa + xb) / 2, ya + h / 2, z + 0.5); fundo.rotation.y = Math.PI; fundo.renderOrder = 2; g.add(fundo);
   // o piso na frente da porta (onde a folha passa): a folha fica acima dele
-  let piso = ya; for (let k = 0; k <= 8; k++) { const an = (k / 8) * 1.75, px = xb - Math.cos(an) * w * 0.98, pz = z - 0.14 - Math.sin(an) * w * 0.98; piso = Math.max(piso, terreno(px, pz)); }
+  let piso = ya; if (medePiso) for (let k = 0; k <= 8; k++) { const an = (k / 8) * -aberta, px = xb - Math.cos(an) * w * 0.98, pz = z - 0.14 - Math.sin(an) * w * 0.98; piso = Math.max(piso, terreno(px, pz)); }
   const folga = piso - ya + 0.04;
   const pivo = new THREE.Group(); pivo.position.set(xb, ya + folga, z - 0.16); g.add(pivo);
   const PK = KITC.pecas.Porta;
@@ -236,11 +243,11 @@ function criaPorta(bx0, bx1, by0, by1) {
     const me = new THREE.Mesh(geo, KITC.materiais[mn]); me.castShadow = true; me.receiveShadow = true; pivo.add(me);
   }
   else pivo.add(new THREE.Mesh(new THREE.BoxGeometry(w, h - folga, 0.05).translate(-w / 2, (h - folga) / 2, 0), new THREE.MeshStandardMaterial({ color: 0x6b4a2e })));
-  const D = { ang: 0, alvo: 0, abre() { D.alvo = -1.75; }, fecha() { D.alvo = 0; }, passo(dt) { D.ang += (D.alvo - D.ang) * Math.min(1, dt * 2.6); pivo.rotation.y = D.ang; } };
+  const D = { ang: 0, alvo: 0, abre() { D.alvo = aberta; }, fecha() { D.alvo = 0; }, passo(dt) { D.ang += (D.alvo - D.ang) * Math.min(1, dt * 2.6); pivo.rotation.y = D.ang; } };
   return D;
 }
-const PORTA_C = criaPorta(PORTA_CIMA.x - 0.75, PORTA_CIMA.x + 0.75, yla - 0.3, yla + 2.6);
-const PORTA_B = criaPorta(pc.x - 0.75, pc.x + 0.75, terreno(pc.x, pc.z) - 1.0, yla - 0.6);
+const PORTA_C = criaPorta(PORTA_CIMA.x - 0.75, PORTA_CIMA.x + 0.75, yla - 0.3, yla + 2.6, -1.95, false);      // em cima, o patamar é plano (medir pegava o parapeito)
+const PORTA_B = criaPorta(pc.x - 0.75, pc.x + 0.75, terreno(pc.x, pc.z) - 1.0, yla - 0.6, -2.5);
 
 // ---------- Maria bate à porta: a mão direita vai à madeira (IK do motor), três batidas, uma pausa, mais três ----------
 corpo(maria);
@@ -344,7 +351,7 @@ function roteiro(dt, pj) {
     }
     if (CENA.sub === 'fala') {
       olha(joao, maria.o.position.x, maria.o.position.z, dt);
-      if (segue(pedro, [V3(PORTA_CIMA.x + 0.45, 0, crc[2] - 0.2)], dt, 1.6)) olha(pedro, maria.o.position.x, maria.o.position.z, dt);
+      if (segue(pedro, [V3(PORTA_CIMA.x - 0.45, 0, crc[2] - 0.25)], dt, 1.6)) olha(pedro, maria.o.position.x, maria.o.position.z, dt);
       if (CENA.t <= 0) {
         CENA.sub = 'saem'; joao.i = pedro.i = 0; joao.passou = pedro.passou = false; CENA.tP = 1.2; CENA.tJ = 0.7; CENA.fechou = false; maria.i = 0;
         cPorteira.falas = FALAS_PORTEIRA_DEPOIS;

@@ -6,8 +6,8 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 // Monta a tela, a cena e as duas luzes (céu e sol). Cada fase passa as suas cores.
 //   fundo: cor ou textura do céu · neblina: [cor, perto, longe] · ceu: [cor de cima, cor de baixo, força]
 //   sol: [cor, força] · alcanceSombra: até onde a sombra do sol alcança · semente: do sorteio (rnd)
-export function criaBase({ fundo, neblina, ceu, sol, alcanceSombra = 80, semente = 7 }) {
-  const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+export function criaBase({ fundo, neblina, ceu, sol, alcanceSombra = 80, semente = 7, estencil = false }) {
+  const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance', stencil: estencil });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.setSize(innerWidth, innerHeight);
   renderer.outputColorSpace = THREE.SRGBColorSpace;

@@ -8,7 +8,8 @@ const { MIX, ator: ator0, anda, corpo } = criaAtores({ scene, rnd, alturaChao: t
 // cada ator guarda as suas malhas: a sombra só fica ligada nos que estão perto do jogador (são ~15 mil triângulos cada,
 // e a passada de sombra desenha todos de novo)
 const ATORES = [];
-function ator(...a) { const st = ator0(...a); st.malhas = []; st.o.traverse((m) => { if (m.isMesh) st.malhas.push(m); }); ATORES.push(st); return st; }
+// (desenhados depois dos vãos das portas: dentro do vão aparecem por inteiro, até a escuridão do fundo)
+function ator(...a) { const st = ator0(...a); st.malhas = []; st.o.traverse((m) => { if (m.isMesh) { st.malhas.push(m); m.renderOrder = 3; } }); ATORES.push(st); return st; }
 let tSombra = 0;
 function sombrasPerto(dt, p, raio = 12) {
   if ((tSombra -= dt) > 0) return; tSombra = 0.25;
