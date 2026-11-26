@@ -3,13 +3,14 @@ import { baixar } from '../../limpo-motor/base.js';
 import { carregaKit } from '../../limpo-motor/layout.js';
 import { LAY } from './estado.js';
 
-const [gCen, gJer, gJog, gPlantas, gFlores, gTumulo, nPedro, nJoao, nMaria, nSoldado, nSoldado2, KIT] = await Promise.all([
+const [gCen, gJer, gJog, gPlantas, gFlores, gTumulo, nPedro, nJoao, nMaria, nSoldado, nSoldado2, nMae, nOutra, nJose, nNicodemos, gCleo, KIT] = await Promise.all([
   baixar('../fase-golgota/golgota_cenario.glb?v=12'), baixar('../jerusalem/jerusalem_maquete.glb?v=5'), baixar('../vila-betania/discipulo_acoes.glb'),
   baixar('../flores/plantas_betfage.glb?v=1'), baixar('../flores/flores.glb'),
   baixar('../tumulo/tumulo.glb?v=1'),
   baixar('../personagens/barbudo.glb'), baixar('../personagens/cacheado.glb'), baixar('../personagens/maria.glb'),
   baixar('../personagens/robusto.glb'), baixar('../personagens/magro.glb'),
+  baixar('../personagens/mulher_lenco.glb'), baixar('../personagens/mulher_faixa.glb'), baixar('../personagens/mercador.glb'), baixar('../personagens/escriba.glb'), baixar('../cleopas/cleopas.glb'),     // as lembranças e Cléopas (cenas.js)
   carregaKit(LAY.objetos),
 ]);
 
-export { gCen, gJer, gJog, gPlantas, gFlores, gTumulo, nPedro, nJoao, nMaria, nSoldado, nSoldado2, KIT };
+export { gCen, gJer, gJog, gPlantas, gFlores, gTumulo, nPedro, nJoao, nMaria, nSoldado, nSoldado2, nMae, nOutra, nJose, nNicodemos, gCleo, KIT };

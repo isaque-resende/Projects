@@ -9,6 +9,7 @@ import { CONVERSAS, CENA, npcsPasso } from './npcs.js';
 import { pertoDe } from '../../limpo-motor/conversa.js';
 import { ajustaLente, jog, camera, ctl, tecla, JOY, toqueTela, fw, rt, mv, naArea, alturaEm, camPasso, CAM } from './jogador.js';
 import { criaMarcador } from '../../limpo-motor/marcador.js';
+import { cenasPasso, tremor, CINE, CENA as CENAS } from './cenas.js';
 
 // ---------- os lugares: ao chegar perto de cada um, uma legenda (uma vez) ----------
 const [gx, , gz] = LAY.golgota, [px, , pz] = LAY.portao, [sx, , sz] = LAY.sepulcro, [ox, , oz] = LAY.olhar, [ex, , ez] = LAY.emaus;
@@ -23,7 +24,7 @@ const LUG = [
 let falando = 0;
 function legenda(txt, seg = 8) { fala(txt); const n = ++falando; setTimeout(() => { if (n === falando) fala(''); }, seg * 1000); }
 function lugares(pj) {
-  if (E.fora) return;
+  if (E.fora || E.cine) return;
   for (const L of LUG) {
     if (L.visto) continue;
     if (Math.hypot(pj.x - L.x, pj.z - L.z) < L.r) { L.visto = true; legenda(L.txt); break; }
@@ -69,8 +70,8 @@ function conversar() {
 
 // ---------- o botão de ação e as pontas da estrada ----------
 function acionar() {
-  if (E.fora) return;
-  if (quem) { conversar(); return; }
+  if (E.fora || E.cine) return;
+  if (quem) { if (quem.cena && !quem.cenaFeita) { quem.cenaFeita = true; quem.cena(); return; } conversar(); return; }
   if (OL.perto) { olhar(); return; }
   if (E.emaus) { perguntaEmaus(); return; }
   if (E.cidade) perguntaCidade();
@@ -85,12 +86,13 @@ function emConstrucao(texto, i) {
 function sair(texto, url) { E.fora = true; fade.textContent = texto; fade.style.opacity = 1; setTimeout(() => { location.href = url; }, 1200); }
 // a ponta sudeste da estrada: volta para a cidade alta (Porta de Genat) ou, por fora do muro do norte, para Betesda (de onde também se chega aqui)
 function perguntaCidade() { dialogo('', 'Voltar para a cidade, pela Porta de Genat, ou seguir por fora do muro até Betesda?', [['Ainda não', () => recua(12), '#a8957a'], ['Betesda', () => sair('Para Betesda, ao longo do muro do norte…', '../fase-betesda/?de=golgota')], ['Porta de Genat', () => sair('De volta à cidade, pela Porta de Genat…', '../fase-cidade/?de=genat')]]); }
+CENAS.emaus = () => perguntaEmaus();      // Cléopas, no fim da conversa (cenas.js)
 function perguntaEmaus() { dialogo('', 'Deseja seguir pela estrada de Emaús?', [['Ainda não', () => recua(AMOS.length - 14), '#a8957a'], ['Sim', () => emConstrucao('A estrada de Emaús é a próxima parte do caminho (em construção).', AMOS.length - 14)]]); }
 
 // ---------- chegada ----------
 setTimeout(() => {
   fade.style.opacity = 0;
-  setTimeout(() => { fade.textContent = ''; legenda('Domingo, ao nascer do sol. Fora da porta da cidade, à beira da estrada, numa pedreira velha, fica o lugar chamado Caveira.', 8); }, 900);
+  setTimeout(() => { fade.textContent = ''; }, 900);      // (a chegada, com a câmera mostrando o lugar: cenas.js)
 }, 1200);
 
 // ---------- laço ----------
@@ -103,7 +105,7 @@ const laco = (forca) => {
   npcsPasso(dt, jog.o.position); TUM.passo(jog.o.position);
   camera.getWorldDirection(fw); fw.setY(0).normalize(); rt.set(-fw.z, 0, fw.x);
   mv.set(0, 0, 0);
-  if (!E.fora) {
+  if (!E.fora && !E.cine) {
     if (tecla.KeyW || tecla.ArrowUp) mv.add(fw); if (tecla.KeyS || tecla.ArrowDown) mv.sub(fw);
     if (tecla.KeyD || tecla.ArrowRight) mv.add(rt); if (tecla.KeyA || tecla.ArrowLeft) mv.sub(rt);
     if (JOY.on && Math.hypot(JOY.x, JOY.y) > 0.15) mv.addScaledVector(fw, -JOY.y).addScaledVector(rt, JOY.x);
@@ -136,28 +138,30 @@ const laco = (forca) => {
   // lugares, sepulcro e as pontas da estrada
   lugares(pj);
   OL.perto = Math.hypot(pj.x - ox, pj.z - oz) < 1.8;
-  quem = E.fora ? null : pertoDe(CONVERSAS.filter((n) => !n.oculto && n.o.visible !== false), pj);
+  cenasPasso(dt);
+  quem = E.fora || E.cine ? null : pertoDe(CONVERSAS.filter((n) => !n.oculto && n.o.visible !== false), pj);
   anel.material.opacity = (E.olhou ? 0.16 : 0.3) + 0.1 * Math.sin(t * 1.6);
   olharPasso(dt);
   const [i, d] = naRota(pj.x, pj.z);
   E.cidade = i <= 3 && d < 4;
   E.emaus = i >= AMOS.length - 5 && d < 4;
-  if ((E.cidade || E.emaus) && !E.fora && !E.perguntou) { E.perguntou = true; (E.cidade ? perguntaCidade : perguntaEmaus)(); }
+  if ((E.cidade || E.emaus) && !E.fora && !E.cine && !E.perguntou) { E.perguntou = true; (E.cidade ? perguntaCidade : perguntaEmaus)(); }
   if (!E.cidade && !E.emaus) E.perguntou = false;
   const txt = quem && !E.fora ? (quem.verbo || 'conversar com ' + quem.nome) : OL.perto && !E.fora ? 'abaixar-se e olhar dentro' : E.emaus ? 'seguir para Emaús' : E.cidade ? 'voltar (cidade ou Betesda)' : '';
   if (txt) textoBotao((toqueTela ? '' : 'E: ') + txt);
-  botao.style.display = txt && !E.fora ? 'block' : 'none';
+  botao.style.display = txt && !E.fora && !E.cine ? 'block' : 'none';
   ctl.marcaPino(botao.style.display === 'block' ? (OL.perto ? 'olhar' : 'ir') : '');
 
   // câmera e sol
   E.dist += (E.distAlvo - E.dist) * Math.min(1, dt * 4);
-  camPasso(dt, pj, primeira); primeira = false;
+  camPasso(dt, pj, primeira || CINE.C.corteVolta); primeira = false; CINE.C.corteVolta = false;
   sun.position.copy(pj).addScaledVector(SOL_DIR, 40); sun.target.position.copy(pj);
-  marca.passo(pj, t, CAM.pos.distanceTo(pj), !E.fora);
+  if (CINE.passo(dt)) { const a = CINE.C.alvo; sun.position.copy(a).addScaledVector(SOL_DIR, 40); sun.target.position.copy(a); tremor(); }
+  marca.passo(pj, t, CAM.pos.distanceTo(pj), !E.fora && !E.cine);
   renderer.render(scene, camera);
 };
 if (!(globalThis.MODO_TESTE && new URLSearchParams(location.search).has('parado'))) renderer.setAnimationLoop(() => laco());
 addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; ajustaLente(); });
 
 // para os testes automáticos: abrir com ?teste (ou pelo teste.html) e usar TESTE no console
-if (globalThis.MODO_TESTE) globalThis.TESTE = { MIX, E, jog, laco, marca, tecla, bate, alturaEm: (x, z) => terreno(x, z), chaoTerra: terreno, scene, camera, CIRC, CAIXAS, renderer, AMOS, OL, LAY, TUM, olhar, acionar, CONVERSAS, CENA, conversar, INT: { L: CONVERSAS } };
+if (globalThis.MODO_TESTE) globalThis.TESTE = { CINE, MIX, E, jog, laco, marca, tecla, bate, alturaEm: (x, z) => terreno(x, z), chaoTerra: terreno, scene, camera, CIRC, CAIXAS, renderer, AMOS, OL, LAY, TUM, olhar, acionar, CONVERSAS, CENA, conversar, INT: { L: CONVERSAS } };

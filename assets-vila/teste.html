@@ -79,7 +79,7 @@ async function testesDaFase(nome, opc = {}) {
   });
   if (tempo == null) return false;
   await espera(1500);           // deixa terminar o que carrega por último
-  { const C = W().TESTE && W().TESTE.CINE; if (C && C.pular) { C.pular(); quadros(3); } }      // a cena de chegada (cenas.js) é testada à parte
+  await semCena();      // a cena de chegada (cenas.js) é testada à parte
   await teste('nenhum erro nem arquivo faltando', async (it) => {
     const erros = [...new Set(W().ERROS || [])], falhos = arquivosFalhos();
     if (erros.length || falhos.length) it.erro([...falhos, ...erros].slice(0, 12).join('\n'));
@@ -112,8 +112,8 @@ async function testesDaFase(nome, opc = {}) {
     T.scene.traverse((o) => { if (o.name === 'garfo' && o.parent && o.parent.isBone) garfos.push(o); });
     if (garfos.length !== 2) throw new Error('esperava 2 forcados, achei ' + garfos.length);
     const pos = () => garfos.map((g) => { g.updateWorldMatrix(true, false); return g.matrixWorld.elements.slice(12, 15); });
-    const a = pos(); quadros(15); const b = pos();
-    const mov = a.map((p, i) => Math.hypot(p[0] - b[i][0], p[1] - b[i][1], p[2] - b[i][2]));
+    // o maior deslocamento em três janelas de meio segundo (numa só, o forcado pode estar parando para virar)
+    const mov = [0, 0]; for (let j = 0; j < 3; j++) { const a = pos(); quadros(15); const b = pos(); a.forEach((p, i) => { mov[i] = Math.max(mov[i], Math.hypot(p[0] - b[i][0], p[1] - b[i][1], p[2] - b[i][2])); }); }
     const malhar = T.MIX.filter((mx) => mx._actions.some((x) => x.getClip().name === 'Malhar' && x.isRunning())).length;
     if (malhar !== 2) it.erro('clipe Malhar tocando em ' + malhar + ' de 2');
     else if (mov.some((m) => m < 0.05)) it.erro('forcado parado (andou ' + mov.map((m) => m.toFixed(2)).join(' e ') + ' m)');
@@ -173,6 +173,8 @@ async function responde(texto, botao, ms = 5000) {
 }
 const confirma = (texto) => responde(texto, 'Sim');
 // interações (limpo-motor/interacoes.js): chega perto de cada item pelo nome, aperta E e vai até o fim da conversa
+// a cena de chegada (cenas.js) é testada à parte: deixa ela começar e pula
+async function semCena() { const C = W().TESTE && W().TESTE.CINE; if (!C || !C.pular) return; quadros(3); C.pular(); quadros(3); await espera(50); }
 // as lembranças (cenas.js de cada fase): começa, espera o clarão e a cena correr, fecha as falas do fim
 async function rodaLembranca(iniciar) {
   const T = W().TESTE, C = W().__CENA, caixa = () => [...D().querySelectorAll('div')].find((x) => x.style.zIndex === '8' && visivel(x));
@@ -182,13 +184,14 @@ async function rodaLembranca(iniciar) {
   return viu && !W().__LEMB.on && !T.E.cine && T.jog.o.visible;
 }
 async function testaInteracoes(it, nomes) {
+  await semCena();      // uma cena que ainda esteja rodando (a chegada, o mirante) é testada à parte
   const T = W().TESTE, p = T.jog.o.position, r = [];
   r.push(T.INT.L.length + ' interações');
   for (const nome of nomes) {
     const item = T.INT.L.find((n) => n.nome === nome); if (!item) { r.push(nome + ': NÃO existe'); continue; }
     T.E.fora = false; if (item.cena) item.cenaFeita = true; const q = item.o.position, d = Math.min(1.1, item.r - 0.4);      // (a lembrança da primeira vez é testada à parte)
     const lado = [[d, 0], [-d, 0], [0, d], [0, -d], [d * 0.7, d * 0.7], [-d * 0.7, -d * 0.7]].find(([dx, dz]) => !T.bate(q.x + dx, q.z + dz, 0.05)) || [d, 0];
-    p.set(q.x + lado[0], T.alturaEm(q.x + lado[0], q.z + lado[1], 50), q.z + lado[1]); quadros(3);
+    p.set(q.x + lado[0], T.alturaEm(q.x + lado[0], q.z + lado[1], 50), q.z + lado[1]); quadros(3); await semCena();      // (chegar ali pode começar uma cena: o mirante)
     W().dispatchEvent(new (W().KeyboardEvent)('keydown', { code: 'KeyE' })); W().dispatchEvent(new (W().KeyboardEvent)('keyup', { code: 'KeyE' })); quadros(2);
     let n = 0; while (n < 12 && (await responde('', 'Continuar', 700))) n++;
     const fechou = await responde('', 'Fechar', 1200); quadros(2);
@@ -259,7 +262,7 @@ async function rodar() {
   let chegouOl = false, chegouGs = false;
   await teste('o alto da estrada pergunta "ir ao Monte das Oliveiras" e o Sim leva até lá', async (it) => {
     if (!W().TESTE) { await abre('fase-betfage/'); if (await esperaFase() == null) throw new Error('Betfagé não carregou\n' + listaErros()); }
-    const T = W().TESTE; T.E.fora = false;
+    await semCena(); const T = W().TESTE; T.E.fora = false;
     for (let i = T.AMOS.length - 1; i >= 0 && !T.E.fora; i -= 2) { const q = T.AMOS[i]; T.jog.o.position.set(q.x, T.alturaEm(q.x, q.z, 80), q.z); quadros(2); }
     if (!await confirma('Monte das Oliveiras')) throw new Error('a pergunta não apareceu no alto da estrada');
     const foi = await ate(() => /fase-oliveiras\/(index\.html)?$/.test(W().location.pathname) && W().location.search.includes('de=betfage'), 8000);
@@ -324,7 +327,7 @@ async function rodar() {
     });
     await teste('o pé da subida pergunta "voltar para Betfagé" e o Sim leva até lá', async (it) => {
       await abre('fase-oliveiras/?de=betfage'); if (await esperaFase() == null) throw new Error('não recarregou\n' + listaErros());
-      const T = W().TESTE, q = T.AMOS[2]; T.jog.o.position.set(q.x, T.chaoTerra(q.x, q.z), q.z); quadros(3);
+      await semCena(); const T = W().TESTE, q = T.AMOS[2]; T.jog.o.position.set(q.x, T.chaoTerra(q.x, q.z), q.z); quadros(3);
       if (!await confirma('Betfagé')) throw new Error('a pergunta não apareceu no pé da subida');
       const foi = await ate(() => /fase-betfage\/(index\.html)?$/.test(W().location.pathname) && W().location.search.includes('de=oliveiras'), 8000);
       if (!foi) throw new Error('não mudou de página (está em ' + caminho() + ')');
@@ -361,6 +364,10 @@ async function rodar() {
       quadros(30 * 18);
       (tiro > 20 && tiro < 35 && /ajoelhar/.test(txt) && joelhos && /sangue/.test(fala) && T.E.orou && !T.E.fora ? it.ok : it.erro)('rocha a ' + tiro.toFixed(1) + ' m dos três; botão "' + txt + '"; de joelhos: ' + (joelhos ? 'sim' : 'NÃO') + '; legenda: "' + fala.slice(0, 60) + '…"; depois livre: ' + (T.E.orou && !T.E.fora ? 'sim' : 'NÃO'));
     });
+    await teste('as lembranças do Getsêmani: a oração na rocha (Lc 22.41-44) e os três dormindo (Mc 14.37-42)', async (it) => {
+      const a = await rodaLembranca(() => W().__ROCHA()), b = await rodaLembranca(() => W().__TRES());
+      (a && b ? it.ok : it.erro)('a rocha: ' + (a ? 'sim' : 'NÃO') + '; os três: ' + (b ? 'sim' : 'NÃO'));
+    });
     await teste('saindo do jardim, pergunta se quer ir para Betesda; dizendo "Ainda não", dá para descer ao Cedrom e subir até lá, ao norte do templo', async (it) => {
       const T = W().TESTE, L = T.LAY, p = T.jog.o.position, V = p.constructor, N = T.AMOS.length;
       for (const n of ['Templo_Muros', 'Santuario', 'Fortaleza_Antonia', 'Muro_Cidade', 'Tanques']) if (!T.scene.getObjectByName(n)) throw new Error('falta ' + n + ' na maquete');
@@ -395,10 +402,6 @@ async function rodar() {
       const tempo = await esperaFase(); if (tempo == null) throw new Error('o Monte das Oliveiras não ficou pronto\n' + listaErros());
       await espera(1000); const erros = [...(W().ERROS || []), ...arquivosFalhos()];
       if (erros.length) it.erro('chegou com erro:\n' + erros.slice(0, 8).join('\n')); else it.ok('foi para ' + caminho() + ' e carregou em ' + tempo.toFixed(1) + ' s');
-    });
-    await teste('as lembranças do Getsêmani: a oração na rocha (Lc 22.41-44) e os três dormindo (Mc 14.37-42)', async (it) => {
-      const a = await rodaLembranca(() => W().__ROCHA()), b = await rodaLembranca(() => W().__TRES());
-      (a && b ? it.ok : it.erro)('a rocha: ' + (a ? 'sim' : 'NÃO') + '; os três: ' + (b ? 'sim' : 'NÃO'));
     });
   } else item('Getsêmani').aviso('pulado: a fase não carregou');
 
@@ -564,6 +567,19 @@ async function rodar() {
     });
     await teste('coisas para olhar no Gólgota: as cruzes (as sete palavras), o letreiro, a pedra rolada, os túmulos antigos', (it) => testaInteracoes(it, ['as cruzes', 'o letreiro', 'a pedra rolada', 'os túmulos antigos']));
     await teste('pessoas no Gólgota: o soldado da guarda (Mt 28.2-4, 11), o soldado das vestes (Jo 19.23-24)', (it) => testaInteracoes(it, ['Um soldado da guarda', 'Um soldado']));
+    await teste('as lembranças do Gólgota: junto à cruz (Jo 19.25-30) e a pedra, rolada e removida (Mt 27.60; 28.2-4)', async (it) => {
+      const a = await rodaLembranca(() => W().__CRUZES()), b = await rodaLembranca(() => W().__PEDRA());
+      (a && b ? it.ok : it.erro)('as cruzes: ' + (a ? 'sim' : 'NÃO') + '; a pedra: ' + (b ? 'sim' : 'NÃO'));
+    });
+    await teste('Cléopas espera na estrada de Emaús, conversa e pergunta se seguem (Lc 24.13-24)', async (it) => {
+      const T = W().TESTE, C = W().__CENA, cl = W().__FL.cleopas.o.position, p = T.jog.o.position;
+      const caixa = () => [...D().querySelectorAll('div')].find((x) => x.style.zIndex === '8' && visivel(x));
+      T.E.fora = false; C.cleoFeito = false; p.set(cl.x + 6, T.chaoTerra(cl.x + 6, cl.z), cl.z); quadros(3);
+      const veio = C.fase === 'cleopas'; let pergunta = false;
+      for (let k = 0; k < 120 && !pergunta; k++) { quadros(20); const d = caixa(); if (d) { if (/Emaús\?/.test(d.textContent) && C.fase === 'livre') pergunta = true; else aperta(d.querySelector('button')); } await espera(25); }
+      if (pergunta) await responde('Emaús', 'Ainda não', 2000); quadros(10);
+      (veio && pergunta && !T.E.cine ? it.ok : it.erro)('Cléopas vem: ' + (veio ? 'sim' : 'NÃO') + '; no fim pergunta pela estrada de Emaús: ' + (pergunta ? 'sim' : 'NÃO'));
+    });
     await teste('as pontas da estrada perguntam: "voltar para a cidade" (sudeste) e "seguir pela estrada de Emaús" (noroeste)', async (it) => {
       const T = W().TESTE, N = T.AMOS.length, r = [];
       for (const [i, txt] of [[1, 'cidade'], [N - 2, 'Emaús']]) {
