@@ -24,6 +24,14 @@ const dirDe = (yaw, el) => new THREE.Vector3(Math.sin(yaw) * Math.cos(el), Math.
 
 export function criaCine({ camera, E, chao = () => -1e9, obstaculos = () => [], deOnde, fovCena = null }) {
   const RC = new THREE.Raycaster();
+  // o primeiro obstáculo de "de" na direção dir (até L), medido nos dois sentidos: muros e telhados têm face só do
+  // lado de fora, e um raio que sai de dentro deles passa sem bater
+  function primeiro(de, dir, L) {
+    const ob = obstaculos(); RC.set(de, dir); RC.far = L; const a = RC.intersectObjects(ob, false)[0];
+    RC.set(de.clone().addScaledVector(dir, L), dir.clone().negate()); RC.far = L; const vs = RC.intersectObjects(ob, false);
+    const d = Math.min(a ? a.distance : Infinity, vs.length ? L - vs[vs.length - 1].distance : Infinity);
+    return d < Infinity ? { distance: d } : null;
+  }
   const C = { ativo: false, fila: [], seq: null, i: 0, t: 0, alvo: new THREE.Vector3(), yaw: 0, el: 0, dist: 10, zoom: 1, fovJogo: 0, pula: false,
     dy: 0, de: 0, dyA: 0, deA: 0, tD: 0, cortou: 0, corteVolta: false, encA: 1e9, Dc: null };
 
@@ -86,18 +94,23 @@ export function criaCine({ camera, E, chao = () => -1e9, obstaculos = () => [], 
     const fa = Math.min(1, 0.75 + 0.25 * camera.aspect), D = C.dist * fa;
     // se algo tapa o alvo, procura um ângulo vizinho
     if (!p.livre && !p.fixo && (C.tD -= dt) <= 0) {
-      C.tD = 0.2; const ob = obstaculos(); let livre_ = false;
+      C.tD = 0.2; const ob = obstaculos(); let livre_ = false, melhor = null;
       for (const [a, b] of DESV) {
-        const q = dirDe(C.yaw + a, Math.min(1.3, C.el + b)); RC.set(C.alvo, q); RC.far = Math.max(0.5, D - 0.3);
-        if (!RC.intersectObjects(ob, false).length) { C.dyA = a; C.deA = b; livre_ = true; break; }
+        const q = dirDe(C.yaw + a, Math.min(1.3, C.el + b)); const h = primeiro(C.alvo, q, Math.max(0.5, D - 0.3));
+        if (!h) { C.dyA = a; C.deA = b; livre_ = true; break; }
+        if (!melhor || h.distance > melhor.d) melhor = { a, b, d: h.distance };
       }
-      // nenhum ângulo livre: a câmera chega mais perto, para a frente do que tapa (nunca fica dentro de uma parede)
-      if (!livre_) { RC.set(C.alvo, dirDe(C.yaw + C.dyA, Math.min(1.3, C.el + C.deA))); RC.far = D; const h = RC.intersectObjects(ob, false)[0]; C.encA = h && h.distance > 1.6 ? Math.max(1.0, h.distance - 1.0) : 1e9; }      // (folga maior que o plano de corte da lente)
+      // nenhum ângulo livre: o de mais espaço, e a câmera chega mais perto, para a frente do que tapa
+      if (!livre_ && melhor) { C.dyA = melhor.a; C.deA = melhor.b; C.encA = Math.max(0.9, melhor.d - 0.5); }
       else C.encA = 1e9;
     }
     if (p.livre || p.fixo) { C.dyA = C.deA = 0; C.encA = 1e9; }
-    C.dy += (C.dyA - C.dy) * suave(2.2, dt); C.de += (C.deA - C.de) * suave(2.2, dt);
-    const Dalvo = Math.min(D, C.encA); C.Dc = C.Dc == null ? Dalvo : C.Dc + (Dalvo - C.Dc) * suave(Dalvo < C.Dc ? 9 : 3, dt);
+    C.dy += (C.dyA - C.dy) * suave(3.5, dt); C.de += (C.deA - C.de) * suave(3.5, dt);
+    // e, a cada quadro, a linha de verdade entre a câmera e o alvo: se algo entra no meio (a câmera ainda virando, quem
+    // está em cena andando), ela chega mais perto, para a frente do que tapa
+    let encAgora = 1e9;
+    if (!p.livre && !p.fixo) { const h = primeiro(C.alvo, dirDe(C.yaw + C.dy, Math.min(1.3, C.el + C.de)), D); if (h && h.distance > 1.2) encAgora = h.distance - 0.75; }      // (folga maior que o plano de corte da lente)
+    const Dalvo = Math.min(D, C.encA, encAgora); C.Dc = C.Dc == null ? Dalvo : C.Dc + (Dalvo - C.Dc) * suave(Dalvo < C.Dc ? 9 : 3, dt);
     const pos = C.alvo.clone().addScaledVector(dirDe(C.yaw + C.dy, Math.min(1.3, C.el + C.de)), C.Dc);
     if (!p.livre) pos.y = Math.max(pos.y, chao(pos.x, pos.z) + 0.8);
     camera.position.copy(pos); camera.lookAt(C.alvo);
@@ -106,20 +119,22 @@ export function criaCine({ camera, E, chao = () => -1e9, obstaculos = () => [], 
     return true;
   }
   // dali se vê o alvo? (para a cena escolher de que lado pôr a câmera)
-  function ve(alvo, yawGraus, elGraus, d) { RC.set(alvo, dirDe(yawGraus * RAD, elGraus * RAD)); RC.far = d * Math.min(1, 0.75 + 0.25 * camera.aspect) + 0.5; return !RC.intersectObjects(obstaculos(), false).length; }
+  function ve(alvo, yawGraus, elGraus, d) { return !primeiro(alvo, dirDe(yawGraus * RAD, elGraus * RAD), d * Math.min(1, 0.75 + 0.25 * camera.aspect) + 0.5); }
   return { roda, passo, titulo, ve, pular: () => { if (C.ativo) C.pula = true; }, C };
 }
 
 // as malhas que podem tapar quem está em cena: as altas do cenário (casas, muros, rochas, árvores), não as pessoas nem o
-// chão (ignora: malhas ou grupos de fora, como o terreno). Medido uma vez, na primeira cena.
+// chão (ignora: malhas ou grupos de fora, como o terreno). Refeita a cada segundo: as árvores de perto do jogador são
+// postas e trocadas enquanto ele anda (layout.js), e uma lista feita uma vez só não as via.
 export function malhasAltas(scene, ignora = []) {
-  let L = null;
+  let L = null, quando = 0;
   return () => {
-    if (L) return L; L = []; const b = new THREE.Box3(), fora = new Set(ignora);
+    const agora = performance.now(); if (L && agora - quando < 1000) return L; quando = agora;
+    L = []; const b = new THREE.Box3(), fora = new Set(ignora);
     const ve = (o) => {
       if (o.userData.mx || fora.has(o)) return;
       if (o.isInstancedMesh) { o.geometry.computeBoundingBox(); const g = o.geometry.boundingBox; if (g.max.y - g.min.y > 0.7) L.push(o); }
-      else if (o.isMesh && !o.isSkinnedMesh) { b.setFromObject(o); if (b.min.y > -30 && b.max.y - b.min.y > 0.7 && b.max.x - b.min.x < 40 && b.max.z - b.min.z < 40) L.push(o); }
+      else if (o.isMesh && !o.isSkinnedMesh) { b.setFromObject(o); if (b.min.y > -30 && b.max.y - b.min.y > 0.7) L.push(o); }      // (inclusive as malhas grandes que juntam muitas árvores, como as tamareiras de Betânia)
       for (const c of o.children) ve(c);
     };
     ve(scene); return L;

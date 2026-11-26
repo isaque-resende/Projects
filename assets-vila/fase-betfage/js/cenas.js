@@ -9,7 +9,7 @@ import { lerpAng, pos, maos } from '../../limpo-motor/atores.js';
 import { criaCine, malhasAltas } from '../../limpo-motor/cine.js';
 import { criaLembranca } from '../../limpo-motor/lembranca.js';
 import { scene, E, fala, fade, renderer, LAY, sm } from './estado.js';
-import { terreno, AMOS } from './cenario.js';
+import { terreno, AMOS, TERRENO } from './cenario.js';
 import { ator, corpo, anda, chao } from './gente.js';
 import { nPedro, nJoao, gFigs } from './modelos.js';
 import { jumenta, jumentinho, ESTACA, JUM, conv1, tMax } from './aldeia.js';
@@ -20,7 +20,7 @@ import { INT } from './interacoes.js';
 
 const V3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z), DEG = 180 / Math.PI;
 const DO_MONTE = new URLSearchParams(location.search).get('de') === 'oliveiras';
-const CINE = criaCine({ camera, E, chao: (x, z) => terreno(x, z), obstaculos: malhasAltas(scene), deOnde: () => ({ alvo: foco.clone(), pos: camera.position.clone() }), fovCena: 36 });
+const CINE = criaCine({ camera, E, chao: (x, z) => terreno(x, z), obstaculos: malhasAltas(scene, [TERRENO]), deOnde: () => ({ alvo: foco.clone(), pos: camera.position.clone() }), fovCena: 36 });
 const LEMB = criaLembranca(renderer.domElement);
 const CENA = { fase: '', sub: '', t: 0 };
 

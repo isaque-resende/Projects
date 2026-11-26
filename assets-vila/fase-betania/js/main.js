@@ -19,6 +19,10 @@ import { CASAI, tumbaPasso, casaPasso } from './interiores.js';
 import { acionar, perguntaBetfage } from './acoes.js';
 import { cenasPasso, cenasDepois, CINE } from './cenas.js';
 import { criaMarcador } from '../../limpo-motor/marcador.js';
+import { criaCaminho } from '../../limpo-motor/caminho.js';
+// tocar no chão: o caminho desvia de cercas, barracas, muros e do rochedo (antes ia em linha reta e empacava)
+const caminho = criaCaminho({ terreno: (x, z) => chaoTerra(x, z), alturaEm: (x, z) => alturaEm(x, z),
+  livreC: (x, z) => naArea(x, z) && !bate(x, z, 0.28) && !(TUM.rocha(x, z) > chaoTerra(x, z) + 0.35) });
 
 ctl.aoAcionar = acionar;
 // no celular o toque age já no pointerdown (o texto do botão é reescrito a cada quadro e o 'click' se perdia)
@@ -31,7 +35,7 @@ ctl.aoToque = (e) => {
   const perto = (a, r) => h && Math.hypot(h.point.x - a.x, h.point.z - a.z) < r;
   const alvoPorta = E.portaPerto && E.portaPerto.mundo(E.portaPerto.px, E.portaPerto.pz);
   if (botao.style.display === 'block' && h && ((E.pedraPerto || E.tumbaPerto) && perto(TUM.lugar, 2.8) || (alvoPorta && perto(alvoPorta, 2.0)))) acionar();
-  else if (h) E.alvoToque = h.point.clone();
+  else if (h) { E.alvoToque = h.point.clone(); E.TRILHA = CAMT.on || CASAI.on ? [] : caminho(jog.o.position, E.alvoToque); }
 };
 
 // ---------- laço ----------
@@ -55,7 +59,10 @@ const laco = (forca) => {
     if (tecla.KeyD || tecla.ArrowRight) mv.add(rt); if (tecla.KeyA || tecla.ArrowLeft) mv.sub(rt);
     if (JOY.on && Math.hypot(JOY.x, JOY.y) > 0.15) { mv.addScaledVector(fw, -JOY.y).addScaledVector(rt, JOY.x); }
     if (mv.lengthSq() > 0) E.alvoToque = null;
-    else if (E.alvoToque) { mv.subVectors(E.alvoToque, jog.o.position).setY(0); if (mv.length() < 0.15) { E.alvoToque = null; mv.set(0, 0, 0); } }
+    else if (E.alvoToque) {
+      const T_ = E.TRILHA || []; while (T_.length > 1 && Math.hypot(T_[0].x - jog.o.position.x, T_[0].z - jog.o.position.z) < 0.3) T_.shift();
+      mv.subVectors(T_.length ? T_[0] : E.alvoToque, jog.o.position).setY(0); if (mv.length() < 0.15 && T_.length <= 1) { E.alvoToque = null; E.TRILHA = []; mv.set(0, 0, 0); } else if (mv.length() < 0.15) T_.shift();
+    }
   }
   portasPasso(dt);
   const pj = jog.o.position;
@@ -139,4 +146,4 @@ renderer.setAnimationLoop(() => laco());
 addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
 
 // para os testes automáticos: abrir com ?teste e usar TESTE no console
-if (globalThis.MODO_TESTE) globalThis.TESTE = { MIX, E, jog, laco, marca, tecla, bate, alturaEm, chaoTerra, scene, camera, CIRC, CAIXAS, renderer, INT, TUM, CASAS, marta, lazaro, cleopas, foco, CINE };
+if (globalThis.MODO_TESTE) globalThis.TESTE = { MIX, E, jog, laco, marca, tecla, bate, alturaEm, chaoTerra, scene, camera, CIRC, CAIXAS, renderer, INT, TUM, CASAS, marta, lazaro, cleopas, foco, CINE, caminho };

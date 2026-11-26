@@ -8,6 +8,7 @@ import { terreno, AMOS, naRota, PRENSA, SOL_DIR } from './cenario.js';
 import { MIX } from './gente.js';
 import { ajustaLente, jog, camera, ctl, tecla, JOY, toqueTela, fw, rt, mv, naArea, alturaEm, camPasso, CAM } from './jogador.js';
 import { criaMarcador } from '../../limpo-motor/marcador.js';
+import { criaCaminho } from '../../limpo-motor/caminho.js';
 import { INT } from './interacoes.js';
 import { cenasPasso, cenaRocha, cenaTres, CINE } from './cenas.js';
 INT.L.find((i) => i.nome === 'a oliveira dos três').cena = cenaTres;      // a primeira vez, a lembrança (cenas.js)
@@ -71,6 +72,15 @@ function acionar() {
   if (E.saida) perguntaVolta();
 }
 ctl.aoAcionar = acionar; botao.onclick = () => acionar();
+// tocar no chão: anda até lá, desviando de muros, colunas, árvores e da água (caminho.js)
+const caminho = criaCaminho({ terreno: (x, z) => terreno(x, z), livreC: (x, z) => naArea(x, z) && fundo(x, z) <= 0 });
+const rayT = new THREE.Raycaster(), ndcT = new THREE.Vector2();
+ctl.aoToque = (e) => {
+  if (E.fora || E.cine) return;
+  ndcT.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); rayT.setFromCamera(ndcT, camera); rayT.camera = camera;
+  const h = rayT.intersectObjects(scene.children, true).find((x) => x.object.visible && !x.object.isSkinnedMesh && !x.object.isSprite && x.face && x.face.normal.y > -0.2);
+  if (h) { E.alvoToque = h.point.clone(); E.TRILHA = caminho(jog.o.position, E.alvoToque); }
+};
 function recua() { const p = AMOS[Math.min(AMOS.length - 1, 10)]; jog.o.position.set(p.x, terreno(p.x, p.z), p.z); }
 function perguntaVolta() { dialogo('', 'Deseja voltar ao Monte das Oliveiras?', [['Ainda não', () => recua(), '#a8957a'], ['Sim', () => sair('De volta ao Monte das Oliveiras…', '../fase-oliveiras/?de=getsemani')]]); }
 // o Tanque de Betesda é a próxima fase (fase-betesda)
@@ -105,7 +115,10 @@ const laco = (forca) => {
     if (tecla.KeyD || tecla.ArrowRight) mv.add(rt); if (tecla.KeyA || tecla.ArrowLeft) mv.sub(rt);
     if (JOY.on && Math.hypot(JOY.x, JOY.y) > 0.15) mv.addScaledVector(fw, -JOY.y).addScaledVector(rt, JOY.x);
     if (mv.lengthSq() > 0) E.alvoToque = null;
-    else if (E.alvoToque) { mv.subVectors(E.alvoToque, jog.o.position).setY(0); if (mv.length() < 0.15) { E.alvoToque = null; mv.set(0, 0, 0); } }
+    else if (E.alvoToque) {
+      const T_ = E.TRILHA || []; while (T_.length > 1 && Math.hypot(T_[0].x - jog.o.position.x, T_[0].z - jog.o.position.z) < 0.3) T_.shift();
+      mv.subVectors(T_.length ? T_[0] : E.alvoToque, jog.o.position).setY(0); if (mv.length() < 0.15 && T_.length <= 1) { E.alvoToque = null; E.TRILHA = []; mv.set(0, 0, 0); } else if (mv.length() < 0.15) T_.shift();
+    }
   }
   const pj = jog.o.position;
   let andou = false;
@@ -161,4 +174,4 @@ if (!(globalThis.MODO_TESTE && new URLSearchParams(location.search).has('parado'
 addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; ajustaLente(); });
 
 // para os testes automáticos: abrir com ?teste (ou pelo teste.html) e usar TESTE no console
-if (globalThis.MODO_TESTE) globalThis.TESTE = { MIX, E, jog, laco, marca, tecla, bate, alturaEm: (x, z) => terreno(x, z), chaoTerra: terreno, scene, camera, CIRC, CAIXAS, renderer, AMOS, AG, LAY, ajoelhar, acionar, perguntaBetesda, INT, CINE };
+if (globalThis.MODO_TESTE) globalThis.TESTE = { caminho, MIX, E, jog, laco, marca, tecla, bate, alturaEm: (x, z) => terreno(x, z), chaoTerra: terreno, scene, camera, CIRC, CAIXAS, renderer, AMOS, AG, LAY, ajoelhar, acionar, perguntaBetesda, INT, CINE };

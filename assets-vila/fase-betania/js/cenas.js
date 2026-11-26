@@ -8,7 +8,7 @@
 //     saindo enfaixado. A câmera fica onde Jesus estava: ele não aparece, só a voz (Jo 11.39-44).
 import * as THREE from 'three';
 import { lerpAng, inclina, maos, pos } from '../../limpo-motor/atores.js';
-import { criaCine } from '../../limpo-motor/cine.js';
+import { criaCine, malhasAltas } from '../../limpo-motor/cine.js';
 import { criaLembranca } from '../../limpo-motor/lembranca.js';
 import { abreVao } from '../../limpo-motor/vao.js';
 import { scene, hemi, sun, fade, fala, DIAL, E, dialogo, renderer, ator, corpo, anda } from './estado.js';
@@ -17,7 +17,7 @@ import { cleopas, marta, lazaro } from './personagens.js';
 import { nAldeao, nMoco, nLazaro, nMarta, nLenco } from './modelos.js';
 import { jog, foco, camera } from './jogador.js';
 import { CASAI, CEU0 } from './interiores.js';
-import { TUM } from './tumulo.js';
+import { TUM, pedraPasso } from './tumulo.js';
 import { ground } from './cenario.js';
 import { INTRO as CONV } from './interacoes.js';
 import './acoes.js';     // só para manter a ordem de montagem
@@ -29,18 +29,8 @@ const joyEl = () => document.getElementById('joy');
 document.getElementById('pularIntro').style.display = 'none';      // agora a cena tem o seu "Pular cena"
 
 // ---------- a câmera das cenas ----------
-// o que pode tapar quem está em cena: casas, rochas, árvores (as malhas altas do cenário; as pessoas não)
-let OBST = null;
-function obstaculos() {
-  if (OBST) return OBST; OBST = []; const b = new THREE.Box3();
-  const ve = (o) => {
-    if (o.userData.mx || o === ground) return;
-    if (o.isInstancedMesh) { o.geometry.computeBoundingBox(); const g = o.geometry.boundingBox; if (g.max.y - g.min.y > 0.7) OBST.push(o); }
-    else if (o.isMesh && !o.isSkinnedMesh) { b.setFromObject(o); if (b.min.y > -30 && b.max.y - b.min.y > 0.7 && b.max.x - b.min.x < 40 && b.max.z - b.min.z < 40) OBST.push(o); }
-    for (const c of o.children) ve(c);
-  };
-  ve(scene); return OBST;
-}
+// o que pode tapar quem está em cena: as malhas altas do cenário (casas, rochas, árvores), não as pessoas nem o chão
+const obstaculos = malhasAltas(scene, [ground]);
 const CINE = criaCine({ camera, E, chao: (x, z) => chaoTerra(x, z), obstaculos, deOnde: () => ({ alvo: foco.clone(), pos: camera.position.clone() }), fovCena: 36 });
 const LEMB = criaLembranca(renderer.domElement);
 
@@ -258,7 +248,7 @@ const poe = (st, p, olharPara) => { st.o.position.copy(p); st.o.visible = true; 
 // os dois homens ficam do lado de onde a pedra sai, com as mãos na borda dela
 const lugarHomem = (i) => pedraMundo().addScaledVector(ROLA, -(TUM.raio + 0.35)).addScaledVector(F, i ? 0.95 : 0.35).setY(0);
 function montaLembranca() {
-  LZ.k0 = TUM.k; LZ.a0 = TUM.alvo; TUM.k = 0; TUM.alvo = 0;
+  LZ.k0 = TUM.k; LZ.a0 = TUM.alvo; TUM.k = 0; TUM.alvo = 0; pedraPasso(0);      // a pedra volta à porta já (se estava aberta, os homens nasciam dentro dela)
   jog.o.visible = false; lazaro.o.visible = false;
   const S = BOCA.clone().addScaledVector(F, 0.3);
   poe(FL.marta, ponto(2.6, 2.0), S); poe(FL.maria, ponto(3.1, 2.7), S);
@@ -268,14 +258,15 @@ function montaLembranca() {
 }
 function desfazLembranca() {
   for (const st of Object.values(FL)) st.o.visible = false;
-  TUM.k = LZ.k0; TUM.alvo = LZ.a0; jog.o.visible = true; lazaro.o.visible = true; fala('');
+  TUM.k = LZ.k0; TUM.alvo = LZ.a0; pedraPasso(0); jog.o.visible = true; lazaro.o.visible = true; fala('');
 }
 function cenaLazaro() {
   CENA.fase = 'lazaro'; CENA.sub = 'vem';
   const S = () => pedraMundo().addScaledVector(F, 0.7).setY(1.25);
   const yawLado = Math.atan2(F.x - ROLA.x * 0.8, F.z - ROLA.z * 0.8) * DEG;     // do lado de onde a pedra sai
   CINE.roda([
-    { alvo: () => cab(lazaro, -0.3)().lerp(cab(jog, -0.3)(), 0.25), dist: 7, el: 11, yaw: () => DLG.yawVem, aoEntrar: () => ladoVem(lazaro, 7), corte: true, k: 2.5, ate: () => CENA.sub !== 'vem' },
+    // (do alto: o caminho do túmulo tem tamareiras)
+    { alvo: () => cab(lazaro, -0.3)().lerp(cab(jog, -0.3)(), 0.25), dist: 8, el: 24, yaw: () => DLG.yawVem, aoEntrar: () => ladoVem(lazaro, 8), corte: true, k: 2.5, ate: () => CENA.sub !== 'vem' },
     planoConversa(() => CENA.sub === 'tirai'),
     // a lembrança, de onde Jesus estava, diante da pedra
     { alvo: S, dist: 8.5, el: 6, yaw: FDEG, corte: true, fixo: true, k: 3, ate: () => CENA.sub === 'rola' },

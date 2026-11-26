@@ -5,9 +5,11 @@
 import * as THREE from 'three';
 import { criaControles } from '../../limpo-motor/controles.js';
 import { criaCamLivre } from '../../limpo-motor/camlivre.js';
-import { V3, LAY, E, DE, renderer, sm } from './estado.js';
+import { V3, LAY, E, DE, renderer, sm, scene } from './estado.js';
 import { gJog } from './modelos.js';
-import { AMOS, iCume, terreno, ARVS } from './cenario.js';
+import { AMOS, iCume, terreno, ARVS, TERRENO } from './cenario.js';
+import { malhasAltas } from '../../limpo-motor/cine.js';
+import { criaFolga } from '../../limpo-motor/folga.js';
 import { ator } from './gente.js';
 import './prensa.js';     // só para manter a ordem de montagem
 
@@ -81,12 +83,14 @@ function abreVista(pj, dt) {
     a.n.traverse((m) => { if (m.isMesh) m.castShadow = a.op > 0.5; });
   }
 }
+const FOLGA = criaFolga(malhasAltas(scene, [TERRENO])); if (globalThis.MODO_TESTE) globalThis.__FOLGA = FOLGA;
 function camPasso(i, dt, pj, primeira = false) {
   livre.passo(dt);
   const [alvo, olho] = camAlvo(i, pj, primeira ? 1 : dt);
   // o que se suaviza é a posição da câmera EM RELAÇÃO ao jogador: ele anda e a câmera vai junto, sem tremer
   CAM.off.lerp(alvo.sub(pj), primeira ? 1 : suave(2.5, dt)); CAM.offO.lerp(olho.sub(pj), primeira ? 1 : suave(5, dt));
   CAM.pos.copy(pj).add(CAM.off); CAM.pos.y = Math.max(CAM.pos.y, terreno(CAM.pos.x, CAM.pos.z) + 1.0);
+  CAM.pos.copy(FOLGA(V3(pj.x, pj.y + 1.3, pj.z), CAM.pos, primeira ? 1 : dt));      // nada alto entre ele e a câmera (folga.js)
   CAM.olho.copy(pj).add(CAM.offO);
   camera.position.copy(CAM.pos); camera.lookAt(CAM.olho);
   abreVista(pj, primeira ? 1 : dt);

@@ -33,7 +33,7 @@ if (DE !== 'templo' && DE !== 'golgota') {
     { alvo: () => TANQUE.clone().setY(DECK + 1), dist: 52, el: 32, yaw: YAW_QUINA, k: 1.2, kd: 0.6, titulo: 'O Tanque de Betesda', dur: 3.8,
       aoEntrar: () => depois(0.6, () => fala('Junto à Porta das Ovelhas há um tanque, chamado em hebraico Betesda, o qual tem cinco alpendres. (Jo 5.2)')) },
     { alvo: () => PARAL.clone().setY(DECK + 0.6), dist: 8, el: 30, yaw: YAW_QUINA + 20, corte: true, k: 2, kd: 1, titulo: 'O lugar do paralítico', dur: 3.2, aoEntrar: () => fala('') },
-    { alvo: () => PORTA.clone().setY(PORTA.y + 2), dist: 7, el: 14, yaw: 180, corte: true, k: 2, kd: 1, titulo: 'A Porta das Ovelhas: para o templo', dur: 3.0 },
+    { alvo: () => PORTA.clone().setY(PORTA.y + 2), dist: 11, el: 26, yaw: 180, corte: true, k: 2, kd: 1, titulo: 'A Porta das Ovelhas: para o templo', dur: 3.0 },
   ], () => { fala(''); CENA.fase = 'livre'; }, { aoPular: () => { AGENDA = []; } });
 } else CENA.fase = 'livre';
 

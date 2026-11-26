@@ -6,9 +6,11 @@
 import * as THREE from 'three';
 import { criaControles } from '../../limpo-motor/controles.js';
 import { criaCamLivre } from '../../limpo-motor/camlivre.js';
-import { V3, LAY, E, DE, renderer } from './estado.js';
+import { V3, LAY, E, DE, renderer, scene } from './estado.js';
 import { gJog } from './modelos.js';
-import { AMOS, terreno, ARVS } from './cenario.js';
+import { AMOS, terreno, ARVS, TERRENO, TUM } from './cenario.js';
+import { malhasAltas } from '../../limpo-motor/cine.js';
+import { criaFolga } from '../../limpo-motor/folga.js';
 import { ator } from './gente.js';
 
 // de onde começa: na ponta sudeste da estrada (vindo da Porta de Genat); ?de=emaus, na ponta noroeste; ?de=sepulcro, no horto
@@ -35,7 +37,7 @@ ajustaLente();
 const DMIN = 8, DMAX = 90;
 const QUINA = V3(1, 0.8165, 0.3).normalize();         // a leste-sudeste e acima (30°): olha o Gólgota, o horto e a parede de pedra (oeste)
 const PERTO = V3(1, 0.3, 0.18).normalize();           // abaixado na porta do sepulcro: atrás (leste) e baixa
-const CAM = { pos: V3(), olho: V3(), braco: 1, off: V3(), offO: V3(), perto: 0 };
+const CAM = { dentro: 0, pos: V3(), olho: V3(), braco: 1, off: V3(), offO: V3(), perto: 0 };
 const suave = (k, dt) => 1 - Math.exp(-k * dt);
 function braco(pj, alvo, dt) {
   const h = V3(pj.x, pj.y + 1.4, pj.z), q = V3(); let t = 1, folga0 = 1e9;
@@ -91,12 +93,20 @@ function abreVista(pj, dt) {
     a.n.traverse((m) => { if (m.isMesh) m.castShadow = a.op > 0.5; });
   }
 }
+const FOLGA = criaFolga(malhasAltas(scene, [TERRENO])); if (globalThis.MODO_TESTE) globalThis.__FOLGA = FOLGA;
 function camPasso(dt, pj, primeira = false) {
   livre.passo(dt);
   const [alvo, olho] = camAlvo(pj, primeira ? 1 : dt);
   CAM.off.lerp(alvo.sub(pj), primeira ? 1 : suave(2.5, dt)); CAM.offO.lerp(olho.sub(pj), primeira ? 1 : suave(5, dt));
   CAM.pos.copy(pj).add(CAM.off); CAM.pos.y = Math.max(CAM.pos.y, terreno(CAM.pos.x, CAM.pos.z) + 1.0);
+  CAM.pos.copy(FOLGA(V3(pj.x, pj.y + 1.3, pj.z), CAM.pos, primeira ? 1 : dt));      // nada alto entre ele e a câmera (folga.js)
   CAM.olho.copy(pj).add(CAM.offO);
+  // dentro do sepulcro: a câmera na porta da câmara, olhando para dentro (o monte continua de pedra, nada fica transparente)
+  CAM.dentro += ((TUM.dentro && TUM.dentro(pj.x, pj.z) ? 1 : 0) - CAM.dentro) * Math.min(1, primeira ? 1 : dt * 4);
+  if (CAM.dentro > 0.001) {
+    const porta = TUM.boca.clone().addScaledVector(TUM.frente, -0.7); porta.y = TUM.y + 1.45;      // logo dentro da porta, abaixo do lintel
+    CAM.pos.lerp(porta, CAM.dentro); CAM.olho.lerp(V3(pj.x, pj.y + 0.8, pj.z), CAM.dentro);
+  }
   camera.position.copy(CAM.pos); camera.lookAt(CAM.olho);
   abreVista(pj, primeira ? 1 : dt);
 }

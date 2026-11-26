@@ -163,7 +163,6 @@ poePertos(scene, LAY.objetos, KIT, (o, n) => {
   TUM.y = tum.position.y + 0.02;
   TUM.dentro = (x, z) => { q.set(x, tum.position.y, z).applyMatrix4(inv); return q.x > -1.75 && q.x < 1.75 && q.z > -6.4 && q.z < -0.05; };
   const fundo = (x, z) => { q.set(x, tum.position.y, z).applyMatrix4(inv); return q.x > -1.45 && q.x < 1.45 && q.z > -6.2 && q.z < -0.7; };
-  // o monte fica translúcido (não some): de dentro, a câmera vê o jogador e ainda se percebe a rocha em volta
   const VEU = [];
   for (const n of ['Tumulo_Massa_Monte', 'Rochas_Soltas']) if (N[n]) N[n].traverse((m) => { if (m.isMesh) VEU.push(m.material); });
   TUM.lencois = new THREE.Vector3(0.85, 0, -3.3).applyMatrix4(tum.matrixWorld);
@@ -171,7 +170,7 @@ poePertos(scene, LAY.objetos, KIT, (o, n) => {
   TUM.passo = (pj) => {
     const d = !!pj && fundo(pj.x, pj.z);
     if (d === estava) return; estava = d;
-    for (const m of VEU) { m.transparent = d; m.opacity = d ? 0.22 : 1; m.depthWrite = !d; m.needsUpdate = true; }
+    // (o monte não fica mais translúcido: dentro, a câmera vai para a porta da câmara e olha para dentro: jogador.js)
     lamp.intensity = d ? 5 : 0;
   };
   Object.assign(TUM, { tum, pedra, boca: new THREE.Vector3(0, 0, 0.2).applyMatrix4(tum.matrixWorld), frente: new THREE.Vector3(0, 0, 1).applyQuaternion(tum.quaternion).setY(0).normalize() });

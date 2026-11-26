@@ -5,9 +5,11 @@
 import * as THREE from 'three';
 import { criaControles } from '../../limpo-motor/controles.js';
 import { criaCamLivre } from '../../limpo-motor/camlivre.js';
-import { V3, LAY, E, DE, renderer } from './estado.js';
+import { V3, LAY, E, DE, renderer, scene } from './estado.js';
 import { gJog } from './modelos.js';
-import { AMOS, terreno, ARVS } from './cenario.js';
+import { AMOS, terreno, ARVS, TERRENO } from './cenario.js';
+import { malhasAltas } from '../../limpo-motor/cine.js';
+import { criaFolga } from '../../limpo-motor/folga.js';
 import { ator } from './gente.js';
 
 // de onde começa: na ponta leste da estrada (vindo do Getsêmani); ?de=golgota, na ponta oeste; ?de=templo, na porta
@@ -73,11 +75,13 @@ function abreVista(pj, dt) {
     a.n.traverse((m) => { if (m.isMesh) m.castShadow = a.op > 0.5; });
   }
 }
+const FOLGA = criaFolga(malhasAltas(scene, [TERRENO])); if (globalThis.MODO_TESTE) globalThis.__FOLGA = FOLGA;
 function camPasso(dt, pj, primeira = false) {
   livre.passo(dt);
   const [alvo, olho] = camAlvo(pj, primeira ? 1 : dt);
   CAM.off.lerp(alvo.sub(pj), primeira ? 1 : suave(2.5, dt)); CAM.offO.lerp(olho.sub(pj), primeira ? 1 : suave(5, dt));
   CAM.pos.copy(pj).add(CAM.off); CAM.pos.y = Math.max(CAM.pos.y, terreno(CAM.pos.x, CAM.pos.z) + 1.0);
+  CAM.pos.copy(FOLGA(V3(pj.x, pj.y + 1.3, pj.z), CAM.pos, primeira ? 1 : dt));      // nada alto entre ele e a câmera (folga.js)
   CAM.olho.copy(pj).add(CAM.offO);
   camera.position.copy(CAM.pos); camera.lookAt(CAM.olho);
   abreVista(pj, primeira ? 1 : dt);
