@@ -43,10 +43,11 @@ function comeca(seq) {
   C.alvo.copy(CAM.olho); const d = camera.position.clone().sub(C.alvo);
   C.dist = d.length(); C.yaw = Math.atan2(d.x, d.z); C.el = Math.asin(THREE.MathUtils.clamp(d.y / C.dist, -1, 1)); C.zoom = 1;
   C.dy = C.de = C.dyA = C.deA = 0;
-  barras(true); entra(seq.planos[0]);
+  barras(true); C.cortou = 2; entra(seq.planos[0]);
 }
 function entra(p) {
   C.t = 0; if (!p) return;
+  if (p.corte) C.cortou = 2;      // num corte, quem está rente à câmera pode sumir sem se ver
   if (p.corte) { C.alvo.copy(p.alvo()); C.dist = p.dist; C.yaw = yawDe(p); C.el = p.el * RAD; C.zoom = p.zoom ?? 1; C.dy = C.de = C.dyA = C.deA = 0; }
 }
 const yawDe = (p) => (typeof p.yaw === 'function' ? p.yaw() : p.yaw) * RAD;
@@ -77,16 +78,18 @@ function passo(dt, pj) {
   C.el += (p.el * RAD - C.el) * suave(k, dt);
   C.dist += (p.dist - C.dist) * suave(kd, dt);
   C.zoom += ((p.zoom ?? 1) - C.zoom) * suave(kd, dt);
+  // tela em pé (celular): o quadro é estreito, então a câmera chega mais perto, para quem age não ficar pequeno
+  const fa = Math.min(1, 0.4 + 0.6 * camera.aspect), D = C.dist * fa;
   // se algo tapa o alvo, procura um ângulo vizinho
   if ((C.tD -= dt) <= 0) {
     C.tD = 0.2; const ob = obstaculos();
     for (const [a, b] of DESV) {
-      const q = dirDe(C.yaw + a, Math.min(1.3, C.el + b)); RC.set(C.alvo, q); RC.far = Math.max(0.5, C.dist - 0.6);
+      const q = dirDe(C.yaw + a, Math.min(1.3, C.el + b)); RC.set(C.alvo, q); RC.far = Math.max(0.5, D - 0.6);
       if (!RC.intersectObjects(ob, false).length) { C.dyA = a; C.deA = b; break; }
     }
   }
   C.dy += (C.dyA - C.dy) * suave(2.2, dt); C.de += (C.deA - C.de) * suave(2.2, dt);
-  const pos = C.alvo.clone().addScaledVector(dirDe(C.yaw + C.dy, Math.min(1.3, C.el + C.de)), C.dist);
+  const pos = C.alvo.clone().addScaledVector(dirDe(C.yaw + C.dy, Math.min(1.3, C.el + C.de)), D);
   pos.y = Math.max(pos.y, terreno(pos.x, pos.z) + 0.8);
   camera.position.copy(pos); camera.lookAt(C.alvo);
   CAM.pos.copy(pos); CAM.olho.copy(C.alvo);

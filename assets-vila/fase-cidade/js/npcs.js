@@ -12,11 +12,11 @@
 // Pavimento; um mercador; gente passando. Jesus não aparece aqui: só na estrada de Emaús.
 import * as THREE from 'three';
 import { LAY, DE, V3, CIRC, CAIXAS, rnd, fala, scene, E } from './estado.js';
-import { terreno, KITC } from './cenario.js';
+import { terreno, KITC, JER } from './cenario.js';
 import { gCen, gGal1, gGal2, nPedro, nJoao, nMaria, nPorteira, nServa, nGuarda, nMercador, nAldeao, nMoco, nMulher } from './modelos.js';
 import { ator, anda, sombrasPerto, corpo, maos } from './gente.js';
-import { roda } from './cine.js';
-import { camera } from './jogador.js';
+import { roda, CINE } from './cine.js';
+import { camera, obstaculos } from './jogador.js';
 
 const CONVERSAS = [];
 const OLHA = { norte: Math.PI, sul: 0, leste: Math.PI / 2, oeste: -Math.PI / 2 };
@@ -30,6 +30,31 @@ function tinge(st, c) { st.o.traverse((m) => { if (m.isMesh && m.material && m.m
 const pc = pt('cenaculo'), pgn = pt('genat');
 const FORA = V3(pgn.x - 6.5, 0, pgn.z - 9.5);       // lá fora, atrás do muro (de dentro da praça não se vê): aparece e some ali
 const ESTRADA = V3(pgn.x, 0, pgn.z - 6.5);           // na estrada, logo fora da porta
+const LONGE = V3(pgn.x - 14, 0, pgn.z - 24);         // bem longe, na estrada do Gólgota
+// está no quadro da câmera? (quem entra ou sai da cena só aparece ou some fora dele)
+const FRU = new THREE.Frustum(), MFR = new THREE.Matrix4(), ESF = new THREE.Sphere();
+// (no quadro e sem parede no caminho: atrás do muro da cidade não conta)
+let TAPA = null; const RCV = new THREE.Raycaster(), PV = V3(), DV = V3();
+function naTela(p) {
+  camera.updateMatrixWorld(); MFR.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); FRU.setFromProjectionMatrix(MFR);
+  const y = (p.y || 0); ESF.center.set(p.x, y + 0.9, p.z); ESF.radius = 1.0; if (!FRU.intersectsSphere(ESF)) return false;
+  if (!TAPA) { TAPA = [...obstaculos()]; JER.traverse((o) => { if (o.isMesh && /Muro|Muralha|Casas|Golgota|Palacio|Chao|Vale/.test(o.name)) TAPA.push(o); }); }
+  for (const h of [0.3, 1.0, 1.7]) {      // a cabeça, o meio ou os pés à vista: está na tela
+    PV.set(p.x, y + h, p.z); DV.subVectors(PV, camera.position); const L = DV.length(); RCV.set(camera.position, DV.normalize()); RCV.far = L - 0.3;
+    if (!RCV.intersectObjects(TAPA, false).length) return true;
+  }
+  return false;
+}
+// de onde chega: atrás do muro, se não estiver no quadro; senão, lá longe
+const chegada = (d = V3(0, 0, 0)) => { const a = FORA.clone().add(d); a.y = terreno(a.x, a.z); return naTela(a) ? LONGE.clone().add(d) : a; };
+// vai embora pela estrada: some quando sai do quadro (ou lá longe)
+function vaiEmbora(st, dt, vel) {
+  if (!st.o.visible) return true;
+  if (!st.rotaFora) { st.rotaFora = true; st.i = 0; }
+  const fim = segue(st, [ESTRADA, FORA, LONGE], dt, vel);
+  if (fim || (st.i >= 1 && !naTela(st.o.position))) { st.o.visible = false; st.rotaFora = false; return true; }
+  return false;
+}
 const NA_PORTA = V3(pgn.x, 0, pgn.z + 1.0);
 const PORTA_CASA = V3(pc.x, 0, pc.z + 0.4);
 const crc = LAY.cenaculo_r, zE = crc[2] - 0.65;                         // a linha da escada, junto à face norte
@@ -50,7 +75,7 @@ const cPorteira = { nome: 'Uma mulher à porta', o: porteira.o, r: 2.4, falas: [
   'Os discípulos estão lá em cima, na sala grande, com as portas fechadas. Desde sexta têm medo (Jo 20.19).',
   'Algumas mulheres saíram de madrugada, ainda escuro, levando os aromas que prepararam para o corpo (Lc 24.1). Maria de Magdala foi com elas.',
   'Ainda não voltaram. O sepulcro fica logo fora da Porta de Genat, num horto perto da cidade (Jo 19.41-42).',
-], aoFim: () => { if (CENA.fase === 'calmo') { CENA.fase = 'maria_vem'; CENA.t = 2.5; } } };
+], aoFim: () => { if (CENA.fase === 'calmo') { CENA.fase = 'maria_vem'; CENA.t = 1.0; } } };
 CONVERSAS.push(cPorteira);
 const FALAS_PORTEIRA_DEPOIS = [
   'Você viu? Maria chegou correndo, e Pedro e o outro discípulo saíram atrás dela, para o sepulcro.',
@@ -229,11 +254,11 @@ function toc() {
     o.connect(g).connect(AC.destination); o.start(t); o.stop(t + 0.15);
   } catch (e) { /* sem som */ }
 }
-const BATIDAS = [0.3, 0.62, 0.94, 1.9, 2.22, 2.54];
+const BATIDAS = [0.18, 0.4, 0.62, 1.05, 1.27, 1.49];
 function bate(st, t, t0, dt) {
   for (const b of BATIDAS) if (t0 < b && t >= b) toc();
   let d = 1; for (const b of BATIDAS) d = Math.min(d, Math.abs(t - b) / 0.16);
-  const peso = t < 0.2 ? t / 0.2 : t > 2.8 ? Math.max(0, (3.1 - t) / 0.3) : 1;
+  const peso = t < 0.15 ? t / 0.15 : t > 1.6 ? Math.max(0, (1.85 - t) / 0.25) : 1;
   const mao = V3(PORTA_CIMA.x + 0.12, st.o.position.y + 1.28, crc[2] - 0.2 - 0.13 * d);
   const e = V3(); st.os.bE[2].getWorldPosition(e);
   maos(st, e, mao, dt, peso, 14, 0.35, 0.35);
@@ -246,7 +271,7 @@ const cab = (st, h = 1.2) => () => st.o.position.clone().add(V3(0, h, 0));
 const ponto = (v, h) => () => V3(v.x, terreno(v.x, v.z) + h, v.z);
 const meio = (lista, h = 1.1) => () => { const vs = lista.filter((s) => s.o.visible); if (!vs.length) return lista[0].o.position.clone().add(V3(0, h, 0)); const c = V3(); vs.forEach((s) => c.add(s.o.position)); return c.divideScalar(vs.length).add(V3(0, h, 0)); };
 const NA_PORTA_DE_CIMA = () => V3(PORTA_CIMA.x - 0.3, yla + 1.2, crc[2] - 0.7);
-const ROTA_D = [V3(DESCE[0].x, 0, crc[2] - 0.4), V3(DESCE[1].x, 0, crc[2] - 0.4), DESCE[2], NA_PORTA, ESTRADA, FORA], nE = 2;   // junto à parede: Maria espera do outro lado do degrau      // os discípulos: até o pé da escada (i ≤ 2), andando
+const ROTA_D = [V3(DESCE[0].x, 0, crc[2] - 0.4), V3(DESCE[1].x, 0, crc[2] - 0.4), DESCE[2], NA_PORTA], nE = 2;   // junto à parede: Maria espera do outro lado do degrau      // os discípulos: até o pé da escada (i ≤ 2), andando
 const PLANOS_MARIA = [
   { alvo: ponto(PORTAO, 1.8), dist: 15, el: 13, yaw: 0, k: 2.5, kd: 2.5, ate: () => CENA.sub !== 'entra' },                   // a porta da cidade
   { alvo: cab(maria, 1.28), dist: 3.0, el: 5, yaw: () => maria.o.rotation.y * DEG - 50, zoom: 0.85, k: 5, kd: 5, ate: () => CENA.sub !== 'para' },   // de perto: ofegante
@@ -256,8 +281,8 @@ const PLANOS_MARIA = [
   { alvo: () => meio([joao, maria], 1.3)().lerp(NA_PORTA_DE_CIMA(), 0.4), dist: 7, el: 17, yaw: 160, k: 2, kd: 1.5, ate: () => CENA.sub === 'saem' },   // a porta abre; João
   { alvo: cab(joao, 1.1), dist: 7.5, el: 16, yaw: 165, k: 2.5, kd: 1.5, ate: () => joao.i >= 2 },                         // saem
   { alvo: cab(joao, 1.0), dist: 11, el: 19, yaw: 165, k: 2.5, kd: 1.2, ate: () => joao.i > nE },                           // descem
-  { alvo: meio([joao, pedro], 1.0), dist: 17, el: 28, yaw: 175, k: 2, kd: 0.9, ate: () => joao.o.position.z < -28 },   // correm para a câmera (atrás deles está a casa)                    // correm para a porta
-  { alvo: ponto(PORTAO, 1.6), dist: 14, el: 15, yaw: 0, k: 2, kd: 1.5, corte: true, ate: () => (joao.i >= 5 || !joao.o.visible) && (pedro.i >= 5 || !pedro.o.visible) },   // corte para o portão: saem da cidade                                        // somem lá fora
+  { alvo: meio([joao, pedro], 1.0), dist: 17, el: 28, yaw: 175, k: 2, kd: 0.9, ate: () => joao.o.position.z < -38 },   // correm para a câmera (atrás deles está a casa)                    // correm para a porta
+  { alvo: ponto(PORTAO, 1.6), dist: 14, el: 15, yaw: 0, k: 2, kd: 1.5, corte: true, ate: () => !joao.o.visible && !pedro.o.visible },   // corte para o portão: saem da cidade                                        // somem lá fora
 ];
 
 function cenaPasso(dt, pj) {
@@ -274,30 +299,30 @@ function roteiro(dt, pj) {
   const F = CENA.fase;
   if (F === 'maria_vem') {
     if (CENA.t > 0) return;
-    if (!CENA.sub) { CENA.sub = 'entra'; comeca(maria, FORA); maria.ocupado = true; roda(PLANOS_MARIA); }
+    if (!CENA.sub) { CENA.sub = 'entra'; comeca(maria, chegada()); maria.ocupado = true; roda(PLANOS_MARIA); }
     if (CENA.sub === 'entra') {
       // entra correndo pela Porta de Genat e para logo depois dela
-      if (segue(maria, [ESTRADA, NA_PORTA, PARA_M], dt, (i) => (i <= 1 ? 4.4 : Math.max(1.0, dist(maria, PARA_M) * 1.6)))) { CENA.sub = 'para'; CENA.t = 2.6; legenda('Maria Madalena entra correndo pela Porta de Genat, sem fôlego.', 4); }
+      if (segue(maria, [ESTRADA, NA_PORTA, PARA_M], dt, (i) => (i <= 1 ? 5.0 : Math.max(1.2, dist(maria, PARA_M) * 2.2)))) { CENA.sub = 'para'; CENA.t = 1.5; legenda('Maria Madalena entra correndo pela Porta de Genat, sem fôlego.', 4); }
       return;
     }
     if (CENA.sub === 'para') {
-      olha(maria, DESCE[2].x, DESCE[2].z, dt * 0.5);
+      olha(maria, DESCE[2].x, DESCE[2].z, dt * 1.2);
       if (CENA.t <= 0) { CENA.sub = 'corre'; maria.i = 0; legenda('Maria Madalena correu e foi ter com Simão Pedro e com o outro discípulo. (Jo 20.2)', 7); }
       return;
     }
     if (CENA.sub === 'corre') {
       // atravessa a praça correndo e, perto da escada, vai diminuindo
-      if (segue(maria, [DESCE[2]], dt, () => Math.min(4.4, 1.6 + dist(maria, DESCE[2]) * 0.6))) { CENA.sub = 'sobe'; maria.i = 0; }
+      if (segue(maria, [DESCE[2]], dt, () => Math.min(5.2, 2.6 + dist(maria, DESCE[2]) * 0.8))) { CENA.sub = 'sobe'; maria.i = 0; }
       return;
     }
     if (CENA.sub === 'sobe') {
-      if (segue(maria, [DESCE[1], DESCE[0], PORTA_CIMA], dt, (i) => (i === 2 ? 0.9 : 1.7))) { CENA.sub = 'bate'; CENA.tb = 0; legenda('Maria sobe a escada e bate à porta da sala de cima: “Pedro! João!”', 5); }
+      if (segue(maria, [DESCE[1], DESCE[0], PORTA_CIMA], dt, (i) => (i === 2 ? 1.6 : 2.8))) { CENA.sub = 'bate'; CENA.tb = 0; legenda('Maria sobe a escada e bate à porta da sala de cima: “Pedro! João!”', 5); }
       return;
     }
     if (CENA.sub === 'bate') {
       olha(maria, PORTA_CIMA.x, crc[2] + 3, dt);
       const t0 = CENA.tb; CENA.tb += dt; bate(maria, CENA.tb, t0, dt);
-      if (CENA.tb > 3.1) { CENA.fase = 'dois_vao'; CENA.sub = 'recua'; maria.i = 0; }
+      if (CENA.tb > 1.85) { CENA.fase = 'dois_vao'; CENA.sub = 'recua'; maria.i = 0; }
     }
     return;
   }
@@ -305,23 +330,23 @@ function roteiro(dt, pj) {
     larga(maria, dt);
     if (CENA.sub === 'recua') {
       // dá um passo atrás; a porta abre
-      if (segue(maria, [RECUO], dt, 0.7)) { PORTA_C.abre(); CENA.sub = 'abre'; CENA.t = 0.9; }
+      if (segue(maria, [RECUO], dt, 1.3)) { PORTA_C.abre(); CENA.sub = 'abre'; CENA.t = 0.4; }
       return;
     }
     olha(maria, PORTA_CIMA.x, PORTA_CIMA.z, dt);
     if (CENA.sub === 'abre') { if (CENA.t <= 0) { comeca(joao, DENTRO_CIMA); CENA.sub = 'joao'; } return; }
     if (CENA.sub === 'joao') {
-      if (segue(joao, [PORTA_CIMA], dt, 1.0)) {
+      if (segue(joao, [PORTA_CIMA], dt, 1.8)) {
         legenda('Maria: “Levaram do sepulcro o Senhor, e não sabemos onde o puseram.” (Jo 20.2)', 5);
-        comeca(pedro, DENTRO_CIMA); CENA.sub = 'fala'; CENA.t = 3.4;
+        comeca(pedro, DENTRO_CIMA); CENA.sub = 'fala'; CENA.t = 2.3;
       }
       return;
     }
     if (CENA.sub === 'fala') {
       olha(joao, maria.o.position.x, maria.o.position.z, dt);
-      if (segue(pedro, [V3(PORTA_CIMA.x + 0.45, 0, crc[2] - 0.2)], dt, 0.9)) olha(pedro, maria.o.position.x, maria.o.position.z, dt);
+      if (segue(pedro, [V3(PORTA_CIMA.x + 0.45, 0, crc[2] - 0.2)], dt, 1.6)) olha(pedro, maria.o.position.x, maria.o.position.z, dt);
       if (CENA.t <= 0) {
-        CENA.sub = 'saem'; joao.i = pedro.i = 0; CENA.tP = 0.6; CENA.fechou = false; maria.i = 0;
+        CENA.sub = 'saem'; joao.i = pedro.i = 0; joao.passou = pedro.passou = false; CENA.tP = 1.2; CENA.tJ = 0.7; CENA.fechou = false; maria.i = 0;
         cPorteira.falas = FALAS_PORTEIRA_DEPOIS;
         legenda('Pedro e o outro discípulo saíram e foram ao sepulcro. Os dois corriam juntos; mas o outro discípulo correu mais depressa do que Pedro. (Jo 20.3-4)', 9);
       }
@@ -329,13 +354,14 @@ function roteiro(dt, pj) {
     }
     if (CENA.sub === 'saem') {
       // descem a escada andando; na praça, correm (o outro discípulo mais depressa, Jo 20.4)
-      const fimJ = !joao.o.visible || segue(joao, ROTA_D, dt, (i) => (i <= nE ? 1.6 : 4.8), joao.i > nE ? V3(0.6, 0, 0) : null);
-      const fimP = (CENA.tP -= dt) > 0 ? false : !pedro.o.visible || segue(pedro, ROTA_D, dt, (i) => (i <= nE ? 1.5 : 4.0));
-      if (fimJ) joao.o.visible = false; if (fimP) pedro.o.visible = false;
+      // descem a escada às pressas e atravessam a praça correndo; passada a porta, vão embora pela estrada
+      const fimJ = (CENA.tJ -= dt) > 0 ? false : joao.passou ? vaiEmbora(joao, dt, 5.6) : (segue(joao, ROTA_D, dt, (i) => (i <= nE ? 2.7 : 5.6), joao.i > nE ? V3(0.6, 0, 0) : null) && (joao.passou = true) && false);
+      const fimP = (CENA.tP -= dt) > 0 ? false : pedro.passou ? vaiEmbora(pedro, dt, 4.8) : (segue(pedro, ROTA_D, dt, (i) => (i <= nE ? 2.6 : 4.8)) && (pedro.passou = true) && false);
       if (!CENA.fechou && joao.i >= 1 && pedro.i >= 1) { CENA.fechou = true; PORTA_C.fecha(); }
       // depois que eles passam, Maria desce devagar e fica ao pé da casa
-      const mFim = pedro.i >= 3 && segue(maria, [DESCE[0], DESCE[1], DESCE[2], LUG_MARIA], dt, 1.2);
-      if (fimJ && fimP && mFim) { CENA.fase = 'maria_porta'; CENA.sub = ''; maria.ocupado = false; cMaria.oculto = false; M.em = 10; }
+      // Maria desce na frente, às pressas; eles vêm logo atrás (no pé da escada ela vai para a casa, e eles para a porta)
+      const mFim = segue(maria, [DESCE[0], DESCE[1], DESCE[2], LUG_MARIA], dt, (i) => (i <= 2 ? 3.0 : 1.8));
+      if (fimJ && fimP && mFim) { CENA.fase = 'maria_porta'; CENA.sub = ''; maria.ocupado = false; cMaria.oculto = false; M.em = 6; }
     }
     return;
   }
@@ -348,13 +374,14 @@ function roteiro(dt, pj) {
   }
   if (F === 'maria_volta') {
     // volta correndo ao sepulcro (Jo 20.11), mais depressa que o jogador
-    if (segue(maria, [V3(pc.x - 1.0, 0, pc.z - 6), NA_PORTA, ESTRADA, FORA], dt, 5.4)) { maria.o.visible = false; CENA.fase = 'espera_dois'; }
+    if (!maria.passou) { if (segue(maria, [V3(pc.x - 1.0, 0, pc.z - 6), NA_PORTA], dt, 5.4)) maria.passou = true; }
+    else if (vaiEmbora(maria, dt, 5.4)) { maria.passou = false; CENA.fase = 'espera_dois'; }
     return;
   }
   if (F === 'espera_dois') {
     // o jogador chega perto da porta: Pedro e João vêm voltando (Jo 20.10)
     if (Math.hypot(pj.x - pgn.x, pj.z - pgn.z) > 10) return;
-    comeca(pedro, FORA); comeca(joao, FORA.clone().add(V3(0.8, 0, -0.6))); CENA.fase = 'dois_voltam';
+    comeca(pedro, chegada()); comeca(joao, chegada(V3(0.8, 0, -0.6))); CENA.fase = 'dois_voltam';
     legenda('E os discípulos tornaram para casa. (Jo 20.10)', 6);
     roda([
       { alvo: ponto(PORTAO, 1.7), dist: 13, el: 11, yaw: 0, k: 2.5, kd: 2, ate: () => CENA.fase !== 'dois_voltam' },
@@ -363,7 +390,7 @@ function roteiro(dt, pj) {
     return;
   }
   if (F === 'dois_voltam') {
-    const a = segue(pedro, [ESTRADA, V3(pgn.x - 0.5, 0, pgn.z + 1.6)], dt, 1.3), b = segue(joao, [ESTRADA.clone().add(V3(0.8, 0, 0)), V3(pgn.x + 0.6, 0, pgn.z + 1.9)], dt, 1.3);
+    const a = segue(pedro, [ESTRADA, V3(pgn.x - 0.5, 0, pgn.z + 1.6)], dt, (i) => (i === 0 ? 3.0 : 1.8)), b = segue(joao, [ESTRADA.clone().add(V3(0.8, 0, 0)), V3(pgn.x + 0.6, 0, pgn.z + 1.9)], dt, (i) => (i === 0 ? 3.0 : 1.8));
     if (a && b) { cDois.oculto = false; CENA.fase = 'dois_aqui'; }
     return;
   }
@@ -372,7 +399,7 @@ function roteiro(dt, pj) {
     // voltam para casa: sobem a escada; a porta abre para eles e fecha depois
     if (!CENA.casa) { CENA.casa = true; pedro.i = joao.i = 0; }
     const rota = [...SOBE, DENTRO_CIMA];
-    const a = !pedro.o.visible || segue(pedro, rota, dt, 1.6), b = !joao.o.visible || segue(joao, rota, dt, 1.6, joao.i < 3 ? V3(-0.7, 0, 0) : null);
+    const a = !pedro.o.visible || segue(pedro, rota, dt, 2.2), b = !joao.o.visible || segue(joao, rota, dt, 2.2, joao.i < 3 ? V3(-0.7, 0, 0) : null);
     if (pedro.i >= 3) PORTA_C.abre();
     if (a) pedro.o.visible = false; if (b) joao.o.visible = false;
     if (a && b) { PORTA_C.fecha(); CENA.fase = 'fim'; }
@@ -388,10 +415,10 @@ function mulheresPasso(dt) {
   M.t -= dt;
   if (M.fase === 'fora') {
     if (M.em < 0 || (M.em -= dt) > 0 || !livreP()) return;
-    M.fase = 'vem'; mulheres.forEach((st, k) => { st.atraso = k * 0.9; st.dentro = false; st.ocupado = true; });
+    M.fase = 'vem'; mulheres.forEach((st, k) => { st.atraso = k * 0.6; st.dentro = false; st.ocupado = true; });
     roda([
       { alvo: ponto(PORTAO, 1.7), dist: 14, el: 13, yaw: 0, k: 2.5, kd: 2, ate: () => mulheres[0].o.visible && mulheres[0].i >= 2 },
-      { alvo: meio(mulheres), dist: 18, el: 32, yaw: -25, k: 2.5, kd: 0.9, ate: () => mulheres[0].i >= 3 || dist(mulheres[0], DESCE[2]) < 11 },        // de sudoeste: de leste, a barraca tapava
+      { alvo: meio(mulheres, 0.3), dist: 18, el: 30, yaw: 320, k: 2.5, kd: 0.9, ate: () => mulheres[0].i >= 3 || dist(mulheres[0], DESCE[2]) < 11 },        // de sudoeste: de leste, a barraca tapava
       { alvo: meio(mulheres), dist: 10, el: 16, yaw: 165, k: 2.2, kd: 1.3, corte: true, ate: () => M.fase !== 'vem' },
       { alvo: NA_PORTA_DE_CIMA, dist: 7, el: 11, yaw: 205, k: 2, kd: 1.5, dur: 1.8 },
     ]);
@@ -402,17 +429,17 @@ function mulheresPasso(dt) {
     let todas = true;
     mulheres.forEach((st, k) => {
       if ((st.atraso -= dt) > 0) { todas = false; return; }
-      if (!st.o.visible && !st.dentro) comeca(st, FORA.clone().add(V3(k * 0.5 - 0.5, 0, 0)));
+      if (!st.o.visible && !st.dentro) comeca(st, chegada(V3(k * 0.5 - 0.5, 0, 0)));
       if (st.dentro) return;
-      if (segue(st, ROTA_M, dt, (i) => (i <= 2 ? 3.2 : 1.5), st.i <= 1 ? V3(k * 0.6 - 0.6, 0, 0) : null)) { st.o.visible = false; st.dentro = true; } else todas = false;
+      if (segue(st, ROTA_M, dt, (i) => (i <= 2 ? 3.8 : 2.4), st.i <= 1 ? V3(k * 0.6 - 0.6, 0, 0) : null)) { st.o.visible = false; st.dentro = true; } else todas = false;
     });
     if (mulheres[0].i >= 5) PORTA_C.abre();           // a primeira chega à porta de cima: abrem para elas
-    if (todas) { PORTA_C.fecha(); M.fase = 'dentro'; M.t = 7; legenda('E, voltando do sepulcro, anunciaram todas estas coisas aos onze e a todos os demais. (Lc 24.9)', 8); }
+    if (todas) { PORTA_C.fecha(); M.fase = 'dentro'; M.t = 4.5; legenda('E, voltando do sepulcro, anunciaram todas estas coisas aos onze e a todos os demais. (Lc 24.9)', 8); }
     return;
   }
   if (M.fase === 'dentro') {
     if (M.t > 0 || !livreP()) return;
-    mulheres.forEach((st, k) => { comeca(st, DENTRO_BAIXO); st.atraso = 0.8 + k * 1.3; st.o.visible = false; });
+    mulheres.forEach((st, k) => { comeca(st, DENTRO_BAIXO); st.atraso = 0.5 + k * 0.8; st.o.visible = false; });
     PORTA_B.abre(); M.fase = 'saem'; legenda('E as suas palavras lhes pareciam como desvario, e não as creram. (Lc 24.11)', 8);
     roda([{ alvo: () => V3(pc.x, terreno(pc.x, pc.z) + 1.3, pc.z - 1.2), dist: 8, el: 12, yaw: 200, zoom: 0.95, k: 2.5, kd: 1.5, ate: () => M.fase === 'porta' }, { alvo: meio(mulheres, 1.3), dist: 6, el: 10, yaw: 200, k: 2, kd: 1.5, dur: 1.5 }]);
     return;
@@ -422,7 +449,7 @@ function mulheresPasso(dt) {
     mulheres.forEach((st, k) => {
       if ((st.atraso -= dt) > 0) { todas = false; return; }
       st.o.visible = true;
-      if (!segue(st, [V3(pc.x + 0.2, 0, pc.z - 1.9), LUG_M[k]], dt, 1.2)) todas = false;      // saem em frente e depois vão para o lado (sem passar por Maria)
+      if (!segue(st, [V3(pc.x + 0.2, 0, pc.z - 1.9), LUG_M[k]], dt, 1.7)) todas = false;      // saem em frente e depois vão para o lado (sem passar por Maria)
     });
     if (todas) { PORTA_B.fecha(); cMulheres.oculto = false; M.fase = 'porta'; mulheres.forEach((st) => { st.ocupado = false; }); }
   }
@@ -455,6 +482,7 @@ coisa('o palácio', pl[1] + 2.2, pg.z - 6.0, [
 ], 2.6, 'olhar o palácio');
 
 function npcsPasso(dt, pj) {
+  if (CINE.cortou > 0) CINE.cortou--;
   sombrasPerto(dt, pj); BRAS.passo(dt);
   for (const g of galinhas) {
     if (g.espera > 0) { g.espera -= dt; continue; }
@@ -463,7 +491,11 @@ function npcsPasso(dt, pj) {
   }
   for (const A of PAS) {
     // numa cena, quem passa rente à câmera some (tapava o quadro com o rosto); volta quando a cena acaba
-    A.st.o.visible = !(E.cine && Math.hypot(A.st.o.position.x - camera.position.x, A.st.o.position.z - camera.position.z) < 8);
+    if (E.cine) {
+      const perto = CINE.cortou > 0 && Math.hypot(A.st.o.position.x - camera.position.x, A.st.o.position.z - camera.position.z) < 10;
+      if (!A.st.o.visible || perto || !naTela(A.st.o.position)) { A.st.o.visible = false; continue; }
+    }
+    else if (!A.st.o.visible) { if (naTela(A.st.o.position)) continue; A.st.o.visible = true; }
     if (A.espera > 0) { A.espera -= dt; A.st.toca('Parado'); continue; }
     A.st.toca('Andar');
     if (anda(A.st, A.rota[A.i], dt, 1.0)) {
