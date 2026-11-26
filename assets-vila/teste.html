@@ -551,9 +551,26 @@ async function rodar() {
   await teste('a abertura: a conversa com Cléopas (o encontro na estrada de Emaús)', async (it) => {
     const T = W().TESTE; let n = 0, viu = '';
     for (let k = 0; k < 40 && !viu; k++) { quadros(30); const d = [...D().querySelectorAll('div')].find((x) => x.style.zIndex === '8' && visivel(x)); if (d) viu = d.textContent; await espera(50); }
-    while (n < 8 && (await responde('Cléopas', 'Continuar', 800))) n++;
-    const fechou = await responde('Cléopas', 'Fechar', 1500); quadros(30);
-    (fechou && /Cléopas/.test(viu) ? it.ok : it.erro)('a conversa abriu: ' + (viu ? 'sim' : 'NÃO') + '; ' + (n + 1) + ' falas; terminou: ' + (fechou ? 'sim' : 'NÃO'));
+    // cada fala: o primeiro botão (Continuar, ou uma das respostas do jogador); a resposta leva 1,5 s para seguir
+    const caixa = () => [...D().querySelectorAll('div')].find((x) => x.style.zIndex === '8' && visivel(x));
+    for (let k = 0; k < 40 && W().__CENA.fase === 'cleopas'; k++) { const d = caixa(); if (d) { aperta(d.querySelector('button')); n++; } quadros(50); await espera(30); }
+    const fechou = W().__CENA.fase !== 'cleopas';
+    // o fim da cena (Cléopas vai embora, a câmera mostra o túmulo, Lázaro e Marta) e a volta ao jogador
+    for (let k = 0; k < 60 && T.E.cine; k++) { quadros(30); await espera(10); }
+    (fechou && /Cléopas/.test(viu) && !T.E.cine ? it.ok : it.erro)('a conversa abriu: ' + (viu ? 'sim' : 'NÃO') + '; ' + n + ' falas; terminou: ' + (fechou ? 'sim' : 'NÃO') + '; a câmera voltou ao jogador: ' + (!T.E.cine ? 'sim' : 'NÃO'));
+  });
+  await teste('as cenas de Marta e de Lázaro (com a lembrança da pedra tirada) chegam ao fim', async (it) => {
+    const T = W().TESTE, C = W().__CENA, p = T.jog.o.position, r = [];
+    const caixa = () => [...D().querySelectorAll('div')].find((x) => x.style.zIndex === '8' && visivel(x));
+    const conversa = async (fim) => { for (let k = 0; k < 120 && !fim(); k++) { const d = caixa(); if (d) aperta(d.querySelector('button')); quadros(40); await espera(30); } };
+    T.E.fora = false; p.x += 1.2; quadros(5);
+    r.push('Marta vem: ' + (C.fase === 'marta_vem' ? 'sim' : 'NÃO (' + C.fase + ')'));
+    await conversa(() => C.fase === 'livre2' && !T.E.cine); r.push('Marta terminou: ' + (C.fase === 'livre2' ? 'sim' : 'NÃO'));
+    const L = T.TUM.lugar, F = T.TUM.frente; p.set(L.x + F.x * 8, 0, L.z + F.z * 8); T.E.fora = false; quadros(5);
+    r.push('Lázaro vem: ' + (C.fase === 'lazaro' ? 'sim' : 'NÃO'));
+    let viuLemb = false; await conversa(() => { viuLemb ||= W().__LEMB.on; return C.fase === 'fim' && !T.E.cine; });
+    r.push('a lembrança passou: ' + (viuLemb ? 'sim' : 'NÃO') + '; Lázaro terminou: ' + (C.fase === 'fim' ? 'sim' : 'NÃO') + '; a pedra e o jogador de volta: ' + (T.jog.o.visible && T.lazaro.o.visible && !W().__LEMB.on ? 'sim' : 'NÃO'));
+    (r.every((x) => !/NÃO/.test(x)) ? it.ok : it.erro)(r.join('; '));
   });
   await teste('interações em Betânia: Marta, Lázaro (Jo 11), a padeira, o poço', (it) => testaInteracoes(it, ['Marta', 'Lázaro', 'A padeira', 'o poço']));
 

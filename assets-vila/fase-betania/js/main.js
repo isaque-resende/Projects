@@ -17,7 +17,7 @@ import { ctl, camera, foco, DIR, fw, rt, mv, tecla, JOY, jog, naArea, toqueTela,
 import { passantePasso, olharPasso } from './passantes.js';
 import { CASAI, tumbaPasso, casaPasso } from './interiores.js';
 import { acionar, perguntaBetfage } from './acoes.js';
-import { introPasso } from './intro.js';
+import { cenasPasso, cenasDepois, CINE } from './cenas.js';
 import { criaMarcador } from '../../limpo-motor/marcador.js';
 
 ctl.aoAcionar = acionar;
@@ -42,7 +42,7 @@ const laco = (forca) => {
   for (const m of MIX) m.update(dt);
   // na abertura, no túmulo e entrando em casa a seta fica escondida
   const semSeta = () => { marca.passo(jog.o.position, t, E.dist, false); renderer.render(scene, camera); };
-  if (introPasso(dt)) { semSeta(); return; }
+  if (cenasPasso(dt)) { semSeta(); return; }
   if (tumbaPasso(dt)) { semSeta(); return; }
   if (E.CASA_ANIM) { casaPasso(dt); portasPasso(dt);
     camera.position.copy(foco).addScaledVector(DIR, E.dist); camera.lookAt(foco); semSeta(); return; }
@@ -50,7 +50,7 @@ const laco = (forca) => {
   // jogador
   fw.copy(DIR).negate().setY(0).normalize(); rt.set(-fw.z, 0, fw.x);
   mv.set(0, 0, 0);
-  if (!E.fora) {
+  if (!E.fora && !E.cine) {
     if (tecla.KeyW || tecla.ArrowUp) mv.add(fw); if (tecla.KeyS || tecla.ArrowDown) mv.sub(fw);
     if (tecla.KeyD || tecla.ArrowRight) mv.add(rt); if (tecla.KeyA || tecla.ArrowLeft) mv.sub(rt);
     if (JOY.on && Math.hypot(JOY.x, JOY.y) > 0.15) { mv.addScaledVector(fw, -JOY.y).addScaledVector(rt, JOY.x); }
@@ -59,6 +59,7 @@ const laco = (forca) => {
   }
   portasPasso(dt);
   const pj = jog.o.position;
+  if (!E.cine) {      // (numa cena, quem move o jogador é a cena: cenas.js)
   const passagem = (x, z) => pj.y < 0.3 && CASAS.some((c) => { if (!(c.aberta && c.ang < -1.2)) return false; const [lx, lz] = c.local(x, z); return Math.abs(lx - c.px) < 0.45 && lz > c.pz - 1.0 && lz < c.pz + 0.8; });
   const naFolha = (x, z) => CASAS.some((c) => { if (c.ang > -0.3) return false; const b = new THREE.Box3().setFromObject(c.porta).expandByScalar(0.18); return x > b.min.x && x < b.max.x && z > b.min.z && z < b.max.z; });
   let andou = false;
@@ -112,12 +113,15 @@ const laco = (forca) => {
   botao.style.display = (naSaida || E.portaPerto || E.pedraPerto || E.falaPerto) && !E.fora ? 'block' : 'none';
   marcaPino(botao.style.display === 'block' ? (naSaida ? 'ir' : E.tumbaPerto ? 'entrar' : E.pedraPerto ? 'rolar' : E.falaPerto ? 'falar' : 'entrar') : '');
 
+  } else { botao.style.display = 'none'; marcaPino(''); }
+
   // a vila: lavoura, ovelhas, ofícios, porteira, pedra do túmulo, passante
   lavouraPasso(dt); ovelhasPasso(dt);
-  posesBase(); fogoPasso(dt, t); pisadorPasso(dt, t); padeiraPasso(dt, t); barracaPasso(dt, t); aguadeiraPasso(dt, t);
+  posesBase(); cenasDepois(dt); fogoPasso(dt, t); pisadorPasso(dt, t); padeiraPasso(dt, t); barracaPasso(dt, t); aguadeiraPasso(dt, t);
   porteiraPasso(dt); pedraPasso(dt); passantePasso(dt); olharPasso(dt);
 
-  // câmera
+  // câmera (a das cenas, quando há uma; ao fim dela, volta num corte para o jogador)
+  if (CINE.C.corteVolta) { CINE.C.corteVolta = false; foco.set(THREE.MathUtils.clamp(jog.o.position.x, -36, 30), jog.o.position.y * 0.8, THREE.MathUtils.clamp(jog.o.position.z, -21, 23)); }
   E.dist += (E.distAlvo - E.dist) * Math.min(1, dt * 6);
   const folga = (E.dist - DMIN) / (DMAX - DMIN);            // afastada, anda menos (a vila já cabe)
   const lx = 30 * (1 - folga) + 6, lz = 22 * (1 - folga) + 5;
@@ -126,12 +130,13 @@ const laco = (forca) => {
   camera.position.copy(foco).addScaledVector(DIR, E.dist); camera.lookAt(foco);
   scene.fog.near = E.dist + 14; scene.fog.far = E.dist + 70;   // a neblina acompanha o zoom: o fundo da vila nunca some
   sun.position.set(foco.x + 14, 22, foco.z + 9); sun.target.position.copy(foco);
+  if (CINE.passo(dt)) { const a = CINE.C.alvo; sun.position.set(a.x + 14, a.y + 22, a.z + 9); sun.target.position.copy(a); }
 
-  marca.passo(jog.o.position, t, E.dist, !E.fora);
+  marca.passo(jog.o.position, t, E.dist, !E.fora && !E.cine);
   renderer.render(scene, camera);
 };
 renderer.setAnimationLoop(() => laco());
 addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
 
 // para os testes automáticos: abrir com ?teste e usar TESTE no console
-if (globalThis.MODO_TESTE) globalThis.TESTE = { MIX, E, jog, laco, marca, tecla, bate, alturaEm, chaoTerra, scene, camera, CIRC, CAIXAS, renderer, INT };
+if (globalThis.MODO_TESTE) globalThis.TESTE = { MIX, E, jog, laco, marca, tecla, bate, alturaEm, chaoTerra, scene, camera, CIRC, CAIXAS, renderer, INT, TUM, CASAS, marta, lazaro, cleopas, foco, CINE };

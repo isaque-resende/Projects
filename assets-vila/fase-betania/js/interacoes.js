@@ -11,7 +11,7 @@ import { criaInteracoes } from '../../limpo-motor/interacoes.js';
 const INT = criaInteracoes(dialogo);
 const INTRO = { feita: false };       // a conversa da abertura com Cléopas já aconteceu?
 
-// ---------- as falas de Cléopas na abertura (intro.js) ----------
+// ---------- as falas de Cléopas na abertura (cenas.js) ----------
 const ABERTURA = [
   'Você também não dormiu, não é? Eu ainda vejo a cruz quando fecho os olhos.',
   'Nós esperávamos que fosse ele quem havia de remir Israel (Lc 24.21). E agora… é o terceiro dia.',

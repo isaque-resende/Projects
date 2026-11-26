@@ -7,7 +7,7 @@ import { criaColisao } from '../../limpo-motor/colisao.js';
 import { criaUI } from '../../limpo-motor/ui.js';
 
 const { renderer, scene, hemi, sun, rnd, tex, texChao } = criaBase({
-  fundo: new THREE.Color(0xd9d2bf), neblina: [0xd9d2bf, 55, 95], ceu: [0xd6ebff, 0xc9a47a, 1.3], sol: [0xffe2b8, 3.1], alcanceSombra: 80, semente: 7,
+  fundo: new THREE.Color(0xd9d2bf), neblina: [0xd9d2bf, 55, 95], ceu: [0xd6ebff, 0xc9a47a, 1.3], sol: [0xffe2b8, 3.1], alcanceSombra: 80, semente: 7, estencil: true,
 });
 
 // ---------- posições exportadas do Blender (betania.blend > texto EXPORTAR_PARA_O_JOGO) ----------
