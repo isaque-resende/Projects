@@ -9,11 +9,12 @@ import { ajustaLente, jog, camera, ctl, tecla, JOY, toqueTela, fw, rt, mv, naAre
 import { PREG, pregacaoPasso, lembrar } from './pregacao.js';
 import { INT } from './interacoes.js';
 import { criaMarcador } from '../../limpo-motor/marcador.js';
+import { cenasPasso, cenaMirante, cenaSermao, CINE } from './cenas.js';
 
 // ---------- o botão de ação ----------
 function acionar() {
-  if (E.fora) return;
-  if (PREG.perto) { lembrar(); return; }
+  if (E.fora || E.cine) return;
+  if (PREG.perto) { if (!E.pregacao) cenaSermao(); else lembrar(); return; }      // a primeira vez, a lembrança do sermão (cenas.js)
   if (E.int) { INT.usa(E.int, null, jog.o.position); return; }      // conversar / olhar (interacoes.js)
   if (E.saida === 'betfage') perguntaBetfage();
   else if (E.saida === 'getsemani') perguntaGetsemani();
@@ -31,21 +32,12 @@ function perguntaGetsemani() {
 function sair(texto, url) { E.fora = true; fade.textContent = texto; fade.style.opacity = 1; setTimeout(() => { location.href = url; }, 1200); }
 
 // ---------- chegada ----------
-setTimeout(() => {
-  fade.style.opacity = 0;
-  setTimeout(() => { fade.textContent = ''; if (E.modo === 'subida') { fala('A estrada sobe o Monte das Oliveiras.'); setTimeout(() => fala(''), 4500); } }, 900);
-}, 1200);
+// (a câmera mostra os olivais e o alto do monte: cenas.js)
+setTimeout(() => { fade.style.opacity = 0; setTimeout(() => { fade.textContent = ''; }, 900); }, 1200);
 
-// ---------- no cume: só as legendas ----------
+// ---------- no cume: o mirante (a cena está em cenas.js) ----------
 // A cidade está sempre no lugar (cenario.js); quem a esconde é o próprio monte. Subindo, ela vai aparecendo por trás
-// do cume conforme a câmera sobe; voltando, some do mesmo jeito. Nada para nem anima: ao passar pelo cume, as legendas.
-const REV = { t: 0, ativo: false };
-function revela(dt) {
-  REV.t += dt;
-  if (REV.t > 0.4 && !REV.l1) { REV.l1 = 1; fala('Jerusalém.'); }
-  if (REV.t > 4.0 && !REV.l2) { REV.l2 = 1; fala('Do outro lado do vale do Cedrom, o templo brilha ao sol.'); }
-  if (REV.t > 9.0) { fala(''); REV.ativo = false; }
-}
+// do cume; ao passar pelo alto, a câmera mostra Jerusalém e, depois, a laje do sermão.
 
 // ---------- laço ----------
 const marca = criaMarcador(scene, camera, jog.o);
@@ -56,7 +48,7 @@ const laco = (forca) => {
   for (const m of MIX) m.update(dt);
   camera.getWorldDirection(fw); fw.setY(0).normalize(); rt.set(-fw.z, 0, fw.x);
   mv.set(0, 0, 0);
-  if (!E.fora) {
+  if (!E.fora && !E.cine) {
     if (tecla.KeyW || tecla.ArrowUp) mv.add(fw); if (tecla.KeyS || tecla.ArrowDown) mv.sub(fw);
     if (tecla.KeyD || tecla.ArrowRight) mv.add(rt); if (tecla.KeyA || tecla.ArrowLeft) mv.sub(rt);
     if (JOY.on && Math.hypot(JOY.x, JOY.y) > 0.15) mv.addScaledVector(fw, -JOY.y).addScaledVector(rt, JOY.x);
@@ -88,32 +80,33 @@ const laco = (forca) => {
   // onde está na estrada: no cume, as legendas e a câmera da descida; as pontas, as saídas
   const [i] = naRota(pj.x, pj.z);
   if (E.modo === 'subida' && i >= iCume - 3) {
-    E.modo = 'descida'; REV.ativo = true; REV.t = 0;
+    E.modo = 'descida'; cenaMirante();
   }
-  if (REV.ativo) revela(dt);
+  cenasPasso(dt);
   E.saida = i <= 3 ? 'betfage' : i >= AMOS.length - 4 ? 'getsemani' : null;
-  if (E.saida && !E.fora && !E.perguntou) { E.perguntou = true; E.saida === 'betfage' ? perguntaBetfage() : perguntaGetsemani(); }
+  if (E.saida && !E.fora && !E.cine && !E.perguntou) { E.perguntou = true; E.saida === 'betfage' ? perguntaBetfage() : perguntaGetsemani(); }
   if (!E.saida) E.perguntou = false;
   pregacaoPasso(pj, t);
-  if (!prensaVista && pj.distanceTo(PRENSA.position) < 7) { prensaVista = true; fala('Uma prensa de azeite. O jardim lá embaixo leva esse nome: Getsêmani, “prensa de azeite”.'); setTimeout(() => fala(''), 6000); }
+  if (!prensaVista && !E.cine && pj.distanceTo(PRENSA.position) < 7) { prensaVista = true; fala('Uma prensa de azeite. O jardim lá embaixo leva esse nome: Getsêmani, “prensa de azeite”.'); setTimeout(() => fala(''), 6000); }
   // botão de ação
-  E.int = E.fora || PREG.perto ? null : INT.perto(pj);
+  E.int = E.fora || E.cine || PREG.perto ? null : INT.perto(pj);
   const txt = PREG.perto && !E.fora ? 'sentar diante do templo' : E.int ? E.int.verbo : E.saida === 'betfage' ? 'voltar para Betfagé' : E.saida === 'getsemani' ? 'seguir para o Getsêmani' : '';
   if (txt) textoBotao((toqueTela ? '' : 'E: ') + txt);
-  botao.style.display = txt && !E.fora ? 'block' : 'none';
+  botao.style.display = txt && !E.fora && !E.cine ? 'block' : 'none';
   ctl.marcaPino(botao.style.display === 'block' ? (PREG.perto || E.int ? 'olhar' : 'ir') : '');
 
   prensaPasso(dt);
 
   // câmera e sol
   E.dist += (E.distAlvo - E.dist) * Math.min(1, dt * 4);
-  camPasso(i, dt, pj, primeira); primeira = false;
+  camPasso(i, dt, pj, primeira || CINE.C.corteVolta); primeira = false; CINE.C.corteVolta = false;
   sun.position.set(pj.x - 14, pj.y + 26, pj.z + 12); sun.target.position.copy(pj);
-  marca.passo(pj, t, CAM.pos.distanceTo(pj), !E.fora);
+  if (CINE.passo(dt)) { const a = CINE.C.alvo.distanceTo(pj) < 60 ? CINE.C.alvo : pj; sun.position.set(a.x - 14, a.y + 26, a.z + 12); sun.target.position.copy(a); }
+  marca.passo(pj, t, CAM.pos.distanceTo(pj), !E.fora && !E.cine);
   renderer.render(scene, camera);
 };
 if (!(globalThis.MODO_TESTE && new URLSearchParams(location.search).has('parado'))) renderer.setAnimationLoop(() => laco());     // ?teste&parado: só a lógica, sem desenhar (testes)
 addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; ajustaLente(); });
 
 // para os testes automáticos: abrir com ?teste (ou pelo teste.html) e usar TESTE no console
-if (globalThis.MODO_TESTE) globalThis.TESTE = { MIX, E, jog, laco, marca, tecla, bate, alturaEm: (x, z) => terreno(x, z), chaoTerra: terreno, scene, camera, CIRC, CAIXAS, renderer, AMOS, iCume, PAN, PREG, lembrar, INT };
+if (globalThis.MODO_TESTE) globalThis.TESTE = { MIX, E, jog, laco, marca, tecla, bate, alturaEm: (x, z) => terreno(x, z), chaoTerra: terreno, scene, camera, CIRC, CAIXAS, renderer, AMOS, iCume, PAN, PREG, lembrar, INT, CINE };

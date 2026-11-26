@@ -9,6 +9,8 @@ import { MIX } from './gente.js';
 import { ajustaLente, jog, camera, ctl, tecla, JOY, toqueTela, fw, rt, mv, naArea, alturaEm, camPasso, CAM } from './jogador.js';
 import { criaMarcador } from '../../limpo-motor/marcador.js';
 import { INT } from './interacoes.js';
+import { cenasPasso, cenaRocha, cenaTres, CINE } from './cenas.js';
+INT.L.find((i) => i.nome === 'a oliveira dos três').cena = cenaTres;      // a primeira vez, a lembrança (cenas.js)
 
 // ---------- os lugares: ao chegar perto de cada um, uma legenda (uma vez) ----------
 const [gx, , gz] = LAY.portao, [ox, , oz] = LAY.oito, [tx, , tz] = LAY.tres, [ax, , az] = LAY.agonia, [rx, ry, rz] = LAY.rocha;
@@ -26,7 +28,7 @@ const LUG = [
 let falando = 0;
 function legenda(txt, seg = 7) { fala(txt); const n = ++falando; setTimeout(() => { if (n === falando) fala(''); }, seg * 1000); }
 function lugares(pj) {
-  if (E.fora) return;
+  if (E.fora || E.cine) return;
   for (const L of LUG) {
     if (L.visto) continue;
     if (L.teste ? L.teste(pj) : Math.hypot(pj.x - L.x, pj.z - L.z) < L.r) { L.visto = true; legenda(L.txt); break; }
@@ -62,9 +64,9 @@ function oracaoPasso(dt) {
 
 // ---------- o botão de ação e a saída ----------
 function acionar() {
-  if (E.fora) return;
-  if (AG.perto) { ajoelhar(); return; }
-  if (E.int) { INT.usa(E.int, null, jog.o.position); return; }      // conversar / olhar (interacoes.js)
+  if (E.fora || E.cine) return;
+  if (AG.perto) { if (!E.orou) cenaRocha(); else ajoelhar(); return; }      // a primeira vez, a lembrança da oração (cenas.js); depois, ajoelhar
+  if (E.int) { if (E.int.cena && !E.int.cenaFeita) { E.int.cenaFeita = true; E.int.cena(); return; } INT.usa(E.int, null, jog.o.position); return; }      // conversar / olhar (interacoes.js)
   if (E.betesda) { perguntaBetesda(); return; }
   if (E.saida) perguntaVolta();
 }
@@ -86,7 +88,7 @@ function sair(texto, url) { E.fora = true; fade.textContent = texto; fade.style.
 // ---------- chegada ----------
 setTimeout(() => {
   fade.style.opacity = 0;
-  setTimeout(() => { fade.textContent = ''; legenda('Domingo, muito cedo. O sol acaba de nascer atrás do Monte das Oliveiras; a trilha desce para um jardim de oliveiras.', 7); }, 900);
+  setTimeout(() => { fade.textContent = ''; }, 900);      // (a chegada, com a câmera mostrando o jardim: cenas.js)
 }, 1200);
 
 // ---------- laço ----------
@@ -98,7 +100,7 @@ const laco = (forca) => {
   for (const m of MIX) m.update(dt);
   camera.getWorldDirection(fw); fw.setY(0).normalize(); rt.set(-fw.z, 0, fw.x);
   mv.set(0, 0, 0);
-  if (!E.fora) {
+  if (!E.fora && !E.cine) {
     if (tecla.KeyW || tecla.ArrowUp) mv.add(fw); if (tecla.KeyS || tecla.ArrowDown) mv.sub(fw);
     if (tecla.KeyD || tecla.ArrowRight) mv.add(rt); if (tecla.KeyA || tecla.ArrowLeft) mv.sub(rt);
     if (JOY.on && Math.hypot(JOY.x, JOY.y) > 0.15) mv.addScaledVector(fw, -JOY.y).addScaledVector(rt, JOY.x);
@@ -132,30 +134,31 @@ const laco = (forca) => {
   lugares(pj);
   AG.perto = Math.hypot(pj.x - ax, pj.z - az) < 2.0;
   anel.material.opacity = (E.orou ? 0.16 : 0.3) + 0.1 * Math.sin(t * 1.6);
-  oracaoPasso(dt);
+  oracaoPasso(dt); cenasPasso(dt);
   const [i] = naRota(pj.x, pj.z);
   E.saida = i <= 3;
-  if (E.saida && !E.fora && !E.perguntou) { E.perguntou = true; perguntaVolta(); }
+  if (E.saida && !E.fora && !E.cine && !E.perguntou) { E.perguntou = true; perguntaVolta(); }
   if (!E.saida) E.perguntou = false;
   E.ondeB = naSaidaJardim(i) ? 'jardim' : i >= AMOS.length - 6 ? 'fim' : '';
   E.betesda = !!E.ondeB;
-  if (E.betesda && !E.fora && !E.perguntouB) { E.perguntouB = true; perguntaBetesda(); }
+  if (E.betesda && !E.fora && !E.cine && !E.perguntouB) { E.perguntouB = true; perguntaBetesda(); }
   if (!E.betesda && !naSaidaJardim(i - 6) && !naSaidaJardim(i + 6) && i < AMOS.length - 14) E.perguntouB = false;
-  E.int = E.fora || AG.perto ? null : INT.perto(pj);
+  E.int = E.fora || E.cine || AG.perto ? null : INT.perto(pj);
   const txt = AG.perto && !E.fora ? 'ajoelhar junto à rocha' : E.int ? E.int.verbo : E.betesda ? 'seguir para Betesda' : E.saida ? 'voltar ao Monte das Oliveiras' : '';
   if (txt) textoBotao((toqueTela ? '' : 'E: ') + txt);
-  botao.style.display = txt && !E.fora ? 'block' : 'none';
+  botao.style.display = txt && !E.fora && !E.cine ? 'block' : 'none';
   ctl.marcaPino(botao.style.display === 'block' ? (AG.perto || E.int ? 'olhar' : 'ir') : '');
 
   // câmera e sol
   E.dist += (E.distAlvo - E.dist) * Math.min(1, dt * 4);
-  camPasso(dt, pj, primeira); primeira = false;
+  camPasso(dt, pj, primeira || CINE.C.corteVolta); primeira = false; CINE.C.corteVolta = false;
   sun.position.copy(pj).addScaledVector(SOL_DIR, 40); sun.target.position.copy(pj);
-  marca.passo(pj, t, CAM.pos.distanceTo(pj), !E.fora);
+  if (CINE.passo(dt)) { const a = CINE.C.alvo; sun.position.copy(a).addScaledVector(SOL_DIR, 40); sun.target.position.copy(a); }
+  marca.passo(pj, t, CAM.pos.distanceTo(pj), !E.fora && !E.cine);
   renderer.render(scene, camera);
 };
 if (!(globalThis.MODO_TESTE && new URLSearchParams(location.search).has('parado'))) renderer.setAnimationLoop(() => laco());
 addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; ajustaLente(); });
 
 // para os testes automáticos: abrir com ?teste (ou pelo teste.html) e usar TESTE no console
-if (globalThis.MODO_TESTE) globalThis.TESTE = { MIX, E, jog, laco, marca, tecla, bate, alturaEm: (x, z) => terreno(x, z), chaoTerra: terreno, scene, camera, CIRC, CAIXAS, renderer, AMOS, AG, LAY, ajoelhar, acionar, perguntaBetesda, INT };
+if (globalThis.MODO_TESTE) globalThis.TESTE = { MIX, E, jog, laco, marca, tecla, bate, alturaEm: (x, z) => terreno(x, z), chaoTerra: terreno, scene, camera, CIRC, CAIXAS, renderer, AMOS, AG, LAY, ajoelhar, acionar, perguntaBetesda, INT, CINE };

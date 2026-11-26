@@ -246,4 +246,4 @@ function npcsPasso(dt, pj) {
   }
 }
 
-export { CONVERSAS, enfermos, pastor, ovelhas, cego, passante, aguadeira, lavador, AGITA, npcsPasso };
+export { yEscada, zDegrau, MAT_ESTEIRA, CONVERSAS, enfermos, pastor, ovelhas, cego, passante, aguadeira, lavador, AGITA, npcsPasso };

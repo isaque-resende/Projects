@@ -79,6 +79,7 @@ async function testesDaFase(nome, opc = {}) {
   });
   if (tempo == null) return false;
   await espera(1500);           // deixa terminar o que carrega por último
+  { const C = W().TESTE && W().TESTE.CINE; if (C && C.pular) { C.pular(); quadros(3); } }      // a cena de chegada (cenas.js) é testada à parte
   await teste('nenhum erro nem arquivo faltando', async (it) => {
     const erros = [...new Set(W().ERROS || [])], falhos = arquivosFalhos();
     if (erros.length || falhos.length) it.erro([...falhos, ...erros].slice(0, 12).join('\n'));
@@ -172,12 +173,20 @@ async function responde(texto, botao, ms = 5000) {
 }
 const confirma = (texto) => responde(texto, 'Sim');
 // interações (limpo-motor/interacoes.js): chega perto de cada item pelo nome, aperta E e vai até o fim da conversa
+// as lembranças (cenas.js de cada fase): começa, espera o clarão e a cena correr, fecha as falas do fim
+async function rodaLembranca(iniciar) {
+  const T = W().TESTE, C = W().__CENA, caixa = () => [...D().querySelectorAll('div')].find((x) => x.style.zIndex === '8' && visivel(x));
+  T.E.fora = false; iniciar(); let viu = false;
+  for (let k = 0; k < 200; k++) { quadros(15); viu ||= W().__LEMB.on; const d = caixa(); if (d && !W().__LEMB.on) aperta(d.querySelector('button')); await espera(25); if (viu && !W().__LEMB.on && C.fase === 'livre' && !T.E.cine && !caixa()) break; }
+  for (let k = 0; k < 4; k++) { const d = caixa(); if (d) aperta(d.querySelector('button')); quadros(5); await espera(20); }
+  return viu && !W().__LEMB.on && !T.E.cine && T.jog.o.visible;
+}
 async function testaInteracoes(it, nomes) {
   const T = W().TESTE, p = T.jog.o.position, r = [];
   r.push(T.INT.L.length + ' interações');
   for (const nome of nomes) {
     const item = T.INT.L.find((n) => n.nome === nome); if (!item) { r.push(nome + ': NÃO existe'); continue; }
-    T.E.fora = false; const q = item.o.position, d = Math.min(1.1, item.r - 0.4);
+    T.E.fora = false; if (item.cena) item.cenaFeita = true; const q = item.o.position, d = Math.min(1.1, item.r - 0.4);      // (a lembrança da primeira vez é testada à parte)
     const lado = [[d, 0], [-d, 0], [0, d], [0, -d], [d * 0.7, d * 0.7], [-d * 0.7, -d * 0.7]].find(([dx, dz]) => !T.bate(q.x + dx, q.z + dz, 0.05)) || [d, 0];
     p.set(q.x + lado[0], T.alturaEm(q.x + lado[0], q.z + lado[1], 50), q.z + lado[1]); quadros(3);
     W().dispatchEvent(new (W().KeyboardEvent)('keydown', { code: 'KeyE' })); W().dispatchEvent(new (W().KeyboardEvent)('keyup', { code: 'KeyE' })); quadros(2);
@@ -196,6 +205,18 @@ async function rodar() {
   await abre('fase-betfage/');
   const okBf = await testesDaFase('Betfagé', { eira: true });
   if (okBf) await teste('interações em Betfagé: o dono da jumenta, a figueira seca, o ceifeiro (as primícias)', (it) => testaInteracoes(it, ['O dono da jumenta', 'a figueira seca', 'O ceifeiro']));
+  if (okBf) await teste('as lembranças de Betfagé: os jumentos levados (Mc 11.1-7) e a figueira seca (Mc 11.12-22)', async (it) => {
+    const T = W().TESTE, C = W().__CENA, r = [];
+    const caixa = () => [...D().querySelectorAll('div')].find((x) => x.style.zIndex === '8' && visivel(x));
+    for (const nome of ['a jumenta e o jumentinho', 'a figueira seca']) {
+      const item = T.INT.L.find((n) => n.nome === nome); item.cenaFeita = true; T.E.fora = false; item.cena();
+      let viu = false, fala = false;
+      for (let k = 0; k < 160 && !(C.fase === 'livre' && !T.E.cine && fala); k++) { quadros(15); viu ||= W().__LEMB.on; const d = caixa(); if (d && !W().__LEMB.on) { fala = true; aperta(d.querySelector('button')); } await espera(25); }
+      for (let k = 0; k < 6; k++) { const d = caixa(); if (d) aperta(d.querySelector('button')); quadros(5); await espera(20); }
+      r.push(nome + ': lembrança ' + (viu ? 'sim' : 'NÃO') + ', depois as falas ' + (fala ? 'sim' : 'NÃO') + ', jogador de volta ' + (T.jog.o.visible && !W().__LEMB.on && !T.E.cine ? 'sim' : 'NÃO'));
+    }
+    (r.every((x) => !/NÃO/.test(x)) ? it.ok : it.erro)(r.join('; '));
+  });
 
   grupo('Troca: Betfagé → Betânia');
   let chegouBt = false;
@@ -254,7 +275,7 @@ async function rodar() {
     await teste('câmera: de quina (como em Betfagé) na subida; no cume vem para trás do jogador, de frente para a cidade; o jogador sempre na tela', async (it) => {
       const T = W().TESTE, p = T.jog.o.position, i0 = 8, alvo = T.iCume;
       const naTela = () => { const V = p.constructor, c = T.camera; return [new V(p.x, p.y + 0.05, p.z), new V(p.x, p.y + 1.75, p.z)].every((v) => { v.project(c); return Math.abs(v.x) < 0.85 && Math.abs(v.y) < 0.9 && v.z < 1; }); };
-      const d = (i) => { const q = T.AMOS[i]; p.set(q.x, T.chaoTerra(q.x, q.z), q.z); quadros(60); return [T.camera.position.distanceTo(p), naTela()]; };
+      const d = (i) => { const q = T.AMOS[i]; p.set(q.x, T.chaoTerra(q.x, q.z), q.z); quadros(3); if (T.E.cine) T.CINE.pular(); quadros(57); return [T.camera.position.distanceTo(p), naTela()]; };      // (a cena do mirante é testada à parte)
       const [longe, v1] = d(i0); quadros(60); const [perto, v2] = d(alvo); quadros(90);
       const olhar = new (p.constructor)(); T.camera.getWorldDirection(olhar); const oeste = olhar.x < -0.8;
       // andando de lado e para trás, ele continua na tela
@@ -270,11 +291,16 @@ async function rodar() {
       // a câmera vê o templo? (o chão do monte no meio do caminho tapa)
       const THREE = await W().eval("import('three')"), chao = T.scene.getObjectByName('Oliveiras_Terreno'), raio = new THREE.Raycaster();
       const ve = () => { const c = T.camera.position.clone(), d = alvo.clone().sub(c), L = d.length(); raio.set(c, d.normalize()); raio.far = L; return raio.intersectObject(chao, true).length === 0; };
-      const em = (i) => { const q = T.AMOS[i]; p.set(q.x, T.chaoTerra(q.x, q.z), q.z); quadros(60); return ve(); };
+      const em = (i) => { const q = T.AMOS[i]; p.set(q.x, T.chaoTerra(q.x, q.z), q.z); quadros(3); if (T.E.cine) T.CINE.pular(); quadros(57); return ve(); };
       const vPe = em(8), vMeio = em(Math.round(8 + (T.iCume - 8) * 0.5)), vCume = em(T.iCume - 2);
       const sempre = T.PAN.mesh.visible && T.PAN.mesh.parent === T.scene;
       const livre = T.E.modo === 'descida' && !T.E.fora;
       (sempre && vCume && livre ? it.ok : it.erro)('cidade sempre no lugar: ' + (sempre ? 'sim' : 'NÃO') + '; templo visível no pé: ' + (vPe ? 'sim (a câmera de quina vê por cima do monte)' : 'não') + ', no meio: ' + (vMeio ? 'sim' : 'não') + ', no cume: ' + (vCume ? 'sim' : 'NÃO') + '; no cume o jogador está ' + (livre ? 'livre' : 'TRAVADO (modo ' + T.E.modo + ')'));
+    });
+    await teste('a lembrança do sermão no monte, na laje defronte do templo (Mc 13)', async (it) => {
+      const T = W().TESTE, P = T.PREG; T.jog.o.position.set(P.x + 1.2, T.chaoTerra(P.x + 1.2, P.z), P.z); quadros(3);
+      const ok = await rodaLembranca(() => W().__SERMAO());
+      (ok && T.E.pregacao ? it.ok : it.erro)('a lembrança passou e o jogador voltou: ' + (ok ? 'sim' : 'NÃO'));
     });
     await teste('prensa de azeite: o prenseiro trabalha', async (it) => {
       const T = W().TESTE, prensa = T.scene.children.find((o) => o.isGroup && o.children.some((c) => c.name === 'Prensa_Mo'));
@@ -325,7 +351,7 @@ async function rodar() {
   if (okGs) {
     await teste('interações no Getsêmani: o guarda do olival (Jo 18.3-6), a oliveira dos três, o Cedrom', (it) => testaInteracoes(it, ['O guarda do olival', 'a oliveira dos três', 'o ribeiro de Cedrom']));
     await teste('a Rocha da Agonia: um tiro de pedra adiante dos três, e o jogador se ajoelha ali', async (it) => {
-      const T = W().TESTE, L = T.LAY, p = T.jog.o.position;
+      const T = W().TESTE, L = T.LAY, p = T.jog.o.position; T.E.orou = true;      // (a lembrança da primeira vez é testada à parte)
       const rocha = T.scene.getObjectByName('Rocha_Agonia'); if (!rocha) throw new Error('a rocha não está na cena');
       const tiro = Math.hypot(L.rocha[0] - L.tres[0], L.rocha[2] - L.tres[2]);
       T.E.fora = false; T.jog.o.position.set(L.agonia[0] + 0.5, T.chaoTerra(L.agonia[0] + 0.5, L.agonia[2]), L.agonia[2]); quadros(3);
@@ -370,6 +396,10 @@ async function rodar() {
       await espera(1000); const erros = [...(W().ERROS || []), ...arquivosFalhos()];
       if (erros.length) it.erro('chegou com erro:\n' + erros.slice(0, 8).join('\n')); else it.ok('foi para ' + caminho() + ' e carregou em ' + tempo.toFixed(1) + ' s');
     });
+    await teste('as lembranças do Getsêmani: a oração na rocha (Lc 22.41-44) e os três dormindo (Mc 14.37-42)', async (it) => {
+      const a = await rodaLembranca(() => W().__ROCHA()), b = await rodaLembranca(() => W().__TRES());
+      (a && b ? it.ok : it.erro)('a rocha: ' + (a ? 'sim' : 'NÃO') + '; os três: ' + (b ? 'sim' : 'NÃO'));
+    });
   } else item('Getsêmani').aviso('pulado: a fase não carregou');
 
   grupo('Tanque de Betesda (fase-betesda/)');
@@ -391,6 +421,7 @@ async function rodar() {
       (tel === 5 && deitados >= 10 && vazia === 1 && naAgua && /conversar/.test(txt) && falou && !T.E.fora ? it.ok : it.erro)(tel + ' alpendres; ' + deitados + ' enfermos nas esteiras e o lugar vazio do paralítico: ' + (vazia === 1 ? 'sim' : 'NÃO') + '; a água é obstáculo: ' + (naAgua ? 'sim' : 'NÃO') + '; botão "' + txt + '"; conversa: ' + (falou ? 'sim' : 'NÃO') + '; depois livre: ' + (!T.E.fora ? 'sim' : 'NÃO'));
     });
     await teste('coisas para olhar em Betesda: a água do tanque (Jo 5.7), o lugar do paralítico, o curral (Jo 10.2-3)', (it) => testaInteracoes(it, ['a água do tanque', 'o lugar do paralítico', 'o curral']));
+    await teste('a lembrança do paralítico curado (Jo 5.2-9)', async (it) => { const ok = await rodaLembranca(() => W().__PARAL()); (ok ? it.ok : it.erro)('a lembrança passou e o jogador voltou: ' + (ok ? 'sim' : 'NÃO')); });
     await teste('as três saídas perguntam: o Getsêmani (leste), o Gólgota (oeste) e o templo (a Porta das Ovelhas)', async (it) => {
       const T = W().TESTE, L = T.LAY, N = T.AMOS.length, r = [];
       for (const [x, z, txt] of [[T.AMOS[1].x, T.AMOS[1].z, 'Getsêmani'], [T.AMOS[N - 2].x, T.AMOS[N - 2].z, 'Gólgota'], [L.porta[0], L.porta[2], 'templo']]) {
@@ -427,6 +458,10 @@ async function rodar() {
       (!falta.length && barracas >= 9 && chegou && subiu && parou && fumaca > 10 ? it.ok : it.erro)((falta.length ? 'falta ' + falta.join(', ') + '; ' : '') + barracas + ' barracas; do Pátio das Mulheres ao de Israel pelos degraus: ' + (chegou && subiu ? 'sim (' + p.y.toFixed(1) + ' m)' : 'NÃO') + '; parou na mureta: ' + (parou ? 'sim' : 'NÃO') + '; fumaça do altar: ' + fumaca);
     });
     await teste('coisas para olhar no templo: o altar, o santuário, as arcas das ofertas (Mc 12.41-44), a placa', (it) => testaInteracoes(it, ['o altar', 'o santuário', 'o gazofilácio', 'a placa da balaustrada']));
+    await teste('as lembranças do templo: a viúva pobre (Mc 12.41-44) e o véu rasgado (Mt 27.51)', async (it) => {
+      const a = await rodaLembranca(() => W().__VIUVA()), b = await rodaLembranca(() => W().__VEU());
+      (a && b ? it.ok : it.erro)('a viúva: ' + (a ? 'sim' : 'NÃO') + '; o véu: ' + (b ? 'sim' : 'NÃO'));
+    });
     await teste('conversas no templo: o cambista, o levita, o mestre da Lei (Mt 28.11-15)', async (it) => {
       const T = W().TESTE, p = T.jog.o.position, r = [];
       for (const nome of ['Um cambista', 'Um levita', 'Um mestre da Lei']) {

@@ -8,9 +8,11 @@ import { gFigSeca, gPlantas } from './modelos.js';
 import { terreno } from './cenario.js';
 import './trigal.js';     // só para manter a ordem de montagem
 
+let FIGSECA = null;
+
 {
   const [x, z] = LAY.figseca, y = terreno(x, z);
-  const g = gFigSeca.scene;
+  const g = gFigSeca.scene; FIGSECA = g;
   g.position.set(x, y - 0.24, z); g.rotation.y = Math.PI / 4; g.scale.setScalar(0.6); sombra(g); scene.add(g);   // raízes assentadas no chão
   const fol = new THREE.MeshStandardMaterial({ color: 0x8a6a3c, roughness: 1, flatShading: true, side: THREE.DoubleSide });
   for (let i = 0; i < 14; i++) { const a = rnd() * 6.28, r = 0.5 + rnd() * 1.1, fx = x + Math.cos(a) * r, fz = z + Math.sin(a) * r, f = new THREE.Mesh(new THREE.CircleGeometry(0.08, 4), fol); f.position.set(fx, terreno(fx, fz) + 0.05, fz); f.rotation.set(-Math.PI / 2 + (rnd() - 0.5) * 0.5, 0, rnd() * 6); scene.add(f); }
@@ -33,3 +35,5 @@ import './trigal.js';     // só para manter a ordem de montagem
     });
   }
 }
+
+export { FIGSECA };

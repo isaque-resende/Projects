@@ -109,3 +109,19 @@ export function criaCine({ camera, E, chao = () => -1e9, obstaculos = () => [], 
   function ve(alvo, yawGraus, elGraus, d) { RC.set(alvo, dirDe(yawGraus * RAD, elGraus * RAD)); RC.far = d * Math.min(1, 0.75 + 0.25 * camera.aspect) + 0.5; return !RC.intersectObjects(obstaculos(), false).length; }
   return { roda, passo, titulo, ve, pular: () => { if (C.ativo) C.pula = true; }, C };
 }
+
+// as malhas que podem tapar quem está em cena: as altas do cenário (casas, muros, rochas, árvores), não as pessoas nem o
+// chão (ignora: malhas ou grupos de fora, como o terreno). Medido uma vez, na primeira cena.
+export function malhasAltas(scene, ignora = []) {
+  let L = null;
+  return () => {
+    if (L) return L; L = []; const b = new THREE.Box3(), fora = new Set(ignora);
+    const ve = (o) => {
+      if (o.userData.mx || fora.has(o)) return;
+      if (o.isInstancedMesh) { o.geometry.computeBoundingBox(); const g = o.geometry.boundingBox; if (g.max.y - g.min.y > 0.7) L.push(o); }
+      else if (o.isMesh && !o.isSkinnedMesh) { b.setFromObject(o); if (b.min.y > -30 && b.max.y - b.min.y > 0.7 && b.max.x - b.min.x < 40 && b.max.z - b.min.z < 40) L.push(o); }
+      for (const c of o.children) ve(c);
+    };
+    ve(scene); return L;
+  };
+}

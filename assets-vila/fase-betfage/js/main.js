@@ -18,6 +18,7 @@ import { acionar, pergunta, perguntaBetania } from './saidas.js';
 import { INT } from './interacoes.js';
 import './visao.js';
 import { criaMarcador } from '../../limpo-motor/marcador.js';
+import { cenasPasso, voltaCamera, CINE } from './cenas.js';
 
 ctl.aoAcionar = acionar;
 botao.onclick = () => acionar();
@@ -29,9 +30,8 @@ ctl.aoToque = (e) => {
 };
 
 // legendas da chegada
-setTimeout(() => { fade.style.opacity = 0; setTimeout(() => { fade.textContent = ''; fala('Betfagé, a aldeia dos figos verdes, no caminho de Jerusalém.'); }, 900); setTimeout(() => fala('Suba a estrada até o alto do monte.'), 5200); setTimeout(() => fala(''), 9000); }, 1200);
-// abre com a aldeia inteira e, passada a primeira legenda, a câmera fecha devagar para a distância de jogo
-setTimeout(() => { E.distAlvo = Math.min(E.distAlvo, DJOGO()); E.abrindo = true; }, 3600);
+// (a chegada, com a câmera mostrando a aldeia e os pontos de interesse, está em cenas.js)
+setTimeout(() => { fade.style.opacity = 0; setTimeout(() => { fade.textContent = ''; }, 900); }, 1200);
 
 // ---------- laço ----------
 const marca = criaMarcador(scene, camera, jog.o);   // a seta sobre a cabeça, quando algo esconde o jogador
@@ -42,7 +42,7 @@ const laco = (forca) => {
   UT.uTime.value = t;
   fw.copy(DIR).negate().setY(0).normalize(); rt.set(-fw.z, 0, fw.x);
   mv.set(0, 0, 0);
-  if (!E.fora) {
+  if (!E.fora && !E.cine) {
     if (tecla.KeyW || tecla.ArrowUp) mv.add(fw); if (tecla.KeyS || tecla.ArrowDown) mv.sub(fw);
     if (tecla.KeyD || tecla.ArrowRight) mv.add(rt); if (tecla.KeyA || tecla.ArrowLeft) mv.sub(rt);
     if (JOY.on && Math.hypot(JOY.x, JOY.y) > 0.15) mv.addScaledVector(fw, -JOY.y).addScaledVector(rt, JOY.x);
@@ -83,19 +83,20 @@ const laco = (forca) => {
   else if (!andou) jog.toca('Parado');
   const [ja, jb] = AB(pj.x, pj.z);
   E.saida = ja + jb > 2.5 ? 'alto' : ja + jb < 0.04 ? 'baixo' : null;
-  if (E.saida === 'alto' && !E.fora) pergunta();          // chegou ao alto: pergunta na hora
-  if (E.saida === 'baixo' && !E.fora) perguntaBetania();
+  if (E.saida === 'alto' && !E.fora && !E.cine) pergunta();          // chegou ao alto: pergunta na hora
+  if (E.saida === 'baixo' && !E.fora && !E.cine) perguntaBetania();
   if (E.saida === 'alto') botao.textContent = (toqueTela ? '' : 'E: ') + 'seguir para Jerusalém';
   else if (E.saida === 'baixo') botao.textContent = (toqueTela ? '' : 'E: ') + 'voltar para Betânia';
-  E.int = E.saida || E.fora ? null : INT.perto(pj);           // quem (ou o que) está ao alcance: interacoes.js
+  E.int = E.saida || E.fora || E.cine ? null : INT.perto(pj);           // quem (ou o que) está ao alcance: interacoes.js
   if (E.int) { const s = (toqueTela ? '' : 'E: ') + E.int.verbo; if (botao.textContent !== s) botao.textContent = s; }
-  botao.style.display = (E.saida || E.int) && !E.fora ? 'block' : 'none';
+  botao.style.display = (E.saida || E.int) && !E.fora && !E.cine ? 'block' : 'none';
 
   UT.uP.value[0].copy(pj); UT.uP.value[1].copy(ceifeiro.o.position); UT.uP.value[2].copy(atadeira.o.position); UT.uP.value[3].copy(carregador.o.position);
   fornoPasso(dt, t); ceifeiroPasso(dt, t); atadeiraPasso(dt); carregadorPasso(dt); debulhadorPasso(dt, t); joeiradeiraPasso(dt, t); partPasso(dt);
-  aldeiaPasso(dt, t);
+  aldeiaPasso(dt, t); cenasPasso(dt);
 
-  // câmera: afastada, o diorama inteiro; aproximando, segue o jogador
+  // câmera: afastada, o diorama inteiro; aproximando, segue o jogador (numa cena, a câmera é da cena: cenas.js)
+  if (CINE.C.corteVolta) { CINE.C.corteVolta = false; voltaCamera(); }
   E.distAlvo = Math.min(E.distAlvo, DMAX());
   E.dist += (E.distAlvo - E.dist) * Math.min(1, dt * (E.abrindo ? 0.9 : 6));
   if (E.abrindo && Math.abs(E.distAlvo - E.dist) < 0.3) E.abrindo = false;
@@ -105,11 +106,12 @@ const laco = (forca) => {
   camera.position.copy(foco).addScaledVector(DIR, E.dist); camera.lookAt(foco);
   scene.fog.near = E.dist + 6; scene.fog.far = E.dist + 40;
   sun.position.set(foco.x - 10, foco.y + 26, foco.z + 14); sun.target.position.copy(foco);
-  marca.passo(pj, t, E.dist, !E.fora);
+  if (CINE.passo(dt)) { const a = CINE.C.alvo; sun.position.set(a.x - 10, a.y + 26, a.z + 14); sun.target.position.copy(a); scene.fog.near = 40; scene.fog.far = 120; }
+  marca.passo(pj, t, E.dist, !E.fora && !E.cine);
   renderer.render(scene, camera);
 };
 renderer.setAnimationLoop(() => laco());
 addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
 
 // para os testes automáticos: abrir com ?teste e usar TESTE no console
-if (globalThis.MODO_TESTE) globalThis.TESTE = { MIX, E, jog, laco, marca, tecla, bate, alturaEm, chaoTerra: terreno, scene, camera, CIRC, CAIXAS, renderer, AMOS, INT };
+if (globalThis.MODO_TESTE) globalThis.TESTE = { MIX, E, jog, laco, marca, tecla, bate, alturaEm, chaoTerra: terreno, scene, camera, CIRC, CAIXAS, renderer, AMOS, INT, CINE };

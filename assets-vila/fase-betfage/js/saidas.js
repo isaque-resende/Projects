@@ -30,7 +30,7 @@ btSim.onclick = () => {
 // o botão de ação
 function acionar() {
   if (botao.style.display !== 'block' || E.fora) return;
-  if (E.int && !E.saida) { INT.usa(E.int, null, jog.o.position); return; }      // conversar / olhar (interacoes.js)
+  if (E.int && !E.saida) { if (E.int.cena && !E.int.cenaFeita) { E.int.cenaFeita = true; E.int.cena(); return; } INT.usa(E.int, null, jog.o.position); return; }      // a primeira vez, a lembrança (cenas.js)      // conversar / olhar (interacoes.js)
   if (E.saida === 'alto') { pergunta(); return; }
   if (E.saida === 'baixo') perguntaBetania();
 }
