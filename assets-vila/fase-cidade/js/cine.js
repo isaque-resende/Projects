@@ -54,7 +54,7 @@ function acaba() {
   const seq = C.seq; C.seq = null; C.ativo = false; E.cine = false; barras(false);
   // a câmera do jogador continua daqui, voltando aos poucos para ele
   const pj = globalThis.__pj; if (pj) { CAM.off.copy(camera.position).sub(pj); CAM.offO.copy(C.alvo).sub(pj); }
-  C.fim = 1.2;
+  C.fim = 1.2; C.corteVolta = true;
   if (seq && seq.aoFim) seq.aoFim();
 }
 

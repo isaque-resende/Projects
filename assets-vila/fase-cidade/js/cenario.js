@@ -31,7 +31,16 @@ suaviza(CHAO, false);
 // cenáculo, com o patamar da porta de cima.
 const terreno0 = mapaAltura(CHAO, 0.35, { suave: true });
 const PISOS = []; gCen.scene.traverse((o) => { if (o.isMesh && /^(Gabata|Escada_Cenaculo)/.test(o.name)) PISOS.push({ b: new THREE.Box3().setFromObject(o), f: mapaAltura(o, 0.2, { caixa: null }) }); });
+// Fora da área do jogo (quem entra e sai pela Porta de Genat), o chão é o da maquete: um raio para baixo, guardado
+// por quadradinho de 25 cm. (Antes o mapa daqui dava uma altura qualquer, e a gente afundava ou flutuava lá fora.)
+const [TX0, TX1, TZ0, TZ1] = LAY.terreno, CHAO_FORA = [], RCF = new THREE.Raycaster(), MEMO_F = new Map(), BAIXO = new THREE.Vector3(0, -1, 0);
+function chaoFora(x, z) {
+  const k = Math.round(x * 4) + ',' + Math.round(z * 4); let v = MEMO_F.get(k); if (v !== undefined) return v;
+  RCF.set(new THREE.Vector3(x, 300, z), BAIXO); const h = RCF.intersectObjects(CHAO_FORA, false)[0];
+  v = h ? h.point.y : terreno0(x, z); MEMO_F.set(k, v); return v;
+}
 const terreno = (x, z) => {
+  if ((x < TX0 + 0.5 || x > TX1 - 0.5 || z < TZ0 + 0.5 || z > TZ1 - 0.5) && CHAO_FORA.length) return chaoFora(x, z);
   let y = terreno0(x, z);
   for (const p of PISOS) if (x > p.b.min.x && x < p.b.max.x && z > p.b.min.z && z < p.b.max.z) { const g = p.f(x, z); if (g > y) y = g; }
   return y;
@@ -131,7 +140,8 @@ const JER = gJer.scene; JER.name = 'Jerusalem'; JER.position.set(-MX, -MY, -MZ);
   });
   for (const o of tira) o.removeFromParent();
 }
-scene.add(JER);
+scene.add(JER); JER.updateMatrixWorld(true);
+JER.traverse((o) => { if (o.isMesh && /^(Cidade_Chao|Estradas|Vale_Chao|Leste_Chao)/.test(o.name)) CHAO_FORA.push(o); });
 
 // ---------- as barracas e os objetos do layout ----------
 instanciaLonge(scene, LAY.objetos, KIT);
@@ -161,4 +171,4 @@ function oclusoresPasso(p, dt, cam) {
 }
 
 const SOL_DIR = V3(0.9, 0.42, 0.14).normalize();
-export { terreno, CHAO, SOL_DIR, JER, OCL, oclusoresPasso };
+export { terreno, CHAO, SOL_DIR, JER, OCL, oclusoresPasso, KITC };

@@ -114,7 +114,8 @@ const laco = (forca) => {
   oclusoresPasso(pj, dt, camera.position);
   E.dist += (E.distAlvo - E.dist) * Math.min(1, dt * 4);
   // numa cena, a câmera é do diretor (cine.js); fora dela, segue o jogador
-  if (!cine.passo(dt, pj)) camPasso(dt, pj, primeira); primeira = false;
+  // ao fim da cena, a câmera volta ao jogador num corte
+  if (!cine.passo(dt, pj)) { camPasso(dt, pj, primeira || cine.CINE.corteVolta); cine.CINE.corteVolta = false; } primeira = false;
   sun.position.copy(pj).addScaledVector(SOL_DIR, 40); sun.target.position.copy(pj);
   marca.passo(pj, t, CAM.pos.distanceTo(pj), !E.fora && !E.cine);
   renderer.render(scene, camera);
