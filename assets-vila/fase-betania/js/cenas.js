@@ -7,7 +7,7 @@
 //  5. Perto do túmulo, Lázaro vem e conta; no meio da conversa, a lembrança (flashback) da pedra tirada e de Lázaro
 //     saindo enfaixado. A câmera fica onde Jesus estava: ele não aparece, só a voz (Jo 11.39-44).
 import * as THREE from 'three';
-import { lerpAng, inclina, maos, pos } from '../../limpo-motor/atores.js';
+import { lerpAng, inclina, maos, pos, ik } from '../../limpo-motor/atores.js';
 import { criaCine, malhasAltas } from '../../limpo-motor/cine.js';
 import { criaLembranca } from '../../limpo-motor/lembranca.js';
 import { abreVao } from '../../limpo-motor/vao.js';
@@ -93,14 +93,14 @@ const CENA = { fase: INTRO.on ? 'dentro' : 'fim', t: 0, sub: '' };
 const ESTEIRA = CASAI.base.clone().add(V3(0.7, 0, -1.85));
 const c0 = CASAS[0], PORTA_FORA = () => c0.mundo(c0.px + 0.2, c0.pz + 2.0), casaYaw = c0.g.rotation.y * DEG;
 const ENCONTRO = () => c0.mundo(c0.px + 0.2, c0.pz + 3.25);
-const ESTRADA_C = [V3(-3.5, 0, 2.6), V3(-20, 0, 2.6), V3(-37.5, 0, 3.1)];     // por onde Cléopas vai embora (a estrada, para oeste)
+const ESTRADA_C = [V3(-1.2, 0, 1.8), V3(-7, 0, 2.1), V3(-20, 0, 2.6), V3(-37.5, 0, 3.1)];     // por onde Cléopas vai embora (a estrada, para oeste; longe do poço)
 const CLEO0 = cleopas.o.position.clone(), CLEO_R0 = cleopas.o.rotation.y;
 function luzDentro(on) {
   if (on) { scene.background = new THREE.Color(0x000000); scene.fog = null; hemi.intensity = 0.5; sun.intensity = 0.6; CASAI.luz.intensity = 12; }
   else { scene.background = CEU0.bg.clone(); scene.fog = CEU0.fog; CASAI.luz.intensity = 0; }
 }
-const PENSA = [[2.6, 5.0, '…Que silêncio.'], [5.0, 7.8, 'Alguma coisa está estranha desde sexta-feira.'],
-  [7.8, 10.6, '“Ao terceiro dia ressuscitará”, ele disse (Lc 18.33). O que ele quis dizer?'], [10.6, 13.5, 'Hoje é o terceiro dia.']];
+const PENSA = [[2.6, 5.0, '…Que silêncio.'], [5.6, 9.2, 'Alguma coisa está estranha desde sexta-feira.'],
+  [9.6, 12.6, '“Ao terceiro dia ressuscitará”, ele disse (Lc 18.33). O que ele quis dizer?'], [12.6, 14.8, 'Hoje é o terceiro dia.']];
 if (INTRO.on) {
   document.getElementById('dica').style.display = 'none';
   fade.textContent = 'Domingo, de madrugada.'; fade.style.opacity = 1;
@@ -131,41 +131,70 @@ const RUMO_CLEO = () => { const a = ESTRADA_C[0]; return Math.atan2(a.x - cleopa
 if (INTRO.on) CINE.roda([
   // deitado, de perto; acorda e senta (a câmera recua); de pé, pensa; vai até a porta
   { alvo: cab(jog, -0.3), dist: 3.3, el: 40, yaw: 40, livre: true, corte: true, k: 4, ate: () => INTRO.t > 4.9 },
-  { alvo: cab(jog), dist: 3.8, el: 16, yaw: 62, livre: true, k: 2.2, kd: 1.1, ate: () => INTRO.t > 7.8 },
-  { alvo: cab(jog, -0.2), dist: 4.8, el: 12, yaw: 28, livre: true, k: 1.6, kd: 1.2, ate: () => INTRO.t > 13.5 },
+  { alvo: cab(jog, -0.25), dist: 2.8, el: 26, yaw: -62, livre: true, k: 2.2, kd: 1.1, ate: () => INTRO.t > 9.2 },      // senta e leva a mão à testa (de frente, do lado do rosto)
+  { alvo: cab(jog, -0.2), dist: 4.8, el: 12, yaw: 28, livre: true, k: 1.6, kd: 1.2, ate: () => INTRO.t > 14.8 },     // levanta; de pé, pensa
   { alvo: cab(jog, -0.4), dist: 4.2, el: 24, yaw: 50, livre: true, k: 2.5, ate: () => INTRO.fase !== 'dentro' },      // as duas paredes ao fundo
   // corte: lá fora, a porta abre e ele sai; Cléopas vem correndo pela rua
   { alvo: () => PORTA_FORA().setY(1.3), dist: 8.5, el: 9, yaw: casaYaw + 8, corte: true, k: 2, ate: () => INTRO.chegou },
   { alvo: meio(jog, cleopas, 1.1), dist: 9.5, el: 12, yaw: casaYaw + 40, k: 2.2, kd: 1.5, ate: () => CENA.fase === 'cleopas' },
   // a câmera fecha nos dois: plano e contraplano
   planoConversa(() => CENA.fase !== 'cleopas'),
-  // Cléopas sai correndo
-  { alvo: cab(cleopas, -0.5), dist: 8, el: 11, yaw: () => RUMO_CLEO() * DEG + 150, k: 2.5, kd: 1.5, dur: 2.4 },
-  // os pontos de interesse
-  { alvo: () => TUM.lugar.clone().addScaledVector(TUM.frente, 1.6).setY(1.6), dist: 13, el: 16, yaw: Math.atan2(TUM.frente.x, TUM.frente.z) * DEG - 40, corte: true, titulo: 'O túmulo de Lázaro', k: 3, dur: 3.2 },
-  { alvo: cab(lazaro, -0.15), dist: 4.6, el: 8, yaw: () => lazaro.o.rotation.y * DEG - 35, titulo: 'Lázaro', k: 2, kd: 1.3, dur: 2.8 },
-  { alvo: cab(marta, -0.15), dist: 4.6, el: 8, yaw: () => marta.o.rotation.y * DEG - 18, corte: true, titulo: 'Marta', k: 2.5, dur: 2.8 },
+  // Cléopas vai embora: da porta, por cima do ombro do jogador, vendo-o descer a estrada até longe (antes eram 2,4 s, e
+  // o corte vinha com ele ainda no meio do caminho)
+  { alvo: () => cab(cleopas, -0.5)().lerp(cab(jog, -0.3)(), 0.15), get dist() { return dist(cleopas, jog) * 0.85 + 3.4; }, el: 13, yaw: () => rumo(cleopas, jog) + 30, corte: true, semBusca: true, k: 3, kd: 3, ate: () => !cleopas.o.visible || dist(cleopas, jog) > 17 },
+  // os lugares da vila, cada um num corte e com tempo de ver: o túmulo (de frente para a gruta), Lázaro e Marta
+  { alvo: () => TUM.lugar.clone().addScaledVector(TUM.frente, 1.0).setY(1.4), dist: 11, el: 13, yaw: Math.atan2(TUM.frente.x, TUM.frente.z) * DEG - 12, corte: true, fixo: true, titulo: 'O túmulo de Lázaro', k: 3, dur: 3.8 },
+  { alvo: cab(lazaro, -0.25), dist: 4.4, el: 9, yaw: () => lazaro.o.rotation.y * DEG - 30, corte: true, titulo: 'Lázaro', k: 2, kd: 1.3, dur: 3.4 },
+  { alvo: cab(marta, -0.25), dist: 4.4, el: 9, yaw: () => marta.o.rotation.y * DEG - 18, corte: true, titulo: 'Marta', k: 2.5, dur: 3.4 },
 ], () => fimIntro(false), { aoPular: () => fimIntro(true) });
 
 function introDentro(dt) {
   const T = INTRO.t, o = jog.o, c = c0;
   if (T > 2.2 && T < 2.6 && fade.style.opacity !== '0') { fade.style.opacity = 0; depois(0.9, () => { if (INTRO.on && INTRO.fase === 'dentro') fade.textContent = ''; }); }
   const p = PENSA.find(([a, b]) => T >= a && T < b); fala(p ? p[2] : '');
-  // deitado (de costas, na esteira) → senta → levanta: o quadril é o pivô
-  const H = 0.55, k = suave(5.0, 7.0, T), yaw = -Math.PI / 2;
-  if (T < 7.6) {
-    const a = -Math.PI / 2 * (1 - k), hy = 0.3 + (H - 0.3) * k;
-    o.rotation.set(a, yaw, 0);
+  // deitado (de costas, na esteira) → senta, com as pernas esticadas na esteira e as mãos no chão → leva a mão à testa
+  // → recolhe as pernas, passa por agachado e fica de pé. Braços e pernas osso a osso (atores.js: ik, maos, inclina)
+  const H = 0.55, yaw = -Math.PI / 2, f = V3(Math.sin(yaw), 0, Math.cos(yaw)), lado = V3(f.z, 0, -f.x), yb = CASAI.base.y;
+  if (!jog.os) corpo(jog);
+  if (T < 5.0) {                                      // deitado, respirando
+    o.rotation.set(-Math.PI / 2, yaw, 0);
     const q = new THREE.Quaternion().setFromEuler(o.rotation), quadril = V3(0, H, 0).applyQuaternion(q);
-    o.position.set(ESTEIRA.x - quadril.x, CASAI.base.y + hy - quadril.y, ESTEIRA.z - quadril.z + 0.9 * k);
-    jog.A.Parado.timeScale = 0.4; jog.toca(k > 0.25 ? 'Agachado' : 'Parado');
-    if (T < 5) o.rotation.z = Math.sin(T * 1.6) * 0.015;     // respira
-  } else if (T < 13.5) {                              // de pé, olhando em volta
-    o.rotation.set(0, yaw + Math.sin((T - 7.6) * 0.9) * 0.7, 0); o.position.set(ESTEIRA.x, CASAI.base.y, ESTEIRA.z + 0.9);
+    o.position.set(ESTEIRA.x - quadril.x, yb + 0.3 - quadril.y, ESTEIRA.z - quadril.z);
+    o.rotation.z = Math.sin(T * 1.6) * 0.015; jog.A.Parado.timeScale = 0.4; jog.toca('Parado');
+    o.updateMatrixWorld(true); INTRO.quadril = pos(jog.os.pelvis).setY(yb + 0.14);      // onde o quadril fica sentado
+  } else if (T < 11.2) {
+    const Q = INTRO.quadril, ks = suave(5.0, 6.6, T), kl = suave(9.0, 10.0, T);      // ks: senta; kl: levanta (sai das mãos e pernas)
+    if (T < 10.0) {                                   // sentado (o tronco sobe em volta do quadril)
+      o.rotation.set(-Math.PI / 2 * (1 - ks), yaw, 0); jog.A.Parado.timeScale = 0.6; if (T < 9.0) jog.toca('Parado');
+      o.updateMatrixWorld(true); const pq = pos(jog.os.pelvis);
+      const alvoQ = Q.clone().lerp(V3(Q.x, yb + 0.02, Q.z), kl);
+      o.position.add(alvoQ.sub(pq).multiplyScalar(1 - kl));
+      if (kl > 0) { o.position.lerp(V3(Q.x - f.x * 0.1, yb, Q.z - f.z * 0.1), kl); if (jog.atual !== 'Agachado') jog.toca('Agachado'); }
+      o.updateMatrixWorld(true);
+      // as pernas: esticadas na esteira; levantando, os pés vêm para baixo do corpo
+      const pes = (s) => Q.clone().addScaledVector(f, 0.9 - 0.65 * kl).addScaledVector(lado, s * 0.13).setY(yb + 0.06);
+      const polo = (s) => Q.clone().addScaledVector(f, 0.6).addScaledVector(lado, s * 0.2).setY(yb + 1.2);
+      const pl = 1 - kl;
+      if (pl > 0.01) { ik(...jog.os.pE, pes(1), polo(1), pl); ik(...jog.os.pD, pes(-1), polo(-1), pl); }
+      // o tronco: um pouco para a frente sentado; com a mão na testa, a cabeça baixa
+      const kt = suave(6.8, 7.4, T) * (1 - suave(8.6, 9.2, T));
+      inclina(jog, (0.12 + 0.18 * kt) * ks * pl);
+      // as mãos: apoiadas no chão ao lado do quadril; a direita vai à testa
+      const apoio = (s) => Q.clone().addScaledVector(lado, s * 0.3).addScaledVector(f, -0.08).setY(yb + 0.04);
+      const testa = pos(jog.os.cab).addScaledVector(f, 0.13).add(V3(0, 0.1, 0));
+      maos(jog, apoio(1), apoio(-1).lerp(testa, kt), dt, ks * pl, 6, 0.35, 0.3);
+    } else {                                          // de agachado, fica de pé
+      o.rotation.set(0, yaw, 0); o.position.set(Q.x - f.x * 0.1, yb, Q.z - f.z * 0.1);
+      if (jog.atual !== 'Parado') { jog.A.Parado.timeScale = 1; jog.A.Parado.reset().play(); jog.A.Agachado.crossFadeTo(jog.A.Parado, 1.0, false); jog.atual = 'Parado'; }
+      maos(jog, pos(jog.os.bE[2]), pos(jog.os.bD[2]), dt, 0);
+    }
+  } else if (T < 14.8) {                              // de pé, olhando em volta
+    const Q = INTRO.quadril;
+    o.rotation.set(0, yaw + Math.sin((T - 11.2) * 0.9) * 0.7, 0); o.position.set(Q.x - f.x * 0.1, yb, Q.z - f.z * 0.1);
     jog.A.Parado.timeScale = 1; jog.toca('Parado');
   } else {                                            // vai até a porta
     const alvo = CASAI.entrada.clone().setY(CASAI.base.y).add(V3(0, 0, 0.6)), d = alvo.clone().sub(o.position).setY(0);
-    if (d.length() > 0.12 && T < 14.8) { d.normalize(); o.position.addScaledVector(d, 1.3 * dt); lerpAng(o, Math.atan2(d.x, d.z), Math.min(1, dt * 6)); jog.toca('Andar'); }
+    if (d.length() > 0.12 && T < 17.0) { d.normalize(); o.position.addScaledVector(d, 1.3 * dt); lerpAng(o, Math.atan2(d.x, d.z), Math.min(1, dt * 6)); jog.toca('Andar'); }
     else {                                            // corte: lá fora, a porta abre e ele sai
       INTRO.fase = 'sai'; INTRO.t0 = T; luzDentro(false); CENA.fase = 'sai';
       hemi.intensity = 0.9; sun.intensity = 2.2; scene.background.setHSL(0.1, 0.25, 0.7); scene.fog.color.copy(scene.background);
@@ -203,7 +232,8 @@ function introFora(dt) {
 // Cléopas corre pela estrada até sumir no fim dela
 function vaiEmbora(st, dt) {
   if (!st.o.visible) return;
-  if (vaiA(st, ESTRADA_C[st.i], dt, 5.0)) st.i++;
+  st.tVai = (st.tVai || 0) + dt;      // primeiro se vira e dá uns passos; depois corre
+  if (vaiA(st, ESTRADA_C[st.i], dt, st.tVai < 0.9 ? 1.2 : st.tVai < 1.4 ? 3.0 : 4.6)) st.i++;
   if (st.i >= ESTRADA_C.length || st.o.position.x < -35.5) st.o.visible = false;
 }
 
@@ -219,11 +249,13 @@ const FALAS_MARTA = [
   'Quando Lázaro morreu, ele me disse: “Eu sou a ressurreição e a vida; quem crê em mim, ainda que esteja morto, viverá” (Jo 11.25). Eu disse que cria. Ainda creio, mesmo agora.',
   { txt: 'Lázaro foi ao túmulo, como faz toda manhã desde sexta. Vá falar com ele.', op: [['Vou lá', []]] },
 ];
+const LVM = { y: 0, d: 3.4, el: 10 };
 function cenaMarta() {
   CENA.fase = 'marta_vem'; fala('“Espere! Bom dia!”'); depois(2.2, () => fala(''));
   CINE.roda([
-    { alvo: () => cab(marta, -0.3)().lerp(cab(jog, -0.3)(), 0.25), dist: 7.5, el: 12, yaw: () => DLG.yawVem, aoEntrar: () => ladoVem(marta, 7.5, 12), corte: true, k: 2.5, ate: () => CENA.fase !== 'marta_vem' },
-    planoConversa(() => CENA.fase !== 'marta_fala'),
+    // por cima do ombro do jogador, vendo-a chegar (o plano de longe girava em volta dos dois, e um jarro passava pela lente)
+    { alvo: () => alvoVem(marta), get dist() { return LVM.d; }, get el() { return LVM.el; }, yaw: () => LVM.y, aoEntrar: () => Object.assign(LVM, lenteVem(marta, 1)), corte: true, semBusca: true, k: 2, ate: () => CENA.fase !== 'marta_vem' },
+    planoConversa(() => CENA.fase !== 'marta_fala', { corte: true }),
   ], () => {}, { aoPular: () => { DIAL.style.display = 'none'; E.fora = false; fala(''); AGENDA = []; if (CENA.fase !== 'livre2') fimMarta(); } });
 }
 function fimMarta() { CENA.fase = 'livre2'; marta.toca('Parado'); marta.iv = 0; VOLTAS.push([marta, [DESVIO_M, MARTA0], MARTA_R0]); }
@@ -261,13 +293,14 @@ const ponto = (f, l, y = 0) => { const p = BOCA.clone().addScaledVector(F, f).ad
 const pisoBoca = (p) => { const d = (p.x - BOCA.x) * F.x + (p.z - BOCA.z) * F.z; return d < 0.1 ? BOCA.y : Math.max(chaoTerra(p.x, p.z), BOCA.y - d * 0.6); };
 const poe = (st, p, olharPara) => { st.o.position.copy(p); st.o.visible = true; if (olharPara) st.o.rotation.y = Math.atan2(olharPara.x - p.x, olharPara.z - p.z); };
 // os dois homens ficam do lado de onde a pedra sai, com as mãos na borda dela
-const lugarHomem = (i) => pedraMundo().addScaledVector(ROLA, -(TUM.raio + 0.35)).addScaledVector(F, i ? 0.95 : 0.35).setY(0);
+// os homens: na frente da pedra, junto da borda de trás, empurrando (atrás dela, do lado da porta, nasciam dentro do monte de pedras da gruta)
+const lugarHomem = (i) => pedraMundo().addScaledVector(ROLA, -(TUM.raio * 0.55 + i * 0.5)).addScaledVector(F, 0.85 + i * 0.3).setY(0);
 function montaLembranca() {
   LZ.k0 = TUM.k; LZ.a0 = TUM.alvo; TUM.k = 0; TUM.alvo = 0; pedraPasso(0);      // a pedra volta à porta já (se estava aberta, os homens nasciam dentro dela)
   jog.o.visible = false; lazaro.o.visible = false;
   const S = BOCA.clone().addScaledVector(F, 0.3);
   poe(FL.marta, ponto(2.6, 2.0), S); poe(FL.maria, ponto(3.1, 2.7), S);
-  for (const [i, h] of [[0, FL.h1], [1, FL.h2]]) { const p = lugarHomem(i); p.y = chaoTerra(p.x, p.z); poe(h, p); h.o.rotation.y = Math.atan2(ROLA.x, ROLA.z); h.toca('Parado'); }
+  for (const [i, h] of [[0, FL.h1], [1, FL.h2]]) { const p = lugarHomem(i); p.y = chaoTerra(p.x, p.z); poe(h, p); const vira = ROLA.clone().addScaledVector(F, -0.8); h.o.rotation.y = Math.atan2(vira.x, vira.z); h.toca('Parado'); }
   const dentro = BOCA.clone().addScaledVector(F, -1.5); FL.laz.o.position.copy(dentro); FL.laz.o.rotation.y = Math.atan2(F.x, F.z); FL.laz.o.visible = false;
   CENA.sub = 'tirai'; CENA.t = 0; fala('“Tirai a pedra.” (Jo 11.39)');
 }
@@ -308,7 +341,7 @@ function cenaLazaro() {
   CINE.roda([
     // (baixa, por baixo das copas: o caminho do túmulo tem tamareiras, e do alto a lente passava pelas folhas)
     { alvo: () => alvoVem(lazaro), get dist() { return LV.d; }, get el() { return LV.el; }, yaw: () => LV.y, corte: true, semBusca: true, k: 2, ate: () => CENA.sub !== 'vem' },      // por cima do ombro do jogador, vendo-o chegar (de longe, do lado do túmulo, a lente passava pelas pedras e pelas tamareiras)
-    planoConversa(() => CENA.sub === 'tirai'),
+    planoConversa(() => CENA.sub === 'tirai', { corte: true }),
     // a lembrança, de onde Jesus estava, diante da pedra
     { alvo: S, dist: 8.5, el: 6, yaw: FDEG, corte: true, fixo: true, k: 3, ate: () => CENA.sub === 'rola' },
     { alvo: () => S().addScaledVector(ROLA, -0.7), dist: 7.4, el: 11, yaw: yawLado, fixo: true, k: 1.4, kd: 1.2, ate: () => CENA.sub === 'chama' },
@@ -332,8 +365,10 @@ function lembrancaPasso(dt) {
     const chegou = anda(FL.laz, ponto(1.5, 0.2), dt, 0.62); FL.laz.o.position.y = pisoBoca(FL.laz.o.position);
     if (chegou) { CENA.sub = 'desatai'; CENA.t = 0; FL.laz.toca('Parado'); fala('“Desatai-o e deixai-o ir.” (Jo 11.44)'); }
   } else if (CENA.sub === 'desatai') {
-    vaiA(FL.marta, FL.laz.o.position.clone().addScaledVector(LAT, 0.75), dt, 1.1); olha(FL.marta, FL.laz.o.position, dt);
-    vaiA(FL.maria, FL.laz.o.position.clone().addScaledVector(LAT, 1.3).addScaledVector(F, 0.6), dt, 0.9);
+    // as duas vêm pela frente da gruta (rente à rocha, atravessavam o monte de pedras) e param de verdade junto dele
+    for (const [st, l, f, v] of [[FL.marta, 0.7, 0.75, 1.1], [FL.maria, 1.25, 1.3, 0.9]]) {
+      if (vaiA(st, FL.laz.o.position.clone().addScaledVector(LAT, l).addScaledVector(F, f), dt, v)) { st.toca('Parado'); olha(st, FL.laz.o.position, dt, 4); }
+    }
     if (T > 3.4) { CENA.sub = 'volta'; LEMB.sai(() => { desfazLembranca(); CENA.sub = 'fala2'; conversa('Lázaro', lazaro, FALAS_LAZ2, fimLazaro); }); }
   }
 }
@@ -341,8 +376,8 @@ function lembrancaPasso(dt) {
 function cenasDepois(dt) {
   if (!LEMB.on) return;
   if (CENA.sub === 'tirai' || CENA.sub === 'rola') for (const [i, st] of [FL.h1, FL.h2].entries()) {
-    const c = pedraMundo(), y = 1.05 + i * 0.3, a = c.clone().addScaledVector(ROLA, -TUM.raio * 0.72).addScaledVector(F, 0.12 + i * 0.25).setY(c.y - TUM.raio + y);
-    inclina(st, 0.32); maos(st, a.clone().addScaledVector(F, 0.18), a.clone().addScaledVector(F, -0.12), dt, 1, 8);
+    const c = pedraMundo(), y = 0.95 + i * 0.25, a = c.clone().addScaledVector(ROLA, -TUM.raio * (0.62 + i * 0.12)).addScaledVector(F, 0.3).setY(c.y - TUM.raio + y);      // as mãos na face da frente, perto da borda
+    inclina(st, 0.38); maos(st, a.clone().addScaledVector(ROLA, 0.14), a.clone().addScaledVector(ROLA, -0.14), dt, 1, 8);
   } else for (const st of [FL.h1, FL.h2]) maos(st, pos(st.os.bE[2]), pos(st.os.bD[2]), dt, 0);
   // Lázaro: as mãos atadas na frente
   if (FL.laz.o.visible) { const f = V3(Math.sin(FL.laz.o.rotation.y), 0, Math.cos(FL.laz.o.rotation.y)), b = FL.laz.o.position.clone().addScaledVector(f, 0.22); b.y += 0.98;
@@ -366,14 +401,15 @@ function cenasPasso(dt) {
   }
   if (CENA.fase === 'cleopas_vai') vaiEmbora(cleopas, dt);
   // quem volta para o seu lugar
-  for (let i = VOLTAS.length - 1; i >= 0; i--) { const [st, L, r] = VOLTAS[i]; if (st.iv < L.length - 1) { if (vaiA(st, L[st.iv], dt, 1.3)) st.iv++; } else if (vaiA(st, L[st.iv], dt, 1.3)) { lerpAng(st.o, r, Math.min(1, dt * 4)); if (Math.abs(Math.atan2(Math.sin(st.o.rotation.y - r), Math.cos(st.o.rotation.y - r))) < 0.02) { st.toca('Parado'); VOLTAS.splice(i, 1); } } }
+  for (let i = VOLTAS.length - 1; i >= 0; i--) { const [st, L, r] = VOLTAS[i]; if (st.iv < L.length - 1) { if (vaiA(st, L[st.iv], dt, 1.3)) st.iv++; } else if (vaiA(st, L[st.iv], dt, 1.3)) { st.toca('Parado'); lerpAng(st.o, r, Math.min(1, dt * 4)); if (Math.abs(Math.atan2(Math.sin(st.o.rotation.y - r), Math.cos(st.o.rotation.y - r))) < 0.02) VOLTAS.splice(i, 1); } }      // (chegou: para de andar já, e só então vira)
   // 4. Marta: assim que ele volta a andar
   if (CENA.fase === 'livre' && !E.cine && !E.fora && CENA.jog0 && jog.o.position.distanceTo(CENA.jog0) > 0.8) cenaMarta();
   else if (CENA.fase === 'marta_vem') {
     olha(jog, marta.o.position, dt, 4); jog.toca('Parado');
     const alvo = jog.o.position.clone().addScaledVector(marta.o.position.clone().sub(jog.o.position).setY(0).normalize(), 1.35);
-    if (!marta.desviou && jog.o.position.x < DESVIO_M.x) { if (vaiA(marta, DESVIO_M, dt, 2.2)) marta.desviou = true; }
-    else if (vaiA(marta, alvo, dt, 2.2)) { CENA.fase = 'marta_fala'; conversa('Marta', marta, FALAS_MARTA, fimMarta); }
+    if ((CENA.reve = (CENA.reve || 0) + dt) > 0.3) { CENA.reve = 0; const c = camera.position; if (!livreSeg(c, alvoVem(marta)) || !livreSeg(c, cab(marta, -0.3)())) Object.assign(LVM, lenteVem(marta, 1)); }
+    if (!marta.desviou && jog.o.position.x < DESVIO_M.x) { if (vaiA(marta, DESVIO_M, dt, 1.6)) marta.desviou = true; }
+    else if (vaiA(marta, alvo, dt, 1.6)) { CENA.fase = 'marta_fala'; conversa('Marta', marta, FALAS_MARTA, fimMarta); }
   } else if (CENA.fase === 'marta_fala') { olha(marta, jog.o.position, dt, 4); olha(jog, marta.o.position, dt, 4); }
   // 5. Lázaro: quando ele chega perto do túmulo
   else if (CENA.fase === 'livre2' && !E.cine && !E.fora && Math.hypot(jog.o.position.x - TUM.lugar.x, jog.o.position.z - TUM.lugar.z) < 10) cenaLazaro();
@@ -392,5 +428,5 @@ function cenasPasso(dt) {
 }
 
 // para os testes
-if (globalThis.MODO_TESTE) Object.assign(globalThis, { __OBST: obstaculos, __CENA: CENA, __INTRO: INTRO, __FL: FL, __LEMB: LEMB, __VOLTAS: VOLTAS });
+if (globalThis.MODO_TESTE) Object.assign(globalThis, { __OBST: obstaculos, __CENA: CENA, __INTRO: INTRO, __FL: FL, __LEMB: LEMB, __VOLTAS: VOLTAS, __P: { cleopas, marta, lazaro, jog }, __TUM: TUM });
 export { cenasPasso, cenasDepois, CINE, CENA };

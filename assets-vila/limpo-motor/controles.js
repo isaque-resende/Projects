@@ -46,6 +46,12 @@ export function criaControles({ dom, E, zoom, toqueCurtoAciona = true }) {
     const fim = (e) => { if (e.pointerId !== JOY.id) return; const curto = performance.now() - JOY.t0 < 350 && (JOY.max || 0) < 0.45; JOY.on = false; JOY.x = JOY.y = 0; pino.style.left = '35px'; pino.style.top = '35px'; if (curto && toqueCurtoAciona) acionar(); };
     JOY.pino = pino; JOY.base = base;
     base.addEventListener('pointerup', fim); base.addEventListener('pointercancel', fim);
+    // nas cenas, o direcional e os botões de jogo somem (e o direcional solta, para o jogador não sair andando no fim)
+    setInterval(() => {
+      const cena = !!E.cine; base.style.visibility = cena ? 'hidden' : '';
+      if (cena && JOY.on) { JOY.on = false; JOY.x = JOY.y = 0; pino.style.left = '35px'; pino.style.top = '35px'; }
+      for (const id of ['pular', 'camlivre']) { const el = document.getElementById(id); if (el) el.style.visibility = cena ? 'hidden' : ''; }
+    }, 100);
   }
   // escreve no pino do direcional o que o toque curto vai fazer ('' = nada)
   const marcaPino = (s) => { const p = JOY.pino; if (!p || p.dataset.s === s) return; p.dataset.s = s; p.textContent = s;
@@ -56,7 +62,7 @@ export function criaControles({ dom, E, zoom, toqueCurtoAciona = true }) {
   function pular() { if (E.jogNoChao && !E.fora) { E.jogVy = 5.2; E.jogNoChao = false; } }
   addEventListener('keydown', (e) => { if (e.code === 'Space') { e.preventDefault(); pular(); } });
   if (toqueTela) {
-    const b = document.createElement('button'); b.textContent = 'Pular';
+    const b = document.createElement('button'); b.textContent = 'Pular'; b.id = 'pular';
     Object.assign(b.style, { position: 'fixed', right: '18px', bottom: 'calc(22px + env(safe-area-inset-bottom))', padding: '18px 20px', borderRadius: '50%', border: 0, background: '#fdf6e3', color: '#4a3520', fontSize: '15px', boxShadow: '0 3px 12px #0003' });
     b.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); pular(); });
     document.body.appendChild(b);
