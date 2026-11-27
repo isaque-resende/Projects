@@ -469,7 +469,7 @@ export function casaCidade(kit, semente, w, d, y0 = 0) {
   if (cima) { casa.portas.push({ nivel: 1, lado: 'W', i: w - cw, k: 0 }); casa.escadaMao = { lado: 'N', i: 0, k: 0 }; }
   const M = construir(kit, mapa, new Map([[1, casa]]), rnd);
   const y = (dois ? 2 : 1) * H + 0.2, r2 = rnd();
-  if (r2 < 0.45) M.por(['Toldo', 'Toldo_Vermelho', 'Toldo_Azul', 'Toldo_Ocre'][Math.floor(rnd() * 4)], 0.5, y - 0.2, d - 0.5, 0, 'cima', null, 0.8);
+  if (r2 < 0.45) { const tn = ['Toldo', 'Toldo_Vermelho', 'Toldo_Azul', 'Toldo_Ocre'][Math.floor(rnd() * 4)]; M.por(kit.pecas.Toldo_Cidade ? 'Toldo_Cidade' : tn, 0.5, y - 0.2, d - 0.5, 0, 'cima', null, 0.8); }      // (a cidade tem o toldo dela)
   else if (r2 < 0.75) M.por('Varal', 0.5, y - 0.2, cima ? d - 1.2 : 1.5, 0, 'cima', null, Math.min(1, (w - 1) / 2.4));
   else M.por('Jarro_Grande', 0.6, y - 0.2, 0.6, 0, 'cima', casa.tom);
   const g = M.grupo();

@@ -80,7 +80,7 @@ function cenaPedro() {
   L.fase = 'pedro'; L.sub = 'entra'; L.saindo = false; L.k = 0;
   const yCasa = Math.atan2(DE_CASA.x - BRAS.x, DE_CASA.z - BRAS.z) * DEG;
   roda([
-    { alvo: () => BRAS.clone().setY(BRAS.y + 1), dist: 7, el: 18, yaw: 230, k: 2, ate: () => L.sub === 'fogo' },
+    { alvo: () => BRAS.clone().setY(BRAS.y + 1), dist: 7, el: 18, yaw: 230, corte: true, k: 2, ate: () => L.sub === 'fogo' },      // (num corte: girando desde a câmera do jogo, a lente passava pela folha do portão)
     { alvo: () => BRAS.clone().setY(BRAS.y + 1.1), dist: 6.5, el: 14, yaw: 230, corte: true, k: 1.5, kd: 1, ate: () => L.sub === 'serva' },
     { alvo: () => cab(PEDRO, -0.2)().lerp(cab(SERVA, -0.2)(), 0.4), dist: 4.6, el: 8, yaw: () => Math.atan2(PEDRO.o.position.x - SERVA.o.position.x, PEDRO.o.position.z - SERVA.o.position.z) * DEG + 70, k: 2, kd: 1.4, ate: () => L.sub === 'nega3' },
     { alvo: cab(PEDRO, -0.15), dist: 2.8, el: 6, yaw: () => PEDRO.o.rotation.y * DEG + 25, k: 2, kd: 1.5, ate: () => L.sub === 'galo' },

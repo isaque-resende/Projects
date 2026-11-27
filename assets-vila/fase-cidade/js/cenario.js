@@ -8,7 +8,7 @@ import { instanciaLonge, poePertos } from '../../limpo-motor/layout.js';
 import { suaviza, mapaAltura } from '../../limpo-motor/terreno.js';
 import { scene, LAY, V3 } from './estado.js';
 import { gCen, gJer, KIT } from './modelos.js';
-import { carregarKit, casaCidade, materialAlvenaria } from '../../casas/construtor_casas.js?v=b4a6163a';
+import { carregarKit, casaCidade, materialAlvenaria } from '../../casas/construtor_casas.js?v=67c2e703';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 // ---------- o cenário ----------
@@ -94,6 +94,29 @@ function caixaPedra(x0, x1, y0, y1, z0, z1, mat) {
   g.setAttribute('aCodigo', new THREE.BufferAttribute(new Float32Array(n).fill(2), 1));
   const m = new THREE.Mesh(g, mat); m.castShadow = m.receiveShadow = true; return m;
 }
+// ---------- as peças da cidade, com as texturas do usuário: a janela de treliça, o toldo listrado e o portão do pátio
+// (só aqui: o kit de Betânia antiga continua com as dele). A janela do kit (a abertura com as pedrinhas) vira a parede
+// lisa com a janela de treliça na face de fora; o toldo do kit vira um de pano listrado, com barriga e quatro varas.
+const texC = (arq, rep = false) => { const t = new THREE.TextureLoader().load('texturas/' + arq); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; if (rep) t.wrapS = t.wrapT = THREE.RepeatWrapping; return t; };
+const comCor = (g) => { g = g.index ? g.toNonIndexed() : g; g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(g.attributes.position.count * 3).fill(1), 3)); return g; };
+KITC.materiais.Cidade_Janela = new THREE.MeshStandardMaterial({ map: texC('janela.jpg'), vertexColors: true, roughness: 0.9 });
+KITC.materiais.Cidade_Toldo = new THREE.MeshStandardMaterial({ map: texC('toldo.jpg', true), vertexColors: true, roughness: 1, side: THREE.DoubleSide });
+KITC.materiais.Cidade_Pau = new THREE.MeshStandardMaterial({ color: 0x7a5634, vertexColors: true, roughness: 1, flatShading: true });
+for (const n of [1, 2]) for (const pp of ['Parede', 'ParedePedra']) {
+  const liso = KITC.pecas[pp + '_' + n + '_Leve'] || KITC.pecas[pp + '_' + n]; if (!liso) continue;
+  const q = comCor(new THREE.PlaneGeometry(0.8, 0.8)); q.translate(n / 2, 1.55, 0.235);      // (a face de fora da parede fica em +z)
+  KITC.pecas[pp + '_Janela_' + n + '_Leve'] = KITC.pecas[pp + '_Janela_' + n] = { ...liso, Cidade_Janela: q };
+}
+{
+  const yv = (z) => 1.92 - z * 0.08;      // cai um pouco para a frente (z = 0)
+  const pano = new THREE.PlaneGeometry(2.0, 2.0, 6, 6); pano.rotateX(-Math.PI / 2); pano.translate(1.0, 0, -1.0);
+  const P = pano.attributes.position;
+  for (let i = 0; i < P.count; i++) { const x = P.getX(i), z = P.getZ(i); P.setY(i, yv(z) - Math.sin(Math.PI * x / 2) * Math.sin(Math.PI * -z / 2) * 0.12); }
+  pano.computeVertexNormals();
+  const aba = new THREE.PlaneGeometry(2.0, 0.26); aba.translate(1.0, yv(0) - 0.13, 0.0);      // a franja da frente
+  const paus = [[0.04, -0.04], [1.96, -0.04], [0.04, -1.96], [1.96, -1.96]].map(([x, z]) => { const c = new THREE.CylinderGeometry(0.035, 0.04, yv(z), 6); c.translate(x, yv(z) / 2, z); return comCor(c); });
+  KITC.pecas.Toldo_Cidade = { Cidade_Toldo: mergeGeometries([comCor(pano), comCor(aba)]), Cidade_Pau: mergeGeometries(paus) };
+}
 const CASAS_KIT = [];
 for (const l of LAY.lotes || []) {
   const g = casaCidade(KITC, l.s, l.w, l.d, l.y), th = l.giro, c = Math.cos(th), s = Math.sin(th);
@@ -115,6 +138,19 @@ for (const l of LAY.lotes || []) {
   scene.add(g); CASAS_KIT.push(g);
   const r = [cx - lx / 2, cx + lx / 2, cz - lz / 2, cz + lz / 2, l.y + 0.3, l.y + g.userData.andares * 2.8 + 1.2];
   const mm = new Map(); g.traverse((m) => { if (!m.isMesh) return; if (!mm.has(m.material)) mm.set(m.material, copiaM(m.material)); m.material = mm.get(m.material); OCL.push({ o: m, r, op: 1 }); });
+}
+
+// o portão do pátio do sumo sacerdote: as duas folhas escancaradas para dentro, rebatidas contra a face de dentro do
+// muro (Jo 18.16); (encostadas nos batentes, uma delas tapava a lente da lembrança do braseiro, que olha pela entrada)
+{
+  const [x0, , zA, zB] = LAY.caifas_r, zc = (zA + zB) / 2, y = terreno(x0 + 0.6, zc);
+  const mat = new THREE.MeshStandardMaterial({ map: texC('portao.jpg'), roughness: 0.9 });
+  for (const s of [-1, 1]) {
+    const g = new THREE.BoxGeometry(1.55, 3.3, 0.07), uv = g.attributes.uv;
+    for (let i = 0; i < uv.count; i++) uv.setX(i, uv.getX(i) * 0.5 + (s < 0 ? 0 : 0.5));      // cada folha com a sua metade
+    g.translate(0.775, 1.65, 0);
+    const m = new THREE.Mesh(g, mat); m.position.set(x0 + 1.2 + 0.06, y, zc + s * 1.6); m.rotation.y = -s * Math.PI / 2; m.castShadow = m.receiveShadow = true; m.name = 'Portao_Caifas'; scene.add(m);
+  }
 }
 
 // ---------- Jerusalém em volta ----------
