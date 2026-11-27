@@ -93,7 +93,8 @@ export function criaCine({ camera, E, chao = () => -1e9, obstaculos = () => [], 
     // tela em pé (celular): a câmera chega um pouco mais perto, para quem age não ficar pequeno (sem cortar quem está ao lado)
     const fa = Math.min(1, 0.75 + 0.25 * camera.aspect), D = C.dist * fa;
     // se algo tapa o alvo, procura um ângulo vizinho
-    if (!p.livre && !p.fixo && (C.tD -= dt) <= 0) {
+    // (semBusca: a cena escolhe o lado sozinha; a lente só chega mais perto quando algo entra na frente)
+    if (!p.livre && !p.fixo && !p.semBusca && (C.tD -= dt) <= 0) {
       C.tD = 0.2; const ob = obstaculos(); let livre_ = false, melhor = null;
       for (const [a, b] of DESV) {
         const q = dirDe(C.yaw + a, Math.min(1.3, C.el + b)); const h = primeiro(C.alvo, q, Math.max(0.5, D - 0.3));
@@ -104,7 +105,7 @@ export function criaCine({ camera, E, chao = () => -1e9, obstaculos = () => [], 
       if (!livre_ && melhor) { C.dyA = melhor.a; C.deA = melhor.b; C.encA = Math.max(0.9, melhor.d - 0.5); }
       else C.encA = 1e9;
     }
-    if (p.livre || p.fixo) { C.dyA = C.deA = 0; C.encA = 1e9; }
+    if (p.livre || p.fixo || p.semBusca) { C.dyA = C.deA = 0; C.encA = 1e9; }
     C.dy += (C.dyA - C.dy) * suave(3.5, dt); C.de += (C.deA - C.de) * suave(3.5, dt);
     // e, a cada quadro, a linha de verdade entre a câmera e o alvo: se algo entra no meio (a câmera ainda virando, quem
     // está em cena andando), ela chega mais perto, para a frente do que tapa

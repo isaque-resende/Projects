@@ -58,10 +58,18 @@ function ladoDlg() {
 // quem vem ao encontro: a câmera atrás do jogador, do lado de onde se vê
 // (vê de onde ele parte, o jogador e o caminho entre os dois, na altura do plano: só o meio, olhado uma vez, deixava
 // as tamareiras e as rochas entrarem enquanto ele anda)
-function ladoVem(st, d, el = 11) {
+function ladoVem(st, d, el = 11, perto = false) {
   const r = rumo(st, jog), a = cab(st, -0.3)().lerp(cab(jog, -0.3)(), 0.25), pts = [a, cab(st, -0.3)(), cab(st, -1.0)(), cab(jog, -0.3)(), cab(st, -0.3)().lerp(cab(jog, -0.3)(), 0.6)];
   const cands = [30, -30, 55, -55, 80, -80, 110, -110, 0].map((x) => r + x);
-  DLG.yawVem = cands.find((y) => pts.every((q) => CINE.ve(q, y, el, d))) ?? cands.map((y) => [y, pts.filter((q) => CINE.ve(q, y, el, d)).length]).sort((u, v) => v[1] - u[1])[0][0];
+  // perto: se de longe nenhum lado vê o caminho todo (pedras e tamareiras em volta), tenta mais perto e por cima do ombro
+  const dists = perto ? [[d, el], [4.2, el], [4.2, 14], [3.0, 12]] : [[d, el]];
+  let melhor = null;
+  for (const [dd, ee] of dists) for (const y of cands) {
+    const n = pts.filter((q) => CINE.ve(q, y, ee, dd)).length;
+    if (!melhor || n > melhor.n) melhor = { y, dd, ee, n };
+    if (n === pts.length) { dists.length = 0; break; }
+  }
+  DLG.yawVem = melhor.y; DLG.dVem = melhor.dd; DLG.elVem = melhor.ee;
 }
 const planoConversa = (ate, o = {}) => ({ alvo: alvoDlg, dist: 3.6, el: 9, yaw: () => DLG.yaw, k: 2.6, kd: 2, ate, aoEntrar: ladoDlg, ...o });
 function conversa(titulo, st, falas, fim) {
@@ -267,13 +275,39 @@ function desfazLembranca() {
   for (const st of Object.values(FL)) st.o.visible = false;
   TUM.k = LZ.k0; TUM.alvo = LZ.a0; pedraPasso(0); jog.o.visible = true; lazaro.o.visible = true; fala('');
 }
+// o caminho de quem vem ao encontro: em linha reta, ou contornando uma tamareira ou pedra que esteja no meio (a reta
+// passava por dentro do tronco); devolve o ponto de desvio (ou null) e o lado (+1/-1) para a câmera
+const RCV = new THREE.Raycaster();
+function livreSeg(a, b) { const d = b.clone().sub(a), L = d.length(); if (L < 0.1) return true; d.normalize(); RCV.far = L; RCV.set(a, d); if (RCV.intersectObjects(obstaculos(), false).length) return false; RCV.set(b, d.negate()); return !RCV.intersectObjects(obstaculos(), false).length; }      // (nos dois sentidos: as folhas têm face de um lado só)
+function desvioVem(st) {
+  const a = st.o.position.clone().setY(st.o.position.y + 1.2), b = jog.o.position.clone().setY(jog.o.position.y + 1.2);
+  if (livreSeg(a, b)) return { p: null, lado: 1 };
+  const m = a.clone().lerp(b, 0.5), lat = V3(b.z - a.z, 0, a.x - b.x).normalize();
+  for (const k of [2, -2, 3, -3, 4.5, -4.5]) {
+    const w = m.clone().addScaledVector(lat, k); w.y = chaoTerra(w.x, w.z) + 1.2;
+    if (livreSeg(a, w) && livreSeg(w, b)) return { p: w.setY(chaoTerra(w.x, w.z)), lado: Math.sign(k) };
+  }
+  return { p: null, lado: 1 };
+}
+// o ângulo da lente por cima do ombro: o primeiro em que, da lente, se vê o jogador e quem vem (e o caminho dele)
+const LV = { y: 0, d: 3.4, el: 10, lado: 1 };
+const alvoVem = (st) => { const j = cab(jog, -0.25)(), l = cab(st, -0.3)(), d = j.distanceTo(l); return j.lerp(l, Math.min(0.4, 1.2 / Math.max(d, 0.1))); };      // (no máximo 1,2 m à frente do jogador: com ele longe, a lente ia para a frente do jogador)
+function lenteVem(st, lado) {
+  const r = rumo(st, jog), a = alvoVem(st), alvos = [a, cab(jog, -0.3)(), cab(st, -0.3)(), cab(st, -1.0)(), st.desvio ? st.desvio.clone().setY(st.desvio.y + 1.3) : cab(st, -0.3)()];
+  for (const [dy, d, el] of [[22, 3.4, 3], [45, 3.4, 3], [70, 3.6, 4], [22, 3.4, 10], [45, 3.4, 10], [70, 3.6, 12], [100, 4, 5], [100, 4, 14], [140, 4, 5]]) for (const sg of [lado, -lado]) {
+    const y = r + dy * sg, R = y / DEG, E_ = el / DEG, c = a.clone().add(V3(Math.sin(R) * Math.cos(E_), Math.sin(E_), Math.cos(R) * Math.cos(E_)).multiplyScalar(d));
+    if (alvos.every((q) => livreSeg(c, q))) return { y, d, el };
+  }
+  return { y: r + 22 * lado, d: 3.4, el: 10 };
+}
 function cenaLazaro() {
   CENA.fase = 'lazaro'; CENA.sub = 'vem';
+  const DV = desvioVem(lazaro); lazaro.desvio = DV.p; Object.assign(LV, lenteVem(lazaro, DV.lado)); LV.lado = DV.lado;
   const S = () => pedraMundo().addScaledVector(F, 0.7).setY(1.25);
   const yawLado = Math.atan2(F.x - ROLA.x * 0.8, F.z - ROLA.z * 0.8) * DEG;     // do lado de onde a pedra sai
   CINE.roda([
     // (baixa, por baixo das copas: o caminho do túmulo tem tamareiras, e do alto a lente passava pelas folhas)
-    { alvo: () => cab(lazaro, -0.3)().lerp(cab(jog, -0.3)(), 0.25), dist: 6, el: 7, yaw: () => DLG.yawVem, aoEntrar: () => ladoVem(lazaro, 6, 7), corte: true, k: 2.5, ate: () => CENA.sub !== 'vem' },
+    { alvo: () => alvoVem(lazaro), get dist() { return LV.d; }, get el() { return LV.el; }, yaw: () => LV.y, corte: true, semBusca: true, k: 2, ate: () => CENA.sub !== 'vem' },      // por cima do ombro do jogador, vendo-o chegar (de longe, do lado do túmulo, a lente passava pelas pedras e pelas tamareiras)
     planoConversa(() => CENA.sub === 'tirai'),
     // a lembrança, de onde Jesus estava, diante da pedra
     { alvo: S, dist: 8.5, el: 6, yaw: FDEG, corte: true, fixo: true, k: 3, ate: () => CENA.sub === 'rola' },
@@ -346,10 +380,11 @@ function cenasPasso(dt) {
   else if (CENA.fase === 'lazaro') {
     if (CENA.sub === 'vem') {
       olha(jog, lazaro.o.position, dt, 4); jog.toca('Parado');
-      // enquanto ele anda, se uma tamareira entra na frente dele, a câmera escolhe o lado de novo (e vira devagar)
-      if ((CENA.reve = (CENA.reve || 0) + dt) > 0.8) { CENA.reve = 0; if (!CINE.ve(cab(lazaro, -0.3)(), DLG.yawVem, 7, 6)) ladoVem(lazaro, 6, 7); }
+      // a cada 0,3 s: se algo entrou entre a lente e um dos dois, outro ângulo (a câmera vira devagar)
+      if ((CENA.reve = (CENA.reve || 0) + dt) > 0.3) { CENA.reve = 0; const c = camera.position; if (!livreSeg(c, alvoVem(lazaro)) || !livreSeg(c, cab(lazaro, -0.3)())) Object.assign(LV, lenteVem(lazaro, LV.lado)); }
+      if (lazaro.desvio && vaiA(lazaro, lazaro.desvio, dt, 1.6)) lazaro.desvio = null;
       const alvo = jog.o.position.clone().addScaledVector(lazaro.o.position.clone().sub(jog.o.position).setY(0).normalize(), 1.35);
-      if (vaiA(lazaro, alvo, dt, 1.6)) { CENA.sub = 'fala1'; conversa('Lázaro', lazaro, FALAS_LAZ1, () => { CENA.sub = 'entra'; LEMB.entra('Algumas semanas antes', montaLembranca); }); }
+      if (!lazaro.desvio && vaiA(lazaro, alvo, dt, 1.6)) { CENA.sub = 'fala1'; conversa('Lázaro', lazaro, FALAS_LAZ1, () => { CENA.sub = 'entra'; LEMB.entra('Algumas semanas antes', montaLembranca); }); }
     } else if (CENA.sub === 'fala1' || CENA.sub === 'fala2') { olha(lazaro, jog.o.position, dt, 4); olha(jog, lazaro.o.position, dt, 4); }
     else if (LEMB.on) lembrancaPasso(dt);
   }

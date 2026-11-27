@@ -20,6 +20,7 @@ const iInicio = DE === 'emaus' ? AMOS.length - 8 : perto(44, 41);      // já fo
 let p0 = AMOS[iInicio], d0 = dirEm(iInicio);
 if (DE === 'sepulcro') { p0 = V3(LAY.portao[0] - 2, 0, LAY.portao[2]); d0 = V3(-1, 0, 0); }
 const jog = ator(gJog, 1.7, p0.x, p0.z, Math.atan2(d0.x, d0.z), 'Parado');
+globalThis.OLHO_NPC = jog.o;      // quem os NPCs acompanham com a cabeça (atores.js)
 
 const [AX0, AX1, AZ0, AZ1] = LAY.area;
 const naArea = (x, z) => x > AX0 && x < AX1 && z > AZ0 && z < AZ1;

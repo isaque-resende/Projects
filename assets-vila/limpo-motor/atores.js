@@ -108,7 +108,66 @@ export function criaAtores({ scene, rnd, alturaChao = () => 0, assenta = null, c
     const st = { o, A, atual: '', alt: altura };
     st.toca = (n) => { if (n === st.atual || !A[n]) return; A[n].reset().fadeIn(0.2).play(); if (A[st.atual]) A[st.atual].fadeOut(0.2); st.atual = n; };
     st.toca(clipe); A[clipe] && (A[clipe].time = rnd() * 2);
+    // cada um no seu ritmo: parados e conversando, ninguém respira junto com o vizinho
+    for (const n of ['Parado', 'Conversando']) if (A[n]) A[n].timeScale = 0.86 + Math.random() * 0.28;
+    // a cabeça viva (vida): só nos bonecos com pescoço e cabeça, por cima do clipe, logo depois do animador
+    const vH = o.getObjectByName('Head'), vN = o.getObjectByName('neck_01');
+    if (vH && vN) {
+      st.vida = { H: vH, N: vN, t: Math.random() * 4, y: 0, p: 0, w: 0, gy: 0, gp: 0, giro: 0, rUlt: null, roteiro: false, jx: null, jz: 0, para: 0 };
+      const up = mx.update.bind(mx); mx.update = (d) => { up(d); vida(st, d); return mx; };
+    }
     return st;
+  }
+  // A cabeça acompanha o jogador quando ele passa perto e pela frente (até ~60° para o lado), e, sem ninguém perto,
+  // quem está parado olha em volta de vez em quando. Fica de fora: o próprio jogador, as lembranças (globalThis.EM_LEMBRANCA),
+  // quem está deitado ou com a pose montada osso a osso (sem clipe tocando) e quem está longe do jogador.
+  // O jogador é globalThis.OLHO_NPC (o objeto dele), que cada fase aponta em jogador.js.
+  const _qy = new THREE.Quaternion(), _qp = new THREE.Quaternion(), _ax = new THREE.Vector3();
+  function vida(st, dt) {
+    const V = st.vida, J = globalThis.OLHO_NPC, o = st.o;
+    // o clipe que manda agora (há fases que tocam o clipe direto, sem st.toca)
+    let a = null; for (const x of Object.values(st.A)) if (x.isRunning() && (!a || x.getEffectiveWeight() > a.getEffectiveWeight())) a = x;
+    const nome = a ? a.getClip().name : '';
+    const pode = J && J !== o && o.visible && a && !globalThis.EM_LEMBRANCA && Math.abs(o.rotation.x) < 0.3 && Math.abs(o.rotation.z) < 0.3;
+    // quem o roteiro da fase gira (mexeu na rotação depois de nós) não se vira sozinho: o roteiro manda
+    if (V.rUlt !== null && Math.abs(o.rotation.y - V.rUlt) > 1e-6) { V.roteiro = true; V.giro = 0; }
+    if (!pode) { V.w = 0; V.y = V.p = 0; V.rUlt = null; return; }
+    const dx = J.position.x - o.position.x, dz = J.position.z - o.position.z, d = Math.hypot(dx, dz);
+    if (d > 28) { V.w = 0; V.rUlt = null; return; }
+    // o corpo se volta para quem para diante dele (a conversa: o jogo vira o jogador para o NPC), e depois volta
+    if (V.jx !== null) { const v = Math.hypot(J.position.x - V.jx, J.position.z - V.jz) / Math.max(dt, 1e-3); V.para = v < 0.3 ? V.para + dt : 0; }
+    V.jx = J.position.x; V.jz = J.position.z;
+    if (!V.roteiro && !st.os && (nome === 'Parado' || nome === 'Conversando')) {
+      const base = o.rotation.y - V.giro;
+      let g = 0;
+      if (J.visible && d < 3.5 && d > 0.6 && V.para > 0.5 && (-dx * Math.sin(J.rotation.y) - dz * Math.cos(J.rotation.y)) / d > 0.87) {
+        g = Math.atan2(dx, dz) - base; g = THREE.MathUtils.clamp(Math.atan2(Math.sin(g), Math.cos(g)), -1.3, 1.3);
+      }
+      V.giro += (g - V.giro) * Math.min(1, dt * 2.2);
+      o.rotation.y = base + V.giro; V.rUlt = o.rotation.y;
+    } else V.rUlt = null;
+    let wy = 0, wp = 0, w = 0;
+    if (J.visible && d > 0.6 && d < 5.5) {
+      let y = Math.atan2(dx, dz) - o.rotation.y; y = Math.atan2(Math.sin(y), Math.cos(y));
+      if (Math.abs(y) < 1.9) {
+        wy = THREE.MathUtils.clamp(y, -1.05, 1.05);
+        wp = THREE.MathUtils.clamp(Math.atan2(J.position.y + 1.55 - (o.position.y + (st.alt || 1.7) * 0.92), d), -0.35, 0.3);
+        w = 1 - THREE.MathUtils.smoothstep(d, 4.2, 5.5);
+      }
+    }
+    if (w === 0 && (nome === 'Parado' || nome === 'Conversando')) {      // olha em volta (só quem está à toa): às vezes para a frente, às vezes para um lado
+      if ((V.t -= dt) <= 0) { V.t = 2.5 + Math.random() * 5; const fr = Math.random() < 0.4; V.gy = fr ? 0 : (Math.random() - 0.5) * 1.3; V.gp = fr ? 0 : (Math.random() - 0.6) * 0.25; }
+      wy = V.gy; wp = V.gp; w = 0.75;
+    }
+    const k = Math.min(1, dt * 3.2);
+    V.y += (wy - V.y) * k; V.p += (wp - V.p) * k; V.w += (w - V.w) * k;
+    if (V.w < 0.01) return;
+    // primeiro o aceno (em volta do lado do corpo), depois o giro (em volta do alto); 35% no pescoço, 65% na cabeça
+    _ax.set(Math.cos(o.rotation.y), 0, -Math.sin(o.rotation.y));
+    for (const [osso, f] of [[V.N, 0.35], [V.H, 0.65]]) {
+      _qp.setFromAxisAngle(_ax, -V.p * V.w * f); _qy.setFromAxisAngle(CIMA, V.y * V.w * f);
+      giraMundo(osso, _qy.multiply(_qp));
+    }
   }
   // prepara o ator para a animação sob medida: acha os ossos e guarda a pose dos que o clipe não mexe
   function corpo(st) {

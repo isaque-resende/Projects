@@ -6,6 +6,7 @@ import { gJog } from './modelos.js';
 import './rebanho.js';     // só para manter a ordem de montagem
 
 const jog = ator(gJog, 1.7, 4, 3, Math.PI, 'Parado');
+globalThis.OLHO_NPC = jog.o;      // quem os NPCs acompanham com a cabeça (atores.js)
 const naArea = (x, z) => (x > -30 && x < 30 && z > -21 && z < 23) || (x < -29 && x > -38 && Math.abs(z - 3.1) < 2.6);
 
 // ---------- câmera isométrica: só segue (com limite) e faz zoom ----------

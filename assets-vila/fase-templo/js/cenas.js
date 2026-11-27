@@ -69,6 +69,8 @@ function desfazViuva() { for (const st of [...RICOS, VIUVA]) st.o.visible = fals
 function viuvaPasso(dt) {
   const T = (CENA.t += dt);
   moedasPasso(dt);
+  // ela anda: se o candelabro ou uma coluna passa na frente, a lente escolhe outro lado
+  if ((CENA.reve = (CENA.reve || 0) + dt) > 0.4) { CENA.reve = 0; if (LIVRE.has('viuva') && !CINE.ve(cab(VIUVA, -0.3)(), LIVRE.get('viuva'), 4, 5.9)) LIVRE.delete('viuva'); }
   if (CENA.sub === 'ricos') {
     for (const [k, st] of RICOS.entries()) {
       const x = 16.0 + k * 0.9;
@@ -82,20 +84,23 @@ function viuvaPasso(dt) {
     if (!VIUVA.lancou) { if (anda(VIUVA, LUGAR(18.2), dt, 1.0)) { VIUVA.lancou = true; VIUVA.toca('Parado'); VIUVA.o.rotation.y = 0; lanca(14, 2, 18.2, cab(VIUVA, -0.55)()); } }
     if (T > 6.5) { CENA.sub = 'mais'; CENA.t = 0; fala('“Em verdade vos digo que esta pobre viúva lançou mais do que todos.” (Mc 12.43)'); }
   } else if (CENA.sub === 'mais') {
-    if (T > 2.0) anda(VIUVA, V3(23, ARCA.y, 2.5), dt, 0.8);
+    if (T > 2.0 && anda(VIUVA, V3(21.6, ARCA.y, 3.4), dt, 0.8)) VIUVA.toca('Parado');      // (até 23 m ela ia para trás do candelabro, e a lente não a via mais)
     if (T > 4.2 && !CENA.f2) { CENA.f2 = true; fala('“Porque todos lançaram do que lhes sobrava; mas esta, da sua pobreza, lançou tudo o que tinha, todo o seu sustento.” (Mc 12.44)'); }
     if (T > 9.0 && !CENA.saindo) { CENA.saindo = true; LEMB.sai(() => { desfazViuva(); CENA.sub = ''; CENA.fase = 'livre'; }); }
   }
 }
 function cenaViuva() {
-  CENA.fase = 'viuva'; CENA.sub = 'entra'; CENA.saindo = false; CENA.f1 = CENA.f2 = false; for (const st of [...RICOS, VIUVA]) st.lancou = false;
-  const yPov = 180;      // do lugar onde ele estava sentado (ao sul), olhando as arcas
+  LIVRE.delete('viuva'); CENA.fase = 'viuva'; CENA.sub = 'entra'; CENA.saindo = false; CENA.f1 = CENA.f2 = false; for (const st of [...RICOS, VIUVA]) st.lancou = false;
+  // do lugar onde ele estava sentado (ao sul), olhando as arcas; entre os ângulos vizinhos, o que vê o caminho todo da
+  // viúva (de onde ela entra até a arca): o suporte do candelabro ficava no meio, no ângulo reto
+  const caminhoV = [V3(20.8, ARCA.y + 1.2, 1.6), V3(19.5, ARCA.y + 1.2, 3.6), LUGAR(18.2).setY(ARCA.y + 1.2), ARCA.clone().setY(ARCA.y + 1.0)];
+  const yPov = [180, 172, 188, 164, 196, 156, 204].find((y) => caminhoV.every((q) => CINE.ve(q, y, 3, ARCA.z - JESUS.z))) ?? 180;
   CINE.roda([
     { alvo: () => ARCA.clone().setY(ARCA.y + 1), dist: 7, el: 20, yaw: 160, k: 2, ate: () => CENA.sub === 'ricos' },
     { alvo: () => ARCA.clone().setY(ARCA.y + 1.0), dist: ARCA.z - JESUS.z, el: 3, yaw: yPov, corte: true, fixo: true, zoom: 1.15, k: 2, kd: 1, ate: () => CENA.sub === 'viuva' },
     // do lugar dele, a lente fecha nela
-    { alvo: cab(VIUVA, -0.3), dist: 5.9, el: 4, yaw: () => livreDe('viuva', cab(VIUVA, -0.3)(), yawDe(VIUVA.o.position, JESUS), 4, 5.9, [0, 8, -8, 15, -15, 25, -25]), fixo: true, zoom: 0.72, k: 2, kd: 1, ate: () => CENA.sub === 'mais' },
-    { alvo: cab(VIUVA, -0.2), dist: 5.9, el: 4, yaw: () => livreDe('viuva', cab(VIUVA, -0.3)(), yawDe(VIUVA.o.position, JESUS), 4, 5.9, [0, 8, -8, 15, -15, 25, -25]), fixo: true, zoom: 0.55, k: 1.4, kd: 0.6, ate: () => CENA.sub === '' },
+    { alvo: cab(VIUVA, -0.3), dist: 5.9, el: 4, yaw: () => livreDe('viuva', cab(VIUVA, -0.3)(), yawDe(VIUVA.o.position, JESUS), 4, 5.9, [0, 8, -8, 15, -15, 25, -25, 40, -40, 60, -60]), fixo: true, zoom: 0.72, k: 2, kd: 1, ate: () => CENA.sub === 'mais' },
+    { alvo: cab(VIUVA, -0.2), dist: 5.9, el: 4, yaw: () => livreDe('viuva', cab(VIUVA, -0.3)(), yawDe(VIUVA.o.position, JESUS), 4, 5.9, [0, 8, -8, 15, -15, 25, -25, 40, -40, 60, -60]), fixo: true, zoom: 0.55, k: 1.4, kd: 0.6, ate: () => CENA.sub === '' },
   ], () => {}, { aoPular: () => { AGENDA = []; if (LEMB.on) { LEMB.desliga(); desfazViuva(); } CENA.sub = ''; CENA.fase = 'livre'; } });
   depois(0.5, () => LEMB.entra('Na terça-feira', montaViuva));
 }

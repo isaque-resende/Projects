@@ -18,6 +18,7 @@ const ARVS = [];
 const ini = DE === 'genat' ? [LAY.genat[0], 0, LAY.genat[2] + 2.5] : DE === 'cenaculo' ? [LAY.cenaculo[0] + 2.5, 0, LAY.cenaculo[2] - 1.0] : [LAY.ponte[0] - 9.5, 0, LAY.ponte[2]];
 const d0 = DE === 'genat' ? V3(0, 0, 1) : DE === 'cenaculo' ? V3(0, 0, -1) : V3(-1, 0, 0.35).normalize();
 const jog = ator(gJog, 1.7, ini[0], ini[2], Math.atan2(d0.x, d0.z), 'Parado');
+globalThis.OLHO_NPC = jog.o;      // quem os NPCs acompanham com a cabeça (atores.js)
 
 const [AX0, AX1, AZ0, AZ1] = LAY.area;
 const naArea = (x, z) => x > AX0 && x < AX1 && z > AZ0 && z < AZ1;

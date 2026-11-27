@@ -74,7 +74,36 @@ alpendre fechado, e escondia travamentos reais. Sem ele, apareceram quatro defei
 | 30 | Andando em linha reta ao longo de um eixo, o jogador encostava numa quina e parava. O jogo tentava deslizar no outro eixo, ficava no mesmo lugar e contava isso como passo dado. Aconteceu no Gólgota, a caminho das cruzes, e em Betânia, a caminho do lagar. | corrigido nas oito fases: o deslize só vale se o passo tem parte naquele eixo; raspando numa quina, ele tenta desviar 35° e 70° para cada lado antes de desistir |
 | 31 | O caminho cortava a quina entre duas células, e o jogador, com a margem dele, batia no canto. Foi o que travava a subida ao tribunal, na cidade alta. | corrigido: a diagonal só vale com as duas células do lado livres |
 | 32 | Saindo de dentro da margem (perto do tanque, encostado numa coluna), o caminho pegava a altura do fundo do tanque e não subia de volta ao piso, ou ia mais para dentro e o jogo recusava o passo. | corrigido: ali dentro, a altura fica a da partida, e cada passo sai um pouco mais da margem, como no movimento do jogo |
-| 33 | Betânia: enquanto Lázaro anda, uma tamareira baixa passava na frente dele. | corrigido: a cada 0,8 s, se ele não está à vista, a câmera escolhe o lado de novo |
+| 33 | Betânia: enquanto Lázaro anda, uma tamareira baixa passava na frente dele. | refeito no item 36 |
+
+## Quarta rodada: os avisos que restavam, e a vida dos NPCs
+
+Os avisos da câmera que tinham ficado foram abertos um por um nas imagens. A chegada a Betesda (o alvo fica dentro da
+Porta das Ovelhas), os candelabros (a lente encosta na quina do muro, mas o jogador aparece inteiro) e os lençóis do
+Gólgota eram falso alarme. Outros três eram defeitos:
+
+| # | Problema | Situação |
+|---|---|---|
+| 34 | Templo, a viúva: o lado da lente era escolhido uma vez só, quando ela entrava. Andando, o suporte do candelabro passava na frente dela, e no fim ela saía para trás dele. | corrigido: a cada 0,4 s a lente confere se a vê e, se não, escolhe outro lado (até 60° do ponto de vista dele); ela agora sai só até onde continua à vista, e para de verdade (antes ficava andando no lugar); o plano do ponto de vista dele escolhe, entre ângulos vizinhos, um que vê o caminho todo dela |
+| 35 | Betesda, o homem que desce antes do paralítico: o lado da lente olhava só o ponto de partida dele, e uma coluna tapava o primeiro instante. A mulher do jarro, que é de hoje, cruzava com ele na escadaria dentro da lembrança. | corrigido: o lado é escolhido pelo caminho todo dele até a água, com o plano fixo; a mulher do jarro some durante a lembrança |
+| 36 | Betânia, Lázaro vindo ao encontro: a câmera girava em volta do túmulo, entre pedras e tamareiras, e a lente entrava nelas. A busca de ângulo do motor brigava com a da cena, e a reta dele passava por dentro de uma tamareira. | corrigido: o plano agora é por cima do ombro do jogador, num ângulo em que a lente vê os dois de verdade (testado com raios nos dois sentidos, porque as folhas têm face de um lado só), primeiro na altura dos olhos, por baixo das copas; se uma tamareira está no meio, ele a contorna. Para isso, o motor das cenas ganhou o plano `semBusca` (a cena escolhe o lado, e a lente só chega mais perto se algo entra na frente) |
+
+### A vida dos NPCs (`limpo-motor/atores.js`, nas oito fases)
+
+Os bonecos têm só cinco clipes (parado, conversando, andar, trote e correr). Por cima deles, uma camada feita por código:
+
+- **Cada um no seu ritmo:** parados e conversando, o clipe de cada um toca numa velocidade um pouco diferente (de 0,86
+  a 1,14), e a multidão não respira mais junta.
+- **A cabeça acompanha o jogador:** quando ele passa a menos de 5,5 m e pela frente, o NPC vira a cabeça e o pescoço
+  para ele (até uns 60° para o lado, e um pouco para cima ou para baixo), devagar, e volta quando ele se afasta.
+- **Olhar em volta:** sem ninguém perto, quem está parado ou conversando olha para um lado ou para a frente, a cada
+  2,5 a 7,5 s.
+- **Virar-se para quem conversa:** quando o jogador para a menos de 3,5 m, de frente para o NPC (é como o jogo o põe
+  numa conversa), o NPC vira o corpo para ele, devagar, e volta à posição de antes quando o jogador vai embora.
+- **Fica de fora:** o próprio jogador, as lembranças, quem está deitado ou sentado com pose montada osso a osso, quem
+  está trabalhando (o corpo não vira) e quem o roteiro da fase já gira (a camada percebe e não briga com ele).
+- **Desempenho:** no templo, a fase mais cheia, o laço levou o mesmo tempo com e sem a camada (cerca de 35 ms por
+  quadro no teste sem tela), porque ela só trabalha nos NPCs a menos de 28 m do jogador.
 
 ## O que ficou de fora, de propósito
 
@@ -89,5 +118,7 @@ alpendre fechado, e escondia travamentos reais. Sem ele, apareceram quatro defei
 ## Resultado da última rodada
 
 - As oito fases jogadas de ponta a ponta, com todas as lembranças, e cada cena revista em folhas de contato (cerca de
-  520 quadros).
+  520 quadros), com a vida dos NPCs ligada e sem nenhum erro de página.
+- Os avisos que sobram são os de cima: os travamentos onde não se pisa, os quadros de passagem, os pés cortados na
+  borda da tela (o jogador perto da borda, conferido nas imagens) e os falsos alarmes da quarta rodada.
 - Suíte de testes de todas as fases: 0 falhas.

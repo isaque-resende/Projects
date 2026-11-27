@@ -18,6 +18,7 @@ const perto = (x, z) => { let k = 0, m = 1e9; AMOS.forEach((a, i) => { const d =
 const iInicio = DE === 'agonia' ? perto(LAY.agonia[0] + 1, LAY.agonia[2] + 0.5) : DE === 'betesda' ? AMOS.length - 40 : 6;
 const p0 = AMOS[iInicio], d0 = dirEm(iInicio);
 const jog = ator(gJog, 1.7, p0.x, p0.z, Math.atan2(d0.x, d0.z), 'Parado');
+globalThis.OLHO_NPC = jog.o;      // quem os NPCs acompanham com a cabeça (atores.js)
 
 const [AX0, AX1, AZ0, AZ1] = LAY.area;
 const naArea = (x, z) => x > AX0 && x < AX1 && z > AZ0 && z < AZ1;

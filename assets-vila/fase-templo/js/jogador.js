@@ -17,6 +17,7 @@ const ARVS = [];
 const ini = DE === 'cidade' ? LAY.oeste : DE === 'israel' ? LAY.israel : LAY.norte;
 const d0 = DE === 'cidade' ? V3(1, 0, 0) : DE === 'israel' ? V3(-1, 0, 0) : V3(0, 0, 1);
 const jog = ator(gJog, 1.7, ini[0], ini[2], Math.atan2(d0.x, d0.z), 'Parado');
+globalThis.OLHO_NPC = jog.o;      // quem os NPCs acompanham com a cabeça (atores.js)
 
 const [AX0, AX1, AZ0, AZ1] = LAY.area;
 const naArea = (x, z) => x > AX0 && x < AX1 && z > AZ0 && z < AZ1;

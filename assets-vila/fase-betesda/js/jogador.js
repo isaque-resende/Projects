@@ -19,6 +19,7 @@ const iInicio = DE === 'golgota' ? AMOS.length - 9 : 7;
 let p0 = AMOS[iInicio], d0 = dirEm(iInicio);
 if (DE === 'templo') { p0 = V3(LAY.porta[0], 0, LAY.porta[2] - 3.5); d0 = V3(0, 0, -1); }
 const jog = ator(gJog, 1.7, p0.x, p0.z, Math.atan2(d0.x, d0.z), 'Parado');
+globalThis.OLHO_NPC = jog.o;      // quem os NPCs acompanham com a cabeça (atores.js)
 
 const [AX0, AX1, AZ0, AZ1] = LAY.area;
 const naArea = (x, z) => x > AX0 && x < AX1 && z > AZ0 && z < AZ1;

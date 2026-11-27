@@ -12,7 +12,7 @@ import { scene, E, fala, renderer, LAY, DE } from './estado.js';
 import { terreno, TERRENO } from './cenario.js';
 import { ator, anda } from './gente.js';
 import { nMagro, nRapaz } from './modelos.js';
-import { AGITA, yEscada, zDegrau, MAT_ESTEIRA, CONVERSAS } from './npcs.js';
+import { AGITA, yEscada, zDegrau, MAT_ESTEIRA, CONVERSAS, aguadeira } from './npcs.js';
 import { jog, camera, CAM } from './jogador.js';
 
 const V3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z), DEG = 180 / Math.PI;
@@ -63,8 +63,19 @@ function deita(st, base, yaw, k) {
 // quem desce antes dele: pela escadaria do sul, até a água
 const DESCE = [V3(2.6, 0, -4.2), V3(2.6, 0, zDegrau(0) + 0.3), V3(2.6, 0, zDegrau(8)), V3(2.6, 0, zDegrau(8) - 1.6)];
 const yDesce = (z) => (z > zDegrau(8) - 0.2 ? yEscada(z) : AGUA - 0.75);
+// o lado da lente para quem desce: o que vê o caminho todo que falta (da escadaria até a água), não só onde ele está
+function ladoRota() {
+  if (LIVRE.has('20:9')) return LIVRE.get('20:9');
+  const pts = [OUTRO.o.position.clone(), ...DESCE.slice(OUTRO.i || 0)].map((q) => V3(q.x, yDesce(q.z) + 1.0, q.z));
+  let melhor = 20, mv = -1;
+  for (const dy of [0, 30, -30, 60, -60, 90, -90, 130, -130, 180]) {
+    const n = pts.filter((q) => CINE.ve(q, 20 + dy, 38, 9)).length;
+    if (n > mv) { mv = n; melhor = 20 + dy; } if (n === pts.length) break;
+  }
+  LIVRE.set('20:9', melhor); return melhor;
+}
 function montaParalitico() {
-  jog.o.visible = false;
+  jog.o.visible = false; aguadeira.o.visible = false;      // (a mulher do jarro é de hoje: na escadaria, cruzava com quem desce)
   ESTEIRA.position.copy(PARAL).add(V3(0, 0.03, 0)); ESTEIRA.rotation.y = LEITO; ESTEIRA.visible = true;
   PARALITICO.o.visible = true; PARALITICO.toca('Parado'); PARALITICO.A.Parado.timeScale = 0.3; deita(PARALITICO, PARAL.clone().add(V3(0, 0.04, 0)), LEITO + Math.PI, 0);
   OUTRO.o.visible = true; OUTRO.o.position.copy(DESCE[0]).setY(DECK); OUTRO.i = 0;
@@ -73,7 +84,7 @@ function montaParalitico() {
 }
 function desfazParalitico() {
   PARALITICO.o.visible = OUTRO.o.visible = ESTEIRA.visible = ROLO.visible = false; PARALITICO.o.rotation.set(0, 0, 0); PARALITICO.A.Parado.timeScale = 1;
-  jog.o.visible = true; fala('');
+  jog.o.visible = true; aguadeira.o.visible = true; fala('');
 }
 function paraliticoPasso(dt) {
   const T = (CENA.t += dt);
@@ -99,11 +110,11 @@ function paraliticoPasso(dt) {
   }
 }
 function cenaParalitico() {
-  CENA.fase = 'paralitico'; CENA.sub = 'entra'; CENA.saindo = false;
+  LIVRE.clear(); CENA.fase = 'paralitico'; CENA.sub = 'entra'; CENA.saindo = false;
   const yPov = LEITO * DEG;      // de pé junto aos pés da esteira, olhando o homem (e a água atrás dele)
   CINE.roda([
     { alvo: () => PARAL.clone().setY(DECK + 0.5), dist: 6, el: 26, yaw: () => livreDe(PARAL.clone().setY(DECK + 0.5), YAW_QUINA + 20, 26, 6), corte: true, k: 2, ate: () => CENA.sub === 'agita' },
-    { alvo: () => OUTRO.o.position.clone().setY(OUTRO.o.position.y + 1.0), dist: 9, el: 38, yaw: () => livreDe(OUTRO.o.position.clone().setY(OUTRO.o.position.y + 1.0), 20, 38, 9), corte: true, k: 1.8, kd: 1, ate: () => CENA.sub === 'ninguem' },
+    { alvo: () => OUTRO.o.position.clone().setY(OUTRO.o.position.y + 1.0), dist: 9, el: 38, yaw: ladoRota, corte: true, fixo: true, k: 1.8, kd: 1, ate: () => CENA.sub === 'ninguem' },
     { alvo: cab(PARALITICO, 0), dist: 2.2, el: 38, yaw: yPov - 30, corte: true, fixo: true, k: 2, kd: 0.6, ate: () => CENA.sub === 'queres' },
     { alvo: () => PARAL.clone().setY(DECK + 0.7), dist: 3.4, el: 34, yaw: yPov, fixo: true, k: 1.4, kd: 0.8, ate: () => CENA.sub === 'levanta' },      // (a 2 m, de cima, só se via o alto da cabeça dele)
     { alvo: cab(PARALITICO, -0.3), dist: 4.5, el: 14, yaw: yPov, k: 1.2, kd: 0.8, ate: () => CENA.sub === '' },

@@ -18,6 +18,7 @@ const iInicio = DE === 'cume' ? iCume + 4 : DE === 'getsemani' ? AMOS.length - 1
 const dirEm = (i, n = 6) => { const a = AMOS[Math.max(0, Math.min(AMOS.length - 1, i))], b = AMOS[Math.max(0, Math.min(AMOS.length - 1, i + n))]; return b.clone().sub(a).setY(0).normalize(); };
 const p0 = AMOS[iInicio], d0 = dirEm(iInicio);
 const jog = ator(gJog, 1.7, p0.x, p0.z, Math.atan2(DE === 'getsemani' ? -d0.x : d0.x, DE === 'getsemani' ? -d0.z : d0.z), 'Parado');
+globalThis.OLHO_NPC = jog.o;      // quem os NPCs acompanham com a cabeça (atores.js)
 if (DE === 'cume' || DE === 'getsemani') E.modo = 'descida';
 
 // onde dá para andar: a faixa do monte (a área do layout); as pontas da estrada levam às outras fases
