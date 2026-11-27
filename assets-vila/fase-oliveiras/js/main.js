@@ -23,7 +23,7 @@ function acionar() {
 ctl.aoAcionar = acionar; botao.onclick = () => acionar();
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
 // tocar no chão: anda até lá, desviando de muros, colunas, árvores e da água (caminho.js)
-const caminho = criaCaminho({ terreno: (x, z) => terreno(x, z), livreC: (x, z) => naArea(x, z) && fundo(x, z) <= 0 });
+const caminho = criaCaminho({ terreno: (x, z) => terreno(x, z), livreC: (x, z) => naArea(x, z) && fundo(x, z) <= 0, profundidade: fundo });
 const rayT = new THREE.Raycaster(), ndcT = new THREE.Vector2();
 ctl.aoToque = (e) => {
   if (E.fora || E.cine) return;
@@ -77,7 +77,11 @@ const laco = (forca) => {
     const f0 = fundo(pj.x, pj.z);
     const livre = (x, z) => { if (!naArea(x, z) || terreno(x, z) > pj.y + 0.55) return false; const f = fundo(x, z); return f <= 0 || f < f0 - 1e-4; };
     const x0 = pj.x, z0 = pj.z;
-    if (livre(nx, nz)) { pj.x = nx; pj.z = nz; } else if (livre(nx, pj.z)) pj.x = nx; else if (livre(pj.x, nz)) pj.z = nz; else E.alvoToque = null;
+    if (livre(nx, nz)) { pj.x = nx; pj.z = nz; } else if (Math.abs(mv.x) > 0.2 && livre(nx, pj.z)) pj.x = nx; else if (Math.abs(mv.z) > 0.2 && livre(pj.x, nz)) pj.z = nz;
+    else {      // raspando numa quina: tenta desviar um pouco para cada lado antes de desistir do toque
+      let foi = false; for (const g of [0.6, -0.6, 1.2, -1.2]) { const c = Math.cos(g), s = Math.sin(g), dx = (mv.x * c + mv.z * s) * v, dz = (-mv.x * s + mv.z * c) * v; if (livre(pj.x + dx, pj.z + dz)) { pj.x += dx; pj.z += dz; foi = true; break; } }
+      if (!foi) E.alvoToque = null;
+    }
     andou = Math.hypot(pj.x - x0, pj.z - z0) > v * 0.3;
     let d = Math.atan2(mv.x, mv.z) - jog.o.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d)); jog.o.rotation.y += d * Math.min(1, dt * 12);
     if (andou) jog.toca(corre ? 'Correr' : 'Andar');

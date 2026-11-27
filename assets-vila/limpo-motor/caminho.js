@@ -13,7 +13,7 @@ function tira(h) {
   return top;
 }
 
-export function criaCaminho({ livreC, terreno, alturaEm = null }) {
+export function criaCaminho({ livreC, terreno, alturaEm = null, profundidade = null }) {
   const soTerreno = !alturaEm; if (!alturaEm) alturaEm = (x, z) => terreno(x, z);
   // primeiro numa grade justa em volta da linha reta; se não acha, de novo numa grade larga (para contornar um tanque,
   // um muro comprido) e fica com o que chega mais perto
@@ -40,7 +40,8 @@ export function criaCaminho({ livreC, terreno, alturaEm = null }) {
   const hz = (i, k) => Math.hypot(i - gi, k - gk);
   // quem parte de dentro da margem de um obstáculo (encostado numa coluna, numa pessoa) pode sair dela: o primeiro
   // metro em volta da partida conta como livre (antes não havia caminho nenhum, e o jogador andava reto contra o muro)
-  const preso = !livreC(de.x, de.z, de.y), solta = (x, z) => preso && Math.hypot(x - de.x, z - de.z) < 1.1;
+  const consulta = (c, x, z, y) => { LV[c] = livreC(x, z, y) ? 1 : solta(x, z) ? 3 : 2; TR[c] = terreno(x, z); };
+  const preso = !livreC(de.x, de.z, de.y), solta = (x, z) => preso && Math.hypot(x - de.x, z - de.z) < 3.0;
   let achou = false, passos = 0, perto = idx(si, sk), dPerto = hz(si, sk);
   while (aberto.length && passos++ < MAXP) {
     const [, i, k] = tira(aberto);
@@ -52,8 +53,19 @@ export function criaCaminho({ livreC, terreno, alturaEm = null }) {
       const nc = idx(ni, nk); if (fechado[nc]) continue;
       const x = cx(ni), z = cz(nk), y = Y[c];
       // (cada célula é consultada uma vez: a colisão e a altura do chão custam, e um vizinho é visto até oito vezes)
-      if (LV[nc] === 0) { LV[nc] = livreC(x, z, y) || solta(x, z) ? 1 : 2; TR[nc] = terreno(x, z); }
-      if (LV[nc] === 2 || TR[nc] > y + 0.55) continue;
+      if (LV[nc] === 0) consulta(nc, x, z, y);
+      if (LV[nc] === 2) continue;
+      // na diagonal, as duas células do lado também livres: cortando a quina, o jogador (com a margem dele) batia no
+      // canto e parava
+      if (a && b) { const c1 = idx(i + a, k), c2 = idx(i, k + b);
+        if (LV[c1] === 0) consulta(c1, cx(i + a), cz(k), y); if (LV[c2] === 0) consulta(c2, cx(i), cz(k + b), y);
+        if (LV[c1] === 2 || LV[c2] === 2 || TR[c1] > y + 0.55 || TR[c2] > y + 0.55) continue; }
+      // (na saída da margem, a altura fica a da partida: pegar a do fundo do tanque impedia subir de volta ao piso)
+      // (e, como no movimento do jogo, cada passo ali dentro sai um pouco mais da margem: indo mais para dentro, o jogo
+      // recusava o primeiro passo e o jogador nem saía do lugar)
+      if (LV[nc] === 3 && profundidade && !(profundidade(x, z) < profundidade(cx(i), cz(k)) - 1e-4)) continue;
+      if (LV[nc] === 3) { const g = G[c] + cs * 1.5; if (g < G[nc]) { G[nc] = g; Y[nc] = y; DE[nc] = c; poe(aberto, [g + hz(ni, nk), ni, nk]); } continue; }
+      if (TR[nc] > y + 0.55) continue;
       const ny = soTerreno ? TR[nc] : alturaEm(x, z, y); if (ny > y + 0.55) continue;
       const g = G[c] + cs + Math.max(0, ny - y) * 2;
       if (g < G[nc]) { G[nc] = g; Y[nc] = ny; DE[nc] = c; poe(aberto, [g + hz(ni, nk), ni, nk]); }
@@ -69,6 +81,6 @@ export function criaCaminho({ livreC, terreno, alturaEm = null }) {
   if (!out.length && pts.length) out.push(pts[pts.length - 1]);
   return { out, achou };
   }
-  caminho.livreC = livreC; caminho.terreno = terreno; caminho.alturaEm = alturaEm;      // (para os testes)
+  caminho.livreC = livreC; caminho.terreno = terreno; caminho.alturaEm = alturaEm; caminho.profundidade = profundidade;      // (para os testes)
   return caminho;
 }

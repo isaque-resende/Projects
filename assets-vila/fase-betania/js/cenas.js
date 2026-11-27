@@ -346,6 +346,8 @@ function cenasPasso(dt) {
   else if (CENA.fase === 'lazaro') {
     if (CENA.sub === 'vem') {
       olha(jog, lazaro.o.position, dt, 4); jog.toca('Parado');
+      // enquanto ele anda, se uma tamareira entra na frente dele, a câmera escolhe o lado de novo (e vira devagar)
+      if ((CENA.reve = (CENA.reve || 0) + dt) > 0.8) { CENA.reve = 0; if (!CINE.ve(cab(lazaro, -0.3)(), DLG.yawVem, 7, 6)) ladoVem(lazaro, 6, 7); }
       const alvo = jog.o.position.clone().addScaledVector(lazaro.o.position.clone().sub(jog.o.position).setY(0).normalize(), 1.35);
       if (vaiA(lazaro, alvo, dt, 1.6)) { CENA.sub = 'fala1'; conversa('Lázaro', lazaro, FALAS_LAZ1, () => { CENA.sub = 'entra'; LEMB.entra('Algumas semanas antes', montaLembranca); }); }
     } else if (CENA.sub === 'fala1' || CENA.sub === 'fala2') { olha(lazaro, jog.o.position, dt, 4); olha(jog, lazaro.o.position, dt, 4); }

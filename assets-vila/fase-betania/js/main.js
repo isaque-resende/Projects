@@ -86,9 +86,12 @@ const laco = (forca) => {
       !moveis.some(([m, r]) => { const d = Math.hypot(m.o.position.x - x, m.o.position.z - z); return d < r && d < Math.hypot(m.o.position.x - p.x, m.o.position.z - p.z); });
     const x0 = p.x, z0 = p.z;
     if (livre(nx, nz)) { p.x = nx; p.z = nz; }
-    else if (livre(nx, p.z)) p.x = nx;
-    else if (livre(p.x, nz)) p.z = nz;
-    else E.alvoToque = null;
+    else if (Math.abs(mv.x) > 0.2 && livre(nx, p.z)) p.x = nx;      // (o eixo só vale se o passo tem parte nele: senão "deslizava" no lugar e parava)
+    else if (Math.abs(mv.z) > 0.2 && livre(p.x, nz)) p.z = nz;
+    else {      // raspando numa quina: tenta desviar um pouco para cada lado antes de desistir do toque
+      let foi = false; for (const g of [0.6, -0.6, 1.2, -1.2]) { const c = Math.cos(g), s = Math.sin(g), dx = (mv.x * c + mv.z * s) * v, dz = (-mv.x * s + mv.z * c) * v; if (livre(p.x + dx, p.z + dz)) { p.x += dx; p.z += dz; foi = true; break; } }
+      if (!foi) E.alvoToque = null;
+    }
     andou = Math.hypot(p.x - x0, p.z - z0) > v * 0.3;
     const ang = Math.atan2(mv.x, mv.z); let d = ang - jog.o.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d)); jog.o.rotation.y += d * Math.min(1, dt * 12);
     if (andou) jog.toca(corre ? 'Correr' : 'Andar');

@@ -64,6 +64,18 @@ todos do próprio teste, que toca na água ou no meio do campo de cevada.
 | 28 | Cidade alta | Nas negações, as costas de Pedro escondiam a criada; a Porta de Genat parecia um vão solto. | corrigido: os dois de perfil; a porta no muro |
 | 29 | Gólgota | Na chegada e na cena das cruzes, um poste de cruz enchia a tela. | corrigido: as cruzes não contam como o que tapa, porque o alvo do plano fica nelas |
 
+## Terceira rodada: o jogador automático sem atalho
+
+O jogador automático deixou de teleportar quando empaca. Esse teleporte o punha dentro do tanque de Betesda ou num
+alpendre fechado, e escondia travamentos reais. Sem ele, apareceram quatro defeitos do jogo:
+
+| # | Problema | Situação |
+|---|---|---|
+| 30 | Andando em linha reta ao longo de um eixo, o jogador encostava numa quina e parava. O jogo tentava deslizar no outro eixo, ficava no mesmo lugar e contava isso como passo dado. Aconteceu no Gólgota, a caminho das cruzes, e em Betânia, a caminho do lagar. | corrigido nas oito fases: o deslize só vale se o passo tem parte naquele eixo; raspando numa quina, ele tenta desviar 35° e 70° para cada lado antes de desistir |
+| 31 | O caminho cortava a quina entre duas células, e o jogador, com a margem dele, batia no canto. Foi o que travava a subida ao tribunal, na cidade alta. | corrigido: a diagonal só vale com as duas células do lado livres |
+| 32 | Saindo de dentro da margem (perto do tanque, encostado numa coluna), o caminho pegava a altura do fundo do tanque e não subia de volta ao piso, ou ia mais para dentro e o jogo recusava o passo. | corrigido: ali dentro, a altura fica a da partida, e cada passo sai um pouco mais da margem, como no movimento do jogo |
+| 33 | Betânia: enquanto Lázaro anda, uma tamareira baixa passava na frente dele. | corrigido: a cada 0,8 s, se ele não está à vista, a câmera escolhe o lado de novo |
+
 ## O que ficou de fora, de propósito
 
 - O jogador automático às vezes empaca ao tocar num ponto que não dá para pisar (a água do tanque, o meio do campo de
@@ -71,7 +83,6 @@ todos do próprio teste, que toca na água ou no meio do campo de cevada.
 - Em quadros de passagem, enquanto a câmera ainda está virando, uma coluna pode cruzar a frente da lente por um instante.
 - Em dois pontos, nenhum ângulo cabe, e por um instante o triângulo amarelo mostra o jogador: junto ao pilar da Porta
   de Nicanor (templo) e na porta estreita de um túmulo antigo (Gólgota).
-- Em Betânia, enquanto Lázaro anda, uma tamareira baixa pode passar na frente dele por um ou dois segundos.
 - O jogador automático empacou também em lugares cujo ponto fica dentro de algo: o aprisco fechado, o tanque do lagar.
   O jogador chega até a borda, como deve ser.
 
