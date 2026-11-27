@@ -88,6 +88,9 @@ Gólgota eram falso alarme. Outros três eram defeitos:
 | 35 | Betesda, o homem que desce antes do paralítico: o lado da lente olhava só o ponto de partida dele, e uma coluna tapava o primeiro instante. A mulher do jarro, que é de hoje, cruzava com ele na escadaria dentro da lembrança. | corrigido: o lado é escolhido pelo caminho todo dele até a água, com o plano fixo; a mulher do jarro some durante a lembrança |
 | 36 | Betânia, Lázaro vindo ao encontro: a câmera girava em volta do túmulo, entre pedras e tamareiras, e a lente entrava nelas. A busca de ângulo do motor brigava com a da cena, e a reta dele passava por dentro de uma tamareira. | corrigido: o plano agora é por cima do ombro do jogador, num ângulo em que a lente vê os dois de verdade (testado com raios nos dois sentidos, porque as folhas têm face de um lado só), primeiro na altura dos olhos, por baixo das copas; se uma tamareira está no meio, ele a contorna. Para isso, o motor das cenas ganhou o plano `semBusca` (a cena escolhe o lado, e a lente só chega mais perto se algo entra na frente) |
 
+| 37 | Templo, a viúva: trocando de lado, a lente girava devagar e o suporte de madeira do candelabro cruzava a frente por um instante. | corrigido: a troca de lado (e a entrada no plano que a segue) é um corte |
+| 38 | Betfagé: a câmera do jogo mira quase o centro da aldeia, e na ponta do mapa, junto à figueira seca, o jogador ficava fora do quadro. | corrigido: a mira se desloca para o jogador até ele ficar dentro do quadro |
+
 ### A vida dos NPCs (`limpo-motor/atores.js`, nas oito fases)
 
 Os bonecos têm só cinco clipes (parado, conversando, andar, trote e correr). Por cima deles, uma camada feita por código:
@@ -109,7 +112,6 @@ Os bonecos têm só cinco clipes (parado, conversando, andar, trote e correr). P
 
 - O jogador automático às vezes empaca ao tocar num ponto que não dá para pisar (a água do tanque, o meio do campo de
   cevada, o alto do Pavimento). O jogo leva o jogador até o ponto livre mais perto ou para no caminho, e isso é normal.
-- Em quadros de passagem, enquanto a câmera ainda está virando, uma coluna pode cruzar a frente da lente por um instante.
 - Em dois pontos, nenhum ângulo cabe, e por um instante o triângulo amarelo mostra o jogador: junto ao pilar da Porta
   de Nicanor (templo) e na porta estreita de um túmulo antigo (Gólgota).
 - O jogador automático empacou também em lugares cujo ponto fica dentro de algo: o aprisco fechado, o tanque do lagar.

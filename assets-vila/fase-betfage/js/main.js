@@ -103,8 +103,13 @@ const laco = (forca) => {
   E.distAlvo = Math.min(E.distAlvo, DMAX());
   E.dist += (E.distAlvo - E.dist) * Math.min(1, dt * (E.abrindo ? 0.9 : 6));
   if (E.abrindo && Math.abs(E.distAlvo - E.dist) < 0.3) E.abrindo = false;
-  const k = sm(DMIN, DMAX() * 0.92, E.dist);
-  const alvoF = pj.clone().lerp(CENTRO, k);
+  let k = sm(DMIN, DMAX() * 0.92, E.dist);
+  let alvoF = pj.clone().lerp(CENTRO, k);
+  // o jogador sempre dentro do quadro: nas pontas do mapa (a figueira seca), mirar perto do centro o deixava de fora
+  for (const pc = pj.clone(); k > 0; k = Math.max(0, k - 0.1), alvoF = pj.clone().lerp(CENTRO, k)) {
+    camera.position.copy(alvoF).addScaledVector(DIR, E.dist); camera.lookAt(alvoF); camera.updateMatrixWorld();
+    pc.copy(pj).setY(pj.y + 0.9).project(camera); if (Math.abs(pc.x) < 0.8 && Math.abs(pc.y) < 0.75) break;
+  }
   foco.lerp(alvoF, Math.min(1, dt * 3));
   camera.position.copy(foco).addScaledVector(DIR, E.dist); camera.lookAt(foco);
   scene.fog.near = E.dist + 6; scene.fog.far = E.dist + 40;

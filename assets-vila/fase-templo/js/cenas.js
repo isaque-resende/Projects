@@ -66,11 +66,16 @@ function montaViuva() {
   CENA.sub = 'ricos'; CENA.t = 0; fala('Estando Jesus assentado defronte da arca do tesouro, observava a maneira como a multidão lançava o dinheiro. (Mc 12.41)');
 }
 function desfazViuva() { for (const st of [...RICOS, VIUVA]) st.o.visible = false; for (const q of MOEDAS) q.m.visible = false; jog.o.visible = true; fala(''); }
+const DESV_V = [0, 8, -8, 15, -15, 25, -25, 40, -40, 60, -60];
 function viuvaPasso(dt) {
   const T = (CENA.t += dt);
   moedasPasso(dt);
   // ela anda: se o candelabro ou uma coluna passa na frente, a lente escolhe outro lado
-  if ((CENA.reve = (CENA.reve || 0) + dt) > 0.4) { CENA.reve = 0; if (LIVRE.has('viuva') && !CINE.ve(cab(VIUVA, -0.3)(), LIVRE.get('viuva'), 4, 5.9)) LIVRE.delete('viuva'); }
+  // (troca num corte: girando devagar, a lente atravessava o suporte de madeira do candelabro)
+  if ((CENA.reve = (CENA.reve || 0) + dt) > 0.3) { CENA.reve = 0; if (LIVRE.has('viuva') && !CINE.ve(cab(VIUVA, -0.3)(), LIVRE.get('viuva'), 4, 5.9)) {
+    LIVRE.delete('viuva'); const y = livreDe('viuva', cab(VIUVA, -0.3)(), yawDe(VIUVA.o.position, JESUS), 4, 5.9, DESV_V);
+    if (CINE.C.ativo) { CINE.C.yaw = y / DEG; CINE.C.Dc = null; CINE.C.cortou = 2; }
+  } }
   if (CENA.sub === 'ricos') {
     for (const [k, st] of RICOS.entries()) {
       const x = 16.0 + k * 0.9;
@@ -99,8 +104,8 @@ function cenaViuva() {
     { alvo: () => ARCA.clone().setY(ARCA.y + 1), dist: 7, el: 20, yaw: 160, k: 2, ate: () => CENA.sub === 'ricos' },
     { alvo: () => ARCA.clone().setY(ARCA.y + 1.0), dist: ARCA.z - JESUS.z, el: 3, yaw: yPov, corte: true, fixo: true, zoom: 1.15, k: 2, kd: 1, ate: () => CENA.sub === 'viuva' },
     // do lugar dele, a lente fecha nela
-    { alvo: cab(VIUVA, -0.3), dist: 5.9, el: 4, yaw: () => livreDe('viuva', cab(VIUVA, -0.3)(), yawDe(VIUVA.o.position, JESUS), 4, 5.9, [0, 8, -8, 15, -15, 25, -25, 40, -40, 60, -60]), fixo: true, zoom: 0.72, k: 2, kd: 1, ate: () => CENA.sub === 'mais' },
-    { alvo: cab(VIUVA, -0.2), dist: 5.9, el: 4, yaw: () => livreDe('viuva', cab(VIUVA, -0.3)(), yawDe(VIUVA.o.position, JESUS), 4, 5.9, [0, 8, -8, 15, -15, 25, -25, 40, -40, 60, -60]), fixo: true, zoom: 0.55, k: 1.4, kd: 0.6, ate: () => CENA.sub === '' },
+    { alvo: cab(VIUVA, -0.3), dist: 5.9, el: 4, yaw: () => livreDe('viuva', cab(VIUVA, -0.3)(), yawDe(VIUVA.o.position, JESUS), 4, 5.9, DESV_V), corte: true, fixo: true, zoom: 0.72, k: 2, kd: 1, ate: () => CENA.sub === 'mais' },
+    { alvo: cab(VIUVA, -0.2), dist: 5.9, el: 4, yaw: () => livreDe('viuva', cab(VIUVA, -0.3)(), yawDe(VIUVA.o.position, JESUS), 4, 5.9, DESV_V), fixo: true, zoom: 0.55, k: 1.4, kd: 0.6, ate: () => CENA.sub === '' },
   ], () => {}, { aoPular: () => { AGENDA = []; if (LEMB.on) { LEMB.desliga(); desfazViuva(); } CENA.sub = ''; CENA.fase = 'livre'; } });
   depois(0.5, () => LEMB.entra('Na terça-feira', montaViuva));
 }
