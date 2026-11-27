@@ -102,8 +102,8 @@ const laco = (forca) => {
   const pj = jog.o.position;
   let andou = false;
   if (mv.lengthSq() > 0) {
-    mv.normalize(); const corre = tecla.ShiftLeft || tecla.ShiftRight || (JOY.on && Math.hypot(JOY.x, JOY.y) > 0.9) || (E.alvoToque && E.alvoToque.distanceTo(pj) > 6);
-    const v = (corre ? 4.6 : 2.2) * dt, nx = pj.x + mv.x * v, nz = pj.z + mv.z * v;
+    mv.normalize(); const dispara = E.correndo || tecla.ShiftLeft || tecla.ShiftRight, corre = dispara || (JOY.on && Math.hypot(JOY.x, JOY.y) > 0.9) || (E.alvoToque && E.alvoToque.distanceTo(pj) > 6);
+    const v = (dispara ? 6.2 : corre ? 4.6 : 2.2) * dt, nx = pj.x + mv.x * v, nz = pj.z + mv.z * v;
     const f0 = fundo(pj.x, pj.z);
     const livre = (x, z) => { if (!naArea(x, z) || terreno(x, z) > pj.y + 0.55) return false; const f = fundo(x, z); return f <= 0 || f < f0 - 1e-4; };
     const x0 = pj.x, z0 = pj.z;
@@ -114,7 +114,7 @@ const laco = (forca) => {
     }
     andou = Math.hypot(pj.x - x0, pj.z - z0) > v * 0.3;
     let d = Math.atan2(mv.x, mv.z) - jog.o.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d)); jog.o.rotation.y += d * Math.min(1, dt * 12);
-    if (andou) jog.toca(corre ? 'Correr' : 'Andar');
+    if (andou) jog.toca(dispara ? 'Correr' : corre ? 'Trote' : 'Andar');      // (o botão Correr, ou Shift: corre; o direcional no fim ou o toque longe: trota)
   }
   const chao = alturaEm(pj.x, pj.z);
   if (E.jogNoChao && pj.y - chao > 0.55) E.jogNoChao = false;

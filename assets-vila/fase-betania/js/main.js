@@ -71,8 +71,8 @@ const laco = (forca) => {
   const naFolha = (x, z) => CASAS.some((c) => { if (c.ang > -0.3) return false; const b = new THREE.Box3().setFromObject(c.porta).expandByScalar(0.18); return x > b.min.x && x < b.max.x && z > b.min.z && z < b.max.z; });
   let andou = false;
   if (mv.lengthSq() > 0) {
-    mv.normalize(); const corre = tecla.ShiftLeft || tecla.ShiftRight || (JOY.on && Math.hypot(JOY.x, JOY.y) > 0.9) || (E.alvoToque && E.alvoToque.distanceTo(jog.o.position) > 6);
-    const v = (corre ? 5.2 : 2.4) * dt, p = jog.o.position;
+    mv.normalize(); const dispara = E.correndo || tecla.ShiftLeft || tecla.ShiftRight, corre = dispara || (JOY.on && Math.hypot(JOY.x, JOY.y) > 0.9) || (E.alvoToque && E.alvoToque.distanceTo(jog.o.position) > 6);
+    const v = (dispara ? 6.6 : corre ? 5.2 : 2.4) * dt, p = jog.o.position;
     const nx = p.x + mv.x * v, nz = p.z + mv.z * v;
     // não atravessa quem anda (só bloqueia se estiver se aproximando)
     const moveis = [[andante, 0.6], [boi, 1.1], [lavrador, 0.6], [padeira, 0.5], [aguadeira, 0.5], ...ovelhas.map((o) => [o, 0.7])];
@@ -94,7 +94,7 @@ const laco = (forca) => {
     }
     andou = Math.hypot(p.x - x0, p.z - z0) > v * 0.3;
     const ang = Math.atan2(mv.x, mv.z); let d = ang - jog.o.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d)); jog.o.rotation.y += d * Math.min(1, dt * 12);
-    if (andou) jog.toca(corre ? 'Correr' : 'Andar');
+    if (andou) jog.toca(dispara ? 'Correr' : corre ? 'Trote' : 'Andar');      // (o botão Correr, ou Shift: corre; o direcional no fim ou o toque longe: trota)
   }
   // altura: degrau, escada e terraço; pulo e queda
   const chao = passagem(pj.x, pj.z) ? 0 : alturaEm(pj.x, pj.z);

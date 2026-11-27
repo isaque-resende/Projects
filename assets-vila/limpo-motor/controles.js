@@ -60,6 +60,13 @@ export function criaControles({ dom, E, zoom, toqueCurtoAciona = true }) {
     Object.assign(b.style, { position: 'fixed', right: '18px', bottom: 'calc(22px + env(safe-area-inset-bottom))', padding: '18px 20px', borderRadius: '50%', border: 0, background: '#fdf6e3', color: '#4a3520', fontSize: '15px', boxShadow: '0 3px 12px #0003' });
     b.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); pular(); });
     document.body.appendChild(b);
+    // correr: liga e desliga (aceso enquanto liga); ligado, o jogador corre de verdade, mais rápido que o trote
+    const c = document.createElement('button'); c.id = 'correr'; c.textContent = 'Correr';
+    Object.assign(c.style, { position: 'fixed', right: '14px', bottom: 'calc(96px + env(safe-area-inset-bottom))', padding: '12px 12px', borderRadius: '14px', border: 0, background: '#fdf6e3', color: '#4a3520', fontSize: '14px', boxShadow: '0 3px 12px #0003' });
+    const mostra = () => { c.style.background = E.correndo ? '#f1c24b' : '#fdf6e3'; c.textContent = E.correndo ? 'Correndo' : 'Correr'; };
+    c.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); E.correndo = !E.correndo; mostra(); });
+    document.body.appendChild(c);
+    setInterval(() => { c.style.display = E.cine || E.fora ? 'none' : 'block'; }, 200);      // (nas cenas e nos diálogos, o canto é do "Pular cena")
   }
 
   return Object.assign(ctl, { tecla, JOY, toqueTela, marcaPino, pular });
