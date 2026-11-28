@@ -152,46 +152,47 @@ function introDentro(dt) {
   const T = INTRO.t, o = jog.o, c = c0;
   if (T > 2.2 && T < 2.6 && fade.style.opacity !== '0') { fade.style.opacity = 0; depois(0.9, () => { if (INTRO.on && INTRO.fase === 'dentro') fade.textContent = ''; }); }
   const p = PENSA.find(([a, b]) => T >= a && T < b); fala(p ? p[2] : '');
-  // deitado (de costas, na esteira) → senta, com as pernas esticadas na esteira e as mãos no chão → leva a mão à testa
-  // → recolhe as pernas, passa por agachado e fica de pé. Braços e pernas osso a osso (atores.js: ik, maos, inclina)
-  const H = 0.55, yaw = -Math.PI / 2, f = V3(Math.sin(yaw), 0, Math.cos(yaw)), lado = V3(f.z, 0, -f.x), yb = CASAI.base.y;
+  // deitado na cama (o monte de palha com a esteira por cima, 18 cm acima do chão) → senta, com as pernas esticadas na
+  // cama e as mãos apoiadas → leva a mão à testa → gira e senta na beirada, com os pés no chão do lado livre → levanta,
+  // passando o peso por cima dos pés. Braços e pernas osso a osso (atores.js: ik, maos, inclina), por cima do clipe parado
+  const H = 0.55, yb = CASAI.base.y, CAMA = yb + 0.185, BEIRA = ESTEIRA.z + 0.525;
+  const ang = (y) => [V3(Math.sin(y), 0, Math.cos(y)), V3(Math.cos(y), 0, -Math.sin(y))];      // frente e lado
   if (!jog.os) corpo(jog);
+  if (INTRO.hp == null) { o.rotation.set(0, 0, 0); o.position.set(0, 0, 0); o.updateMatrixWorld(true); INTRO.hp = pos(jog.os.pelvis).y; }      // a altura do quadril de pé
+  jog.A.Parado.timeScale = T < 5 ? 0.4 : 0.6; jog.toca('Parado');
+  const poeQuadril = (alvo) => { o.updateMatrixWorld(true); o.position.add(alvo.clone().sub(pos(jog.os.pelvis))); o.updateMatrixWorld(true); };
   if (T < 5.0) {                                      // deitado, respirando
-    o.rotation.set(-Math.PI / 2, yaw, 0);
+    o.rotation.set(-Math.PI / 2, -Math.PI / 2, 0);
     const q = new THREE.Quaternion().setFromEuler(o.rotation), quadril = V3(0, H, 0).applyQuaternion(q);
     o.position.set(ESTEIRA.x - quadril.x, yb + 0.3 - quadril.y, ESTEIRA.z - quadril.z);
-    o.rotation.z = Math.sin(T * 1.6) * 0.015; jog.A.Parado.timeScale = 0.4; jog.toca('Parado');
-    o.updateMatrixWorld(true); INTRO.quadril = pos(jog.os.pelvis).setY(yb + 0.14);      // onde o quadril fica sentado
-  } else if (T < 11.2) {
-    const Q = INTRO.quadril, ks = suave(5.0, 6.6, T), kl = suave(9.0, 10.0, T);      // ks: senta; kl: levanta (sai das mãos e pernas)
-    if (T < 10.0) {                                   // sentado (o tronco sobe em volta do quadril)
-      o.rotation.set(-Math.PI / 2 * (1 - ks), yaw, 0); jog.A.Parado.timeScale = 0.6; if (T < 9.0) jog.toca('Parado');
-      o.updateMatrixWorld(true); const pq = pos(jog.os.pelvis);
-      const alvoQ = Q.clone().lerp(V3(Q.x, yb + 0.02, Q.z), kl);
-      o.position.add(alvoQ.sub(pq).multiplyScalar(1 - kl));
-      if (kl > 0) { o.position.lerp(V3(Q.x - f.x * 0.1, yb, Q.z - f.z * 0.1), kl); if (jog.atual !== 'Agachado') jog.toca('Agachado'); }
-      o.updateMatrixWorld(true);
-      // as pernas: esticadas na esteira; levantando, os pés vêm para baixo do corpo
-      const pes = (s) => Q.clone().addScaledVector(f, 0.9 - 0.65 * kl).addScaledVector(lado, s * 0.13).setY(yb + 0.06);
-      const polo = (s) => Q.clone().addScaledVector(f, 0.6).addScaledVector(lado, s * 0.2).setY(yb + 1.2);
-      const pl = 1 - kl;
-      if (pl > 0.01) { ik(...jog.os.pE, pes(1), polo(1), pl); ik(...jog.os.pD, pes(-1), polo(-1), pl); }
-      // o tronco: um pouco para a frente sentado; com a mão na testa, a cabeça baixa
-      const kt = suave(6.8, 7.4, T) * (1 - suave(8.6, 9.2, T));
-      inclina(jog, (0.12 + 0.18 * kt) * ks * pl);
-      // as mãos: apoiadas no chão ao lado do quadril; a direita vai à testa
-      const apoio = (s) => Q.clone().addScaledVector(lado, s * 0.3).addScaledVector(f, -0.08).setY(yb + 0.04);
-      const testa = pos(jog.os.cab).addScaledVector(f, 0.13).add(V3(0, 0.1, 0));
-      maos(jog, apoio(1), apoio(-1).lerp(testa, kt), dt, ks * pl, 6, 0.35, 0.3);
-    } else {                                          // de agachado, fica de pé
-      o.rotation.set(0, yaw, 0); o.position.set(Q.x - f.x * 0.1, yb, Q.z - f.z * 0.1);
-      if (jog.atual !== 'Parado') { jog.A.Parado.timeScale = 1; jog.A.Parado.reset().play(); jog.A.Agachado.crossFadeTo(jog.A.Parado, 1.0, false); jog.atual = 'Parado'; }
-      maos(jog, pos(jog.os.bE[2]), pos(jog.os.bD[2]), dt, 0);
-    }
-  } else if (T < 14.8) {                              // de pé, olhando em volta
-    const Q = INTRO.quadril;
-    o.rotation.set(0, yaw + Math.sin((T - 11.2) * 0.9) * 0.7, 0); o.position.set(Q.x - f.x * 0.1, yb, Q.z - f.z * 0.1);
-    jog.A.Parado.timeScale = 1; jog.toca('Parado');
+    o.rotation.z = Math.sin(T * 1.6) * 0.015;
+    o.updateMatrixWorld(true); INTRO.quadril = pos(jog.os.pelvis).setY(CAMA + 0.11);      // onde o quadril fica sentado
+  } else if (T < 11.6) {
+    const Q = INTRO.quadril, ks = suave(5.0, 6.6, T), kg = suave(9.0, 10.3, T), kl = suave(10.3, 11.5, T);
+    const yaw = -Math.PI / 2 * (1 - kg), [f, lado] = ang(yaw);
+    const Q2 = V3(Q.x, Q.y, BEIRA - 0.18), S = V3(Q.x, yb, BEIRA + 0.32);      // sentado na beirada; de pé, no chão
+    const quadril = Q.clone().lerp(Q2, kg).lerp(V3(S.x, yb + INTRO.hp, S.z - 0.03), kl * kl * (3 - 2 * kl));
+    o.rotation.set(-Math.PI / 2 * (1 - ks), yaw, 0); poeQuadril(quadril);
+    // as pernas: esticadas na cama; girando, os pés passam por cima da beirada e descem ao chão; levantando, ficam lá
+    const [f0, l0] = ang(-Math.PI / 2);
+    const pe = (s) => { const naCama = Q.clone().addScaledVector(f0, 0.9).addScaledVector(l0, s * 0.13).setY(CAMA + 0.06);
+      const noChao = S.clone().addScaledVector(lado, s * 0.14).setY(yb + 0.05);
+      const p = naCama.lerp(noChao, kg); p.y += Math.sin(Math.PI * kg) * 0.18; return p; };
+    const polo = (s) => quadril.clone().addScaledVector(f, 1.0).addScaledVector(lado, s * 0.15).add(V3(0, 0.6, 0));
+    const pl = 1 - suave(11.0, 11.5, T);
+    if (pl > 0.01) { ik(...jog.os.pE, pe(1), polo(1), pl); ik(...jog.os.pD, pe(-1), polo(-1), pl); }
+    // o tronco: um pouco para a frente sentado; com a mão na testa, a cabeça baixa; levantando, o peso vai para a frente
+    const kt = suave(6.8, 7.4, T) * (1 - suave(8.6, 9.2, T));
+    inclina(jog, (0.12 + 0.18 * kt) * ks * (1 - kl) + 0.5 * Math.sin(Math.PI * kl));
+    // as mãos: apoiadas na cama ao lado do quadril; a direita vai à testa; levantando, soltam
+    const apoio = (s) => quadril.clone().addScaledVector(lado, s * 0.3).addScaledVector(f, -0.06).setY(CAMA + 0.03);
+    const testa = pos(jog.os.cab).addScaledVector(f, 0.13).add(V3(0, 0.1, 0));
+    maos(jog, apoio(1), apoio(-1).lerp(testa, kt), dt, ks * (1 - suave(10.5, 11.2, T)), 6, 0.35, 0.3);
+    INTRO.pe = S;
+  } else if (T < 14.8) {                              // de pé, no chão ao lado da cama, olhando em volta
+    const S = INTRO.pe;
+    o.rotation.set(0, Math.sin((T - 11.6) * 0.9) * 0.7, 0); o.position.copy(S);
+    maos(jog, pos(jog.os.bE[2]), pos(jog.os.bD[2]), dt, 0);
   } else {                                            // vai até a porta
     const alvo = CASAI.entrada.clone().setY(CASAI.base.y).add(V3(0, 0, 0.6)), d = alvo.clone().sub(o.position).setY(0);
     if (d.length() > 0.12 && T < 17.0) { d.normalize(); o.position.addScaledVector(d, 1.3 * dt); lerpAng(o, Math.atan2(d.x, d.z), Math.min(1, dt * 6)); jog.toca('Andar'); }
